@@ -27,5 +27,32 @@
   <script src="./game.js" defer></script><script src="./beta_patch_v11.js" defer></script><script src="./beta_patch_v12.js" defer></script>
   <script src="./beta_patch_v13.js" defer></script>
   <script src="./beta_patch_v14.js" defer></script>
+
+<style>
+#verdict-entry{position:fixed;inset:0;z-index:99999;background:rgba(8,18,30,.97);color:#f6f0e6;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit}
+#verdict-entry .entry-card{width:min(420px,100%);padding:30px 24px;background:linear-gradient(145deg,#192c40,#253b4d);border:1px solid #987f62;border-radius:22px;box-shadow:0 24px 75px #0009;text-align:center}
+#verdict-entry .entry-title{font-size:30px;letter-spacing:2px;font-weight:800;margin:0 0 10px}
+#verdict-entry .entry-sub{color:#c6d1d7;font-size:13px;line-height:1.7;margin-bottom:28px}
+#verdict-entry .entry-btn{display:block;width:100%;padding:15px;border-radius:12px;margin:11px 0;border:1px solid #8eabb7;background:#29475e;color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+#verdict-entry .entry-btn.primary{background:#b88d58;color:#132032;border-color:#d4ad78}
+#verdict-entry .entry-btn:disabled{opacity:.45;cursor:not-allowed}
+#verdict-entry .entry-info{font-size:12px;color:#b6c5cc;margin-top:18px;line-height:1.8}
+</style>
+<script>
+(()=>{
+const openEntry=()=>{
+if(document.getElementById('verdict-entry'))return;
+const el=document.createElement('div');el.id='verdict-entry';
+const hasSave=!!(window.S&&S.name);
+el.innerHTML='<div class="entry-card"><div style="font-size:30px">⚖️</div><div class="entry-title">THE VERDICT</div><div class="entry-sub">법관의 30년, 판결로 이어지는 사람들의 삶<br>새로운 커리어를 시작하거나 기존 기록을 이어가세요.</div><button class="entry-btn primary" id="verdict-new">새 게임</button><button class="entry-btn" id="verdict-continue" '+(hasSave?'':'disabled')+'>이어서 하기'+(hasSave?' · '+S.name.replace(/[&<>"']/g,''):' · 저장된 게임 없음')+'</button><button class="entry-btn" id="verdict-import">저장 파일 불러오기 (JSON)</button><div class="entry-info">세이브는 현재 기기에 저장돼요.<br>새 게임을 시작하기 전 기존 기록을 백업하세요.</div></div>';
+document.body.appendChild(el);
+el.querySelector('#verdict-continue').onclick=()=>el.remove();
+el.querySelector('#verdict-new').onclick=()=>{if(hasSave&&!confirm('현재 게임을 새로 시작할까요? 기존 기록은 삭제됩니다. 먼저 저장 파일을 내보내세요.'))return;localStorage.removeItem(KEY);location.reload();};
+el.querySelector('#verdict-import').onclick=()=>{el.remove();const inp=document.getElementById('importFile');if(inp)inp.click();else alert('메인 화면에서 저장 파일 불러오기를 이용해 주세요.');};
+if(!hasSave){el.querySelector('#verdict-new').onclick=()=>el.remove();}
+};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(openEntry,0));else setTimeout(openEntry,0);
+})();
+</script>
 </body>
 </html>
