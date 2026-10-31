@@ -36,3 +36,22 @@
 .editorial-paper p{margin:8px 0}
 @media(max-width:480px){.judge-preview>.judge-preview-image{width:100px;height:116px;flex-basis:100px}.compact-witness-row{grid-template-columns:repeat(2,minmax(0,1fr))}.editorial-intro p{font-size:13px}.editorial-advocates .adversarial{grid-template-columns:1fr}.judge-option{padding:8px 10px;font-size:11px}}
 @media print{.editorial-paper{border:0;padding:0}.modal-actions,.bottom-nav{display:none!important}}
+
+/* Legal labor market */
+.legal-world{background:#fff9ee;border-color:#d2b48b}
+.legal-world-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.legal-world-metrics>div{background:#f9edda;border:1px solid #dbbf98;border-radius:9px;padding:11px 5px;text-align:center}
+.legal-world-metrics b{font-size:21px;color:#3d5068;display:block}
+.legal-world-metrics small{font-size:11px;color:#87633b}
+.legal-world details,.counsel-ability details{margin-top:8px}
+.counsel-ability{background:#fff8ed;border-left:3px solid #b98b51}
+.counsel-ability>div{margin:8px 0;font-size:13px;line-height:1.6}
+.counsel-ability p{margin:8px 0}
+.legal-person-card{background:#fff8ec;border:1px solid #dfc8a7;border-radius:10px;padding:15px}
+.legal-person-card p{font-size:13px;line-height:1.7}
+.legal-network-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.legal-network-person{background:#fffaf1;border:1px solid #d7c1a5;border-radius:9px;text-align:left;padding:12px;display:flex;flex-direction:column;gap:4px}
+.legal-network-person b{font-size:13px;color:#2b3b51}
+.legal-network-person span{font-size:12px;color:#946d40}
+.legal-network-person small{font-size:11px;color:#74838a}
+@media(max-width:600px){.legal-network-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.legal-world-metrics{gap:5px}.legal-world-metrics b{font-size:18px}}
