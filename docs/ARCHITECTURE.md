@@ -8,6 +8,7 @@
 | `game.css` | 전체 스타일 (기존 스타일시트 7개를 원래 적용 순서대로 합침) |
 | `deep_case_engine.js`, `story_engine.js`, `case_pack_engine.js`, `continuity_engine.js`, `npc_life_justice.js`, `family_engine.js` | 사건 생성, 숨겨진 진실, 사건팩 검증, 인물 생애 |
 | `curated/part1~3.js`, `curated/registry.js` → `curated_cases.js` | **집필 사건 30건.** 사건마다 4막 서사, 양측 주장, 증거 3개(보여주는 것·한계), 사연 있는 증인 3명, 판결별 '그 후', 숨겨진 진실. 원본은 `curated/`, 게임이 읽는 묶음은 `node tests/build-curated.cjs`로 만듦 |
+| `names.js` | 한국 이름 생성. 성 빈도, 성별·출생 연도별 이름, 덜 쓰인 이름 우선, 가족은 시드로 고정 |
 | `save_store.js` | 세이브 읽기·쓰기. 큰 세이브는 압축(fflate 내장)해 저장 |
 | `game_runtime.js` | 세계·NPC·사건·세이브·홈·태블릿 기본 런타임 |
 | `game_hearings.js` | 현실시간 사건 배당, 다른 재판부, 세이브 스냅샷, 판사 만들기, 사건 요약 |

@@ -183,8 +183,7 @@ const WEEK_EVENTS={
  * Each generated case is immutable and serialized into the device's save.
  * Fresh facts / persons / evidence / hearing actions are chosen before play.
  */
-const PEOPLE_FIRST=['도윤','서진','지후','민재','수빈','하린','준영','유진','수혁','태경','정민','혜원','은솔','선호','가연','지민','윤아','재현','현서','규민','지원','수호','윤정','하준','민서','정우','성현','서아','지안','다은'];
-const PEOPLE_LAST=['김','이','박','최','정','강','조','윤','장','임','한','오','신','권','서','배'];
+// names come from names.js (gender, birth year, real surname frequency, least-used given names)
 const TEMPERAMENTS=['세부사항에 집착하지만 갈등을 피함','상대의 의도를 의심하는 편','상황에 따라 말을 아끼는 편','자신감이 높고 표현이 직설적','부담이 커지면 방어적으로 변함','관계가 나빠지는 것을 두려워함','원칙에 강하지만 타협도 고려함','감정 표현이 솔직하고 급한 편','차분하게 기록을 정리하는 편'];
 const UPBRINGINGS=['자영업 가정의 장녀·장남으로 성장','맞벌이 가정에서 자람','어릴 때 여러 지역으로 이사 다님','조부모와 함께 자란 시기가 있음','부모의 사업 실패를 경험','형제자매와 가까운 관계','부모와 오랫동안 갈등을 겪음','안정적인 직장인 가정에서 성장'];
 const EDUCATIONS=['고등학교 졸업 후 취업','전문대 졸업 후 현장 실무 경력','지방 4년제 대학 졸업','서울 소재 대학 졸업','자격증을 취득해 전문직 종사','가업을 이어 실무 경험 축적'];
@@ -220,7 +219,7 @@ function freshNPC(role,caseSerial,category){
  const origin=choose(UPBRINGINGS),education=choose(EDUCATIONS),family=choose(['외동','형제 1명','남매 2명','형제자매 3명']);
  const responsibility=Math.round(22+rand()*75),risk=Math.round(12+rand()*80),conflict=Math.round(20+rand()*65);
  const economy=origin.includes('사업 실패')?15+Math.floor(rand()*47):10+Math.floor(rand()*87);
- const data={name:choose(PEOPLE_LAST)+choose(PEOPLE_FIRST),role,ageAtStart:year()-bornYear,bornYear,
+ const data={name:VerdictNames.make({gender,bornYear,rand,people:NPC}),role,ageAtStart:year()-bornYear,bornYear,
   gender,hair:Math.floor(rand()*5),skin:Math.floor(rand()*3),suit:Math.floor(rand()*6),
   personality:choose(TEMPERAMENTS),origin,education,relationships:choose(RELATION_STYLES),
   career:role.includes('변호')?'변호사':role.includes('수사')?'경찰관':category==='celebrity'?(rand()<.5?'연예기획사 관계자':'연예인'):category==='bribe'?'공직·정책 관련 종사자':category==='medical'?'의료기관 종사자':category==='construction'?'건설업 종사자':category==='embezzle'?'법인·단체 회계 관련자':choose(PROFESSIONS),family,

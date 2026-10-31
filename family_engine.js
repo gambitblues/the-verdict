@@ -11,7 +11,12 @@ window.FamilyEngine=(()=>{
   if(kind==='spouse')by=base.bornYear-7+Math.floor(r()*15);
   if(kind==='child')by=base.bornYear+20+Math.floor(r()*19);
   by=Math.min(by,year-(kind==='child'?0:18));
-  const n={id,name:['김','박','이','최','정','한','서'][Math.floor(r()*7)]+['지훈','서연','민재','수현','하린','도윤','서진'][Math.floor(r()*7)],bornYear:by,gender:r()<.5?'여성':'남성',role:kind==='child'?'학생':'일반 시민',career:kind==='child'?'학생':'일반 시민',wealth:kind==='parent'?base.parentWealth:limit(Math.round((base.wealth||50)*(0.5+r()))),parentWealth:base.parentWealth,alive:true,maritalStatus:kind==='spouse'?'기혼':'미혼',familyIds:[],relationships:{},jobHistory:[{year,job:'일반 시민',reason:'가족 인물 생성'}],financialHistory:[],relationshipHistory:[],biographyVersion:2,origin:'family',familyAnchor:base.id};
+  // fathers and children carry the family surname; mothers and spouses come from another family
+  const baseFemale=/여/.test(base.gender||''),baseSur=VerdictNames.split(base.name)[0];
+  const gender=kind==='parent'?(index===0?'남성':'여성'):kind==='spouse'?(baseFemale?'남성':'여성'):(r()<.5?'여성':'남성');
+  const spouse=base.partnerId&&NPC[base.partnerId];
+  const sur=kind==='parent'&&index===0||kind==='sibling'?baseSur:kind==='child'?(baseFemale&&spouse?VerdictNames.split(spouse.name)[0]:baseSur):null;
+  const n={id,name:VerdictNames.make({seed:'name:'+id,gender,bornYear:by,surname:sur}),bornYear:by,gender,role:kind==='child'?'학생':'일반 시민',career:kind==='child'?'학생':'일반 시민',wealth:kind==='parent'?base.parentWealth:limit(Math.round((base.wealth||50)*(0.5+r()))),parentWealth:base.parentWealth,alive:true,maritalStatus:kind==='spouse'?'기혼':'미혼',familyIds:[],relationships:{},jobHistory:[{year,job:'일반 시민',reason:'가족 인물 생성'}],financialHistory:[],relationshipHistory:[],biographyVersion:2,origin:'family',familyAnchor:base.id};
   // relatives created late in a long career may be very old: an elder past 85 has usually passed away already
   const old=year-n.bornYear;if(old>85&&r()<Math.min(.97,.35+(old-85)*.06)){n.alive=false;n.deathYear=Math.max(n.bornYear+70,year-Math.floor(r()*Math.max(1,old-75)));if(n.deathYear>year)n.deathYear=year}
   NPC[id]=n;S.npcDB??={};S.npcDB[id]=n;addLink(base,n,kind);return n;
