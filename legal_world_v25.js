@@ -130,6 +130,20 @@ function yearlyCareer(){
  }
  w.lastCareerYear=thisYear;ensurePopulation(Math.max(1,openCases().length));save();
 }
+// Courtroom skill changes how carefully the judge must examine arguments, not objective guilt.
+const originalEvaluate=StoryEngine.evaluate;
+StoryEngine.evaluate=function(c,selected,decision){
+ const base=originalEvaluate(c,selected,decision);
+ if(!base||!c.legalRepresentation)return base;
+ const r=c.legalRepresentation,flags=new Set((selected||[]).map(x=>x.flag));
+ const defenseDemand=Math.max(1,Math.round((r.quality-30)/13));
+ const prosecutionDemand=c.kind==='criminal'?Math.max(0,Math.round((r.prosecutorSkill-40)/18)):0;
+ const dueProcess=(flags.has('cross')?1:0)+(flags.has('chain')?1:0)+(flags.has('elements')?1:0);
+ const bonus=dueProcess>=2?Math.min(5,Math.round(defenseDemand/2)+prosecutionDemand):0;
+ const penalty=dueProcess===0?Math.min(9,defenseDemand+prosecutionDemand):dueProcess===1?Math.min(4,Math.floor((defenseDemand+prosecutionDemand)/2)):0;
+ return {...base,score:Math.min(100,Math.max(10,base.score+bonus-penalty)),
+   why:(base.why||'')+' 변호인의 반박력 '+r.quality+'/100, 검사의 공소수행 '+(r.prosecutorSkill||0)+'/100을 고려할 때, 주요 반증·증거 출처 심리 '+dueProcess+'/3항목이 판결의 검토 충실도 평가에 반영됐습니다.'};
+};
 const prevCourtStep=courtStep;
 courtStep=function(index){
  const c=CASES.find(x=>x.id===ui.caseId),st=c&&S.cases[c.id];
