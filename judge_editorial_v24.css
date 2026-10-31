@@ -1,0 +1,38 @@
+/* Beta redesign v2.4 — unified judge portrait + editorial case review */
+.judge-id-portrait{display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:0;overflow:hidden;background:#e7e2d9;border:1px solid #c5b9ab;border-radius:9px}
+.judge-id-portrait svg{display:block;width:100%;height:100%;object-fit:cover}
+.sidebar-user .judge-id-portrait{width:61px;height:72px;flex:0 0 61px}
+.dashboard-hero-badge .judge-id-portrait{width:94px;height:110px;border:3px solid #bd9964}
+.judge-creator{display:flex;flex-direction:column;gap:13px}
+#modal-root .modal:has(.judge-creator){width:min(490px,calc(100vw - 22px));max-height:94dvh;overflow-y:auto;border:2px solid #ad8a5a;border-radius:19px;background:#fff8ed;padding:19px}
+#modal-root .modal:has(.judge-creator)>h2{font-size:21px;margin:4px 0 15px}
+.judge-preview{display:flex;gap:18px;align-items:center;background:linear-gradient(125deg,#172438,#3c2e26);border:1px solid #a7824d;padding:14px;border-radius:13px;color:#f5d7a2}
+.judge-preview>.judge-preview-image{width:118px;height:136px;flex:0 0 118px;border:3px solid #b79a72;background:#e9e4dd}
+.judge-preview b{font-size:17px;color:#fff3da}.judge-preview small{display:block;font-size:11px;line-height:1.6;margin-top:7px;color:#dac8ae}
+.judge-name-field label{display:block;font-size:13px;font-weight:800;margin-bottom:6px}
+.judge-name-field .control{width:100%;font-size:16px;min-height:45px}
+.judge-control{display:flex;flex-direction:column;gap:7px}
+.judge-control>b{font-size:13px;color:#4d3c2f}
+.judge-control-items{display:flex;gap:6px;flex-wrap:wrap}
+.judge-option{border:1px solid #cfbea5;border-radius:10px;background:#fffcf7;color:#3a3b42;padding:8px 12px;font-size:12px;min-height:37px;cursor:pointer}
+.judge-option[aria-pressed="true"]{background:#2b3b50;color:#f1d59a;border-color:#c19750;box-shadow:inset 0 0 0 1px #e4bb74}
+.judge-edit{border:1px solid #b59b73;border-radius:7px;background:#182c43;color:#dfbd86;padding:5px 7px;font-size:10px;cursor:pointer;white-space:nowrap}
+.editorial-intro{border-left:4px solid #c59e62;background:#fff9ed}
+.editorial-intro p{font-weight:650;font-size:14px;line-height:1.6;margin:12px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.editorial-advocates{margin-top:14px}
+.editorial-advocates .adv-card{display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.editorial-advocates .adv-card p{margin:4px 0;font-size:12px;line-height:1.6;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;line-clamp:5;overflow:hidden}
+.editorial-advocates .adv-card button{margin-top:auto;font-size:12px}
+.compact-case-witness{margin:14px 0;background:#fff9ed}
+.compact-witness-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.compact-witness-person{background:#fff;border:1px solid #d5b98f;border-radius:9px;display:flex;flex-direction:column;gap:5px;text-align:left;padding:11px;min-width:0;cursor:pointer}
+.compact-witness-person strong{font-size:13px;color:#243750}
+.compact-witness-person span{font-size:12px;font-weight:700;color:#906333}
+.compact-witness-person small{font-size:11px;color:#78848b}
+.editorial-paper{background:#fffdf6;border:1px solid #e0d2bb;border-radius:10px;padding:14px;font-size:13px;line-height:1.75}
+.editorial-paper .paper-kicker{font-size:10px;color:#a27a42;letter-spacing:1.4px}
+.editorial-paper h3{font-size:22px;margin:5px 0 16px;color:#25354a}
+.editorial-paper h4{border-top:1px solid #d9c8ad;padding-top:11px;font-size:14px;margin:18px 0 8px}
+.editorial-paper p{margin:8px 0}
+@media(max-width:480px){.judge-preview>.judge-preview-image{width:100px;height:116px;flex-basis:100px}.compact-witness-row{grid-template-columns:repeat(2,minmax(0,1fr))}.editorial-intro p{font-size:13px}.editorial-advocates .adversarial{grid-template-columns:1fr}.judge-option{padding:8px 10px;font-size:11px}}
+@media print{.editorial-paper{border:0;padding:0}.modal-actions,.bottom-nav{display:none!important}}
