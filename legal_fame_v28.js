@@ -56,7 +56,7 @@
   const p=NPC[id],lc=p?.legalCareer;
   if(!lc)return priorNPC(id);
   const recent=(lc.notableCases||[]).slice(0,4).map(x=>'<p class="small">'+htm(x.year)+' · '+htm(x.title)+' · '+htm(x.role)+'</p>').join('');
-  const firm=p.career==='변호사'?'<p>'+htm(lc.firmId||'국선 명부')+'</p>':'';
+  const firmRecord=(S.legalWorld?.firms||[]).find(x=>x.id===lc.firmId);const firm=p.career==='변호사'?'<p>소속 '+htm(firmRecord?.name||'개인 법률사무소')+' · 등급 '+(firmRecord?.tier||1)+'/5</p>':'';
   modal(p.name+' · '+p.career,
     '<div class="court-fame-profile"><b>'+htm(lc.fameLabel||'일반 법조인')+'</b><p>대중 인지도 '+(lc.fame||0)+'/100 · 관여 사건 '+(lc.caseCount||0)+'건</p>'+
     '<p>공판·변론 능력 '+lc.trialSkill+'/100 · 증거 분석 '+lc.evidenceSkill+'/100 · 경력 '+lc.years+'년</p>'+
