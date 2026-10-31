@@ -189,6 +189,13 @@ popupNPC=function(id){
   '<details><summary>법조인 경력 변천</summary>'+trail+'</details></div>';
  modal(p.name+' · '+p.career,panel,'<button class="btn primary full" data-action="dismiss">닫기</button>');
 };
+const previousPeople=people;
+people=function(){
+ const base=previousPeople(),list=world().people.filter(id=>NPC[id]?.legalCareer).sort((a,b)=>NPC[b].legalCareer.demand-NPC[a].legalCareer.demand);
+ const panel='<section class="panel legal-profession-network"><h3>⚖ 살아있는 법조인 네트워크</h3><p class="small muted">판사·검사·변호사는 이직 후에도 같은 NPC ID와 과거 재판 기록을 유지합니다.</p><div class="legal-network-grid">'+
+ list.slice(0,30).map(id=>{const p=NPC[id],c=p.legalCareer,f=FIRMS.find(x=>x.id===c.firmId);return '<button class="legal-network-person" data-action="npc" data-id="'+h(id)+'"><b>'+h(p.name)+'</b><span>'+h(p.career)+' · '+c.years+'년</span><small>'+(f?h(f.name)+' · ':'')+'공판·변론 '+c.trialSkill+'/100</small></button>'}).join('')+'</div></section>';
+ return base+panel;
+};
 const prevHome=home;
 home=function(){return prevHome()+roster()};
 const prevCourt=court;
