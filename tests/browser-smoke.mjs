@@ -51,6 +51,20 @@ try{
  await page.locator('.bottom-nav [data-action="tab"][data-tab="tablet"]').click();
  await page.locator('[data-action="tablet"][data-sub="rank"]').click();
  await page.locator('.tv-ranking').waitFor();
+ const conflicting=await page.evaluate(()=>S.generatedCases.some(c=>{
+   const old=c.legalRepresentation?.originalSide||[];
+   return (c.stages||[]).some(stage=>(stage.actions||[]).some(a=>old.includes(a.who)&&!c.side.includes(a.who)));
+ }));
+ assert.equal(conflicting,false,'a former prosecutor/attorney was misclassified as witness');
+ await page.locator('[data-action="safeSave"]').first().click();
+ await page.waitForFunction(()=>document.getElementById('verdict-save-status')?.textContent.includes('저장 완료'),null,{timeout:12000});
+ await page.reload({waitUntil:'networkidle'});
+ await page.locator('#verdict-entry').waitFor();
+ await page.locator('#profile-continue').click();
+ const persisted=await page.evaluate(()=>({name:S.name,cases:S.generatedCases.length,reasoned:S.generatedCases.some(c=>S.cases[c.id]?.reasonedChoices?.length>0)}));
+ assert.equal(persisted.name,'QA 판사','judge name lost after reload');
+ assert.ok(persisted.cases>=4,'assigned cases lost after reload');
+ assert.equal(persisted.reasoned,true,'hearing decisions lost after reload');
  assert.equal(errs.length,0,'page errors: '+errs.join('; '));
  console.log('PASS: mobile Chrome, 4 cases, 20 outlets, 4 court tabs, reasoned hearing, ranking, reduced save; '+JSON.stringify(state));
 }finally{await browser.close();await new Promise(ok=>server.close(ok))}
