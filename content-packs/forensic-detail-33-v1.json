@@ -1,6 +1,6 @@
 {
   "format": "the-verdict-case-specific-evidence/v1",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "disclaimer": "Fictional disputed criminal facts and contested forensic evidence; not all allegations are established facts. Sexual-assault medical evidence must not alone determine consent.",
   "cases": {
     "murder-campus-conflict": {
@@ -199,7 +199,8 @@
       "forensic": "귀가 동선·진료 시각·체액 검사 실시 여부",
       "defense": "당시 인지 상태와 신고 뒤 진술 변화의 의미를 다툼",
       "charge": "준강제추행 등",
-      "demand": "징역 3년"
+      "demand": "징역 3년",
+      "medicalEvidence": "진료기록에는 외상 여부가 명확히 기재되지 않았다. 체액검사 실시 여부와 보관 경위를 확인해야 한다."
     },
     "sexual-workplace-power": {
       "place": "회사 비어 있는 회의실",
@@ -221,7 +222,8 @@
       "forensic": "숙박업소 출입영상·응급진료 기록·DNA 감정",
       "defense": "접촉 사실과 동의 여부 및 항거 곤란을 분리해 다툼",
       "charge": "준강간 등",
-      "demand": "징역 5년"
+      "demand": "징역 5년",
+      "medicalEvidence": "신고 직후 진료기록에 점막 손상 소견이 기재됐다. 체액 DNA 대조는 미완료이며, 손상만으로 강제성·동의 여부가 확정되지는 않는다."
     },
     "beta-sexual-004": {
       "place": "지하철역 인근 숙박업소",
@@ -232,7 +234,8 @@
       "forensic": "메신저 원본·신고 시 진술·의료 기록",
       "defense": "사후 메시지가 당시 의사를 단독으로 증명하지 못한다고 주장",
       "charge": "강제추행 등",
-      "demand": "징역 2년"
+      "demand": "징역 2년",
+      "medicalEvidence": "체액 감정에서 DNA 일치 가능성이 보고됐으나, 외상 소견은 확인되지 않았다. 접촉 여부와 동의 여부는 분리해 판단한다."
     },
     "beta-sexual-005": {
       "place": "혼잡한 지하철 객차",
@@ -243,7 +246,8 @@
       "forensic": "승강장 CCTV·열차 가속 기록",
       "defense": "객차 흔들림으로 인한 우발적 접촉이라고 주장",
       "charge": "공중밀집장소 추행",
-      "demand": "벌금 700만 원"
+      "demand": "벌금 700만 원",
+      "medicalEvidence": "현장 영상은 접촉의 방향과 손 위치를 명확히 보여주지 못한다. 의료·체액 감정 대상이 아닌 사건이다."
     },
     "beta-sexual-006": {
       "place": "공연장 뒤편 주차장",
@@ -276,7 +280,8 @@
       "forensic": "호텔 키카드·인사 메일·진료 기록",
       "defense": "객실 출입은 인정하지만 신체 접촉은 부인",
       "charge": "강제추행 등",
-      "demand": "징역 3년"
+      "demand": "징역 3년",
+      "medicalEvidence": "초기 검사에서 체액 검출이 확인되지 않았고 뚜렷한 외상 소견도 없다. 그러나 이 결과만으로 동의 여부나 접촉 부존재를 확정할 수 없다."
     },
     "beta-sexual-009": {
       "place": "메신저 단체대화방",
@@ -287,7 +292,8 @@
       "forensic": "전송 시각·파일 해시·기기 감정",
       "defense": "기기 공동 사용 또는 계정 탈취 가능성을 주장",
       "charge": "촬영물 유포 관련 범죄",
-      "demand": "징역 3년"
+      "demand": "징역 3년",
+      "medicalEvidence": "영상·파일 해시와 전송 계정의 일치 여부가 핵심이다. 신체 진찰 결과는 쟁점이 아니다."
     },
     "beta-sexual-010": {
       "place": "운동부 합숙소 복도",
@@ -298,7 +304,8 @@
       "forensic": "복도 CCTV·훈련일지·상담 기록",
       "defense": "정상 자세 지도와 추행 행위의 구별을 주장",
       "charge": "업무상 위력 등에 의한 추행",
-      "demand": "징역 2년"
+      "demand": "징역 2년",
+      "medicalEvidence": "상담기록에는 신고 직후의 정서 상태가 남아 있다. 합숙소 복도 영상으로 접촉 범위를 별도로 검증한다."
     },
     "beta-sexual-011": {
       "place": "병원 외래 진료실",
@@ -309,7 +316,8 @@
       "forensic": "진료 차트·보조자 진술",
       "defense": "필요한 진찰 행위이며 사전 설명이 있었다고 주장",
       "charge": "강제추행 등",
-      "demand": "징역 2년"
+      "demand": "징역 2년",
+      "medicalEvidence": "진료 차트와 설명·동의 절차 기록을 대조한다. 진찰로 발생할 수 있는 신체 접촉과 주장된 일탈 행위를 구분한다."
     },
     "beta-sexual-012": {
       "place": "오피스텔 엘리베이터",
