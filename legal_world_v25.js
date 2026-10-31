@@ -30,7 +30,12 @@ function profession(id,role){
 function generate(role){
  const id=freshNPC(role==='judge'?'법관':role==='prosecutor'?'검사':'변호사',Math.max(1,S.caseSerial+1),'law');
  profession(id,role);world().people.push(id);
- const p=NPC[id];p.legalCareer.trialSkill=expCap(25+p.proficiency*.72+rand()*19);
+ const p=NPC[id],minAge=role==='judge'?34:role==='prosecutor'?27:26,ageNow=year()-p.bornYear;
+ if(ageNow<minAge){p.bornYear=year()-(minAge+Math.floor(rand()*9));p.ageAtStart=year()-p.bornYear;}
+ const maxExperience=Math.max(0,year()-p.bornYear-25);
+ p.legalCareer.startedYear=year()-Math.min(maxExperience,Math.floor(rand()*20));
+ p.legalCareer.years=year()-p.legalCareer.startedYear;
+ p.legalCareer.trialSkill=expCap(25+p.proficiency*.72+rand()*19);
  p.legalCareer.evidenceSkill=expCap(28+p.proficiency*.65+rand()*22);
  p.legalCareer.demand=expCap(25+rand()*65);
  return id;
