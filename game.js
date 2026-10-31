@@ -240,10 +240,10 @@ function remember(id,type,body,caseId){
  if(!S.memories[id].some(m=>m.caseId===caseId&&m.type===type&&m.body===body))S.memories[id].push({week:S.week,type,body,caseId});
 }
 function getPriorByKey(key){return completed().filter(c=>c.story?.deep?.key===key||(!c.story?.deep&&c.legal===key)).slice(-8).at(-1)}
-function createGeneratedCase(){
- if(age()>=75||openCases().length>=4)return null;
+function createGeneratedCase(selectedCandidate=null){
+ if(age()>=75||openCases().length>=12)return null;
  const serial=++S.caseSerial;
- const candidate=CasePackEngine.pool(S).length&&rand()<.82?CasePackEngine.choose(S,rand):null;
+ const candidate=selectedCandidate||(CasePackEngine.pool(S).length&&rand()<.82?CasePackEngine.choose(S,rand):null);
  const bp=candidate?CasePackEngine.blueprint(candidate.pack,candidate.a):choose(CASE_BLUEPRINTS);
  const i=Math.floor(rand()*bp.premises.length), loc=choose(LOCATIONS);
  // Recurrence is a genuinely NEW incident, involving a previously tried individual.
@@ -344,6 +344,7 @@ function moveOldCasesToOtherCourt(){
  }
 }
 function ensureGeneratedCases(){
+ if(S.realtimeInbox?.enabled)return;
  moveOldCasesToOtherCourt();
  // Fixed introductory 6 cases coexist with unlimited-by-count, bounded-by-variety procedural cases.
  if(S.week<14||age()>=75)return;
@@ -706,7 +707,7 @@ function fastForward(n){
  }
  save();render();toast(`${moved}주 진행 · 현재 ${age()}세 / ${day()}`);
  if(!S.ended&&WEEK_EVENTS[S.week]&&!S.events.includes(WEEK_EVENTS[S.week].id)){popupEvent();return;}
- if(S.ended)modal('65세 · THE VERDICT 커리어 엔딩',`<p><b>${h(S.name||'판사')}</b>의 30년 법조 인생이 기록으로 남았습니다.</p><div class="grid two"><div class="stat-card"><label>완료 판결</label><strong>${completed().length}건</strong></div><div class="stat-card"><label>생성 사건</label><strong>${S.generatedCases.length}건</strong></div></div><p>최종 보직: ${h(S.post)} · 남겨진 사건과 인물 기억은 태블릿에서 볼 수 있습니다.</p>`,null);
+ if(S.ended)modal('75세 · THE VERDICT 커리어 엔딩',`<p><b>${h(S.name||'판사')}</b>의 40년 법조 인생이 기록으로 남았습니다.</p><div class="grid two"><div class="stat-card"><label>완료 판결</label><strong>${completed().length}건</strong></div><div class="stat-card"><label>생성 사건</label><strong>${S.generatedCases.length}건</strong></div></div><p>최종 보직: ${h(S.post)} · 남겨진 사건과 인물 기억은 태블릿에서 볼 수 있습니다.</p>`,null);
 }
 function eventChoose(i){const evt=WEEK_EVENTS[S.week],o=evt?.opts[i];if(!o)return;
  Object.entries(o.rel||{}).forEach(([id,v])=>modifyRel(id,v));S.professional=clamp(S.professional+(o.prof||0),0,100);
