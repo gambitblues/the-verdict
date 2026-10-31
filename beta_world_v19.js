@@ -26,7 +26,7 @@ function resolveCourts(){
   const connection=null;
   const record={slot:entry.slot,title:entry.title,day:entry.day,result,week:S.week,connection,category:'법원 판결'};
   db.resolvedSlots[entry.slot]=true;db.otherCourtDecisions.push(record);entry.result=result;
-  if(updated<3||connection){news('다른 재판부 판결 · '+entry.title,result+(connection?' · '+NPC[connection].name+'의 기존 이력이 간접적으로 연결됨':''),'법조일보');}
+  if(updated<3||connection){news('다른 재판부 사건 경과 · '+entry.title,'게임 세계의 가상 종결 결과: '+result,'법조일보');}
   updated++;
  }
  if(updated){db.otherCourtDecisions=db.otherCourtDecisions.slice(-300);save();}
@@ -36,7 +36,7 @@ home=function(){
  resolveCourts();const arr=scores();const db=S.realtimeInbox;
  let html='<section class="panel judicial-specialty"><h3>🎓 법관 전문 분야</h3><p class="muted small">실제 판결 경험이 누적될수록 해당 분야의 배당 가능성이 높아집니다.</p>';
  html+=arr.length?arr.slice(0,5).map(s=>'<p><b>'+safe(s.title)+'</b> · '+s.count+'건 · 평균 판단 '+s.score+'점 · 숙련 '+s.level+'/5</p>').join(''):'<p class="muted small">아직 완료한 사건이 없습니다.</p>';
- if(db?.otherCourtDecisions?.length){html+='<details><summary>⚖ 다른 재판부의 최근 판결</summary>'+db.otherCourtDecisions.slice(-8).reverse().map(d=>'<p class="small">'+safe(d.title)+' · '+safe(d.result)+(d.connection&&NPC[d.connection]?' · 👤 '+safe(NPC[d.connection].name):'')+'</p>').join('')+'</details>';}
+ if(db?.otherCourtDecisions?.length){html+='<details><summary>⚖ 다른 재판부의 모의 종결 기록</summary>'+db.otherCourtDecisions.slice(-8).reverse().map(d=>'<p class="small">'+safe(d.title)+' · '+safe(d.result)+(d.connection&&NPC[d.connection]?' · 👤 '+safe(NPC[d.connection].name):'')+'</p>').join('')+'</details>';}
  html+='</section>';return oldHome()+html;
 };
 const oldConclude=conclude;
