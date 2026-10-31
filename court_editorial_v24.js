@@ -74,8 +74,7 @@ court=function(){
  html=html.replace(/<section class="panel deep-drama"><h3>📖 사건의 사람들과 선택<\/h3>[\s\S]*?<\/section>/,'');
  html=html.replace(/<section class="panel"><div class="row between"><h3 class="no-margin">사건 관계인 · 증인<\/h3>[\s\S]*?<\/section>/,'');
  const entries=(S.cases[c.id]?.hearingRevelations||[]).slice(-2);
- if(entries.length)html=html.replace('</section><section class="editorial-advocates">',
-  '<p class="muted small">기일별 업데이트: '+esc(entries.map(v=>v.type+' · '+v.body).join(' / '))+'</p></section><section class="editorial-advocates">');
+ if(entries.length){const update='<details class="editorial-updates"><summary>새 기일에 추가된 자료</summary>'+entries.map(v=>'<p class="small"><b>'+esc(v.type)+'</b> · '+esc(v.body)+'</p>').join('')+'</details>';html=html.replace('</section><section class="case-advocates editorial-advocates">',update+'</section><section class="case-advocates editorial-advocates">');}
 
  return html;
 };
