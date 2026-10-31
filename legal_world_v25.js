@@ -64,7 +64,7 @@ function selectCounsel(p,excluded=[]){
  const candidates=list.map(id=>{
   const x=NPC[id].legalCareer,firm=FIRMS.find(f=>f.id===x.firmId)||FIRMS[8];
   const eligible=publicNeed||firm.fee<=afford;
-  const fit=(eligible?5:0)+Math.max(1,Math.round(11-Math.abs(firm.fee-afford)/9))+(x.demand/24)+rand()*3;
+  const fit=(eligible?5:0)+Math.max(1,Math.round(11-Math.abs(firm.fee-afford)/9))+(x.demand/24)+(Math.min(100,x.fame||0)/28)+rand()*3;
   return {id,score:fit,firm}
  }).sort((a,b)=>b.score-a.score);
  let chosen=publicNeed?candidates.filter(x=>x.firm.tier<=2)[0]||candidates[0]:candidates[0];
@@ -121,6 +121,7 @@ function yearlyCareer(){
   const p=NPC[id];if(!p||p.alive===false)continue;const c=p.legalCareer;if(!c)continue;
   c.years=Math.max(0,thisYear-c.startedYear);c.trialSkill=expCap(c.trialSkill+Math.floor(rand()*5)-1);
   c.demand=expCap(c.demand+Math.floor(rand()*11)-5);
+  c.fame=expCap((c.fame||0)-Math.max(1,Math.round((c.fame||0)/26))); // Public attention slowly fades; skill persists.
   let next=null,reason='';
   if(c.role==='judge'&&c.years>=7&&rand()<.045){next='lawyer';reason='퇴직 후 개업'}
   if(c.role==='prosecutor'&&c.years>=5&&rand()<.055){next='lawyer';reason='검찰 퇴직 후 변호사 개업'}
