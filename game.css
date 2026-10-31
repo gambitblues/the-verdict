@@ -440,3 +440,22 @@ body{font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',s
 .t4-person p{margin:6px 0 0;font-size:13px;line-height:1.6;color:#4b5a6b}
 .t4-claims p{font-size:14px;line-height:1.65;margin:8px 0}
 .t4-claims b{display:inline-block;min-width:44px;color:#6a5330}
+
+/* v4.4 — clearer trial flow */
+.t4-flaw{display:flex;flex-direction:column;gap:3px;margin:10px 0;padding:10px 12px;border-radius:11px;background:#f4f2ee;border:1px solid #e6e0d5;font-size:13px}
+.t4-flaw b{font-size:14px}
+.t4-flaw span{color:#6b6458;line-height:1.5}
+.t4-flaw.unknown{background:#f6f6f4}
+.t4-flaw.ok{background:#eef6f0;border-color:#cfe5d6}.t4-flaw.ok b{color:#2c6b47}
+.t4-flaw.warn{background:#fdf6e7;border-color:#f0dcae}.t4-flaw.warn b{color:#8a5a00}
+.t4-flaw.bad{background:#fbeeee;border-color:#efcaca}.t4-flaw.bad b{color:#a33a3a}
+.t4-chip small,.t4-chip small{opacity:.6;font-weight:500;margin-left:3px}
+.t4-what{font-size:12px!important;color:#7a6a4a;background:#fff4dc;border-radius:8px;padding:7px 9px}
+.t4-todo{list-style:none;margin:6px 0 10px;padding:0;display:flex;flex-direction:column;gap:6px}
+.t4-todo button{width:100%;text-align:left;border:1px solid #e3dccf;background:#fff;border-radius:11px;padding:10px 12px;font:inherit;font-size:14px;color:#1d2b3a;cursor:pointer}
+.t4-todo li.done button{background:#f1f6f2;border-color:#d4e6da;color:#3d6b50}
+.t4-wait.big{display:flex;flex-direction:column;gap:6px;padding:14px;font-size:14px}
+.t4-wait.big b{font-size:16px;color:#1d3550}
+.t4-wait.big .t4-row{margin-top:4px}
+.t4-st{font-weight:700}
+.t4-st.wait{color:#35506b}.t4-st.ready,.t4-st.new{color:#2c6b47}.t4-st.req{color:#8a5a00}.t4-st.verdict{color:#a2541d}
