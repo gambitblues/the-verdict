@@ -5,14 +5,14 @@ let editorial=new Map(),forensic={},ready=false;
 const esc=v=>h(String(v??''));
 const name=id=>NPC[id]?.name||'성명 미상';
 function caseId(c){return c.contentPack?.archetypeId||c.story?.pack?.archetypeId||c.story?.packOrigin?.id||null}
-function info(c){const a=editorial.get(caseId(c));return a?{a,f:forensic[a.id]||{},criminal:c.kind==='criminal'}:null}
+function info(c){const a=editorial.get(caseId(c));return a?{a,f:forensic[a.id]||a.details||{},criminal:c.kind==='criminal'}:null}
 function dispute(c,ctx){
  const {a,f,criminal}=ctx;
  const defendant=name(criminal?c.who?.[0]:c.who?.[1]),victim=name(criminal?c.who?.[1]:c.who?.[0]);
  const place=f.place||a.location||'사건 현장',time=f.when||'사건 발생일';
  const action=f.method||a.allegation;
  const short=criminal?
-   ('검찰은 '+defendant+'이(가) '+place+'에서 '+action+' 혐의로 기소됐다고 주장한다. '+victim+'의 피해와 행위자 특정이 쟁점이다.'):
+   ('피고인 '+defendant+': '+place+'에서 '+action+'. 피해자·신고인 '+victim+'; 행위와 증거가 쟁점이다.'):
    (victim+'이(가) '+defendant+'을(를) 상대로 '+a.allegation+'에 관하여 청구했다. 계약·행위와 손해의 입증 범위를 다툰다.');
  return short;
 }
@@ -46,7 +46,7 @@ function fullBrief(c,ctx,side){
  const when=f.when||'사건 발생일',action=f.method||a.allegation,motive=f.motive||'당사자의 이해관계';
  const corePro=criminal?
    ('검사는 피고인 '+defendant+'이(가) '+when+', '+loc+'에서 '+claimant+'에게 '+action+' 혐의가 있다고 주장합니다. 범행 동기로 '+motive+'를 지목하며, 해당 행위와 피해 결과 사이의 인과관계 및 고의가 쟁점이라고 봅니다.'):
-   ('원고 '+claimant+'은 '+a.allegation+'에 관하여 피고 '+defendant+'의 법률상 의무 위반과 손해 사이의 인과관계가 있다고 주장합니다.');
+   ('원고 '+claimant+'은 '+a.allegation+'에 관하여 피고 '+defendant+'에게 책임이 있다고 주장합니다. 발생 장소는 '+loc+'이며, 손해의 범위와 원인이 다투어집니다.');
  const coreDef=criminal?
    ('변호인은 '+defendant+'의 방어권을 위해 다음 점을 다툽니다. '+(f.defense||a.defenseTheory||a.whyDefense)+' 피해 사실의 존재와 피고인의 범행 책임은 구분되어야 하고 검사는 합리적 의심을 배제할 수준으로 입증해야 합니다.'):
    ('피고 '+defendant+' 측은 '+(a.whyDefense||a.weakEvidence)+' 계약의 범위, 이행 경위, 손해 발생의 원인과 액수를 각각 다툽니다.');
