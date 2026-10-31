@@ -1,0 +1,27 @@
+name: Develop runtime and mobile smoke QA
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate bundled Javascript and case packs
+        run: |
+          node --check verdict_runtime_v31.js
+          node --check verdict_hearings_v31.js
+          node --check verdict_professions_v31.js
+          node --check verdict_ui_v31.js
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('content-packs/court-editorial-100-v1.json'));if(p.cases.length!==100)process.exit(1)"
+      - name: Install browser test tooling
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run mobile viewport browser test
+        run: node tests/browser-smoke.mjs
