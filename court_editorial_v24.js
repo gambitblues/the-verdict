@@ -72,6 +72,11 @@ court=function(){
  html=html.replace(/<section class="panel new-hearing-briefs">[\s\S]*?<\/section>/,'');
  html=html.replace(/<section class="panel verdict-narrative-layer">[\s\S]*?<\/section>/,'');
  html=html.replace(/<section class="panel deep-drama"><h3>📖 사건의 사람들과 선택<\/h3>[\s\S]*?<\/section>/,'');
+ html=html.replace(/<section class="panel"><div class="row between"><h3 class="no-margin">사건 관계인 · 증인<\/h3>[\s\S]*?<\/section>/,'');
+ const entries=(S.cases[c.id]?.hearingRevelations||[]).slice(-2);
+ if(entries.length)html=html.replace('</section><section class="editorial-advocates">',
+  '<p class="muted small">기일별 업데이트: '+esc(entries.map(v=>v.type+' · '+v.body).join(' / '))+'</p></section><section class="editorial-advocates">');
+
  return html;
 };
 const oldClick=clicker;
