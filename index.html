@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="icon" type="image/svg+xml" href="./icon.svg">
-  <link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./beta_patch_v11.css"><link rel="stylesheet" href="./visual_courtroom_v30.css"><link rel="stylesheet" href="./judge_editorial_v24.css"><link rel="stylesheet" href="./court_gameplay_v27.css">
+  <link rel="stylesheet" href="./trial_play_v32.css"><link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./beta_patch_v11.css"><link rel="stylesheet" href="./visual_courtroom_v30.css"><link rel="stylesheet" href="./judge_editorial_v24.css"><link rel="stylesheet" href="./court_gameplay_v27.css"><link rel="stylesheet" href="./ui_experience_v31.css">
   <title>THE VERDICT | 판결이 인생이 된다</title>
 </head>
 <body>
@@ -33,9 +33,6 @@ const saved=localStorage.getItem(slot(active));if(saved!==null)localStorage.setI
   <script src="./continuity_engine.js" defer></script>
   <script src="./npc_life_justice.js" defer></script>
   <script src="./family_engine.js" defer></script>
-  <script src="./game.js" defer></script><script src="./beta_patch_v11.js" defer></script><script src="./beta_patch_v12.js" defer></script>
-  <script src="./beta_patch_v13.js" defer></script>
-  <script src="./beta_patch_v14.js" defer></script>
 
 <style>
 #verdict-entry{position:fixed;inset:0;z-index:99999;background:rgba(8,18,30,.97);color:#f6f0e6;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit}
@@ -47,19 +44,11 @@ const saved=localStorage.getItem(slot(active));if(saved!==null)localStorage.setI
 #verdict-entry .entry-btn:disabled{opacity:.45;cursor:not-allowed}
 #verdict-entry .entry-info{font-size:12px;color:#b6c5cc;margin-top:18px;line-height:1.8}
 </style>
-<script src="./player_profiles_v20.js" defer></script>
-  <script src="./beta_narrative_v15.js" defer></script>
-  <script src="./beta_drama_v16.js" defer></script>
-  <script src="./beta_hearings_v17.js" defer></script>
-  <script src="./beta_realtime_v18.js" defer></script>
-  <script src="./beta_world_v19.js" defer></script>
-  <script src="./save_manager_v21.js" defer></script>
-  <script src="./visual_onboarding_v22.js" defer></script>
-  <script src="./judge_avatar_v23.js" defer></script>
-  <script src="./court_editorial_v24.js" defer></script>
-  <script src="./legal_world_v25.js" defer></script>
-  <script src="./initial_docket_v26.js" defer></script>
-  <script src="./legal_fame_v28.js" defer></script>
-  <script src="./court_gameplay_v27.js" defer></script>
+  <script src="./verdict_runtime_v31.js" defer></script>
+  <script src="./verdict_hearings_v31.js" defer></script>
+  <script src="./verdict_professions_v31.js" defer></script>
+  <script src="./verdict_ui_v31.js" defer></script>
+  <script src="./trial_core_v32.js" defer></script>
+  <script src="./trial_play_v32.js" defer></script>
 </body>
 </html>

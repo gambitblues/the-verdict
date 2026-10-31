@@ -1,0 +1,25 @@
+/* Regression tests for the isolated v3.2 trial core. Run: node tests/trial-core-v32.test.cjs */
+const assert=require('node:assert/strict');
+const t=require('../trial_core_v32.js');
+const a={id:'demo',evidence:[{id:'cctv'}],witnesses:[{id:'w1'}]};
+const first=t.roll(a,'A',[]);
+assert.ok(first);
+assert.equal(t.roll(a,'B',[first]),null,'No archetype repetition in last 20 cases');
+const old=[first,...Array.from({length:20},(_,i)=>({archetypeId:'other-'+i}))];
+const replay=t.roll(a,'B',old);
+assert.ok(replay);
+assert.notEqual(replay.rolled.truth,first.rolled.truth,'Returning archetype varies');
+const s={revealed:{}};
+assert.equal(t.reveal(s,'evidence.flaw'),.5);
+assert.equal(t.reveal(s,'evidence.flaw'),1);
+const p=t.gauge([{strength:70,flaw:50,revealed:1,admitted:true}],1,0,1);
+assert.deepEqual(p,{P:35,D:35,margin:0});
+const s1=t.decisionScore([{kind:'evidence',action:'use',flawType:'illegal',flawKnown:true}],30,'guilty');
+assert.equal(s1,-5);
+const original=t.decisionScore([],25,'guilty');
+const hot=t.pressAdvance({H:75,O:50,S:20},{surface:90,news:15,twist:true});
+assert.equal(t.decisionScore([],25,'guilty'),original,'Media cannot influence skill');
+assert.equal(hot.H,100);
+assert.equal(t.review(80,0,50),58);
+assert.equal(t.twistChance(5),.15);
+console.log('trial core regression tests passed');
