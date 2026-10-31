@@ -87,7 +87,9 @@ function ensure(c,st){
   let id=w.existing;
   if(!id){id=freshNPC(w.role,S.caseSerial||1,c.story?.deep?.key||c.contentPack?.category||'contract');NPC[id].role=w.role;NPC[id].caseWitnessRole=w.role;
    if(w.story){NPC[id].backstory=w.story;NPC[id].bond=w.interest||NPC[id].bond}
+   const g0=NPC[id].gender;
    if(/할머니|어머니|딸|누나|언니|아내/.test(w.role))NPC[id].gender='여';else if(/할아버지|아버지|아들|형|오빠|남편/.test(w.role)&&!/형제/.test(w.role))NPC[id].gender='남';
+   if(NPC[id].gender!==g0)NPC[id].name=VerdictNames.make({gender:NPC[id].gender,bornYear:NPC[id].bornYear,rand,people:NPC});
    remember(id,'관련 사건',c.name+'의 증인으로 출석',c.id)}
   return {id,role:w.role,knowledge:w.knowledge,interest:w.interest,story:w.story||''};
  });
