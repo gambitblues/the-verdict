@@ -34,6 +34,7 @@ try{
  }));
  assert.equal(state.n,4,'expected first four cases');
  assert.equal(new Set(state.ids).size,4,'starter case archetype repeated');
+ assert.notEqual(await page.evaluate(()=>S.rng),3268412851,'new career used the fixed legacy seed');
  assert.equal(state.outlets,20,'expected 20 fictional media sources');
  assert.equal(state.oldWeekControls,0,'legacy week controls visible');
  assert.ok(state.size<190000,'static pack may still be duplicated in save');
