@@ -179,7 +179,8 @@ function act(kind,id,choice){
  }
  // show what changed, so every action visibly moves the trial
  const g1=T.gauge(t),k1=T.skill(t).score,d=(n,a,b)=>a!==b?`${n} ${b>a?'+':''}${b-a}`:'';
- const moved=[d('증거로 보여준 정도',g0.P,g1.P),d('남은 의문',g0.D,g1.D),d('판결 실력',k0,k1)].filter(Boolean).join(' · ');
+ // 판결 실력 is not shown during the trial: whether each call was right is revealed with the verdict
+ const moved=[d('증거로 보여준 정도',g0.P,g1.P),d('남은 의문',g0.D,g1.D)].filter(Boolean).join(' · ');
  if(say)toast(say+(moved?' → '+moved:'')+(t.energy===0&&kind!=='card'?' · 체력을 다 썼어요. 재판일을 마치세요':''));
  save();
  if(kind==='card'&&t.cards.some(v=>!v.choice))return askRequests(true);
@@ -232,7 +233,6 @@ function endDay(){
   `<div class="t4-result">${twist?`<p class="t4-twist">⚡ ${esc(twist)}</p>`:''}
   <div class="t4-delta"><span>증거로 보여준 정도</span><b>${after.g.P}</b><em>${d(before.g.P,after.g.P)}</em></div>
   <div class="t4-delta"><span>아직 남은 의문</span><b>${after.g.D}</b><em>${d(before.g.D,after.g.D)}</em></div>
-  <div class="t4-delta"><span>판결 실력</span><b>${after.skill}</b><em>${d(before.skill,after.skill)}</em></div>
   <div class="t4-delta"><span>여론 (처벌·인정 요구)</span><b>${after.media.O}</b><em>${d(before.media.O,after.media.O)}</em></div>
   <div class="t4-delta"><span>화제성</span><b>${after.media.H}</b><em>${d(before.media.H,after.media.H)}</em></div>
   <p class="muted small">${t.daysDone>=t.minDays?(t.nextAt>now()?`이제 판결할 수 있습니다. 재판일을 더 열고 싶다면 ${clock(t.nextAt)}부터 가능해요.`:'이제 판결할 수 있습니다.'):`판결까지 재판일 ${t.minDays-t.daysDone}번 더 필요합니다. ${dayP(t.day,'은')} <b>${clock(t.nextAt)}</b>(${minsLeft(t)}분 뒤)에 열립니다. 그동안 다른 사건을 진행하세요.`}</p></div>`);
@@ -415,7 +415,7 @@ function todo(c,t){
 function dayPage(c,st){
  const t=st.trial4,g=T.gauge(t),wait=waiting(t),sk=T.skill(t).score,opp=NPC[t.opponent],rec=opp?.vsJudge;
  const gauges=`${bar('증거로 보여준 정도',g.P,'p')}${bar('아직 남은 의문',g.D,'d')}
- <div class="t4-stats"><span>판결 실력 <b>${sk}</b></span><span>화제성 <b>${t.media.H}</b></span><span>여론 <b>${t.media.O>0?'+':''}${t.media.O}</b></span></div>`;
+ <div class="t4-stats"><span>화제성 <b>${t.media.H}</b></span><span>여론 <b>${t.media.O>0?'+':''}${t.media.O}</b></span></div>`;
  const recent=t.log.length?`<div class="t4-log"><h4>방금 일어난 일</h4>${t.log.slice(0,3).map(l=>`<p><small>재판일 ${l.day} · ${esc(l.kind)}</small> ${esc(l.text)}</p>`).join('')}</div>`:'';
  if(wait){
   const can=t.daysDone>=t.minDays;
@@ -468,7 +468,7 @@ function resultPanel(c,st){
  ${f.ending?`<div class="t4-act"><small>그 후</small><p>${esc(f.ending)}</p></div>`:''}
  <h4>💬 시민광장${dk?` · <span class="t4-mode ${dk.community.mode}">${esc(dk.community.label)}</span>`:''}</h4>${comments}
  ${dk?.narratives?.length?`<h4>언론이 주목하는 흐름</h4>${dk.narratives.map(n=>`<p class="t4-narr l${n.level}">${esc(n.text)}</p>`).join('')}`:''}
- <details class="t4-log"><summary>판결 실력 계산 근거</summary>${f.items.map(i=>`<p>${i.points>0?'+':''}${i.points} · ${esc(i.text)}</p>`).join('')||'<p>가감 항목 없음</p>'}</details></section>`;
+ <details class="t4-log" open><summary>내 판단 채점 · 재판 중 결정이 맞았는지</summary>${f.items.map(i=>`<p>${i.points>0?'+':''}${i.points} · ${esc(i.text)}</p>`).join('')||'<p>가감 항목 없음</p>'}</details></section>`;
 }
 
 /* ---------- court screen takeover ---------- */
