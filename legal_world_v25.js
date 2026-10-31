@@ -171,6 +171,19 @@ function roster(){
  '<div class="legal-world-metrics">'+[['판사',pool('judge').length+1],['검사',pool('prosecutor').length],['변호사',pool('lawyer').length],['로펌',FIRMS.length-1]].map(([a,b])=>'<div><b>'+b+'</b><small>'+a+'</small></div>').join('')+'</div>'+
  '<details><summary>로펌·국선변호인 명부</summary>'+FIRMS.map(f=>'<p class="small"><strong>'+f.name+'</strong> · '+f.kind+' · 등급 '+f.tier+'/5 · 조사 지원 '+f.research+'</p>').join('')+'</details></section>';
 }
+const previousLegalNPC=popupNPC;
+popupNPC=function(id){
+ const p=NPC[id],lc=p?.legalCareer;
+ if(!lc)return previousLegalNPC(id);
+ const firm=FIRMS.find(f=>f.id===lc.firmId);
+ const trail=lc.careerHistory.slice(-5).reverse().map(z=>'<p class="small">'+h(z.year)+'년 · '+h(z.role==='judge'?'판사':z.role==='prosecutor'?'검사':'변호사')+' · '+h(z.reason)+'</p>').join('');
+ const panel='<div class="legal-person-card"><p><strong>현재 직역</strong> '+h(p.career)+' · 경력 '+h(lc.years)+'년</p>'+
+  (firm?'<p><strong>소속</strong> '+h(firm.name)+' · 로펌 등급 '+firm.tier+'/5</p>':'')+
+  '<p><strong>공소·변론 능력</strong> '+lc.trialSkill+'/100 · <strong>증거 분석</strong> '+lc.evidenceSkill+'/100</p>'+
+  '<p><strong>업계 수임 평판</strong> '+lc.demand+'/100 · <strong>직업 윤리</strong> '+lc.ethics+'/100</p>'+
+  '<details><summary>법조인 경력 변천</summary>'+trail+'</details></div>';
+ modal(p.name+' · '+p.career,panel,'<button class="btn primary full" data-action="dismiss">닫기</button>');
+};
 const prevHome=home;
 home=function(){return prevHome()+roster()};
 const prevCourt=court;
