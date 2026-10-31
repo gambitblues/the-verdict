@@ -40,3 +40,11 @@
 .tv-reason{display:flex;flex-direction:column;align-items:flex-start;gap:7px;width:100%;border:1px solid #d4b995;border-radius:10px;background:#fffaf0;color:#2f3f53;margin:8px 0;padding:13px;text-align:left;cursor:pointer}
 .tv-reason:active{background:#f3e5d0}.tv-reason b{font-size:13px}.tv-reason small{font-size:11px;color:#6d7c88}
 .action-panel [data-action="verdict"][disabled]{opacity:.5;cursor:not-allowed}
+
+/* Readability repairs flagged in mobile screenshots */
+#verdict-entry .entry-switch .entry-btn.primary{background:linear-gradient(#f1cf94,#c29251)!important;color:#242027!important;border:2px solid #ffdfaa!important}
+#verdict-entry .entry-switch .entry-btn.primary small{color:#4b3923!important;opacity:1!important}
+#verdict-entry .entry-switch .entry-btn:not(.primary){color:#f6e5ce!important}
+.court-play-title [data-action="tab"][data-tab="courtList"]{background:#eee3d1!important;color:#24364a!important;border:1px solid #e6c896!important;font-weight:750}
+#verdict-save-status{overflow-wrap:anywhere;line-height:1.45}
+.tv-clock-local{font-variant-numeric:tabular-nums}
