@@ -1,0 +1,38 @@
+/* THE VERDICT v2.7 — compact gameplay-first courtroom */
+.court-play{display:flex;flex-direction:column;gap:13px;max-width:1060px;margin:0 auto;padding:10px 14px 32px;color:#273448}
+.court-play-header{padding:18px 18px 15px;border:1px solid #ab8351;border-radius:14px;background:linear-gradient(125deg,#18253a 0%,#233249 67%,#4a332b 100%);color:#faf1df;box-shadow:0 5px 18px #191b2533}
+.court-case-kicker{color:#d6b476;letter-spacing:1.9px;font-weight:700;font-size:10px}
+.court-case-kicker span{padding:0 6px}
+.court-play-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:10px}
+.court-play-title h2{color:#fff4e0!important;font-size:clamp(17px,4vw,23px);line-height:1.4;margin:0;word-break:keep-all}
+.court-play-title .btn{flex:0 0 auto;color:#f9e0b8!important;border-color:#9d815a!important}
+.court-play-status{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}
+.court-play-status span{font-size:10px;border:1px solid #7a715f;border-radius:20px;padding:5px 9px;background:#fff1}
+.court-play-overview{padding:13px 15px!important;background:#fff9ef!important;margin:0!important;border-left:4px solid #c29a5e!important}
+.court-play-overview h3{font-size:13px;margin:0}
+.court-play-overview p{font-size:13px!important;font-weight:500;line-height:1.6;margin:9px 0 2px!important;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.court-play-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;background:#d9c9b2;padding:5px;border:1px solid #c6af8e;border-radius:12px;position:sticky;top:0;z-index:12}
+.court-play-tab{background:#f6efe4;color:#526071;border:0;border-radius:9px;padding:11px 3px;white-space:nowrap;font-size:12px;font-weight:700;cursor:pointer;min-width:0}
+.court-play-tab.active{background:#263950;color:#f9e8bd;box-shadow:0 2px 8px #10151e33}
+.court-screen{display:flex;flex-direction:column;gap:13px}
+.court-screen[hidden]{display:none!important}
+.court-screen .panel,.court-screen .case-advocates{margin:0!important;border-radius:12px}
+.court-screen-hearing .action-panel{order:0;border:2px solid #c29b63;background:#fffbf3}
+.court-screen-hearing .live-hearing-panel{order:1}
+.court-screen-hearing .action-panel h3{font-size:17px}
+.court-screen-hearing .choice{margin-top:7px;min-height:54px}
+.court-screen-evidence .evidence-panel{order:0}
+.court-screen-evidence .compact-case-witness{order:1}
+.court-screen-evidence .panel:has([data-action="dramaAsk"]),.court-screen-evidence .panel:has([data-action="witnessQuestion"]){order:2}
+.court-screen-arguments .editorial-advocates .adversarial{gap:9px}
+.court-screen-arguments .adv-card{padding:14px}
+.court-detail-archive{border:1px solid #d3c1a7;border-radius:12px;background:#fbf5eb;padding:10px 13px}
+.court-detail-archive>summary{font-size:13px;font-weight:700;color:#34445c;cursor:pointer}
+.court-detail-archive>.panel{margin:10px 0 0!important}
+.court-screen-history .timeline-item p{font-size:12px;line-height:1.6}
+.court-fame-summary,.court-fame-directory{background:#fff8e9}
+.court-fame-person{width:100%;display:flex;align-items:center;gap:8px;padding:10px;margin:6px 0;border:1px solid #ddc6a7;border-radius:9px;background:#fffefa;text-align:left}
+.court-fame-person b{font-size:12px;flex:1}.court-fame-person small{font-size:11px;color:#667684}
+.court-fame-person>span{color:#b08a55;font-weight:700}
+.court-fame-profile{padding:14px;background:#fff8ea;border-radius:10px;font-size:13px}
+@media(max-width:540px){.court-play{padding:8px 9px 28px;gap:10px}.court-play-header{padding:14px}.court-play-title h2{font-size:17px}.court-play-tabs{top:0;gap:3px;padding:4px}.court-play-tab{font-size:10px;padding:10px 1px}.court-play-tab span{display:block;font-size:15px;margin:0 auto 3px}.court-play-overview p{font-size:12px!important}.court-play-status span{font-size:9px}.court-screen .panel{padding:12px!important}}
