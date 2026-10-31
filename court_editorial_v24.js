@@ -79,6 +79,24 @@ court=function(){
 
  return html;
 };
+function caseWitnessIds(c){
+ const st=S.cases[c.id]||{},base=[...new Set((c.stages||[]).flatMap(x=>x.actions||[]).map(x=>x.who).filter(id=>id&&NPC[id]&&!c.who?.includes(id)&&!c.side?.includes(id)))];
+ return [...new Set([...(st.drama?.castIds||[]).filter(id=>NPC[id]),...base])].slice(0,3);
+}
+const previousNPC=popupNPC;
+popupNPC=function(id){
+ const c=CASES.find(x=>x.id===ui.caseId),ctx=c&&info(c);
+ if(!c||!ctx||!NPC[id])return previousNPC(id);
+ const idx=caseWitnessIds(c).indexOf(id);
+ if(idx<0)return previousNPC(id);
+ const p=NPC[id],role=ctx.a.witnessRoles[idx]||p.role||'관계인';
+ const short='<div class="compact-npc-modal"><div class="compact-npc-top">'+avatar(id)+'<div><b>'+esc(role)+'</b><p>'+esc(p.career||'관계인')+' · '+esc(p.bornYear?year()-p.bornYear+'세':'나이 미상')+'</p></div></div>'+
+  '<p><b>이 사건에서의 역할:</b> '+esc(role)+'</p>'+
+  '<p><b>확인할 사실:</b> '+esc(idx===0?(ctx.a.whyEvidence||c.evidence?.[0]||'사건 당시 상황'):idx===1?(ctx.a.secondEvidence||'관련 기록'):ctx.a.thirdEvidence||'원본성·시간 기록')+'</p>'+
+  '<p><b>증언의 한계:</b> '+esc(ctx.f.defense||ctx.a.weakEvidence||'직접 경험 범위 확인')+'</p>'+
+  '<details><summary>인물의 생애 정보 더 보기</summary><p>성격: '+esc(p.personality||'미상')+'</p><p>가족: '+esc(p.family||'미상')+'</p><p>과거 기억: '+esc((S.memories[id]||[]).slice(-2).map(x=>x.body).join(' · ')||'별도 기록 없음')+'</p></details></div>';
+ modal(p.name+' · '+role,short,'<button class="btn primary full" data-action="dismiss">닫기</button>');
+};
 const oldClick=clicker;
 clicker=function(e){const b=e.target.closest('[data-action]');if(b?.dataset.action==='editorialBrief'){
   const c=CASES.find(x=>x.id===ui.caseId),ctx=c&&info(c);if(ctx)fullBrief(c,ctx,b.dataset.side);return;
