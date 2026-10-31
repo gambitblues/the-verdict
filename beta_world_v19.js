@@ -20,7 +20,7 @@ function resolveCourts(){
   const arrival=new Date(entry.day+'T10:00:00').getTime();
   const seed=[...entry.slot].reduce((a,c)=>Math.imul(a^c.charCodeAt(0),16777619)>>>0,2166136261);
   const hours=8+(seed%89);if(now<arrival+hours*3600000)continue;
-  const verdicts=['청구 일부 인용','청구 기각','증거 부족으로 무죄','유죄 및 형 선고','조정 성립','소송상 화해'];
+  const verdicts=entry.kind==='criminal'?['증거 부족으로 무죄','일부 혐의 유죄','공소사실 전부 유죄','공소기각']:['청구 일부 인용','청구 기각','청구 전부 인용','조정 성립','소송상 화해'];
   const result=verdicts[seed%verdicts.length];
   let connection=null;
   const ids=Object.keys(S.npcDB||{});
