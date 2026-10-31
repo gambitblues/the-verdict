@@ -48,7 +48,7 @@ try{
  await page.locator('[data-action="courtReason"]').first().click();
  const heard=await page.evaluate(()=>S.cases[ui.caseId]?.reasonedChoices?.length||0);
  assert.ok(heard>0,'judicial reasoning was not recorded');
- await page.locator('[data-action="tab"][data-tab="tablet"]').first().click();
+ await page.locator('.bottom-nav [data-action="tab"][data-tab="tablet"]').click();
  await page.locator('[data-action="tablet"][data-sub="rank"]').click();
  await page.locator('.tv-ranking').waitFor();
  assert.equal(errs.length,0,'page errors: '+errs.join('; '));
