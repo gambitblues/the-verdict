@@ -2,15 +2,15 @@
 'use strict';
 (()=>{
 const core=window.VerdictTrialCore;if(!core)return;
-const oldCourt=court,oldClick=clicker,oldConclude=conclude,oldHome=home;
+const oldCourt=court,oldClick=clicker,oldConclude=conclude,oldAnnual=annualNPCLives;
 const esc=x=>h(String(x??''));
 function current(){const c=CASES.find(x=>x.id===ui.caseId);return c&&S.cases[c.id]?{c,st:S.cases[c.id]}:null}
 function ensure(c,st){
- if(st.trial32)return st.trial32;
+ if(st.trial32){const t=st.trial32,dayKey=Math.floor(Date.now()/10800000);if(t.dayKey===undefined)t.dayKey=dayKey;if(t.dayKey!==dayKey){t.dayKey=dayKey;t.day++;t.energy=4;}return t;}
  const details=(c.story?.evidenceDetails||[]).slice(0,5);
  const evidence=details.length?details.map((e,i)=>({id:'ev'+i,title:e.title||'기록 '+(i+1)})):[{id:'ev0',title:'핵심 자료'},{id:'ev1',title:'상대방 제출 자료'},{id:'ev2',title:'현장 기록'}];
  const rolling=core.roll({id:c.contentPack?.archetypeId||c.id,evidence,witnesses:[{id:'w0'}]},c.id+':'+(S.rng||1),[])||{rolled:{truth:'reason',flaws:{},attitudes:{},style:'meticulous'}};
- const t={version:1,evidence:evidence.map((e,i)=>({...e,strength:35+core.hash(c.id+':strength:'+i)%31,flawType:rolling.rolled.flaws[e.id]||'none',flaw:rolling.rolled.flaws[e.id]==='none'?0:20+core.hash(c.id+':flaw:'+i)%61,revealed:0,admitted:false})),truth:rolling.rolled.truth,style:rolling.rolled.style,decisions:[],energy:4,day:0,media:core.pressStart(c.importance||1,/살인/.test(c.tag||'')?20:0),gauge:{P:0,D:0,margin:0},review:null};
+ const t={version:1,evidence:evidence.map((e,i)=>({...e,strength:35+core.hash(c.id+':strength:'+i)%31,flawType:rolling.rolled.flaws[e.id]||'none',flaw:rolling.rolled.flaws[e.id]==='none'?0:20+core.hash(c.id+':flaw:'+i)%61,revealed:0,admitted:false})),truth:rolling.rolled.truth,style:rolling.rolled.style,decisions:[],energy:4,day:0,media:core.pressStart(c.importance||1,/살인/.test(c.tag||'')?20:0),gauge:{P:0,D:0,margin:0},review:null,dayKey:Math.floor(Date.now()/10800000),createdYear:year()};
  st.trial32=t;return t;
 }
 function press(c,t,delta){t.media=core.pressAdvance(t.media,{surface:50+delta,news:Math.abs(delta)>15?8:0,twist:false});}
@@ -35,7 +35,7 @@ function chooseAction(kind,id,action){
   t.witnessLevel=Math.min(2,(t.witnessLevel||0)+1);
   d.revealed=t.witnessLevel;
  }
- t.decisions.push(d);t.energy--;
+ t.decisions.push(d);t.energy--; const lawyer=NPC[(c.side||[])[1]];if(lawyer){lawyer.trial32History??=[];lawyer.trial32History.push({caseId:c.id,kind,action,week:S.week});if(lawyer.trial32History.length>35)lawyer.trial32History.shift();} if(kind==='objection'||kind==='delay')t.opponentReaction=t.style==='delay'?'변호인이 추가 검토를 요청했습니다.':t.style==='aggressive'?'변호인이 강하게 이의를 제기했습니다.':'변호인이 기록을 다시 검토하고 있습니다.';
  t.gauge=core.gauge(t.evidence,Number(t.objection==='reject'),t.evidence.filter(e=>!e.admitted).length*5);
  t.skill=core.decisionScore(t.decisions,t.gauge.margin,null);
  press(c,t,kind==='evidence'?(action==='exclude'?-10:10):kind==='witness'?12:0);
@@ -64,7 +64,9 @@ conclude=function(id){
  st.trialReview={skill:t.skill,review:t.review,proof:t.gauge.P,doubt:t.gauge.D,publicOpinion:{...t.media}};
  const viewpoints=[['법리 중심','증거와 남은 의문을 따진 재판부 판단'],['피해자 중심','피해와 회복을 둘러싼 논쟁'],['탐사 보도','사건 기록의 빈자리와 후속 취재']];
  for(const [outlet,subject]of viewpoints)news(c.name+' · '+subject,'재판부의 '+(guilty?'책임 인정':'책임 불인정')+' 판단에 여러 관점이 엇갈린다. 당시 여론 방향 '+t.media.O+'점.',outlet);
+ t.revealYear=(t.createdYear||year())+3+core.hash(c.id+':reveal')%5;
  S.trial32History??=[];S.trial32History.unshift({caseId:c.id,week:S.week,title:c.name,verdict:id,review:t.review,skill:t.skill,media:{...t.media}});
  save();render();
 };
+annualNPCLives=function(){oldAnnual();for(const c of CASES){const st=S.cases[c.id],t=st?.trial32;if(!st?.verdict||!t||t.truthRevealed||year()<(t.revealYear||9999))continue;t.truthRevealed=true;const label=t.truth==='did'?'범행이 확인됐다':t.truth==='didnt'?'당시 혐의가 사실이 아닌 것으로 드러났다':'사건 경위에 새로운 사정이 확인됐다';news('과거 사건 재조명 · '+c.name,'후속 취재에서 '+label+'. 당시 판결과 여론이 다시 조명된다.','탐사 보도');}save()};
 })();
