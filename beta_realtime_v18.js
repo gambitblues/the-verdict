@@ -13,7 +13,11 @@ function candidates(){return CasePackEngine.pool(S)}
 function choosePreview(slot){
  const pool=candidates();if(!pool.length)return {title:'사실관계 조사 사건',tag:'일반 사건',id:null};
  let hash=2166136261;for(const ch of String(slot))hash=Math.imul(hash^ch.charCodeAt(0),16777619)>>>0;
- const a=pool[hash%pool.length];return {title:a.a.title,tag:a.a.tag,archetypeId:a.a.id,packId:a.pack.packId};
+ const scores=Array.isArray(S.specialties)?S.specialties:[];
+ const weighted=pool.map(item=>({item,w:1+Math.min(2,Math.floor((scores.find(x=>x.key===item.a.category)?.count||0)/3))}));
+ const sum=weighted.reduce((v,x)=>v+x.w,0);let pick=hash%sum,a=weighted[0].item;
+ for(const x of weighted){if(pick<x.w){a=x.item;break;}pick-=x.w;}
+ return {title:a.a.title,tag:a.a.tag,category:a.a.category,kind:a.a.kind,archetypeId:a.a.id,packId:a.pack.packId};
 }
 function sync(){
  const db=initClock();if(!db)return;
@@ -35,9 +39,9 @@ function sync(){
    const info=choosePreview(slot),deadline=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1,10).getTime();
    const entry={slot,day,created:t,expires:deadline,status:deadline<=now?'transferred':'available',...info};
    if(entry.status==='available')db.offers.push(entry);
-   else {transferred++;db.otherCourt.push({slot,title:entry.title,day});}
+   else {transferred++;db.otherCourt.push({slot,title:entry.title,day,kind:entry.kind,category:entry.category});}
  }
- for(const o of db.offers){if(o.status==='available'&&now>=o.expires){o.status='transferred';transferred++;db.otherCourt.push({slot:o.slot,title:o.title,day:o.day});}}
+ for(const o of db.offers){if(o.status==='available'&&now>=o.expires){o.status='transferred';transferred++;db.otherCourt.push({slot:o.slot,title:o.title,day:o.day,kind:o.kind,category:o.category});}}
  db.offers=db.offers.filter(o=>o.status==='available'||o.status==='accepted').slice(-180);
  db.otherCourt=db.otherCourt.slice(-300);
  const slots=Object.keys(db.processedSlots);if(slots.length>400){const keep=new Set(slots.slice(-250));for(const k of slots)if(!keep.has(k))delete db.processedSlots[k];}
