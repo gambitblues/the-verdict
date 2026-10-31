@@ -241,7 +241,7 @@ function remember(id,type,body,caseId){
 }
 function getPriorByKey(key){return completed().filter(c=>c.story?.deep?.key===key||(!c.story?.deep&&c.legal===key)).slice(-8).at(-1)}
 function createGeneratedCase(){
- if(age()>=65||openCases().length>=4)return null;
+ if(age()>=75||openCases().length>=4)return null;
  const serial=++S.caseSerial;
  const candidate=CasePackEngine.pool(S).length&&rand()<.82?CasePackEngine.choose(S,rand):null;
  const bp=candidate?CasePackEngine.blueprint(candidate.pack,candidate.a):choose(CASE_BLUEPRINTS);
@@ -351,10 +351,10 @@ function ensureGeneratedCases(){
  if(S.week>=S.nextCaseWeek){createGeneratedCase();S.nextCaseWeek=S.week+6+Math.floor(rand()*5);}
 }
 function finalizeCareer(){if(S.ended)return;
- S.ended=true;const count=completed().length;log('은퇴','65세 · 법관 커리어 종료',`총 ${count}건 판결 · 최종 직위 ${currentPost()} · 판결은 기록으로 남습니다.`);
- news('한 법조인의 30년',`${S.name||'법관'}이 65세를 맞아 커리어를 마무리했다. 판결과 인연의 기록이 남았다.`);}
+ S.ended=true;const count=completed().length;log('은퇴','75세 · 법관 커리어 종료',`총 ${count}건 판결 · 최종 직위 ${currentPost()} · 판결은 기록으로 남습니다.`);
+ news('한 법조인의 40년',`${S.name||'법관'}이 75세를 맞아 커리어를 마무리했다. 판결과 인연의 기록이 남았다.`);}
 function worldTick(){
- if(age()>=65){finalizeCareer();return;}
+ if(age()>=75){finalizeCareer();return;}
  ensureGeneratedCases();
  if(year()!==S.lastYear){S.lastYear=year();makeAnnualEvent();}
  // Once every 9 months, background court decisions also occur without player involvement.
@@ -456,7 +456,7 @@ function home(){const open=openCases();const mainCase=open[0];const prof=clamp(S
  ${officeScene()}
  <div class="row between" style="flex-wrap:wrap;gap:8px"><span class="small muted">소유한 집기와 착용한 옷·가방·시계·구두가 반영됩니다.</span><button class="btn outline mini" data-action="tab" data-tab="assets">사무실·캐릭터 꾸미기 →</button></div>
  <div class="grid four"><div class="stat-card"><label>현재 경력</label><strong>${age()}세</strong><small>${h(S.post)}</small></div><div class="stat-card"><label>보유 현금</label><strong>${abbr(S.cash)}만</strong><small>월 급여 ${money(S.salary)}</small></div><div class="stat-card"><label>법률 전문성</label><strong>${prof}<span class="small"> / 100</span></strong><small>판결과 연구 활동으로 성장</small></div><div class="stat-card"><label>진행 중 사건</label><strong>${open.length}건</strong><small>완료 ${completed().length}건</small></div></div>
- <div class="weekly-banner"><div><strong>◷ 가상 시간 · ${age()}세 / 65세</strong><p>심리 기회 ${actionsLeft()}/${actionMax()} · 미완료 사건 ${open.length}건 · 새로운 사건은 계속 생성</p><div class="mini-track">${Array.from({length:actionMax()},(_,i)=>`<span class="${i<actionsLeft()?'on':''}"></span>`).join('')}</div></div><div class="time-controls"><button class="btn primary" data-action="nextWeek" ${S.ended?'disabled':''}>+1주</button><button class="btn outline" data-action="skip" data-n="4" ${S.ended?'disabled':''}>+4주</button><button class="btn outline" data-action="skip" data-n="13" ${S.ended?'disabled':''}>다음 사건까지</button></div></div>
+ <div class="weekly-banner"><div><strong>◷ 가상 시간 · ${age()}세 / 75세</strong><p>심리 기회 ${actionsLeft()}/${actionMax()} · 미완료 사건 ${open.length}건 · 새로운 사건은 계속 생성</p><div class="mini-track">${Array.from({length:actionMax()},(_,i)=>`<span class="${i<actionsLeft()?'on':''}"></span>`).join('')}</div></div><div class="time-controls"><button class="btn primary" data-action="nextWeek" ${S.ended?'disabled':''}>+1주</button><button class="btn outline" data-action="skip" data-n="4" ${S.ended?'disabled':''}>+4주</button><button class="btn outline" data-action="skip" data-n="13" ${S.ended?'disabled':''}>다음 사건까지</button></div></div>
  ${WEEK_EVENTS[S.week]&&!S.events.includes(WEEK_EVENTS[S.week].id)?`<div class="panel row between"><div><div class="eyebrow">RELATIONSHIP EVENT</div><strong>${h(WEEK_EVENTS[S.week].title)}</strong><div class="small muted">인물과의 관계에 영향을 주는 이벤트</div></div><button class="btn gold mini" data-action="event">확인</button></div>`:''}
  ${section('나의 사건함',`미완료 ${open.length}건`)}<div class="case-list">${open.length?open.slice(0,3).map(caseCard).join(''):'<div class="panel"><b>현재 진행 중인 재판이 없습니다.</b><p class="muted small">다음 주로 이동하면 새 사건이 배당될 수 있습니다.</p></div>'}</div>
  <div class="grid two"><div class="panel"><div class="row between"><b>📰 오늘의 뉴스</b><button class="btn ghost mini" data-action="tablet" data-sub="news">더 보기</button></div>${S.news.slice(0,2).map(n=>`<div class="news-card"><div class="news-icon">▤</div><div><b>${h(n.title)}</b><p>${h(day(n.week))} · ${h(n.category)}</p></div></div>`).join('')}</div>
@@ -521,7 +521,7 @@ function tabletInner(){switch(ui.tabletTab){
  }
  case 'notes':return `<h3 class="no-margin">📝 개인 메모</h3><p class="muted small">직접 적은 생각은 자동 저장됩니다. 기기 내에만 저장되므로 백업을 권장합니다.</p><textarea class="control" id="personalNotes" style="min-height:170px;resize:vertical;line-height:1.7" placeholder="잊고 싶지 않은 사건, 인물, 나만의 판단 기준…">${h(S.notes)}</textarea><button class="btn primary mt" data-action="saveNotes">메모 저장</button>`;
  case 'photos':return `<h3 class="no-margin">🖼 사진첩 · 삶의 기록</h3><div class="grid two mt"><div class="good-card"><div class="item-visual"><span>🏛️</span></div><b>첫 발령 기념</b><small>2027.03.01 · 신임 법관</small></div>${S.romance.stage==='married'?`<div class="good-card"><div class="item-visual">💍</div><b>${h(NPC[S.romance.person]?.name||'배우자')}과 결혼</b><small>${day(S.week)} 이전 · 개인 기록</small></div>`:''}${S.owned.map(id=>{const item=ITEMS.find(x=>x.id===id);return item?`<div class="good-card"><div class="item-visual"><span>${item.icon}</span></div><b>${h(item.name)}</b><small>${h(item.brand)} · 구매 기록</small></div>`:''}).join('')}</div>`;
- case 'career':return `<h3 class="no-margin">🎖 35세 → 65세 커리어 · 현재 ${age()}세</h3><p class="muted small">${h(S.post)} · 누적 생성 사건 ${S.generatedCases.length}건 · 최종 엔딩 65세 ${S.ended?'(완료)':''}</p><div class="grid three mt"><div class="stat-card"><label>완료 판결</label><strong>${completed().length}건</strong></div><div class="stat-card"><label>법률 전문성</label><strong>${S.professional}</strong></div><div class="stat-card"><label>사회적 인지도</label><strong>${S.publicity}</strong></div></div><div class="timeline mt2">${S.journal.map(e=>`<div class="timeline-item"><small>${day(e.week)} · ${h(e.type)}</small><b>${h(e.title)}</b><p>${h(e.body)}</p></div>`).join('')}</div>`;
+ case 'career':return `<h3 class="no-margin">🎖 35세 → 75세 커리어 · 현재 ${age()}세</h3><p class="muted small">${h(S.post)} · 누적 생성 사건 ${S.generatedCases.length}건 · 최종 엔딩 75세 ${S.ended?'(완료)':''}</p><div class="grid three mt"><div class="stat-card"><label>완료 판결</label><strong>${completed().length}건</strong></div><div class="stat-card"><label>법률 전문성</label><strong>${S.professional}</strong></div><div class="stat-card"><label>사회적 인지도</label><strong>${S.publicity}</strong></div></div><div class="timeline mt2">${S.journal.map(e=>`<div class="timeline-item"><small>${day(e.week)} · ${h(e.type)}</small><b>${h(e.title)}</b><p>${h(e.body)}</p></div>`).join('')}</div>`;
  case 'packs':{
  const stats=CasePackEngine.stats(S),labels={'homicide':'살인·치사·연쇄범죄','sexual':'성범죄·성적 자기결정권','violence':'폭행·상해·스토킹','financial':'사기·횡령·배임','property':'절도·재산·교통·방화','reputation':'명예훼손·디지털·연예','civil':'계약·임대차·손해배상','family':'이혼·양육·상속','professional':'기업·노동·의료','public':'정치·부패·행정·헌법'};
  const list=(S.casePacks||[]).map(p=>`<div class="feed"><div class="row between"><b>${h(p.title)}</b><span class="chip">v${h(p.version)}</span></div><small>${h(p.packId)} · ${(p.archetypes||[]).length}개 원형 · ${p.enabled!==false?'활성':'비활성'}</small><p class="small muted">${h(p.description||'직접 추가한 사건 콘텐츠')}</p><div class="row" style="gap:7px;flex-wrap:wrap"><button class="btn outline mini" data-action="packToggle" data-id="${h(p.packId)}">${p.enabled!==false?'비활성화':'활성화'}</button><button class="btn outline mini" data-action="packExport" data-id="${h(p.packId)}">JSON 저장</button><button class="btn outline mini" data-action="packRemove" data-id="${h(p.packId)}">삭제</button></div></div>`).join('');
@@ -695,7 +695,7 @@ function advanceWeek(silent=false){
  return true;
 }
 function fastForward(n){
- if(S.ended)return toast('65세 커리어 엔딩에 도달했습니다. 태블릿에서 기록을 확인하세요.');
+ if(S.ended)return toast('75세 커리어 엔딩에 도달했습니다. 태블릿에서 기록을 확인하세요.');
  const until=Math.min(52,Math.max(1,n));let moved=0;
  const before=S.generatedCases.length;
  for(let i=0;i<until;i++){
