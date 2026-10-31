@@ -1,5 +1,5 @@
-const CACHE='the-verdict-beta-witness-v14';
-const FILES=['./','./index.html','./style.css','./beta_patch_v11.css','./game.js','./beta_patch_v11.js','./beta_patch_v12.js','./beta_patch_v14.js','./deep_case_engine.js','./story_engine.js','./case_pack_engine.js','./continuity_engine.js','./npc_life_justice.js','./family_engine.js','./content-packs/index.json','./content-packs/beta-weekend-100-v1.json','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png'];
+const CACHE='the-verdict-beta-hearings-v15';
+const FILES=['./','./index.html','./style.css','./beta_patch_v11.css','./game.js','./beta_patch_v11.js','./beta_patch_v12.js','./beta_patch_v13.js','./beta_patch_v14.js','./deep_case_engine.js','./story_engine.js','./case_pack_engine.js','./continuity_engine.js','./npc_life_justice.js','./family_engine.js','./content-packs/index.json','./content-packs/beta-weekend-100-v1.json','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
