@@ -41,8 +41,11 @@ python3 -m http.server 8080
 ```bash
 node tests/trial-core.test.cjs        # 재판 엔진 규칙
 node tests/media-desk.test.cjs        # 미디어 데스크 규칙
+node tests/save-store.test.cjs        # 세이브 압축·복원
+node tests/narrative-qa.cjs           # 집필 사건 30건 문장·조사·중복 검사
 npm i --no-save playwright && npx playwright install chromium
 node tests/browser-smoke.mjs          # 모바일 화면에서 새 커리어 → 재판 → 판결 → 새로고침
+node tests/long-career.mjs 40         # 40년 커리어 장기 검증 (수 분)
 ```
 
 구조와 규칙은 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), 배포 절차는 [docs/RELEASE_WORKFLOW.md](docs/RELEASE_WORKFLOW.md), 변경 이력은 [docs/CHANGELOG.md](docs/CHANGELOG.md)를 보세요.

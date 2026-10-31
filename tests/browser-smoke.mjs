@@ -34,6 +34,7 @@ try{
  }));
  assert.equal(state.n,4,'expected first four cases');
  assert.equal(new Set(state.ids).size,4,'starter case archetype repeated');
+ assert.notEqual(await page.evaluate(()=>S.rng),3268412851,'new career used the fixed legacy seed');
  assert.equal(state.outlets,20,'expected 20 fictional media sources');
  assert.equal(state.oldWeekControls,0,'legacy week controls visible');
  assert.ok(state.size<190000,'static pack may still be duplicated in save');
@@ -61,7 +62,7 @@ try{
   await tab('evidence');
   const inspect=page.locator('.t4 [data-kind="inspect"]:not([disabled])').first();if(await inspect.count())await inspect.click();
   const use=page.locator('.t4 [data-kind="decide"][data-choice="conditional"]:not([disabled])').first();if(await use.count())await use.click();
-  await page.locator('.t4-pagenav [data-action="t4page"]').last().click();
+  const next=page.locator('.t4-pagenav [data-action="t4page"]:not([disabled])').last();if(await next.count())await next.click();
   await tab('witness');
   const ask=page.locator('.t4 [data-kind="ask"]:not([disabled])').first();if(await ask.count())await ask.click();
   await page.locator('.t4-dock [data-action="t4end"]').click();

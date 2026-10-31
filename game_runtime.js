@@ -246,7 +246,7 @@ function getPriorByKey(key){return completed().filter(c=>c.story?.deep?.key===ke
 function createGeneratedCase(selectedCandidate=null){
  if(age()>=75||openCases().length>=12)return null;
  const serial=++S.caseSerial;
- const candidate=selectedCandidate||(CasePackEngine.pool(S).length&&rand()<.82?CasePackEngine.choose(S,rand):null);
+ const candidate=selectedCandidate||(CasePackEngine.pool(S).length&&(window.VerdictCurated?.active||rand()<.82)?CasePackEngine.choose(S,rand):null);
  const bp=candidate?CasePackEngine.blueprint(candidate.pack,candidate.a):choose(CASE_BLUEPRINTS);
  const i=Math.floor(rand()*bp.premises.length), loc=choose(LOCATIONS);
  // Recurrence is a genuinely NEW incident, involving a previously tried individual.
@@ -367,10 +367,12 @@ function worldTick(){
 }
 
 const START=new Date(Date.UTC(2027,2,1));
-const newState=()=>({version:5,casePacks:[],removedPackIds:[],lifeTriggers:[],qaLog:[],generatedCases:[],npcDB:{},memories:{},caseSerial:0,nextCaseWeek:14,lastYear:2027,post:'지방법원 판사',milestones:[],ended:false,name:'',style:0,week:0,actions:0,cash:1250,salary:340,notes:'',owned:[],equipped:{},romance:{person:null,stage:'single',lastYear:-1},market:Object.fromEntries(SECTORS.map(x=>[x.id,100])),holdings:{},traded:-1,rng:37519,relations:{hyun:66,senior:48,jiyu:39,seon:32,soo:39,jun:35,reporter:25,tenant:20,owner:18,builder:20,actor:10,singer:10,ceo:10},professional:50,publicity:12,cases:Object.fromEntries(CASES.map(c=>[c.id,{phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null}])),journal:[{week:0,type:'커리어',title:'신임 판사 발령',body:'법조인으로서 첫 커리어가 시작되었습니다.'}],news:[{week:0,title:'신임 법관 인사 발령 발표',body:'전국 각급 법원에서 신임 법관이 새로운 업무를 시작했다.',category:'법조일보'}],msgs:[{week:0,from:'hyun',body:'첫 발령 축하해! 서로 잘 버텨보자. 시간 나면 연락해.'}],events:[]});
+// Every new career gets its own world: cases, people and their lives start from a random seed.
+const freshSeed=()=>{try{const a=new Uint32Array(1);crypto.getRandomValues(a);return (a[0]>>>0)||37519}catch{return (Date.now()^Math.floor(Math.random()*4294967296))>>>0||37519}};
+const newState=()=>({version:5,casePacks:[],removedPackIds:[],lifeTriggers:[],qaLog:[],generatedCases:[],npcDB:{},memories:{},caseSerial:0,nextCaseWeek:14,lastYear:2027,post:'지방법원 판사',milestones:[],ended:false,name:'',style:0,week:0,actions:0,cash:1250,salary:340,notes:'',owned:[],equipped:{},romance:{person:null,stage:'single',lastYear:-1},market:Object.fromEntries(SECTORS.map(x=>[x.id,100])),holdings:{},traded:-1,rng:freshSeed(),relations:{hyun:66,senior:48,jiyu:39,seon:32,soo:39,jun:35,reporter:25,tenant:20,owner:18,builder:20,actor:10,singer:10,ceo:10},professional:50,publicity:12,cases:Object.fromEntries(CASES.map(c=>[c.id,{phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null}])),journal:[{week:0,type:'커리어',title:'신임 판사 발령',body:'법조인으로서 첫 커리어가 시작되었습니다.'}],news:[{week:0,title:'신임 법관 인사 발령 발표',body:'전국 각급 법원에서 신임 법관이 새로운 업무를 시작했다.',category:'법조일보'}],msgs:[{week:0,from:'hyun',body:'첫 발령 축하해! 서로 잘 버텨보자. 시간 나면 연락해.'}],events:[]});
 let S;
 try{
- const loaded=JSON.parse(localStorage.getItem(KEY));
+ const loaded=VerdictStore.read(KEY);
  S=loaded?.cases&&loaded?.market&&([1,2,3,4,5].includes(loaded.version))?loaded:newState();
 }catch{S=newState()}
 if(S.version===1){
@@ -408,7 +410,26 @@ const actionMax=()=>4; // no fatigue/comfort stat; housing is lifestyle only
 const actionsLeft=()=>Math.max(0,actionMax()-S.actions);
 const cap=(str,max=80)=>str.length>max?str.slice(0,max)+'…':str;
 const grade=(n)=>n>=80?'탄탄한 판단':n>=55?'다툼의 여지':'법리 검토 필요';
-function save(){try{const compact={...S,casePacks:(S.casePacks||[]).filter(p=>p.packId!=='starter-diverse-2026')};localStorage.setItem(KEY,JSON.stringify(compact))}catch{toast('브라우저 저장 공간을 확인해주세요. 백업을 추천합니다.')}}
+/* Long careers keep every case, but a verdict older than half a year keeps only what the record, the result tab
+ * and later cases read. The heavy hearing scripts are dropped so a 40-year save stays well under the browser limit. */
+function archiveOld(all){let n=0;for(const c of S.generatedCases||[]){const st=S.cases?.[c.id];if(c.archived||!st?.verdict||st.closedWeek==null||(!all&&st.closedWeek>S.week-26))continue;
+ const d=c.story?.deep;if(d)c.story.deep={key:d.key,version:d.version,legalSource:d.legalSource,motivations:d.motivations?{a:{primary:d.motivations.a?.primary},b:{primary:d.motivations.b?.primary}}:undefined,elements:(d.elements||[]).map(e=>({id:e.id,label:e.label}))};
+ if(c.story?.evidenceDetails)c.story.evidenceDetails=c.story.evidenceDetails.map(e=>({id:e.id,title:e.title,type:e.type}));
+ if(Array.isArray(c.stages))c.stages=c.stages.map(x=>({prompt:x.prompt,actions:[]}));
+ delete c.participantSnapshots;
+ if(st.trial4){const t=st.trial4;t.log=(t.log||[]).slice(-12)}
+ c.archived=true;n++}
+ if(n){FamilyEngine.prune(S,NPC);trimPeople()}return n}
+// Yearly wealth snapshots are kept for the last five years; events with a reason other than the yearly snapshot stay.
+function trimPeople(){const cap=(a,n)=>Array.isArray(a)&&a.length>n?a.slice(-n):a;
+ for(const p of Object.values(S.npcDB||{})){if(!p)continue;
+  if(p.financialHistory?.length>8){const yearly=p.financialHistory.filter(x=>x.reason==='연도별 재산 상태 기록');const keep=new Set(yearly.slice(-5));p.financialHistory=cap(p.financialHistory.filter(x=>x.reason!=='연도별 재산 상태 기록'||keep.has(x)),12)}
+  p.jobHistory=cap(p.jobHistory,8);p.relationshipHistory=cap(p.relationshipHistory,12);p.familyCaseHistory=cap(p.familyCaseHistory,6)}
+ for(const id of Object.keys(S.memories||{}))S.memories[id]=cap(S.memories[id],12)}
+function save(){const build=()=>JSON.stringify({...S,casePacks:(S.casePacks||[]).filter(p=>p.packId!=='starter-diverse-2026')});
+ try{archiveOld(false)}catch(e){console.warn('archive',e)}
+ VerdictStore.save(KEY,build)}
+VerdictStore.onError(()=>{try{archiveOld(true);S.qaLog=(S.qaLog||[]).slice(-50);S.news=(S.news||[]).slice(0,300);localStorage.setItem(KEY,VerdictStore.encode(JSON.stringify({...S,casePacks:(S.casePacks||[]).filter(p=>p.packId!=='starter-diverse-2026')})));toast('저장 공간을 정리해 저장했습니다.')}catch{toast('브라우저 저장 공간이 가득 찼습니다. 설정에서 백업 파일을 저장해주세요.')}});
 function log(type,title,body){S.journal.unshift({week:S.week,type,title,body});/* 30년 커리어 전체 보존 */}
 function news(title,body,category='법조일보'){S.news.unshift({week:S.week,title,body,category});/* 과거 뉴스 보존 */}
 function message(from,body){S.msgs.unshift({week:S.week,from,body});/* 과거 메시지 보존 */}
@@ -897,7 +918,7 @@ if(document.readyState==='complete')init();else document.addEventListener('DOMCo
  function homeNew(){const open=openCases(),next=open.slice().sort((a,b)=>(S.cases[a.id]?.nextHearingWeek||0)-(S.cases[b.id]?.nextHearingWeek||0))[0],due=open.filter(c=>busy(S.cases[c.id]));
   return `<div class="beta-home"><div class="beta-title">${heading('오늘의 재판 업무',`${h(S.post)} · ${age()}세 · 법조 경력 ${yearsServed()}년`)}</div><div class="dashboard-hero"><div><span class="eyebrow">THE VERDICT · JUDICIAL LIFE</span><h2>판결은 끝나도, 사람들의 인생은 계속됩니다.</h2><p>오늘은 ${h(day())}. 처리 중인 사건 ${open.length}건 · 다음 기일 대기 ${due.length}건</p><div class="dashboard-actions"><button class="btn gold" data-action="tab" data-tab="courtList">⚖ 배당 사건 보기</button><button class="btn outline" data-action="tablet" data-sub="social">＃ 시민 반응</button><button class="btn outline" data-action="tablet" data-sub="backup">💾 저장 관리</button></div></div><div class="dashboard-hero-badge">${photo('self')}<small>${h(S.name||'신임 판사')} 판사</small></div></div><div class="metric-grid"><div class="metric"><small>오늘 날짜</small><strong>${h(day())}</strong><span>가상 주간 ${S.week+1}주차</span></div><div class="metric"><small>처리할 사건</small><strong>${open.length}건</strong><span>완료 판결 ${completed().length}건</span></div><div class="metric"><small>주간 심리 여력</small><strong>${actionsLeft()} / ${actionMax()}</strong><span>일주일마다 갱신</span></div><div class="metric"><small>법률 전문성</small><strong>${S.professional} / 100</strong><span>판결 경험으로 성장</span></div></div><section class="panel time-board"><div class="row between"><div><h3 class="no-margin">⏱ 가상 시간과 일정</h3><p class="muted small">${h(day(S.week))} 현재 · 판사는 65세에 커리어 종료</p></div><span class="chip">${age()} / 65세</span></div><div class="timeline-dates"><span>${h(day(Math.max(0,S.week-1)))}</span><strong>${h(day())}</strong><span>${h(day(S.week+1))}</span></div><div class="week-ruler"><span></span><span class="selected"></span><span></span></div>${S.lastAdvance?`<p class="advance-note">최근 진행: ${S.lastAdvance.moved}주 · ${h(day(S.lastAdvance.from))} → ${h(day(S.lastAdvance.to))} · 신규 사건 ${S.lastAdvance.newCases}건</p>`:''}<div class="time-controls"><button class="btn primary" data-action="nextWeek">+ 1주 진행</button><button class="btn outline" data-action="skip" data-n="4">+ 4주 진행</button><button class="btn outline" data-action="skip" data-n="13">다음 사건까지</button></div></section><section><div class="row between section-title"><h2>진행 중인 재판</h2><button class="btn ghost mini" data-action="tab" data-tab="courtList">사건 전체 보기 →</button></div><div class="case-list">${open.length?open.slice(0,4).map(c=>`<div class="beta-case">${caseCard(c)}${busy(S.cases[c.id])?`<small class="date-alert">🗓 ${h(day(S.cases[c.id].nextHearingWeek))} 심리 재개 예정</small>`:''}</div>`).join(''):'<div class="panel">오늘 진행할 사건이 없습니다. 시간을 진행해보세요.</div>'}</div></section><section class="home-sns"><div class="row between section-title"><h2>＃ 오늘의 여론</h2><button class="btn ghost mini" data-action="tablet" data-sub="social">게시판 전체 보기 →</button></div>${snsFeed(2)}</section></div>`;
  }
- function npcModal(id){const x=NPC[id];if(!x)return;ui.npcId=id;const life=(LifeJustice.summary(x,year(),S.week)),custody=LifeJustice.custodySummary(x,S.week),fam=(x.familyIds||[]).filter(k=>NPC[k]).slice(0,12);const history=(x.jobHistory||[]).slice(-4).reverse();const trust=S.relations[id]??20;
+ function npcModal(id){const x=NPC[id];if(!x)return;FamilyEngine.ensure(S,NPC,id,year());ui.npcId=id;const life=(LifeJustice.summary(x,year(),S.week)),custody=LifeJustice.custodySummary(x,S.week),fam=(x.familyIds||[]).filter(k=>NPC[k]).slice(0,12);const history=(x.jobHistory||[]).slice(-4).reverse();const trust=S.relations[id]??20;
   modal(`${x.name} · 인물 기록`, `<div class="beta-person-modal"><div class="person-top">${photo(id)}<div><b>${h(x.role||'관계인')}</b><p>${h(x.gender||'성별 미상')} · ${x.bornYear?year()-x.bornYear+'세':'나이 미상'} · ${h(x.maritalStatus||'혼인 미상')}</p><div class="chip">판사와의 관계 ${trust}/100</div></div></div><div class="profile-data"><div><small>성향·성격</small><p>${h(x.personality||'성격 정보는 조사 기록 참조')} · MBTI ${h(x.mbti||'-')}</p></div><div><small>성장·가정</small><p>${h(x.parentsOrigin||x.origin||'미기록')} · 부모 재력 ${x.parentWealth??'미상'}/100</p></div><div><small>학력·직업</small><p>${h(x.degree||x.education||'-')} · ${h(x.educationField||'')} / ${h(x.career||x.role||'')}</p></div><div><small>개인 경제·가족</small><p>재력 ${x.wealth??'미상'}/100 · ${h(x.siblings||x.family||'')} · 자녀 ${x.children??0}명</p></div></div><div class="detail"><b>현재 생애 상태</b><p>${h(life)}</p><b>형 집행 기록</b><p>${h(custody)}</p></div>${fam.length?`<h4>연결된 가족</h4><div class="family-links">${fam.map(k=>`<button class="btn outline mini" data-action="npc" data-id="${h(k)}">${h(NPC[k].name)} · ${h(NPC[k].role)}</button>`).join('')}</div>`:''}${history.length?`<h4>직업 변천</h4>${history.map(j=>`<p class="muted small">${j.year} · ${h(j.job)} — ${h(j.reason)}</p>`).join('')}`:''}<h4>기억과 사건 이력</h4>${(S.memories[id]||[]).slice(-6).reverse().map(m=>`<p class="muted small">${h(day(m.week))} · ${h(m.type)} · ${h(m.body)}</p>`).join('')||'<p class="muted small">기록된 접점 없음</p>'}</div>`);
  }
  function sessionSetup(){modal('THE VERDICT · 새 커리어',`<p>당신이 내린 판결은 NPC의 생애와 사회에 영향을 줍니다. 2027년, 35세 신임 판사로 시작합니다.</p><div class="control-wrap mt"><label for="playerName">판사 이름</label><input class="control" id="playerName" maxlength="16" placeholder="예: 정우진" autocomplete="off"></div><p class="muted small">인물 증명사진과 복장은 성별·나이·직업에 따라 자동 생성됩니다. 꾸미기는 베타에서 숨겨졌습니다.</p>`,`<button class="btn primary full" data-action="start">재판 경력 시작하기 →</button>`);}
@@ -1050,16 +1071,19 @@ const style=document.createElement('style');style.textContent=css;document.head.
 (()=>{
 const KEY='the_verdict_alpha_1',ACTIVE='verdict_player_active',slot=id=>'verdict_player_save_'+id;
 const selected=()=>localStorage.getItem(ACTIVE)||'1';
-const backup=()=>{const main=localStorage.getItem(KEY);if(main)localStorage.setItem(slot(selected()),main);else localStorage.removeItem(slot(selected()));};
-function profileName(id){try{const s=JSON.parse(localStorage.getItem(slot(id))||'null');return s?.name||'저장된 게임 없음';}catch{return '저장 파일 확인 필요';}}
+// The active profile lives only in KEY; its slot copy is written when the player switches profiles.
+// (Copying on every save doubled the storage a long career needs.)
+const backup=()=>{VerdictStore.flush();const main=localStorage.getItem(KEY);if(main)localStorage.setItem(slot(selected()),main);else localStorage.removeItem(slot(selected()));};
+const release=()=>{try{if(localStorage.getItem(KEY))localStorage.removeItem(slot(selected()))}catch{}};
+function profileName(id){try{const s=VerdictStore.parse(localStorage.getItem(id===selected()?KEY:slot(id)));return s?.name||'저장된 게임 없음';}catch{return '저장 파일 확인 필요';}}
 function change(id){if(!['1','2'].includes(id))return;backup();localStorage.setItem(ACTIVE,id);const v=localStorage.getItem(slot(id));if(v)localStorage.setItem(KEY,v);else localStorage.removeItem(KEY);location.reload();}
 const originalSave=save;
-save=function(){originalSave();backup()};
+save=function(){originalSave();release()};
 const originalClick=clicker;
 clicker=function(e){const action=e.target.closest('[data-action]')?.dataset.action;if(action==='resetConfirm'){localStorage.removeItem(slot(selected()));}originalClick(e);};
 function show(){
 if(document.getElementById('verdict-entry'))document.getElementById('verdict-entry').remove();
-backup();
+release();
 const id=selected(),has=!!S.name;
 const box=document.createElement('div');box.id='verdict-entry';
 box.innerHTML='<div class="entry-card"><div style="font-size:28px">⚖️</div><div class="entry-title">THE VERDICT</div><div class="entry-sub">40년 법관 커리어 · 플레이어별 독립된 세계관</div><div class="entry-switch"><button type="button" data-profile="1" class="entry-btn '+(id==='1'?'primary':'')+'">플레이어 1<small>'+escapeHtml(profileName('1'))+'</small></button><button type="button" data-profile="2" class="entry-btn '+(id==='2'?'primary':'')+'">플레이어 2<small>'+escapeHtml(profileName('2'))+'</small></button></div><button class="entry-btn primary" id="profile-continue">'+(has?'이어서 하기':'새 커리어 시작')+'</button><button class="entry-btn" id="profile-reset">이 슬롯에서 새 게임</button><button class="entry-btn" id="profile-import">저장 파일 불러오기 (JSON)</button><div class="entry-info">현재: 플레이어 '+id+' · 이 기기에만 저장됨<br>다른 기기와 동기화하려면 별도의 클라우드 로그인이 필요해요.</div></div>';

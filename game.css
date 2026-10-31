@@ -426,3 +426,17 @@ body{font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',s
 .install-card ol{margin:6px 0 8px;padding-left:20px;font-size:14px;line-height:1.7}
 .install-card .row{display:flex;gap:8px;flex-wrap:wrap}
 .install-card .note{font-size:12px;color:#7a6a50;line-height:1.6;margin:6px 0}
+
+/* ---- curated story ---- */
+.t4-logline{font-weight:700;color:#6a5330;font-size:15px;margin:6px 0 4px}
+.t4-act{margin:12px 0;padding:12px 14px;border-radius:12px;background:#f7f2e8;border-left:4px solid #b88d58}
+.t4-act small{color:#8a6a3c;font-weight:700;letter-spacing:.3px}
+.t4-act p{margin:6px 0 0;font-size:14px;line-height:1.65;color:#2f3b4a}
+.t4-shows{font-size:14px;font-weight:600;color:var(--ink);margin:6px 0 2px}
+.t4-story{font-size:13px;line-height:1.6;color:#4b5a6b;background:#f7f8f9;border-radius:8px;padding:8px 10px;margin:6px 0}
+.t4-people{display:grid;gap:8px}
+.t4-person{border:1px solid #ebe6dc;border-radius:12px;padding:10px 12px;background:#fff}
+.t4-person b{font-size:15px;margin-right:6px}
+.t4-person p{margin:6px 0 0;font-size:13px;line-height:1.6;color:#4b5a6b}
+.t4-claims p{font-size:14px;line-height:1.65;margin:8px 0}
+.t4-claims b{display:inline-block;min-width:44px;color:#6a5330}

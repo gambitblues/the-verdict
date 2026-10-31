@@ -57,8 +57,9 @@ function roll(c,seed,history=[]){
  if(!c.truth&&previous&&previous.truth===truth)truth=TRUTHS[(TRUTHS.indexOf(truth)+1)%3];
  const flawOdds=truth==='didnt'?0.75:truth==='reason'?0.6:0.45;
  const evidence=(c.evidence||[]).map((e,i)=>{
-  const s=seed+':ev:'+i,flawed=unit(s+':f')<flawOdds;
+  const s=seed+':ev:'+i,odds=e.hintFlaw==='none'?flawOdds*0.4:flawOdds,flawed=unit(s+':f')<odds;
   let flawType=flawed?pick(['source','timing','illegal'],s+':t'):'none';
+  if(flawed&&e.hintFlaw&&e.hintFlaw!=='none')flawType=e.hintFlaw;
   if(e.hintIllegal&&flawed)flawType='illegal';
   const strength=between(40,82,s+':s'),flaw=flawType==='none'?0:between(25,85,s+':size');
   const surface=flawType==='none'?strength:clamp(strength+between(12,28,s+':shine'),0,96);
