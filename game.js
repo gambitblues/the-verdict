@@ -840,4 +840,5 @@ function init(){
  if(location.protocol==='http:'||location.protocol==='https:')loadPackManifest(false);
  if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+// Deferred patch scripts must finish before the first UI initialization.
+if(document.readyState==='complete')init();else document.addEventListener('DOMContentLoaded',init,{once:true});
