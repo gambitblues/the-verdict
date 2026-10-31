@@ -92,6 +92,13 @@ function assign(c){
  if(pro){c.side[0]=pro;c.story.prosecutor={...c.story.prosecutor,id:pro,years:NPC[pro].legalCareer.years,trialSkill:NPC[pro].legalCareer.trialSkill};c.story.lawyerA={...c.story.lawyerA,id:pro,quality:NPC[pro].legalCareer.trialSkill,years:NPC[pro].legalCareer.years};}
  else if(claimant){c.side[0]=claimant.id;c.story.lawyerA={...c.story.lawyerA,id:claimant.id,quality:defensePerformance(claimant.id,claimant.firmId).quality};}
  c.side[1]=defense.id;
+ // The story engine wrote stage speakers before representation was allocated.
+ // Update those speaker references atomically; otherwise old attorneys appear as witnesses.
+ const replacement=new Map([[originalSide[0],c.side[0]],[originalSide[1],c.side[1]]]);
+ for(const stage of c.stages||[])for(const action of stage.actions||[]){
+  const mapped=replacement.get(action.who);if(mapped&&mapped!==action.who)action.who=mapped;
+ }
+ if(c.story?.witness&&c.side.includes(c.story.witness)){const id=freshNPC('사실관계 참고인',Math.max(1,S.caseSerial),'witness');c.story.witness=id;}
  c.story.lawyerB={...c.story.lawyerB,id:defense.id,years:def.experience,quality:def.quality,funding:defense.arrangement};
  const prosecutor=pro?NPC[pro].legalCareer:null;
  const challengePoints=(c.story?.evidenceDetails||[]).slice(0,def.issues).map((e,i)=>({
@@ -108,6 +115,22 @@ function assign(c){
  remember(defense.id,'변론 수임',c.name+' · '+defense.arrangement+' · '+def.firmName,c.id);
  if(pro)remember(pro,'공소 유지',c.name+' · 공판 검사 배당',c.id);
 }
+
+function repairLegacyCounselRefs(){
+ let changed=0;
+ for(const c of CASES){
+  const r=c.legalRepresentation;if(!r?.originalSide?.length||!c.stages)continue;
+  const replace=new Map([[r.originalSide[0],c.side[0]],[r.originalSide[1],c.side[1]]]);
+  for(const stage of c.stages)for(const a of stage.actions||[]){
+   const mapped=replace.get(a.who);
+   if(mapped&&mapped!==a.who){a.who=mapped;changed++}
+  }
+ }
+ if(changed)save();
+ return changed;
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',repairLegacyCounselRefs);
+else repairLegacyCounselRefs();
 const prevGenerate=createGeneratedCase;
 createGeneratedCase=function(candidate=null){
  if(S.name)ensurePopulation(Math.max(1,openCases().length+1));
