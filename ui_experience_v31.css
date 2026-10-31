@@ -33,3 +33,10 @@
 .tv-law-firms{padding:12px;border:1px solid #d9c29f;border-radius:9px}.tv-law-firms>summary{font-size:12px}
 .quick-top,.time-board,.weekly-banner{display:none!important}
 @media(max-width:600px){.tv-home{padding:7px 9px 26px;gap:10px}.tv-welcome{padding:12px}.tv-judge-photo{width:73px;height:85px;flex-basis:73px}.tv-clock{gap:5px}.tv-clock>div{padding:9px 6px}.tv-clock strong{font-size:14px}.tv-clock span{font-size:9px}.tv-tablet-apps{gap:5px}.tv-tablet-app{min-height:69px}.tv-tablet-app span{font-size:21px}.tv-tablet-app b{font-size:10px}.tv-rank-person{flex-wrap:wrap}}
+
+.tv-court-deliberation{padding:12px;border:1px solid #dcc39f;background:#fffcf5;border-radius:12px}
+.tv-court-deliberation>p{font-size:13px;line-height:1.6}
+.tv-court-deliberation>.notice{margin:11px 0}
+.tv-reason{display:flex;flex-direction:column;align-items:flex-start;gap:7px;width:100%;border:1px solid #d4b995;border-radius:10px;background:#fffaf0;color:#2f3f53;margin:8px 0;padding:13px;text-align:left;cursor:pointer}
+.tv-reason:active{background:#f3e5d0}.tv-reason b{font-size:13px}.tv-reason small{font-size:11px;color:#6d7c88}
+.action-panel [data-action="verdict"][disabled]{opacity:.5;cursor:not-allowed}
