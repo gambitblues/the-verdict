@@ -130,6 +130,26 @@ function yearlyCareer(){
  }
  w.lastCareerYear=thisYear;ensurePopulation(Math.max(1,openCases().length));save();
 }
+const prevCourtStep=courtStep;
+courtStep=function(index){
+ const c=CASES.find(x=>x.id===ui.caseId),st=c&&S.cases[c.id];
+ const previous=st?.actions?.length||0;
+ const out=prevCourtStep(index);
+ if(!c?.legalRepresentation||!st||st.actions.length<=previous)return out;
+ const r=c.legalRepresentation,prosecutor=r.prosecutorSkill||0,defense=r.quality||0;
+ const argument=r.challengePoints[Math.min(st.phase-1,r.challengePoints.length-1)];
+ const criticism=argument?argument.evidence+'에 대해 '+argument.point:'주요 증거에 대한 일반 반박';
+ const dStrength=defense>=75?'기록의 구체적 모순을 제시해 추가 확인을 요청했다':defense>=50?'원본과 작성 경위를 집중 추궁했다':'증거의 신빙성에 이의를 제기했으나 구체적 반증은 제한적이었다';
+ const pStrength=prosecutor>=75?'검사는 원본·제출 경위를 비교하여 반대신문에 대응했다':prosecutor>=50?'검사는 기소 내용과 제출 증거의 연관성을 설명했다':'검사의 반박은 증거 연결 부분에서 추가 보완을 요구받았다';
+ const note='[변론력 반영] '+criticism+'. 변호인: '+dStrength+'. '+(c.kind==='criminal'?pStrength+'. ':'');
+ st.legalDynamics??={};
+ st.legalDynamics.lastArgument=note;
+ st.legalDynamics.defenseQuality=defense;
+ st.legalDynamics.prosecutorQuality=prosecutor;
+ st.actions[st.actions.length-1].says+=' '+note;
+ remember(r.defendant,'법정 변론',note,c.id);
+ save();render();return out;
+};
 const prevAdvance=advanceWeek;
 advanceWeek=function(...args){const out=prevAdvance(...args);if(S.name&&out!==false)yearlyCareer();return out};
 function roster(){
