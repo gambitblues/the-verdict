@@ -1,4 +1,4 @@
-/* THE VERDICT player UI runtime, ordered. */
+/* THE VERDICT — media outlets, one clock home, tablet. */
 
 ;/* media_editor_v31.js */
 /* THE VERDICT media editor v3 — 20 fictional outlets and case-grounded public reactions */
