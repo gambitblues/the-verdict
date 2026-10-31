@@ -148,13 +148,13 @@ const StoryEngine = (()=>{
     action('최종 의견을 듣고 변론 종결 검토',ca,null,'최종 의견',`${legal[2]}에 대해 검토해 주십시오. 법정에서 인정된 사실과 실제 발생한 사실을 혼동하지 않아야 합니다.`,'closing')]}
   ];
   const outcomes=criminal?[
-   {id:'guilty',label:'유죄 인정',note:'제출된 증거로 공소사실이 증명됐다고 판단'},
-   {id:'partial',label:'공소사실 일부만 인정',note:'복수 쟁점 중 증명된 부분만 인정'},
-   {id:'notguilty',label:'무죄 · 범죄의 증명 부족',note:'합리적 의심을 배제할 증명이 부족'}
+   {id:'guilty',label:'유죄',note:'증거로 충분히 보여줬다'},
+   {id:'partial',label:'일부만 유죄',note:'증거로 보여준 부분만 인정한다'},
+   {id:'notguilty',label:'무죄',note:'아직 남은 의문이 커서 책임을 묻기 어렵다'}
   ]:[
-   {id:'full',label:'원고 청구 인용',note:'청구 요건과 범위가 모두 증명됨'},
-   {id:'partial',label:'원고 청구 일부 인용',note:`입증된 청구 범위만 인정 (청구 ${fmt(value)})`},
-   {id:'dismiss',label:'원고 청구 기각',note:'청구 요건이나 금액에 관한 증명이 부족'}
+   {id:'full',label:'원고 승소',note:'원고의 요구를 모두 인정한다'},
+   {id:'partial',label:'원고 일부 승소',note:`증거로 확인된 만큼만 인정한다 (청구 ${fmt(value)})`},
+   {id:'dismiss',label:'원고 패소',note:'요구를 뒷받침할 증거가 모자라다'}
   ];
   const hasMultiple=bp.key==='fraud'||bp.key==='embezzle'||bp.key==='stalking'||bp.key==='bribe';
   if(criminal&&!hasMultiple)outcomes.splice(1,1); // don't invent partial guilt in single-count case

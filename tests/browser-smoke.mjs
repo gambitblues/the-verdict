@@ -43,11 +43,30 @@ try{
  await page.locator('[data-action="courtFocus"][data-focus="arguments"]').click();
  assert.ok(await page.locator('.court-screen-arguments').isVisible());
  await page.locator('[data-action="courtFocus"][data-focus="hearing"]').click();
- await page.locator('[data-action="courtStep"]').first().click();
- await page.locator('[data-action="courtReason"]').first().waitFor();
- await page.locator('[data-action="courtReason"]').first().click();
- const heard=await page.evaluate(()=>S.cases[ui.caseId]?.reasonedChoices?.length||0);
- assert.ok(heard>0,'judicial reasoning was not recorded');
+ // v4 trial loop: legacy hearing panels must be gone.
+ assert.equal(await page.locator('.action-panel, .live-hearing-panel, [data-action="courtStep"]').count(),0,'legacy hearing UI still visible');
+ await page.locator('.t4').first().waitFor();
+ const cid=await page.evaluate(()=>ui.caseId);
+ const min=await page.evaluate(id=>S.cases[id].trial4.minDays,cid);
+ for(let d=0;d<min;d++){
+  const card=page.locator('.t4 [data-kind="card"][data-choice="reject"]');
+  while(await card.count())await card.first().click();
+  const inspect=page.locator('.t4 [data-kind="inspect"]:not([disabled])').first();if(await inspect.count())await inspect.click();
+  const ask=page.locator('.t4 [data-kind="ask"]:not([disabled])').first();if(await ask.count())await ask.click();
+  const use=page.locator('.t4 [data-kind="decide"][data-choice="conditional"]:not([disabled])').first();if(await use.count())await use.click();
+  await page.locator('[data-action="t4end"]').click();
+  await page.locator('#modal-root [data-action="dismiss"]').click();
+  await page.evaluate(id=>{S.cases[id].trial4.nextAt=0;render()},cid);
+ }
+ await page.locator('.t4-verdict [data-action="t4verdict"]').last().click();
+ await page.locator('.t4-reason input').nth(5).check();
+ await page.locator('#modal-root [data-action="t4confirm"]').click();
+ await page.locator('.t4-headline').first().waitFor();
+ const verdict=await page.evaluate(id=>({v:S.cases[id].verdict,final:!!S.cases[id].trial4.final,heads:S.cases[id].trial4.final.headlines.length,dir:S.cases[id].trial4.final.dir}),cid);
+ assert.ok(verdict.v&&verdict.final,'verdict not recorded through the v4 loop');
+ assert.ok(verdict.heads>=1,'no press headlines');
+ assert.ok(['acquit','respondent','partial'].includes(verdict.dir),'last verdict option should be a defence-side outcome: '+verdict.dir);
+ await page.locator('#modal-root [data-action="dismiss"]').click();
  await page.locator('.bottom-nav [data-action="tab"][data-tab="tablet"]').click();
  await page.locator('[data-action="tablet"][data-sub="rank"]').click();
  await page.locator('.tv-ranking').waitFor();
@@ -61,10 +80,10 @@ try{
  await page.reload({waitUntil:'networkidle'});
  await page.locator('#verdict-entry').waitFor();
  await page.locator('#profile-continue').click();
- const persisted=await page.evaluate(()=>({name:S.name,cases:S.generatedCases.length,reasoned:S.generatedCases.some(c=>S.cases[c.id]?.reasonedChoices?.length>0)}));
+ const persisted=await page.evaluate(()=>({name:S.name,cases:S.generatedCases.length,reasoned:S.generatedCases.some(c=>S.cases[c.id]?.trial4?.final)}));
  assert.equal(persisted.name,'QA 판사','judge name lost after reload');
  assert.ok(persisted.cases>=4,'assigned cases lost after reload');
- assert.equal(persisted.reasoned,true,'hearing decisions lost after reload');
+ assert.equal(persisted.reasoned,true,'trial verdict lost after reload');
  assert.equal(errs.length,0,'page errors: '+errs.join('; '));
- console.log('PASS: mobile Chrome, 4 cases, 20 outlets, 4 court tabs, reasoned hearing, ranking, reduced save; '+JSON.stringify(state));
+ console.log('PASS: mobile Chrome, 4 cases, 20 outlets, 4 court tabs, v4 trial loop to verdict, ranking, reduced save; '+JSON.stringify(state));
 }finally{await browser.close();await new Promise(ok=>server.close(ok))}

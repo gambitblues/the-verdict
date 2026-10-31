@@ -14,10 +14,13 @@ jobs:
           node-version: '22'
       - name: Validate bundled Javascript and case packs
         run: |
-          node --check verdict_runtime_v31.js
-          node --check verdict_hearings_v31.js
-          node --check verdict_professions_v31.js
-          node --check verdict_ui_v31.js
+          node --check game_runtime.js
+          node --check game_hearings.js
+          node --check game_professions.js
+          node --check game_ui.js
+          node --check trial_core.js
+          node --check trial_play.js
+          node tests/trial-core.test.cjs
           node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('content-packs/court-editorial-100-v1.json'));if(p.cases.length!==100)process.exit(1)"
       - name: Install browser test tooling
         run: |

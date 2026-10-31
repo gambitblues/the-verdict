@@ -1,4 +1,4 @@
-/* THE VERDICT hearing/identity runtime build, source-ordered. */
+/* THE VERDICT — hearings, real-time docket, other courts, save snapshots, onboarding and case dossiers. */
 
 ;/* source: beta_drama_v16.js */
 /* THE VERDICT Beta 1.6 — NPC witnesses and evolving case drama */
@@ -468,8 +468,8 @@ function dispute(c,ctx){
  const place=f.place||a.location||'사건 현장',time=f.when||'사건 발생일';
  const action=f.method||a.allegation;
  const short=criminal?
-   ('피고인 '+defendant+': '+place+'에서 '+action+'. 피해자·신고인 '+victim+'; 행위와 증거가 쟁점이다.'):
-   (victim+'이(가) '+defendant+'을(를) 상대로 '+a.allegation+'에 관하여 청구했다. 계약·행위와 손해의 입증 범위를 다툰다.');
+   ('피고인 '+defendant+' · 장소: '+place+' · 의혹: '+String(action).replace(/[.。]$/,'')+'. '+(/살인|치사|사망|추락/.test(c.tag+action)?'피해자':'피해자·신고인')+' '+victim+'. 실제로 무슨 일이 있었는지 증거로 가려야 한다.'):
+   (victim+'이(가) '+defendant+'을(를) 상대로 '+a.allegation+'에 관하여 청구했다. 약속이나 행동, 손해가 증거로 얼마나 확인되는지가 쟁점이다.');
  return short;
 }
 function witnesses(c,ctx){
@@ -485,7 +485,7 @@ function sides(c,ctx){
  const {a,f,criminal}=ctx,defendant=name(criminal?c.who?.[0]:c.who?.[1]),claimant=name(criminal?c.who?.[1]:c.who?.[0]);
  const evidence=(c.evidence||[]).slice(0,2).join(' · '),weak=f.defense||a.defenseTheory||a.whyDefense;
  const claim=criminal?
-  ('피고인 '+defendant+'이(가) '+(f.when||'사건 당일')+' '+(f.place||a.location||'사건 장소')+'에서 '+(f.method||a.allegation)+' 혐의. '+(f.motive?'범행 동기는 '+f.motive+'. ':'')+'입증 자료: '+evidence+'.'):
+  ('피고인 '+defendant+'이(가) '+(f.when||'사건 당일')+' '+(f.place||a.location||'사건 장소')+'에서 '+String(f.method||a.allegation).replace(/\s*(혐의|의혹)\.?$/,'')+'는 혐의. '+(f.motive?'범행 동기는 '+f.motive+'. ':'')+'입증 자료: '+evidence+'.'):
   ('원고 '+claimant+'은 '+a.allegation+'. 관련 증거: '+evidence+'.');
  const response=criminal?
   ('피고인 측은 '+weak+' 검찰의 주장만으로 고의·행위자 특정·인과관계가 모두 입증되지는 않았다고 반박한다.'):

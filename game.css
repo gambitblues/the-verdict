@@ -1,0 +1,367 @@
+/* THE VERDICT — game stylesheet. Merged in the original cascade order. */
+
+/* ---- from style.css ---- */
+:root{--ink:#18283e;--ink2:#29405a;--cream:#f6f5f1;--paper:#fffefa;--muted:#728092;--line:#e5e7e7;--gold:#d5a95a;--mint:#59afa4;--pink:#e99d9c;--red:#c55f58;--blue:#537ca9;--shadow:0 16px 42px rgba(26,44,62,.09)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#eeefe9;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;font-size:14px;line-height:1.52;-webkit-font-smoothing:antialiased}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.48}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #82c2cd;outline-offset:3px}a{color:inherit}.hidden{display:none!important}
+.shell{min-height:100dvh;display:grid;grid-template-columns:242px minmax(0,1fr);max-width:1500px;margin:auto;background:var(--cream)}.sidebar{background:var(--ink);color:#fff;padding:28px 18px;position:sticky;top:0;height:100dvh;display:flex;flex-direction:column;gap:20px}.logo{display:flex;align-items:center;gap:11px;font-weight:900;letter-spacing:.14em;font-size:15px}.logo-mark{display:grid;place-items:center;width:37px;height:37px;background:#354d68;border-radius:12px;color:#e9c885;font-size:23px}.tagline{font-size:10px;letter-spacing:.04em;color:#aebdd0;font-weight:600;margin-top:4px}.sidebar-user{display:flex;gap:10px;align-items:center;padding:14px 12px;border-radius:14px;background:#263b56}.sidebar-user .avatar{width:50px;height:50px}.side-profile{min-width:0}.side-profile strong{display:block;font-size:14px}.side-profile small{font-size:11px;color:#b0bdd1}.side-label{font-size:10px;color:#91a2b6;text-transform:uppercase;letter-spacing:.14em;font-weight:800;padding:0 10px}.nav-stack{display:flex;flex-direction:column;gap:6px}.nav-btn{width:100%;border:0;background:none;color:#c2cfdf;text-align:left;padding:12px;border-radius:11px;font-weight:750;display:flex;align-items:center;gap:12px}.nav-btn i{font-style:normal;font-size:20px}.nav-btn.active{color:#fff;background:#3c5777}.side-bottom{margin-top:auto;font-size:12px;color:#adbad0;padding:12px;border-top:1px solid #344860}.side-bottom strong{color:#f7e6bc}.main{min-width:0;padding:30px clamp(17px,3.5vw,54px) 100px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:24px}.eyebrow{font-weight:800;letter-spacing:.12em;font-size:10px;color:#7f90a3}.top-right{display:flex;align-items:center;gap:10px}.date-pill,.pill{display:inline-flex;gap:6px;align-items:center;border-radius:999px;padding:7px 11px;background:#e7eced;font-size:11px;font-weight:800;color:#547087}.date-pill{white-space:nowrap}.page-title{font-size:27px;margin:4px 0 5px;letter-spacing:-.045em;line-height:1.25}.muted{color:var(--muted)}.small{font-size:12px}.xs{font-size:10px}.big-number{font-size:29px;font-weight:900;letter-spacing:-.04em;line-height:1.2}.grid{display:grid;gap:15px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}.panel{background:var(--paper);border:1px solid #e7e8e5;border-radius:19px;padding:20px;box-shadow:0 5px 21px rgba(18,38,53,.03);min-width:0}.panel.no-pad{padding:0;overflow:hidden}.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:30px 0 13px}.section-title h2{font-size:18px;margin:0;letter-spacing:-.03em}.section-title span{color:#85919f;font-size:12px}.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:850;background:#e8edef;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:8px;line-height:1.3;transition:transform .12s,background .12s;min-height:43px}.btn:active{transform:scale(.98)}.btn.primary{background:var(--ink);color:white}.btn.gold{background:#dbb970;color:#203347}.btn.outline{background:#fff;border:1px solid #dce1e4;color:#37516c}.btn.full{width:100%}.btn.mini{min-height:33px;padding:8px 12px;font-size:11px;border-radius:10px}.btn.ghost{background:transparent;color:#50677a}.row{display:flex;align-items:center;gap:12px}.between{justify-content:space-between}.align-start{align-items:flex-start}.stack{display:flex;flex-direction:column;gap:12px}.gap6{gap:6px}.no-margin{margin:0}.mt{margin-top:14px}.mt2{margin-top:24px}.mb{margin-bottom:12px}.chip{border-radius:8px;background:#edf1f2;padding:5px 8px;font-size:11px;color:#627489;font-weight:800}.chip.gold{color:#83601f;background:#fbf0d8}.chip.red{color:#b65e57;background:#fae9e4}.chip.green{color:#2b9185;background:#e1f3ee}.chapter-hero{background:linear-gradient(135deg,#192e49 5%,#2b4e69 75%,#396b79);border-radius:23px;color:#fff;padding:25px 26px 20px;position:relative;overflow:hidden;min-height:195px;display:grid;grid-template-columns:1fr 180px;align-items:center;gap:5px}.chapter-hero:after{content:'';position:absolute;right:-90px;top:-110px;width:290px;height:290px;border:1px solid rgba(252,242,213,.24);border-radius:50%;box-shadow:0 0 0 47px rgba(255,255,255,.03),0 0 0 95px rgba(255,255,255,.018)}.hero-copy{position:relative;z-index:1}.chapter-hero h2{font-size:25px;line-height:1.3;margin:8px 0;letter-spacing:-.045em}.hero-fig{height:170px;display:flex;align-items:end;justify-content:center;position:relative;z-index:2;filter:drop-shadow(0 10px 15px rgba(0,0,0,.15))}.hero-fig .avatar{width:148px;height:162px}.gold-text{color:#f0d398}.stat-card{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:17px}.stat-card label{font-size:11px;color:#79899a;font-weight:650}.stat-card strong{display:block;font-size:21px;line-height:1.25;margin-top:8px;letter-spacing:-.045em}.stat-card small{display:block;margin-top:4px;font-size:11px;color:#8997a5}.case-list{display:grid;gap:11px}.case-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:17px;display:grid;grid-template-columns:47px minmax(0,1fr) auto;gap:12px;align-items:center;transition:border .15s}.case-card:hover{border-color:#b5c5d0}.case-icon{height:47px;width:47px;border-radius:14px;display:grid;place-items:center;background:#e7eef0;font-size:23px}.case-info{min-width:0}.case-info h3{font-size:14px;margin:2px 0 3px;letter-spacing:-.02em}.case-info p{font-size:11px;color:#7c8d9a;margin:0}.case-meta{display:flex;align-items:center;gap:5px;margin-top:7px;flex-wrap:wrap}.case-side{text-align:right}.case-side small{display:block;font-size:10px;color:#82909b;margin-top:5px}.case-side .btn{white-space:nowrap}.news-card{display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--line)}.news-card:last-child{border-bottom:0}.news-icon{height:38px;width:38px;background:#eaf0ed;border-radius:10px;display:grid;place-items:center;font-size:18px;flex-shrink:0}.news-card b{display:block;font-size:12px;line-height:1.5}.news-card p{margin:2px 0 0;font-size:11px;color:#83919e}.weekly-banner{display:flex;gap:15px;align-items:center;justify-content:space-between;background:#e8eee9;border:1px solid #dce6df;border-radius:16px;padding:16px 18px}.weekly-banner strong{display:block;font-size:14px}.weekly-banner p{margin:2px 0 0;font-size:12px;color:#657e7a}.mini-track{display:flex;gap:5px;margin-top:9px}.mini-track span{width:21px;height:7px;border-radius:8px;background:#d0d8d7}.mini-track span.on{background:#52ada1}.avatar{width:56px;height:64px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;overflow:visible}.avatar svg{display:block;width:100%;height:100%;overflow:visible}.npc-card{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:13px;display:flex;gap:10px;align-items:center}.npc-card .avatar{width:60px;height:68px}.npc-card b{display:block;font-size:13px}.npc-card small{font-size:11px;color:#8292a0}.bar{height:7px;border-radius:99px;background:#e8eded;overflow:hidden}.bar>span{display:block;height:100%;border-radius:99px;background:#6ba9a3;transition:width .3s}.npc-card .bar{margin-top:8px;width:100%}.court-backdrop{position:relative;height:215px;border-radius:17px;background:linear-gradient(#e7dfcd 0 55%,#b8916d 55% 100%);overflow:hidden}.court-backdrop:before{content:'';position:absolute;left:0;right:0;top:22px;height:76px;background:repeating-linear-gradient(90deg,#e4d8c2 0,#e4d8c2 36px,#dac8a9 37px,#dac8a9 40px);opacity:.8}.court-backdrop:after{content:'';position:absolute;left:0;right:0;bottom:0;height:42px;background:linear-gradient(90deg,#ac7855,#d0a47e,#ac7855)}.judge-stand{position:absolute;left:50%;top:16px;transform:translateX(-50%);z-index:1;display:flex;flex-direction:column;align-items:center}.judge-stand .avatar{width:68px;height:76px}.judge-bench{margin-top:-14px;background:#805840;border:5px solid #987354;border-radius:7px 7px 0 0;width:130px;height:52px;text-align:center;color:#eac889;font-size:20px;font-weight:900;padding-top:8px;position:relative}.side-stand{position:absolute;bottom:30px;z-index:2;display:flex;flex-direction:column;align-items:center}.side-stand.left{left:12%}.side-stand.right{right:12%}.side-stand .avatar{width:72px;height:81px}.side-stand label{background:#fff8e8;padding:4px 10px;border-radius:99px;font-size:10px;font-weight:800;border:1px solid #ddc8a7;position:relative;z-index:2;margin-top:-5px}.court-top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}.court-top h2{font-size:20px;margin:6px 0}.court-brief{border-radius:15px;background:#eef3f2;padding:16px;margin:14px 0;font-size:13px}.dialog{display:flex;gap:10px;margin:14px 0}.dialog .avatar{width:51px;height:57px}.speech{background:#f4f6f5;border-radius:3px 15px 15px 15px;padding:13px 15px;flex:1;min-width:0}.speech strong{font-size:12px}.speech p{font-size:13px;margin:4px 0 0;line-height:1.65}.choice{display:flex;align-items:center;gap:13px;width:100%;text-align:left;background:#fff;border:1px solid #dce4e5;border-radius:13px;padding:14px;margin-bottom:9px;color:var(--ink)}.choice:hover{border-color:#9cbab9;background:#f7fbfa}.choice:disabled{opacity:.5}.choice-index{width:26px;height:26px;display:grid;place-items:center;background:#e8f2ee;border-radius:8px;color:#438c83;font-weight:900;font-size:12px;flex-shrink:0}.choice strong{font-size:13px}.choice small{display:block;color:#8a95a0;margin-top:3px;font-size:11px}.evidence-list{display:grid;gap:8px}.evidence{padding:11px;border:1px solid #e1e6e7;border-radius:11px;background:#fff}.evidence b{font-size:12px}.evidence small{display:block;color:#788b95;font-size:11px;margin-top:3px}.progress-rail{display:flex;align-items:center;gap:4px;margin:16px 0}.progress-rail span{flex:1;height:6px;background:#e3e8e9;border-radius:6px}.progress-rail span.done{background:#69aea4}.prompt-label{font-size:11px;letter-spacing:.08em;color:#6d8b88;font-weight:900;margin-bottom:8px}.result-head{background:linear-gradient(130deg,#213953,#35676e);border-radius:17px;padding:22px;color:#fff}.result-head h2{font-size:23px;margin:8px 0}.result-note{padding:13px 15px;background:#f4f6f2;border-radius:12px;margin-top:12px;font-size:12px;line-height:1.8}.reaction{background:#fff9eb;border:1px solid #ede4cc;border-radius:14px;padding:15px}.reaction strong{font-size:12px}.reaction p{font-size:13px;margin:5px 0 0}.app-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}.app-tile{background:transparent;border:0;display:flex;align-items:center;flex-direction:column;gap:7px;font-size:11px;color:#405366;font-weight:750;padding:5px}.app-icon{height:56px;width:56px;display:grid;place-items:center;font-size:24px;color:#fff;border-radius:17px;box-shadow:0 5px 12px rgba(37,57,68,.1)}.feed-list{display:grid;gap:11px}.feed{background:#fff;padding:15px;border:1px solid #e8ebea;border-radius:14px}.feed .feed-label{color:#6b8591;font-size:10px;font-weight:850}.feed b{display:block;font-size:13px;margin:3px 0 4px}.feed p{font-size:12px;color:#677785;margin:0;line-height:1.7}.timeline{border-left:2px solid #c7d5d5;margin-left:9px;padding-left:20px;display:grid;gap:18px}.timeline-item{position:relative}.timeline-item:before{content:'';position:absolute;left:-27px;top:4px;width:11px;height:11px;background:#6faba3;border:3px solid #fff;border-radius:100%;box-shadow:0 0 0 1px #d1dfdc}.timeline-item small{font-size:10px;color:#8997a2}.timeline-item b{display:block;font-size:12px;margin-top:4px}.timeline-item p{margin:2px 0 0;font-size:11px;color:#7b8895}.shop-tabs{display:flex;gap:7px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}.shop-tab{border:1px solid #dfe6e7;background:#fff;color:#758596;border-radius:11px;padding:9px 13px;white-space:nowrap;font-size:12px;font-weight:800}.shop-tab.active{background:#283f59;color:#fff;border-color:#283f59}.goods-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.good-card{background:var(--paper);border-radius:16px;border:1px solid var(--line);padding:14px;min-width:0}.item-visual{height:113px;border-radius:11px;background:radial-gradient(circle at 26% 25%,#fff 0,#f0e8d9 45%,#e3e9e9 100%);display:grid;place-items:center;font-size:59px;margin-bottom:10px;overflow:hidden;position:relative}.item-visual:after{content:'';height:24px;width:85px;position:absolute;bottom:9px;left:50%;transform:translateX(-50%);border-radius:50%;background:rgba(71,93,99,.10);filter:blur(7px)}.item-visual span{position:relative;z-index:1;filter:drop-shadow(0 5px 3px rgba(0,0,0,.10))}.good-card b{font-size:13px;display:block}.good-card .price{font-size:15px;font-weight:900;margin:8px 0}.good-card small{color:#8495a0;font-size:10px;display:block;min-height:30px}.good-card .btn{font-size:12px}.sector-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #eceded}.sector-row:last-child{border:0}.sector-icon{background:#eef2f3;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:18px}.sector-row b{font-size:12px}.sector-row small{font-size:11px;color:#8a96a0;display:block}.up{color:#cc6158!important}.down{color:#477bad!important}.control{border:1px solid #dce3e4;background:#fff;border-radius:11px;padding:11px 12px;width:100%;color:#253b52;min-height:43px}.control-wrap{display:grid;gap:7px}.control-wrap label{font-size:11px;color:#738393;font-weight:800}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.empty{text-align:center;padding:40px 15px;color:#8795a1}.empty i{display:block;font-size:40px;font-style:normal}.empty strong{display:block;color:#2c465b;margin-top:9px}.friend-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;word-break:break-all;background:#f1f5f4;border-radius:10px;padding:12px;color:#5b6872}.modal-veil{position:fixed;inset:0;background:rgba(9,24,37,.68);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}.modal{background:#fffefa;width:min(460px,100%);max-height:88dvh;overflow:auto;border-radius:22px;padding:25px;box-shadow:0 25px 100px rgba(0,0,0,.25)}.modal h2{margin:5px 0 10px}.modal p{color:#6d7b89;font-size:13px}.modal .avatar{height:130px;width:110px}.modal-actions{display:flex;gap:8px;margin-top:18px}.modal-actions>*{flex:1}.notice{padding:12px 15px;background:#fff7e6;border:1px solid #f0e2ba;border-radius:11px;font-size:12px;color:#866f45}.detail{background:#f4f7f7;border-radius:12px;padding:13px;font-size:12px;color:#586d7d;line-height:1.8}.muted-line{border:0;border-top:1px solid var(--line);margin:15px 0}#toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(14px);background:#263e53;color:#fff;border-radius:12px;padding:10px 15px;font-weight:750;font-size:12px;z-index:200;opacity:0;pointer-events:none;transition:.2s;max-width:min(92vw,450px);text-align:center}#toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}.bottom-nav{display:none}.pc-only{display:block}.mobile-only{display:none}
+@media(max-width:950px){.shell{grid-template-columns:205px 1fr}.sidebar{padding:22px 12px}.main{padding:25px 20px 90px}.grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){body{background:var(--cream)}.shell{display:block}.sidebar{display:none}.main{padding:22px 15px calc(105px + env(safe-area-inset-bottom));min-height:100dvh}.topbar{margin-bottom:17px}.page-title{font-size:24px}.panel{padding:16px;border-radius:16px}.grid{gap:10px}.grid.two,.grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.four{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-card{padding:14px}.stat-card strong{font-size:20px}.chapter-hero{grid-template-columns:1fr 112px;padding:20px 16px;min-height:170px}.chapter-hero h2{font-size:21px}.hero-fig{height:140px}.hero-fig .avatar{width:105px;height:128px}.section-title{margin:24px 0 12px}.case-card{grid-template-columns:43px minmax(0,1fr);gap:10px;padding:12px}.case-icon{width:43px;height:43px}.case-side{grid-column:2;display:flex;justify-content:space-between;align-items:center;flex-direction:row-reverse;text-align:left;margin-top:0}.case-info h3{font-size:13px}.weekly-banner{flex-wrap:wrap}.weekly-banner .btn{width:100%}.bottom-nav{z-index:80;position:fixed;bottom:0;left:0;right:0;display:flex;align-items:stretch;justify-content:space-around;background:rgba(254,254,250,.97);border-top:1px solid #dfe4e5;padding:8px 5px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -6px 22px rgba(27,52,75,.07)}.bottom-nav button{flex:1;background:transparent;border:0;color:#8b9aaa;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:800;min-width:0}.bottom-nav button span{font-size:21px}.bottom-nav button.active{color:#2d5e73}.pc-only{display:none}.mobile-only{display:block}.court-backdrop{height:184px}.court-backdrop .judge-stand{top:5px}.side-stand{bottom:24px}.side-stand.left{left:6%}.side-stand.right{right:6%}.form-grid{grid-template-columns:1fr 1fr}}
+@media(min-width:701px) and (max-width:1150px){.grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:701px) and (max-width:900px){.case-card{grid-template-columns:47px 1fr}.case-side{grid-column:2;display:flex;align-items:center;justify-content:space-between}}
+@media(max-width:360px){.main{padding-left:11px;padding-right:11px}.case-card{padding:10px}.app-icon{width:49px;height:49px}.app-grid{gap:5px}.chapter-hero h2{font-size:19px}}
+
+/* Fold-unfolded and tablet layout: use full canvas and app navigation instead of wasting 205px on a sidebar. */
+@media(min-width:701px) and (max-width:1100px){
+ .shell{display:block;max-width:none}.sidebar{display:none}.main{padding:24px 25px calc(105px + env(safe-area-inset-bottom));min-height:100dvh}
+ .bottom-nav{z-index:80;position:fixed;bottom:0;left:0;right:0;display:flex;align-items:stretch;justify-content:space-around;background:rgba(254,254,250,.97);border-top:1px solid #dfe4e5;padding:8px 5px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -6px 22px rgba(27,52,75,.07)}
+ .bottom-nav button{flex:1;background:transparent;border:0;color:#8b9aaa;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:800;min-width:0}.bottom-nav button span{font-size:21px}.bottom-nav button.active{color:#2d5e73}
+}
+@media(max-width:700px){.app-icon{width:min(13vw,56px);height:min(13vw,56px)}.app-grid{gap:5px}.grid.two .good-card{padding:10px}.result-head{padding:17px}.court-brief{padding:13px}}
+
+/* v0.2: phone hearings are one column; unfolded Fold keeps split evidence view. */
+.time-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:stretch}
+.time-controls .btn{width:auto!important;flex:1 1 auto;white-space:nowrap;padding:10px 12px;min-height:40px;font-size:12px}
+.case-card,.case-info,.speech,.evidence,.npc-card{overflow-wrap:anywhere}
+@media(max-width:700px){
+ .grid.two.court-columns{grid-template-columns:minmax(0,1fr)}
+ .court-columns>.stack{margin-top:0}
+ .weekly-banner{display:block}
+ .time-controls{margin-top:13px}
+ .time-controls .btn{flex:1 1 28%}
+ .case-meta{gap:4px}
+}
+/* v0.3 — personal office / SD character showcase */
+.office-scene{position:relative;height:295px;overflow:hidden;background:linear-gradient(180deg,#d8e9ec 0%,#e3e4dc 65%,#b7a78e 66%,#b7a78e 100%);border:1px solid #b7c7c7;border-radius:19px;box-shadow:0 12px 28px rgba(45,65,74,.1);isolation:isolate}
+.office-wall{position:absolute;inset:0 0 34% 0;background:repeating-linear-gradient(90deg,transparent,transparent 99px,rgba(94,113,112,.055) 100px)}
+.scene-window{position:absolute;top:16px;left:4%;width:32%;height:114px;border:7px solid #f6f7ef;border-radius:11px;background:linear-gradient(#a9d0e0,#d8ecde);box-shadow:0 4px 10px #7893a444;display:flex;justify-content:space-around;color:#fff;padding:12px;font-size:25px}
+.scene-nameplate{position:absolute;right:4%;top:16px;border:4px solid #8b6b50;border-radius:5px;color:#64503e;background:#f6ead5;padding:7px 10px;max-width:55%;text-align:center;font-size:11px;font-weight:850;box-shadow:0 5px 11px #91887944}
+.office-floor{position:absolute;inset:65% 0 0;background:repeating-linear-gradient(90deg,#bca889 0,#bca889 49px,#c7b393 50px,#c7b393 100px);z-index:0}
+.office-shelf{position:absolute;top:120px;right:4%;width:42%;height:65px;display:flex;align-items:end;justify-content:space-evenly;gap:3px;border-bottom:13px solid #8e6a4d;background:linear-gradient(90deg,#c0a48577,#b4a18322);border-radius:6px;z-index:1}
+.office-shelf span{font-size:25px;filter:drop-shadow(2px 2px 1px #7d6558)}
+.office-plant{position:absolute;bottom:70px;left:5%;z-index:2;font-size:44px;filter:drop-shadow(3px 3px 1px #726759)}
+.office-chair{position:absolute;bottom:44px;left:42%;height:89px;width:91px;background:#687b7d;border:8px solid #4b5e65;color:transparent;border-radius:28px 28px 9px 9px;z-index:1;transform:translateX(-40%)}
+.office-person{position:absolute;bottom:38px;left:38%;transform:translateX(-50%);z-index:3;width:105px;height:169px;display:flex;align-items:center;justify-content:center}
+.office-person .avatar{width:112px!important;height:174px!important;display:block;flex-shrink:0;filter:drop-shadow(2px 6px 2px #4f5c6133)}
+.office-person .avatar svg{width:100%;height:100%}
+.office-desk{position:absolute;bottom:55px;left:49%;width:43%;height:65px;border-radius:9px 9px 3px 3px;border-top:11px solid #6f533f;background:linear-gradient(90deg,#997457,#c19d7b);box-shadow:0 10px 13px #73564066;display:flex;justify-content:space-around;padding:0 8px;align-items:start;z-index:4;font-size:24px}
+.office-desk span{margin-top:-37px}
+.office-desk:after{content:'';position:absolute;inset:20px 12px 12px;border:1px solid #765b47aa;border-radius:3px}
+.office-overlay{position:absolute;left:0;right:0;bottom:0;min-height:40px;padding:7px 12px;background:#253c50ec;color:#f8f1db;font-size:10px;font-weight:700;display:flex;align-items:center;gap:12px;flex-wrap:wrap;z-index:8}
+.office-overlay span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:49%}
+.good-card .chip{display:inline-block;margin:6px 0 0;font-size:10px}
+.good-card .price{margin:7px 0}
+.good-card .btn{min-height:39px}
+@media(max-width:700px){.office-scene{height:245px}.office-person{bottom:34px;left:39%;width:91px;height:150px}.office-person .avatar{width:95px!important;height:153px!important}.office-desk{left:53%;bottom:50px;height:54px}.office-plant{bottom:57px}.office-shelf{top:106px;height:54px}.office-shelf span{font-size:21px}.scene-window{height:94px}.office-overlay{font-size:9px;gap:6px}.office-overlay span{max-width:50%}}
+
+/* v0.4 story/evidence disclosure, kept optional to protect the mobile reading flow */
+.case-dossier{border:1px solid #d2dee2;background:#f4f8f8;border-radius:12px;padding:10px 12px;margin:12px 0;color:#314d58}
+.case-dossier summary,.evidence-detail summary{font-weight:700;font-size:12px;cursor:pointer;line-height:1.6}
+.case-dossier .dossier-content{padding:7px 1px 0;font-size:12px;line-height:1.65}
+.case-dossier .dossier-content p{margin:6px 0}
+.evidence-detail{margin-top:5px;border-top:1px solid #e2e8eb;padding-top:4px}
+.evidence-detail[open]{padding-bottom:4px}
+
+/* ---- from beta_patch_v11.css ---- */
+/* THE VERDICT 1.1: serious courtroom, paper records, editorial community design */
+:root{--ink:#101d2b;--ink2:#1c2e43;--cream:#f2efe9;--paper:#fffdf9;--muted:#6e7780;--line:#ddd8ce;--gold:#bf995b;--mint:#578a83;--blue:#436d97;--shadow:0 9px 30px rgba(13,24,34,.07)}
+body{background:#e9e6df;color:#172739}
+.shell{max-width:1650px;background:var(--cream)}
+.sidebar{background:linear-gradient(180deg,#101d2c,#152435);border-right:1px solid #283e4f}
+.logo-mark{background:#28394b;color:#e6c284}.sidebar-user{background:#1d3246}.nav-btn.active{background:linear-gradient(90deg,#36475a,#2a384a);color:#f5d69b;border-left:3px solid #c69f61}
+.main{background:var(--cream)}.topbar{margin-bottom:22px;border-bottom:1px solid #e4ded4;padding-bottom:16px}.topbar .eyebrow{color:#987d55}.date-pill{background:#e1e1db;color:#435361}
+.panel,.case-card,.stat-card,.metric{border-color:#e4dfd5;box-shadow:0 3px 14px rgba(29,32,39,.035);border-radius:14px}.section-title{margin:23px 0 10px}.section-title h2{font-size:18px}.btn.primary{background:#17283c}.btn.gold{background:#bba075;color:#1b2933}
+.quick-top{display:flex;gap:6px;align-items:center;order:2;margin-left:auto}.quick-top .btn{background:#f8f6f1;white-space:nowrap;border-color:#ddd8ce}.topbar>.top-right{order:3}.topbar>.quick-top + div{order:1}
+.beta-title{display:flex;align-items:end;justify-content:space-between;gap:10px}.beta-title .page-title{font-size:28px}
+.dashboard-hero{min-height:180px;border-radius:17px;display:flex;justify-content:space-between;gap:12px;padding:28px;color:#fff;position:relative;overflow:hidden;background:linear-gradient(94deg,rgba(12,26,39,.95),rgba(23,39,51,.86)),radial-gradient(circle at 75% 35%,#986c43,#182b3c 65%)}
+.dashboard-hero:before,.court-hero:before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent,transparent 35px,rgba(205,157,90,.045) 36px,rgba(205,157,90,.045) 41px);pointer-events:none}
+.dashboard-hero>div{position:relative;z-index:1}.dashboard-hero h2{font-size:24px;line-height:1.3;max-width:590px;margin:12px 0 8px;letter-spacing:-.04em}.dashboard-hero p{font-size:13px;color:#d2d6d6;margin:0 0 17px}.dashboard-hero .eyebrow{color:#cdb27f}.dashboard-actions{display:flex;flex-wrap:wrap;gap:8px}.dashboard-actions .btn.outline{background:#172c3d;color:#f5f3ed;border-color:#667078}
+.dashboard-hero-badge{width:115px;align-self:center;display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0}.dashboard-hero-badge .id-portrait{width:91px;height:110px;border:3px solid #d2b47e}.dashboard-hero-badge small{color:#e7dcc4;font-weight:700}
+.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.metric{background:#fcfaf6;padding:16px;display:flex;flex-direction:column;gap:4px;border:1px solid #e5dfd6}.metric small{color:#727b86}.metric strong{font-size:22px;white-space:nowrap;letter-spacing:-.035em}.metric span{font-size:11px;color:#8b918d}.time-board{background:#f8f5ee}.time-board h3{font-size:16px}.timeline-dates{margin:18px 0 7px;display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;font-size:12px;color:#8e8c83}.timeline-dates strong{font-size:16px;color:#1f435c}.week-ruler{display:grid;grid-template-columns:1fr 1fr 1fr;height:7px;gap:6px}.week-ruler span{border-radius:4px;background:#d8d4ca}.week-ruler .selected{background:#bd9d68}.advance-note{margin:12px 0 3px;color:#4b776f;font-size:12px;font-weight:750}
+.beta-case .case-card{border-radius:12px}.date-alert{display:block;padding:5px 14px;background:#f5ebd7;border:1px solid #ead9b6;border-top:0;color:#805b2a;font-weight:700;border-radius:0 0 10px 10px}
+.beta-court .page-title{font-size:25px}.beta-court h3{font-size:15px}.court-hero{margin:12px 0;position:relative;background:linear-gradient(90deg,#111f2f,#364333);border:1px solid #364555;border-radius:16px;overflow:hidden;min-height:205px;display:flex;align-items:end;padding:24px;color:#f7f4eb}
+.court-hero .hero-judge{position:absolute;right:7%;top:-20px;color:#c4a678;font-size:137px;opacity:.14}.court-hero .hero-main{max-width:810px;position:relative;z-index:1}.court-hero h2{font-size:25px;letter-spacing:-.04em;line-height:1.32;margin:8px 0}.court-hero p{color:#d5d4cb;font-size:13px;margin:7px 0}.court-hero .eyebrow{color:#d0ad77}.court-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}.court-meta span{border:1px solid #8a806b;padding:5px 8px;border-radius:50px;background:#1d2f39;color:#e6e2d7;font-size:11px}
+.case-narrative{border-left:4px solid #b89969}.case-narrative>p{line-height:1.9;margin:12px 0;color:#354253}.legal-issue{background:#f5efe2;border-radius:8px;padding:10px 14px}.legal-issue strong{color:#8b6739;margin-right:10px}
+.case-advocates{margin:20px 0}.case-advocates>div:first-child{margin-bottom:9px}.adversarial{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.adv-card{border-radius:13px;padding:15px;background:#fffdf9;border:1px solid #ddd7ca;border-top:4px solid #b65453;min-width:0}.adv-card.defense{border-top-color:#487ba9}.adv-label{font-size:11px;font-weight:850;color:#a74443;display:block;margin-bottom:7px}.adv-card.defense .adv-label{color:#36658c}.adv-card p{margin:10px 0 0;font-size:13px;line-height:1.75;color:#374556;overflow-wrap:anywhere}
+.court-new-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:14px}.court-main-col,.court-side-col{min-width:0;display:flex;flex-direction:column;gap:14px}
+.calendar-panel{background:#fcf9f2}.hearing-status{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:14px 0}.hearing-status>div{background:#f0ebe0;padding:9px;border-radius:9px;display:flex;flex-direction:column;gap:3px}.hearing-status small{font-size:10px;color:#7c7b76}.hearing-status strong{font-size:13px}.hearing-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}.hearing-actions .btn{flex:1}.hearing-history{font-size:12px;margin-top:12px}
+.action-panel{border-top:3px solid #c49c65}.action-panel .choice{background:#f8f6f1}.chevron{margin-left:auto;font-size:16px;color:#aab0b2}
+.people-photo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:15px}.verdict-person{border:1px solid #e6e3dd;border-radius:9px;padding:8px;background:#fff;text-align:left;display:flex;align-items:center;gap:9px;min-width:0;width:100%;color:#1e3448;transition:border-color .15s}.verdict-person:hover{border-color:#c3a573}.verdict-person .person-copy{min-width:0;display:flex;flex-direction:column;flex:1}.verdict-person .person-copy strong{font-size:12px}.verdict-person .person-copy span{font-size:11px;color:#5a6874}.verdict-person .person-copy small{font-size:10px;color:#90989b}.profile-link{font-size:9px;color:#aa936f;white-space:nowrap;align-self:flex-end}.id-portrait{display:inline-block;flex-shrink:0;width:61px;height:76px;border-radius:7px;overflow:hidden;border:2px solid #e9e8e3;background:#d5e1e4;box-shadow:0 3px 7px rgba(20,34,44,.12)}.id-portrait svg{width:100%;height:100%;display:block}.adv-card .id-portrait{width:56px;height:69px}.adv-card .profile-link{display:none}.adv-card .verdict-person{border:0;padding:4px;background:#f4f2ee}
+.evidence-panel{border-top:3px solid #b89966}.evidence-compact{display:flex;flex-direction:column;gap:8px;margin-top:13px}.evidence-row{background:#f9f8f5;border:1px solid #e9e4da;border-radius:8px;padding:9px;display:flex;justify-content:space-between;gap:9px;align-items:flex-start}.evidence-row b{font-size:12px}.evidence-row small{display:block;font-size:10px;color:#8d969e}.evidence-row details{font-size:11px;color:#596774;margin-top:4px}.evidence-status{white-space:nowrap;font-size:10px;color:#995d48;background:#f7e9de;padding:3px 6px;border-radius:5px}.evidence-status.complete{background:#e4eee9;color:#39765e}.evidence-row.clue{background:#edf5f0;justify-content:start}
+.sns-feed{display:grid;gap:11px}.sns-post{background:#fffdfa;border:1px solid #e5ded3;border-radius:12px;padding:15px}.sns-post-top{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#889095;gap:10px}.forum-label{font-weight:800;color:#4b6988}.sns-post h3{font-size:15px;margin:10px 0 5px}.sns-post p{font-size:12px;color:#455360;margin:5px 0;line-height:1.65}.sns-stats{font-size:11px;color:#72879a;border-bottom:1px solid #e6e6e1;padding:8px 0}.sns-comments{display:grid;gap:0}.sns-comment{padding:9px 0;border-bottom:1px solid #f0efea;display:flex;align-items:start;gap:8px}.sns-comment:last-child{border:0}.sns-comment b{font-size:11px;color:#536372}.sns-comment p{margin:2px 0;font-size:11px}.sns-vote{font-size:10px;color:#ac7460;white-space:nowrap;border:1px solid #ecdcd2;border-radius:5px;padding:2px 4px}
+.beta-person-modal .person-top{display:flex;gap:16px;align-items:center;margin:14px 0}.beta-person-modal .person-top .id-portrait{width:104px;height:130px}.beta-person-modal .person-top p{margin:8px 0}.profile-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}.profile-data>div{padding:11px;background:#f5f3ee;border-radius:8px}.profile-data small{font-weight:800;color:#866a48}.profile-data p{margin:6px 0 0!important;font-size:12px;color:#344453}.family-links{display:flex;flex-wrap:wrap;gap:6px}.save-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}.save-buttons .btn:last-child{grid-column:span 2}
+@media(max-width:1150px){.court-new-grid{grid-template-columns:minmax(0,1fr)}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.main{padding-top:14px}.topbar{flex-wrap:wrap;gap:8px}.quick-top{order:3;width:100%;justify-content:flex-end}.date-pill{font-size:10px}.beta-title .page-title{font-size:23px}.dashboard-hero{padding:19px;min-height:185px}.dashboard-hero h2{font-size:20px}.dashboard-hero-badge{width:75px}.dashboard-hero-badge .id-portrait{width:62px;height:81px}.dashboard-hero-badge small{font-size:10px}.dashboard-actions{gap:5px}.dashboard-actions .btn{padding:9px 10px;min-height:37px;font-size:11px}.metric-grid{gap:8px}.metric{padding:12px}.metric strong{font-size:17px}.timeline-dates{font-size:10px}.timeline-dates strong{font-size:12px}.court-hero{padding:18px;min-height:170px}.court-hero h2{font-size:21px}.adversarial{grid-template-columns:minmax(0,1fr)}.people-photo-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.verdict-person{gap:5px;padding:5px}.verdict-person .id-portrait{width:46px;height:59px}.verdict-person .profile-link{display:none}.court-new-grid{grid-template-columns:minmax(0,1fr)}.hearing-status strong{font-size:11px}.hearing-status{gap:4px}.profile-data{grid-template-columns:1fr}}
+@media(max-width:390px){.people-photo-grid{grid-template-columns:1fr}.metric strong{font-size:15px}.dashboard-hero-badge{display:none}}
+
+.court-hero{background:linear-gradient(90deg,rgba(13,28,40,.96) 0%,rgba(20,34,44,.86) 49%,rgba(24,32,36,.42) 100%);}
+/* Beta 1.2 case party labels and A4 argument sheets */
+.lawsuit-parties{border-left:4px solid #8197a6;margin:15px 0}.lawsuit-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}.lawsuit-grid>div{background:#f8f5ef;padding:12px;border:1px solid #e3ded4;border-radius:10px}.lawsuit-grid small{display:block;color:#667b89;font-size:11px}.lawsuit-grid strong{display:block;margin-top:6px;font-size:19px;color:#182b3e}.lawsuit-grid p{font-size:12px;margin:4px 0}.statement-paper{background:white;color:#151515;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;line-height:1.9;font-size:13px;padding:32px;max-height:68vh;overflow:auto}.statement-paper header{border-bottom:2px solid #242424;padding-bottom:18px}.statement-paper header p{margin:2px 0}.statement-paper h2{text-align:center;font-size:26px;margin:20px 0}.statement-paper h3{font-size:16px;margin:0 0 8px}.statement-paper section{margin:23px 0}.statement-paper section p{text-align:justify;margin:6px 0}.statement-paper footer{text-align:right;margin-top:38px}.paper-controls{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:12px 0;color:#647387;font-size:12px}@media(max-width:700px){.lawsuit-grid{grid-template-columns:1fr}.statement-paper{font-size:12px;padding:17px}.statement-paper h2{font-size:22px}}@media print{body *{visibility:hidden!important}.statement-paper,.statement-paper *{visibility:visible!important}.statement-paper{position:absolute;top:0;left:0;width:100%;max-height:none!important;overflow:visible!important}}
+
+/* ---- from visual_courtroom_v30.css ---- */
+/* THE VERDICT visual system 3.0 — illustrated Korean courtroom, navy / walnut / gold */
+:root{--ink:#1b283a;--ink2:#19263a;--cream:#f5eee1;--paper:#fff7e9;--gold:#e2b96f;--line:#cfb897;--red:#ae3d42;--blue:#365b88;--shadow:0 8px 26px rgba(37,25,16,.15)}
+html,body{background:#130f12;color:#273143}
+body{font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+.shell{background:#f1e6d4;max-width:1500px}
+.main{background:linear-gradient(#f7f0e5,#ecdfcc)}
+.sidebar{background:linear-gradient(90deg,#171b2b,#202d42);border-right:3px solid #80603e}
+.sidebar .logo-mark{background:#b38a4f;color:#221a18}
+.sidebar .nav-btn.active{background:linear-gradient(90deg,#4c3029,#26374e);color:#f6d78f;border-color:#d8aa68}
+.topbar{border-bottom:2px solid #ddcbb4}
+.btn{transition:transform .13s,box-shadow .13s}
+.btn:active{transform:scale(.97)}
+.btn.primary,.onboard-start{background:linear-gradient(180deg,#dfb46b,#a67a3b)!important;color:#2d1d13!important;border-color:#a57a41!important;box-shadow:inset 0 1px #fff5,0 4px 10px #46301924}
+.btn.gold{background:linear-gradient(180deg,#e3bd7c,#c29251);color:#211b1a}
+.btn.outline{border-color:#ad9370}
+.panel,.case-card,.stat-card,.metric{background:#fff8eb;border:1px solid #d6bd99;box-shadow:0 3px 12px #4a2c1820;border-radius:12px}
+.dashboard-hero{background:linear-gradient(100deg,rgba(12,19,34,.96),rgba(18,31,48,.88)),radial-gradient(circle at 83% 44%,#d49d54,#58341d 70%);border:2px solid #a17b4a;box-shadow:0 8px 25px #291c1636;min-height:205px}
+.dashboard-hero:after{content:"⚖";position:absolute;font-family:serif;right:10%;top:4%;font-size:130px;color:#f1c97d;opacity:.14}
+.dashboard-hero h2{color:#fff1d4;text-shadow:0 2px 5px #0007}
+.dashboard-hero .eyebrow,.court-hero .eyebrow{color:#e5c288}
+.court-hero{background:linear-gradient(100deg,#182032,#332c2b 55%,#593a27);border:2px solid #b6905d}
+.court-hero:after{content:"⚖";position:absolute;top:5px;right:7%;font-size:120px;color:#d9af65;opacity:.15}
+.court-hero h2{color:#ffecc7}
+.case-advocates .adversarial{gap:10px}
+.adv-card{background:linear-gradient(#fffaf0,#f6eddd);border-color:#d8c3a8;box-shadow:0 4px 12px #573c1d12}
+.adv-card.prosecution{border-top:5px solid #b7444d}
+.adv-card.defense{border-top:5px solid #3a6da7}
+.realtime-docket,.deep-drama,.deep-evidence,.deep-witnesses,.live-hearing-panel{background:#fff5e6!important;border:1px solid #cfb38b!important}
+.docket-entry,.drama-act,.drama-person,.drama-evi{background:#fffcf6!important;border:1px solid #d5bea0!important}
+.docket-entry::before{content:"§";font-family:serif;color:#a88551;font-size:22px;margin-right:4px}
+.docket-entry>div{flex:1;min-width:0}
+.docket-entry strong{font-size:13px}
+.docket-entry small{font-size:11px}
+.judicial-specialty{background:#faf0df}
+#verdict-entry{background:radial-gradient(ellipse at center,#3b2c24 0%,#0d1220 78%)!important;padding:13px!important}
+#verdict-entry:before{content:"";position:absolute;inset:0;opacity:.24;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0 52px,#a5733e 53px,#34201d 56px),linear-gradient(180deg,transparent 48%,#936439 48%,#332219 100%)}
+#verdict-entry .entry-card{position:relative;background:linear-gradient(180deg,#1a2335 0%,#26364a 50%,#3b271e 100%)!important;border:2px solid #ad8855!important;box-shadow:0 10px 60px #0009,inset 0 0 0 4px #dbc38612!important;border-radius:18px!important;padding:18px 18px 21px!important;max-height:96dvh;overflow-y:auto}
+#verdict-entry .entry-title{font-family:Georgia,'Noto Serif KR',serif!important;font-size:36px!important;color:#ffd783!important;text-shadow:0 2px #57351b,0 5px 10px #000b;letter-spacing:3px!important}
+#verdict-entry .entry-sub{color:#e4cfad!important}
+#verdict-entry .entry-btn{background:#2a3040!important;border:1px solid #bb9565!important;color:#f5e5ce!important;min-height:48px}
+#verdict-entry .entry-btn.primary{background:linear-gradient(#f1cb80,#bc8742)!important;color:#211915!important}
+#verdict-entry .entry-switch .entry-btn{background:#203148!important}
+#verdict-entry .entry-info{color:#d3bb98!important}
+.verdict-brand-scene{height:clamp(130px,24dvh,230px);position:relative;margin:8px auto 16px;border-radius:11px;border:1px solid #8a6542;overflow:hidden;background:linear-gradient(180deg,#5d3d2c 0%,#9b6d45 55%,#3b271f 56%,#251b1b 100%)}
+.verdict-brand-scene:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 32px,#21150d35 33px,#21150d35 36px)}
+.verdict-brand-scene .scene-seal{position:absolute;top:10%;left:50%;transform:translateX(-50%);border:3px double #d1a75c;border-radius:50%;width:56px;height:56px;display:grid;place-items:center;color:#ffe3a0;background:#463622;font-size:25px}
+.verdict-brand-scene .scene-judge{position:absolute;bottom:18%;left:50%;transform:translateX(-50%);font-size:70px;filter:drop-shadow(0 3px 4px #1118)}
+.verdict-brand-scene .scene-bench{position:absolute;bottom:0;left:6%;right:6%;height:23%;background:linear-gradient(#a97442,#56351f);border:3px solid #3b261d;box-shadow:inset 0 4px #d79b56}
+.verdict-brand-scene .scene-flag{position:absolute;top:24%;left:16%;font-size:40px}
+.verdict-brand-scene .scene-caption{position:absolute;bottom:4px;left:0;right:0;color:#e1b86c;font-family:serif;font-size:10px;letter-spacing:3px;z-index:1}
+#modal-root .modal:has(.onboard-head){background:#fcf7ef;border:2px solid #ae8a59}
+.onboard-head{background:linear-gradient(120deg,#1d2637,#402b26)!important;border-bottom:3px solid #bf914d}
+.onboard-seal{background:#573925;color:#ffd991;border-color:#ffd991}
+.onboard-portrait-grid .onboard-portrait.selected{border:2px solid #c59752;background:#fff3de}
+.onboard-start{font-weight:800}
+.modal .id-portrait{border:2px solid #ad8c60}
+@media(max-width:700px){.dashboard-hero{min-height:175px}.dashboard-hero:after{font-size:80px}.court-hero:after{font-size:70px}.beta-title .page-title{font-size:22px}.adv-card p{font-size:12px}.dashboard-hero h2{font-size:21px}#verdict-entry .entry-title{font-size:32px!important}}
+
+/* ---- from judge_editorial_v24.css ---- */
+/* Beta redesign v2.4 — unified judge portrait + editorial case review */
+.judge-id-portrait{display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:0;overflow:hidden;background:#e7e2d9;border:1px solid #c5b9ab;border-radius:9px}
+.judge-id-portrait svg{display:block;width:100%;height:100%;object-fit:cover}
+.sidebar-user .judge-id-portrait{width:61px;height:72px;flex:0 0 61px}
+.dashboard-hero-badge .judge-id-portrait{width:94px;height:110px;border:3px solid #bd9964}
+.judge-creator{display:flex;flex-direction:column;gap:13px}
+#modal-root .modal:has(.judge-creator){width:min(490px,calc(100vw - 22px));max-height:94dvh;overflow-y:auto;border:2px solid #ad8a5a;border-radius:19px;background:#fff8ed;padding:19px}
+#modal-root .modal:has(.judge-creator)>h2{font-size:21px;margin:4px 0 15px}
+.judge-preview{display:flex;gap:18px;align-items:center;background:linear-gradient(125deg,#172438,#3c2e26);border:1px solid #a7824d;padding:14px;border-radius:13px;color:#f5d7a2}
+.judge-preview>.judge-preview-image{width:118px;height:136px;flex:0 0 118px;border:3px solid #b79a72;background:#e9e4dd}
+.judge-preview b{font-size:17px;color:#fff3da}.judge-preview small{display:block;font-size:11px;line-height:1.6;margin-top:7px;color:#dac8ae}
+.judge-name-field label{display:block;font-size:13px;font-weight:800;margin-bottom:6px}
+.judge-name-field .control{width:100%;font-size:16px;min-height:45px}
+.judge-control{display:flex;flex-direction:column;gap:7px}
+.judge-control>b{font-size:13px;color:#4d3c2f}
+.judge-control-items{display:flex;gap:6px;flex-wrap:wrap}
+.judge-option{border:1px solid #cfbea5;border-radius:10px;background:#fffcf7;color:#3a3b42;padding:8px 12px;font-size:12px;min-height:37px;cursor:pointer}
+.judge-option[aria-pressed="true"]{background:#2b3b50;color:#f1d59a;border-color:#c19750;box-shadow:inset 0 0 0 1px #e4bb74}
+.judge-edit{border:1px solid #b59b73;border-radius:7px;background:#182c43;color:#dfbd86;padding:5px 7px;font-size:10px;cursor:pointer;white-space:nowrap}
+.editorial-intro{border-left:4px solid #c59e62;background:#fff9ed}
+.editorial-intro p{font-weight:650;font-size:14px;line-height:1.6;margin:12px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.editorial-advocates{margin-top:14px}
+.editorial-advocates .adv-card{display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.editorial-advocates .adv-card p{margin:4px 0;font-size:12px;line-height:1.6;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;line-clamp:5;overflow:hidden}
+.editorial-advocates .adv-card button{margin-top:auto;font-size:12px}
+.compact-case-witness{margin:14px 0;background:#fff9ed}
+.compact-witness-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.compact-witness-person{background:#fff;border:1px solid #d5b98f;border-radius:9px;display:flex;flex-direction:column;gap:5px;text-align:left;padding:11px;min-width:0;cursor:pointer}
+.compact-witness-person strong{font-size:13px;color:#243750}
+.compact-witness-person span{font-size:12px;font-weight:700;color:#906333}
+.compact-witness-person small{font-size:11px;color:#78848b}
+.editorial-paper{background:#fffdf6;border:1px solid #e0d2bb;border-radius:10px;padding:14px;font-size:13px;line-height:1.75}
+.editorial-paper .paper-kicker{font-size:10px;color:#a27a42;letter-spacing:1.4px}
+.editorial-paper h3{font-size:22px;margin:5px 0 16px;color:#25354a}
+.editorial-paper h4{border-top:1px solid #d9c8ad;padding-top:11px;font-size:14px;margin:18px 0 8px}
+.editorial-paper p{margin:8px 0}
+@media(max-width:480px){.judge-preview>.judge-preview-image{width:100px;height:116px;flex-basis:100px}.compact-witness-row{grid-template-columns:repeat(2,minmax(0,1fr))}.editorial-intro p{font-size:13px}.editorial-advocates .adversarial{grid-template-columns:1fr}.judge-option{padding:8px 10px;font-size:11px}}
+@media print{.editorial-paper{border:0;padding:0}.modal-actions,.bottom-nav{display:none!important}}
+
+/* Legal labor market */
+.legal-world{background:#fff9ee;border-color:#d2b48b}
+.legal-world-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.legal-world-metrics>div{background:#f9edda;border:1px solid #dbbf98;border-radius:9px;padding:11px 5px;text-align:center}
+.legal-world-metrics b{font-size:21px;color:#3d5068;display:block}
+.legal-world-metrics small{font-size:11px;color:#87633b}
+.legal-world details,.counsel-ability details{margin-top:8px}
+.counsel-ability{background:#fff8ed;border-left:3px solid #b98b51}
+.counsel-ability>div{margin:8px 0;font-size:13px;line-height:1.6}
+.counsel-ability p{margin:8px 0}
+.legal-person-card{background:#fff8ec;border:1px solid #dfc8a7;border-radius:10px;padding:15px}
+.legal-person-card p{font-size:13px;line-height:1.7}
+.legal-network-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.legal-network-person{background:#fffaf1;border:1px solid #d7c1a5;border-radius:9px;text-align:left;padding:12px;display:flex;flex-direction:column;gap:4px}
+.legal-network-person b{font-size:13px;color:#2b3b51}
+.legal-network-person span{font-size:12px;color:#946d40}
+.legal-network-person small{font-size:11px;color:#74838a}
+@media(max-width:600px){.legal-network-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.legal-world-metrics{gap:5px}.legal-world-metrics b{font-size:18px}}
+
+/* ---- from court_gameplay_v27.css ---- */
+/* THE VERDICT v2.7 — compact gameplay-first courtroom */
+.court-play{display:flex;flex-direction:column;gap:13px;max-width:1060px;margin:0 auto;padding:10px 14px 32px;color:#273448}
+.court-play-header{padding:18px 18px 15px;border:1px solid #ab8351;border-radius:14px;background:linear-gradient(125deg,#18253a 0%,#233249 67%,#4a332b 100%);color:#faf1df;box-shadow:0 5px 18px #191b2533}
+.court-case-kicker{color:#d6b476;letter-spacing:1.9px;font-weight:700;font-size:10px}
+.court-case-kicker span{padding:0 6px}
+.court-play-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:10px}
+.court-play-title h2{color:#fff4e0!important;font-size:clamp(17px,4vw,23px);line-height:1.4;margin:0;word-break:keep-all}
+.court-play-title .btn{flex:0 0 auto;color:#f9e0b8!important;border-color:#9d815a!important}
+.court-play-status{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}
+.court-play-status span{font-size:10px;border:1px solid #7a715f;border-radius:20px;padding:5px 9px;background:#fff1}
+.court-play-overview{padding:13px 15px!important;background:#fff9ef!important;margin:0!important;border-left:4px solid #c29a5e!important}
+.court-play-overview h3{font-size:13px;margin:0}
+.court-play-overview p{font-size:13px!important;font-weight:500;line-height:1.6;margin:9px 0 2px!important;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.court-play-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;background:#d9c9b2;padding:5px;border:1px solid #c6af8e;border-radius:12px;position:sticky;top:0;z-index:12}
+.court-play-tab{background:#f6efe4;color:#526071;border:0;border-radius:9px;padding:11px 3px;white-space:nowrap;font-size:12px;font-weight:700;cursor:pointer;min-width:0}
+.court-play-tab.active{background:#263950;color:#f9e8bd;box-shadow:0 2px 8px #10151e33}
+.court-screen{display:flex;flex-direction:column;gap:13px}
+.court-screen[hidden]{display:none!important}
+.court-screen .panel,.court-screen .case-advocates{margin:0!important;border-radius:12px}
+.court-screen-hearing .action-panel{order:0;border:2px solid #c29b63;background:#fffbf3}
+.court-screen-hearing .live-hearing-panel{order:1}
+.court-screen-hearing .action-panel h3{font-size:17px}
+.court-screen-hearing .choice{margin-top:7px;min-height:54px}
+.court-screen-evidence .evidence-panel{order:0}
+.court-screen-evidence .compact-case-witness{order:1}
+.court-screen-evidence .panel:has([data-action="dramaAsk"]),.court-screen-evidence .panel:has([data-action="witnessQuestion"]){order:2}
+.court-screen-arguments .editorial-advocates .adversarial{gap:9px}
+.court-screen-arguments .adv-card{padding:14px}
+.court-detail-archive{border:1px solid #d3c1a7;border-radius:12px;background:#fbf5eb;padding:10px 13px}
+.court-detail-archive>summary{font-size:13px;font-weight:700;color:#34445c;cursor:pointer}
+.court-detail-archive>.panel{margin:10px 0 0!important}
+.court-screen-history .timeline-item p{font-size:12px;line-height:1.6}
+.court-fame-summary,.court-fame-directory{background:#fff8e9}
+.court-fame-person{width:100%;display:flex;align-items:center;gap:8px;padding:10px;margin:6px 0;border:1px solid #ddc6a7;border-radius:9px;background:#fffefa;text-align:left}
+.court-fame-person b{font-size:12px;flex:1}.court-fame-person small{font-size:11px;color:#667684}
+.court-fame-person>span{color:#b08a55;font-weight:700}
+.court-fame-profile{padding:14px;background:#fff8ea;border-radius:10px;font-size:13px}
+@media(max-width:540px){.court-play{padding:8px 9px 28px;gap:10px}.court-play-header{padding:14px}.court-play-title h2{font-size:17px}.court-play-tabs{top:0;gap:3px;padding:4px}.court-play-tab{font-size:10px;padding:10px 1px}.court-play-tab span{display:block;font-size:15px;margin:0 auto 3px}.court-play-overview p{font-size:12px!important}.court-play-status span{font-size:9px}.court-screen .panel{padding:12px!important}}
+
+/* ---- from ui_experience_v31.css ---- */
+/* THE VERDICT v3.1 — simplified home, clock, tablet and press coverage */
+.tv-home{padding:12px 14px 32px;max-width:1100px;margin:auto;display:flex;flex-direction:column;gap:14px}
+.tv-home h3{font-size:17px;margin:0}.tv-welcome{display:flex;align-items:center;justify-content:space-between;gap:14px;background:linear-gradient(112deg,#1a2b41 10%,#49332c 100%);border:1px solid #bb9561;border-radius:14px;color:#faf4e8;padding:17px 19px;box-shadow:0 8px 25px #15202b27}
+.tv-welcome h2{font-size:clamp(18px,4.5vw,27px);margin:11px 0 4px;color:#fff2d8}.tv-welcome p{font-size:12px;line-height:1.5;color:#e3d6c0;margin:5px 0}
+.tv-judge-photo{width:87px;height:102px;flex:0 0 87px}.tv-judge-photo .judge-id-portrait{border:2px solid #d9b17e;width:100%;height:100%;background:#e8d9bf}
+.tv-clock{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tv-clock>div{padding:12px 10px;background:#fff8ee;border:1px solid #dcc5a5;border-radius:11px;min-width:0}
+.tv-clock small{display:block;font-size:10px;color:#8d704e}.tv-clock strong{display:block;font-size:clamp(17px,3vw,22px);color:#233b53;font-variant-numeric:tabular-nums;margin:5px 0;white-space:nowrap}
+.tv-clock span{display:block;font-size:10px;color:#73808d;line-height:1.3}
+.tv-inbox,.tv-open-cases,.tv-headlines{border:1px solid #dcc5a5;border-radius:13px;background:#fff8ed;padding:14px}
+.tv-inbox h3,.tv-open-cases h3,.tv-headlines h3{margin:0}.tv-inbox .row>small{color:#836e57}
+.tv-offer{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e5d7c2;gap:8px;padding:11px 0}
+.tv-offer>div{min-width:0}.tv-offer b{display:block;font-size:13px;color:#314155}.tv-offer small{font-size:11px;color:#8f7860}.tv-offer button{flex:none}
+.tv-case{width:100%;text-align:left;display:grid;grid-template-columns:auto 1fr auto;align-items:center;column-gap:9px;row-gap:4px;border:1px solid #dbc7a9;border-radius:10px;background:#fffdf8;color:#273548;padding:13px;margin-top:9px;cursor:pointer}
+.tv-case-tag{font-size:10px;color:#7a5a30;border:1px solid #ccad7c;padding:4px 6px;border-radius:6px;grid-row:1/3}
+.tv-case strong{font-size:13px;font-weight:750;line-height:1.5}.tv-case small{grid-column:2;font-size:11px;color:#73808a}.tv-case>span:last-child{grid-column:3;grid-row:1/3;color:#ac8a5a}
+.tv-headline{display:flex;width:100%;flex-direction:column;gap:5px;text-align:left;background:transparent;border:0;border-bottom:1px solid #ebdfce;padding:12px 0;cursor:pointer;color:#283547}
+.tv-headline small{font-size:10px;color:#ab7945}.tv-headline b{font-size:13px;line-height:1.5}
+.tv-tablet-top{display:flex;justify-content:space-between;padding:13px;margin-top:10px;background:linear-gradient(95deg,#24354e,#374435);color:#f8ecdb;border-radius:12px;font-size:12px;font-weight:700}
+.tv-tablet-apps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:14px}
+.tv-tablet-app{display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;background:#fffaf1;border:1px solid #d4c0a3;border-radius:10px;padding:12px 4px;color:#2d4358;min-height:76px;cursor:pointer}
+.tv-tablet-app span{font-size:25px}.tv-tablet-app b{font-size:11px}.tv-tablet-app.selected{border-color:#b88a53;background:#f3e3ca}
+.tv-save-status{font-size:11px;color:#638173;padding:10px 1px;line-height:1.3}
+.tv-tablet-body{background:#fffaf3;margin-top:6px;border:1px solid #dac4a4;padding:16px}
+.tv-settings-link{display:block;margin:14px 0 0 auto;border:0;background:transparent;color:#8b7660;font-size:11px;padding:7px}
+.tv-media-card,.tv-post{border:1px solid #ddc8aa;border-radius:11px;background:#fffdfa;padding:13px;margin:10px 0}
+.tv-media-head{display:flex;justify-content:space-between;gap:5px;margin-bottom:8px}.tv-media-head b{font-size:11px;color:#a16e35}.tv-media-head span{font-size:10px;color:#7d8992}
+.tv-media-card>strong{display:block;font-size:14px;line-height:1.5;color:#2c3c51}.tv-media-card>p,.tv-post>p{font-size:12px;line-height:1.65;margin:9px 0}
+.tv-post>.tv-user{display:flex;justify-content:space-between;gap:8px}.tv-user b{font-size:12px;color:#2c4962}.tv-user small,.tv-post>small{font-size:10px;color:#82909a}
+.tv-my-fame{display:flex;justify-content:space-between;background:#f3e9d8;border:1px solid #d8bea1;border-radius:10px;padding:13px;margin:11px 0}
+.tv-rank-group{margin:17px 0}.tv-rank-group h3{font-size:14px;color:#26374b}.tv-rank-person{display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;padding:12px 8px;border:0;border-bottom:1px solid #e4d8c4;background:#fffdfa;text-align:left}
+.tv-rank-person b{font-size:12px;color:#273c53}.tv-rank-person span{font-size:10px;color:#7b8791}.tv-rank-person strong{font-size:11px;color:#a27541}
+.tv-law-firms{padding:12px;border:1px solid #d9c29f;border-radius:9px}.tv-law-firms>summary{font-size:12px}
+.quick-top,.time-board,.weekly-banner{display:none!important}
+@media(max-width:600px){.tv-home{padding:7px 9px 26px;gap:10px}.tv-welcome{padding:12px}.tv-judge-photo{width:73px;height:85px;flex-basis:73px}.tv-clock{gap:5px}.tv-clock>div{padding:9px 6px}.tv-clock strong{font-size:14px}.tv-clock span{font-size:9px}.tv-tablet-apps{gap:5px}.tv-tablet-app{min-height:69px}.tv-tablet-app span{font-size:21px}.tv-tablet-app b{font-size:10px}.tv-rank-person{flex-wrap:wrap}}
+
+.tv-court-deliberation{padding:12px;border:1px solid #dcc39f;background:#fffcf5;border-radius:12px}
+.tv-court-deliberation>p{font-size:13px;line-height:1.6}
+.tv-court-deliberation>.notice{margin:11px 0}
+.tv-reason{display:flex;flex-direction:column;align-items:flex-start;gap:7px;width:100%;border:1px solid #d4b995;border-radius:10px;background:#fffaf0;color:#2f3f53;margin:8px 0;padding:13px;text-align:left;cursor:pointer}
+.tv-reason:active{background:#f3e5d0}.tv-reason b{font-size:13px}.tv-reason small{font-size:11px;color:#6d7c88}
+.action-panel [data-action="verdict"][disabled]{opacity:.5;cursor:not-allowed}
+
+/* Readability repairs flagged in mobile screenshots */
+#verdict-entry .entry-switch .entry-btn.primary{background:linear-gradient(#f1cf94,#c29251)!important;color:#242027!important;border:2px solid #ffdfaa!important}
+#verdict-entry .entry-switch .entry-btn.primary small{color:#4b3923!important;opacity:1!important}
+#verdict-entry .entry-switch .entry-btn:not(.primary){color:#f6e5ce!important}
+.court-play-title [data-action="tab"][data-tab="courtList"]{background:#eee3d1!important;color:#24364a!important;border:1px solid #e6c896!important;font-weight:750}
+#verdict-save-status{overflow-wrap:anywhere;line-height:1.45}
+.tv-clock-local{font-variant-numeric:tabular-nums}
+
+/* ---- from trial_play.css ---- */
+/* THE VERDICT — trial loop v4 */
+.t4 h3{margin:0}
+.t4 h3 small{font-size:13px;color:var(--muted);font-weight:600}
+.t4 h4{margin:20px 0 8px;font-size:14px;color:var(--ink);letter-spacing:.2px}
+.t4-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.t4-energy{font-size:12px;color:#7a5d2c;background:#fbf1de;border:1px solid #efdcb4;border-radius:999px;padding:5px 10px;letter-spacing:1px}
+.t4-wait{margin:12px 0;padding:12px 14px;border-radius:11px;background:#eef3f7;border:1px solid #d6e1ea;color:#35506b;font-size:13px}
+.t4-meter{margin:12px 0 0}
+.t4-meter>div{display:flex;justify-content:space-between;font-size:13px;color:var(--ink)}
+.t4-meter i{display:block;height:9px;border-radius:9px;background:#ece9e3;margin-top:5px;overflow:hidden}
+.t4-meter s{display:block;height:100%;border-radius:9px;background:#2f6f8f;text-decoration:none;transition:width .4s}
+.t4-meter.d s{background:#c9853a}
+.t4-stats{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+.t4-stats span{font-size:12px;background:#f4f2ee;border-radius:8px;padding:6px 9px;color:#4b5a6b}
+.t4-stats b{color:var(--ink)}
+.t4-opp{font-size:12px;color:var(--muted);margin:10px 0 0}
+.t4-card{background:#fff;border:1px solid #e3e0da;border-radius:13px;padding:12px 13px;margin:8px 0}
+.t4-card header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.t4-card p{margin:6px 0;line-height:1.55}
+.t4-tag{font-size:11px;color:#5b6876;background:#f1f3f4;border-radius:6px;padding:3px 7px;white-space:nowrap}
+.t4-flaw{font-size:13px;color:#4b5a6b}
+.t4-flaw.bad{color:var(--red);font-weight:600}
+.t4-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.t4-choose span{font-size:12px;color:var(--muted);margin-right:2px}
+.t4-chip{border:1px solid #cdd6da;background:#fff;color:var(--ink);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.t4-chip.ghost{background:#f6f8f9}
+.t4-chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.t4-chip:disabled{cursor:default;opacity:.55}
+.t4-chip.on:disabled{opacity:1}
+.t4-name{background:none;border:0;padding:0;font-weight:700;color:var(--ink);font-size:14px;cursor:pointer;text-align:left}
+.t4-quote{background:#f4f6f8;border-left:3px solid #9fb3c4;padding:8px 10px;border-radius:0 8px 8px 0;font-size:13px}
+.t4-event{border:1px solid #efd9a8;background:#fffaf0;border-radius:13px;padding:12px 13px;margin:8px 0}
+.t4-event.done{opacity:.7;background:#faf9f6;border-color:#e6e2da}
+.t4-event.media{border-color:#e1d3ec;background:#faf6fd}
+.t4-event p{margin:6px 0;font-size:13px;line-height:1.55}
+.t4-log{margin-top:14px;font-size:13px}
+.t4-log summary{cursor:pointer;color:var(--muted)}
+.t4-log p{margin:6px 0;line-height:1.5}
+.t4-verdict .choice:disabled{opacity:.5;cursor:not-allowed}
+.t4-result .t4-delta,.modal .t4-delta{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid #eee}
+.t4-delta span{flex:1;font-size:13px;color:#4b5a6b}
+.t4-delta b{font-size:17px;color:var(--ink)}
+.t4-delta em{font-style:normal;font-size:12px;color:var(--muted);min-width:34px;text-align:right}
+.t4-twist{background:#fff1e6;border:1px solid #f2cfae;color:#8a4a17;border-radius:10px;padding:10px 12px;font-weight:600}
+.t4-reasons{display:grid;gap:8px;margin-top:10px}
+.t4-reason{display:flex;gap:9px;align-items:center;border:1px solid #dce4e5;border-radius:11px;padding:11px 12px;font-size:14px;background:#fff}
+.t4-headline{margin:8px 0;padding:10px 12px;background:#f7f6f3;border-radius:10px;font-weight:600;line-height:1.45}
+.t4-headline small{font-weight:400;color:var(--muted)}
+.t4-sns{border-bottom:1px solid #eee;padding:8px 0}
+.t4-sns p{margin:4px 0;font-size:13px}
+.t4-sns small{color:var(--muted)}
+
+/* ---- trial loop: first-time guide ---- */
+.t4-help{margin:12px 0;padding:12px 14px;border-radius:12px;background:#f3f7f4;border:1px solid #d5e5da;font-size:13px;line-height:1.6}
+.t4-help summary{font-weight:700;cursor:pointer;color:#2c5a43}
+.t4-help ol{margin:8px 0 0;padding-left:18px}
+.t4-help li{margin:4px 0}

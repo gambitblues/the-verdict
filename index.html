@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="icon" type="image/svg+xml" href="./icon.svg">
-  <link rel="stylesheet" href="./trial_play_v32.css"><link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./beta_patch_v11.css"><link rel="stylesheet" href="./visual_courtroom_v30.css"><link rel="stylesheet" href="./judge_editorial_v24.css"><link rel="stylesheet" href="./court_gameplay_v27.css"><link rel="stylesheet" href="./ui_experience_v31.css">
+  <link rel="stylesheet" href="./game.css">
   <title>THE VERDICT | 판결이 인생이 된다</title>
 </head>
 <body>
@@ -19,7 +19,7 @@
   <div id="modal-root"></div>
   <div id="toast" aria-live="polite"></div>
 <script>
-/* Profile bootstrap must run before deferred game.js reads the active save. */
+/* Profile bootstrap must run before the deferred runtime reads the active save. */
 (()=>{const K='the_verdict_alpha_1',P='verdict_player_active',slot=id=>'verdict_player_save_'+id;
 const active=localStorage.getItem(P)||'1';const main=localStorage.getItem(K);
 if(!localStorage.getItem(P)){if(main)localStorage.setItem(slot('1'),main);localStorage.setItem(P,'1');}
@@ -44,11 +44,11 @@ const saved=localStorage.getItem(slot(active));if(saved!==null)localStorage.setI
 #verdict-entry .entry-btn:disabled{opacity:.45;cursor:not-allowed}
 #verdict-entry .entry-info{font-size:12px;color:#b6c5cc;margin-top:18px;line-height:1.8}
 </style>
-  <script src="./verdict_runtime_v31.js" defer></script>
-  <script src="./verdict_hearings_v31.js" defer></script>
-  <script src="./verdict_professions_v31.js" defer></script>
-  <script src="./verdict_ui_v31.js" defer></script>
-  <script src="./trial_core_v32.js" defer></script>
-  <script src="./trial_play_v32.js" defer></script>
+  <script src="./game_runtime.js" defer></script>
+  <script src="./game_hearings.js" defer></script>
+  <script src="./game_professions.js" defer></script>
+  <script src="./game_ui.js" defer></script>
+  <script src="./trial_core.js" defer></script>
+  <script src="./trial_play.js" defer></script>
 </body>
 </html>
