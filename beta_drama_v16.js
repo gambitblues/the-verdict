@@ -14,17 +14,6 @@ function detail(c){
  if(!a)return null;
  const st=S.cases[c.id];if(!st)return null;
  st.drama??={castIds:[],answers:{},postVerdict:false};
- if(!st.drama.castIds.length&&!st.verdict&&S.name){
-   for(const p of a.cast){
-     const id=freshNPC(p.role,S.caseSerial||1,c.story?.deep?.key||'contract');
-     NPC[id].career=p.profile.career;
-     NPC[id].bond=p.profile.relationship;
-     NPC[id].caseWitnessRole=p.role;
-     st.drama.castIds.push(id);
-     remember(id,'관련 사건',c.name+' 사건에서 관련 인물로 기록됨',c.id);
-   }
-   save();
- }
  return {a,st,d:st.drama};
 }
 const prevCourt=court;
@@ -36,7 +25,7 @@ court=function(){
  const n=Math.min(2,(st.hearingHistory||[]).filter(v=>v.kind==='resumed').length);
  const points=a.turningPoints.filter(p=>p.stage===0||p.stage<=n+1).map(p=>'<article class="drama-act"><b>'+esc(p.heading)+'</b><p>'+esc(p.text)+'</p><small>'+esc(p.why)+'</small></article>').join('');
  const evis=a.factDisclosure.map((e,i)=>'<div class="drama-act"><b>'+esc(e.evidence)+'</b><p>'+esc(e.what)+'</p><small>'+esc(e.caveat)+' · '+(i<=n?'검토 가능한 자료':'추가 기일 검토 대상')+'</small></div>').join('');
- const people=a.cast.map((p,i)=>{
+ const people=!d.castIds.length?'<p class="muted small">증인 후보는 아직 활성화되지 않았습니다. 필요할 때만 인물 이력을 생성합니다.</p><button class="btn outline" data-action="activateWitnesses">증인 후보 검토</button>':a.cast.map((p,i)=>{
   const id=d.castIds[i];if(!id||!NPC[id])return '';
   const answers=d.answers[id]||[];
   return '<article class="drama-act"><button data-action="npc" data-id="'+esc(id)+'" class="btn outline">👤 '+esc(NPC[id].name)+' · '+esc(p.role)+' · 인물 정보</button><p>'+esc(p.knowledge)+'</p><small>이해관계: '+esc(p.interest)+'</small><div class="drama-buttons">'+[['memory','관찰 범위'],['interest','이해관계'],['cross','반대신문']].map(([type,title])=>'<button class="btn outline mini" data-action="dramaAsk" data-witness="'+esc(id)+'" data-i="'+i+'" data-type="'+type+'" '+(answers.some(v=>v.type===type)||st.verdict?'disabled':'')+'>'+title+'</button>').join('')+'</div>'+answers.map(v=>'<div class="drama-answer"><b>'+esc(v.q)+'</b><p>'+esc(v.a)+'</p><small>'+esc(day(v.week))+' · 검증 대상인 진술</small></div>').join('')+'</article>';
@@ -48,6 +37,12 @@ court=function(){
 };
 const prevClick=clicker;
 clicker=function(e){
+ const act=e.target.closest('[data-action="activateWitnesses"]');
+ if(act){
+ const c=CASES.find(x=>x.id===ui.caseId),x=c&&detail(c);if(!x||x.st.verdict||x.d.castIds.length)return;
+ for(const p of x.a.cast){const id=freshNPC(p.role,S.caseSerial||1,c.story?.deep?.key||'contract');NPC[id].career=p.profile.career;NPC[id].bond=p.profile.relationship;NPC[id].caseWitnessRole=p.role;x.d.castIds.push(id);remember(id,'관련 사건',c.name+'의 증인 후보로 지목됨 · 관찰 범위 확인 필요',c.id);}
+ save();render();return;
+ }
  const b=e.target.closest('[data-action="dramaAsk"]');if(!b)return prevClick(e);
  const c=CASES.find(x=>x.id===ui.caseId),x=c&&detail(c);if(!x||x.st.verdict)return;
  if(Number.isInteger(x.st.nextHearingWeek)&&S.week<x.st.nextHearingWeek){toast('다음 기일 이후 신문할 수 있습니다.');return;}
