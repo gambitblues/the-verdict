@@ -10,7 +10,7 @@ async function load(){
  }catch(e){status='error';console.warn('Narrative pack unavailable:',e);}
 }
 function panel(c,st){
- const a=arcs.get(c.contentPack?.id||c.story?.pack?.id||c.story?.packOrigin?.id);
+ const a=arcs.get(c.contentPack?.archetypeId||c.story?.pack?.archetypeId||c.story?.packOrigin?.id);
  if(!a)return '';
  const hearings=(st.hearingHistory||[]).filter(x=>x.kind==='resumed').length;
  const sections=[
