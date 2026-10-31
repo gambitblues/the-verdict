@@ -49,6 +49,7 @@ court=function(){
  block+='</section>';
  // Remove legacy weekly scheduling buttons and skip button while preserving other court UI.
  html=html.replace(/<section class="panel calendar-panel">[\s\S]*?<\/section>/,'');
+ html=html.replace(/<button[^>]*data-action="(?:nextWeek|skip|skipHearing)"[^>]*>[\\s\\S]*?<\\/button>/g,'');
  const mark='<section class="panel action-panel">';
  return html.includes(mark)?html.replace(mark,block+mark):block+html;
 };
