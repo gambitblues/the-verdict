@@ -380,3 +380,49 @@ body{font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',s
 .t4-reply{margin:6px 0 0 12px;padding:6px 9px;background:#f4f6f8;border-radius:8px;font-size:12px}
 .t4-narr{margin:6px 0;padding:8px 10px;border-left:3px solid #c9853a;background:#fff8ef;font-size:13px;border-radius:0 8px 8px 0}
 .t4-narr.l3{border-color:#9a3b33;background:#fdeeee}
+
+/* ---- paged courtroom (mobile-first) ---- */
+.t4app{display:flex;flex-direction:column;gap:10px}
+.t4app .court-play-header{margin:0}
+.t4-tabs{position:sticky;top:0;z-index:30;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:8px 2px;margin:0 -2px;background:var(--cream,#f6f5f1)}
+.t4-tabs::-webkit-scrollbar{display:none}
+.t4-tab{flex:0 0 auto;position:relative;border:1px solid #d9cdb8;background:#fffdf8;color:#4b5a6b;border-radius:999px;padding:9px 15px;font-size:14px;font-weight:700;cursor:pointer}
+.t4-tab.on{background:var(--ink,#18283e);color:#fff;border-color:var(--ink,#18283e)}
+.t4-tab i{position:absolute;top:-5px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#c55f58;color:#fff;font-size:11px;font-style:normal;line-height:18px;text-align:center}
+.t4-page>.panel{margin:0}
+.t4-case p{line-height:1.75;font-size:15px}
+.t4-case .legal-issue{font-size:14px}
+.t4-facts{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:14px 0 4px;font-size:14px}
+.t4-facts dt{color:var(--muted);white-space:nowrap}
+.t4-facts dd{margin:0;font-weight:600;color:var(--ink)}
+.t4-more{margin-top:12px;border-top:1px solid #eee;padding-top:10px}
+.t4-more summary{cursor:pointer;font-weight:700;color:#6a5330;font-size:14px}
+.t4-more .panel{box-shadow:none;border:0;padding:8px 0;margin:0}
+.t4-pager{touch-action:pan-y}
+.t4-pager .t4-card{min-height:240px;margin-top:4px}
+.t4-pagenav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
+.t4-dots{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.t4-dots span{margin-left:4px}
+.t4-dot{width:9px;height:9px;border-radius:50%;border:0;padding:0;background:#d8d3ca;cursor:pointer}
+.t4-dot.on{background:var(--ink,#18283e);width:20px;border-radius:5px}
+.t4-dock{position:sticky;bottom:0;z-index:40;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 12px;margin:4px -4px 0;background:rgba(255,253,248,.97);border:1px solid #e6dccb;border-radius:14px;box-shadow:0 8px 24px rgba(27,52,75,.12)}
+.t4-dock>span{margin-right:auto;font-size:13px;color:#5b6876}
+.t4-dock .t4-energy{border:0;background:none;padding:0;letter-spacing:2px}
+.t4-dock .btn{padding:11px 16px;font-size:14px}
+@media (max-width:760px){
+ body.t4-court .topbar{display:none}
+ body.t4-court .main{padding-top:calc(10px + env(safe-area-inset-top))}
+ .t4-tabs{top:env(safe-area-inset-top)}
+ .t4-dock{bottom:calc(72px + env(safe-area-inset-bottom))}
+ .t4app .court-play-header h2{font-size:19px;line-height:1.35}
+ .t4app{padding-bottom:12px}
+}
+/* installed web app */
+@media (display-mode:standalone){
+ .main{padding-top:calc(12px + env(safe-area-inset-top))}
+}
+.install-card{border:1px solid #d6c4a2;background:linear-gradient(145deg,#fffaf0,#f7efe0);border-radius:16px;padding:14px 16px;margin:0 0 14px}
+.install-card h3{margin:0 0 6px;font-size:16px}
+.install-card ol{margin:6px 0 8px;padding-left:20px;font-size:14px;line-height:1.7}
+.install-card .row{display:flex;gap:8px;flex-wrap:wrap}
+.install-card .note{font-size:12px;color:#7a6a50;line-height:1.6;margin:6px 0}
