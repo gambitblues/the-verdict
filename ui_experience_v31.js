@@ -10,7 +10,7 @@ function clockData(){
  const gameDate=[gameDay.getUTCFullYear(),String(gameDay.getUTCMonth()+1).padStart(2,'0'),String(gameDay.getUTCDate()).padStart(2,'0')].join('.');
  const format=()=>d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
  const hour=d.getHours(),candidate=new Date(d);candidate.setMinutes(0,0,0);
- if(hour>=22)candidate.setDate(candidate.getDate()+1),candidate.setHours(10);
+ if(hour>=21)candidate.setDate(candidate.getDate()+1),candidate.setHours(10);
  else if(hour<10)candidate.setHours(10);
  else candidate.setHours(hour+1);
  return {time:format(),gameDate,next:candidate.toLocaleString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}),weekday:d.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})};
@@ -70,6 +70,7 @@ tablet=function(){
 shell=function(content){
  let out=baseShell(content);
  out=out.replace(/<div class="quick-top">[\s\S]*?<\/div>/,'');
+ out=out.replace(/<span class="date-pill">[\s\S]*?<\/span>/,'<span class="date-pill">⏱ '+esc(clockData().time)+'</span>');
  out=out.replace(/<div class="side-bottom">[\s\S]*?<\/div>/,
   '<div class="side-bottom">실시간 커리어 · 자동 저장<br><span class="muted">현실 3시간 = 게임 1일</span></div>');
  return out;
