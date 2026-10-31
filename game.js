@@ -346,7 +346,7 @@ function moveOldCasesToOtherCourt(){
 function ensureGeneratedCases(){
  moveOldCasesToOtherCourt();
  // Fixed introductory 6 cases coexist with unlimited-by-count, bounded-by-variety procedural cases.
- if(S.week<14||age()>=65)return;
+ if(S.week<14||age()>=75)return;
  if(openCases().length>=4)return;
  if(S.week>=S.nextCaseWeek){createGeneratedCase();S.nextCaseWeek=S.week+6+Math.floor(rand()*5);}
 }
