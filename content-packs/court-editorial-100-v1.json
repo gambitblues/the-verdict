@@ -26,7 +26,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "MT에서 시작된 충돌과 사망"
-      }
+      },
+      "location": "대학 MT 숙소 계단",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "murder-insurance-dispute",
@@ -49,7 +52,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "채무와 보험계약이 얽힌 사망 의혹"
-      }
+      },
+      "location": "피해자의 자택",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "murder-previous-grievance",
@@ -72,7 +78,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "오래된 분쟁 이후의 치명적 사건"
-      }
+      },
+      "location": "상가 지하 주차장",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "sexual-party-allegation",
@@ -95,7 +104,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "회식 이후 제기된 성폭력 신고"
-      }
+      },
+      "location": "직장 회식 후 귀갓길",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "sexual-workplace-power",
@@ -118,7 +130,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "위계가 문제 된 업무 관계 사건"
-      }
+      },
+      "location": "회사 회의실",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "stalking-repeat-contact",
@@ -141,7 +156,10 @@
       "tags": {
         "category": "violence",
         "sourceTitle": "연락 거절 이후 이어진 접근 신고"
-      }
+      },
+      "location": "전 연인 주거지 앞",
+      "crimeType": "상해 또는 스토킹 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "fraud-community-investment",
@@ -164,7 +182,10 @@
       "tags": {
         "category": "financial",
         "sourceTitle": "친목 모임의 공동투자금 의혹"
-      }
+      },
+      "location": "친목 모임 사업 사무실",
+      "crimeType": "사기·업무상횡령 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "fire-small-business",
@@ -187,7 +208,10 @@
       "tags": {
         "category": "property",
         "sourceTitle": "폐업 위기 점포의 야간 화재"
-      }
+      },
+      "location": "폐업 예정 점포",
+      "crimeType": "재산범죄 또는 과실 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "defamation-edited-video",
@@ -210,7 +234,10 @@
       "tags": {
         "category": "reputation",
         "sourceTitle": "편집된 영상으로 확산된 평판 분쟁"
-      }
+      },
+      "location": "영상 공유 플랫폼",
+      "crimeType": "명예훼손 등 표현 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "rent-unpaid-deposit",
@@ -233,7 +260,10 @@
       "tags": {
         "category": "civil",
         "sourceTitle": "퇴거 후 추가 공제된 임대차 보증금"
-      }
+      },
+      "location": "임대차 계약 주택",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "inherit-family-records",
@@ -256,7 +286,10 @@
       "tags": {
         "category": "family",
         "sourceTitle": "유언 전후의 가족 간 재산 이전"
-      }
+      },
+      "location": "사망자의 자택과 은행",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "medical-delayed-notification",
@@ -279,7 +312,10 @@
       "tags": {
         "category": "professional",
         "sourceTitle": "검사 결과 통지 누락을 둘러싼 의료 분쟁"
-      }
+      },
+      "location": "대학병원 외래 진료실",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "bribe-consulting-contract",
@@ -302,7 +338,10 @@
       "tags": {
         "category": "public",
         "sourceTitle": "공공사업 자문료와 직무 관련성"
-      }
+      },
+      "location": "구청 공공사업 심사장",
+      "crimeType": "직무 관련 부패·정보 유출 등 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-004",
@@ -325,7 +364,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "야간 택배 동선과 두 건의 사망"
-      }
+      },
+      "location": "택배 배송지 골목",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-005",
@@ -348,7 +390,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "요양시설의 의문의 연속 사망"
-      }
+      },
+      "location": "요양시설 병실",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-006",
@@ -371,7 +416,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "산악 동호회 구조 지연과 사망"
-      }
+      },
+      "location": "산악 동호회 하산로",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-007",
@@ -394,7 +442,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "유흥주점 밖 우발적 충돌 사망"
-      }
+      },
+      "location": "주점 건물 앞",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-008",
@@ -417,7 +468,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "미용실 고객관계와 치명적 갈등"
-      }
+      },
+      "location": "미용실 후문",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-009",
@@ -440,7 +494,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "기숙사 옥상 추락의 진상"
-      }
+      },
+      "location": "대학교 기숙사 옥상",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-010",
@@ -463,7 +520,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "형제 간 간병비 갈등 뒤 사망"
-      }
+      },
+      "location": "부모의 단독주택",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-011",
@@ -486,7 +546,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "토지 개발 보상 분쟁 이후 살인 의혹"
-      }
+      },
+      "location": "토지개발 자재창고",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-012",
@@ -509,7 +572,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "공동상속인 실종 뒤 발견된 유골"
-      }
+      },
+      "location": "상속인의 오래된 집",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-013",
@@ -532,7 +598,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "아동 방임 신고 뒤 사망 경위"
-      }
+      },
+      "location": "다세대주택",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-014",
@@ -555,7 +624,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "온라인 게임 갈등에서 현실의 사망으로"
-      }
+      },
+      "location": "게임 이용자 정모 장소",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-015",
@@ -578,7 +650,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "도심 무차별 공격의 행위자 특정"
-      }
+      },
+      "location": "도심 버스환승센터",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-016",
@@ -601,7 +676,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "원룸 침입 사건과 세입자 사망"
-      }
+      },
+      "location": "원룸 302호",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-homicide-017",
@@ -624,7 +702,10 @@
       "tags": {
         "category": "homicide",
         "sourceTitle": "가상화폐 분쟁 후 대리기사 사망"
-      }
+      },
+      "location": "대리운전 차량 내부",
+      "crimeType": "살인 또는 치사 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-003",
@@ -647,7 +728,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "술자리 뒤 숙박시설 진입 경위"
-      }
+      },
+      "location": "숙박시설 객실",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-004",
@@ -670,7 +754,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "일회성 만남 이후 제기된 신고"
-      }
+      },
+      "location": "역 인근 숙박업소",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-005",
@@ -693,7 +780,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "혼잡한 전철 안 접촉 신고"
-      }
+      },
+      "location": "도심 지하철 객차",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-006",
@@ -716,7 +806,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "공연장 스태프 회식 후 추행 주장"
-      }
+      },
+      "location": "공연장 뒷편 주차장",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-007",
@@ -739,7 +832,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "대학 연구실 면담과 성적 접촉"
-      }
+      },
+      "location": "대학 연구실 면담실",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-008",
@@ -762,7 +858,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "임원 출장 중 호텔 방문 진술"
-      }
+      },
+      "location": "출장 호텔 객실",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-009",
@@ -785,7 +884,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "헤어진 연인의 사적 촬영물 전송"
-      }
+      },
+      "location": "단체 메신저",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-010",
@@ -808,7 +910,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "스포츠 합숙 중 지도자 접촉 신고"
-      }
+      },
+      "location": "운동부 합숙소",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-011",
@@ -831,7 +936,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "진료실 검사 중 추행 의혹"
-      }
+      },
+      "location": "병원 외래 진료실",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-012",
@@ -854,7 +962,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "엘리베이터 안 짧은 접촉 사건"
-      }
+      },
+      "location": "오피스텔 엘리베이터",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-013",
@@ -877,7 +988,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "이별 이후 반복된 접촉 강요 신고"
-      }
+      },
+      "location": "전 연인 집 현관",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-014",
@@ -900,7 +1014,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "직장 메신저 반복 성희롱 손해배상"
-      }
+      },
+      "location": "회사 업무 메신저",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-015",
@@ -923,7 +1040,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "오래전 방송사 내부 고발 사건"
-      }
+      },
+      "location": "방송 촬영 대기실",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-sexual-016",
@@ -946,7 +1066,10 @@
       "tags": {
         "category": "sexual",
         "sourceTitle": "공유주택 공용공간에서의 추행 신고"
-      }
+      },
+      "location": "공유주택 공용 주방",
+      "crimeType": "성폭력처벌법 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-violence-002",
@@ -969,7 +1092,10 @@
       "tags": {
         "category": "violence",
         "sourceTitle": "배달 대기줄 시비와 중상"
-      }
+      },
+      "location": "음식 배달 픽업대",
+      "crimeType": "상해 또는 스토킹 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-violence-003",
@@ -992,7 +1118,10 @@
       "tags": {
         "category": "violence",
         "sourceTitle": "아파트 층간소음 보복 폭행"
-      }
+      },
+      "location": "아파트 복도",
+      "crimeType": "상해 또는 스토킹 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-violence-004",
@@ -1015,7 +1144,10 @@
       "tags": {
         "category": "violence",
         "sourceTitle": "헬스장 운동 지도 중 상해 주장"
-      }
+      },
+      "location": "헬스장 실내 훈련장",
+      "crimeType": "상해 또는 스토킹 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-violence-005",
@@ -1038,7 +1170,10 @@
       "tags": {
         "category": "violence",
         "sourceTitle": "어린이집 학부모 간 폭행 신고"
-      }
+      },
+      "location": "어린이집 주차장",
+      "crimeType": "상해 또는 스토킹 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-violence-006",
@@ -1061,7 +1196,10 @@
       "tags": {
         "category": "violence",
         "sourceTitle": "중고거래 거절 뒤 반복 접근"
-      }
+      },
+      "location": "판매자 자택 앞",
+      "crimeType": "상해 또는 스토킹 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-violence-007",
@@ -1084,7 +1222,10 @@
       "tags": {
         "category": "violence",
         "sourceTitle": "헤어진 연인에게 전달된 위치 추적 알림"
-      }
+      },
+      "location": "전 연인의 이동 경로와 휴대전화",
+      "crimeType": "상해 또는 스토킹 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-violence-008",
@@ -1107,7 +1248,10 @@
       "tags": {
         "category": "violence",
         "sourceTitle": "병원 응급실 보호자와 직원 충돌"
-      }
+      },
+      "location": "응급실 대기실",
+      "crimeType": "상해 또는 스토킹 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-financial-002",
@@ -1130,7 +1274,10 @@
       "tags": {
         "category": "financial",
         "sourceTitle": "공동 창업 지분 정산금 사기 의혹"
-      }
+      },
+      "location": "스타트업 창업 계약 사무실",
+      "crimeType": "사기·업무상횡령 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-financial-003",
@@ -1153,7 +1300,10 @@
       "tags": {
         "category": "financial",
         "sourceTitle": "온라인 공동구매 환불금 미지급"
-      }
+      },
+      "location": "온라인 공동구매 사업장",
+      "crimeType": "사기·업무상횡령 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-financial-004",
@@ -1176,7 +1326,10 @@
       "tags": {
         "category": "financial",
         "sourceTitle": "부동산 분양 예약금 명목 수령"
-      }
+      },
+      "location": "미승인 분양 상담실",
+      "crimeType": "사기·업무상횡령 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-financial-005",
@@ -1199,7 +1352,10 @@
       "tags": {
         "category": "financial",
         "sourceTitle": "복지단체 후원금 회계 횡령"
-      }
+      },
+      "location": "복지단체 회계 사무실",
+      "crimeType": "사기·업무상횡령 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-financial-006",
@@ -1222,7 +1378,10 @@
       "tags": {
         "category": "financial",
         "sourceTitle": "학교 발전기금 장학금 전용 의혹"
-      }
+      },
+      "location": "학교 재단 사무국",
+      "crimeType": "사기·업무상횡령 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-financial-007",
@@ -1245,7 +1404,10 @@
       "tags": {
         "category": "financial",
         "sourceTitle": "의료기기 납품 리베이트 자금 흐름"
-      }
+      },
+      "location": "의료기기 납품 계약 현장",
+      "crimeType": "사기·업무상횡령 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-financial-008",
@@ -1268,7 +1430,10 @@
       "tags": {
         "category": "financial",
         "sourceTitle": "유명 강사의 선결제 강의 폐업"
-      }
+      },
+      "location": "온라인 강의 운영사",
+      "crimeType": "사기·업무상횡령 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-financial-009",
@@ -1291,7 +1456,10 @@
       "tags": {
         "category": "financial",
         "sourceTitle": "가상자산 수익률 보장 광고"
-      }
+      },
+      "location": "가상자산 투자 홍보 페이지",
+      "crimeType": "사기·업무상횡령 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-financial-010",
@@ -1314,7 +1482,10 @@
       "tags": {
         "category": "financial",
         "sourceTitle": "가족기업 납품 단가 조작 의혹"
-      }
+      },
+      "location": "가족기업 발주 사무실",
+      "crimeType": "사기·업무상횡령 등 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-property-002",
@@ -1337,7 +1508,10 @@
       "tags": {
         "category": "property",
         "sourceTitle": "무인매장 반복 절도와 결제 오류"
-      }
+      },
+      "location": "무인 편의매장",
+      "crimeType": "재산범죄 또는 과실 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-property-003",
@@ -1360,7 +1534,10 @@
       "tags": {
         "category": "property",
         "sourceTitle": "공유 킥보드 충돌과 도주 주장"
-      }
+      },
+      "location": "보행자 도로",
+      "crimeType": "재산범죄 또는 과실 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-property-004",
@@ -1383,7 +1560,10 @@
       "tags": {
         "category": "property",
         "sourceTitle": "지하 주차장 무단 차량 반출"
-      }
+      },
+      "location": "차량 정비업체 주차장",
+      "crimeType": "재산범죄 또는 과실 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-property-005",
@@ -1406,7 +1586,10 @@
       "tags": {
         "category": "property",
         "sourceTitle": "음식점 야간 화재 원인 다툼"
-      }
+      },
+      "location": "음식점 배기시설",
+      "crimeType": "재산범죄 또는 과실 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-property-006",
@@ -1429,7 +1612,10 @@
       "tags": {
         "category": "property",
         "sourceTitle": "주유소 탱크로리 사고와 인근 피해"
-      }
+      },
+      "location": "주유소 진입로",
+      "crimeType": "재산범죄 또는 과실 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-property-007",
@@ -1452,7 +1638,10 @@
       "tags": {
         "category": "property",
         "sourceTitle": "대학 실습실 연구장비 반출 의혹"
-      }
+      },
+      "location": "대학교 연구실",
+      "crimeType": "재산범죄 또는 과실 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-property-008",
@@ -1475,7 +1664,10 @@
       "tags": {
         "category": "property",
         "sourceTitle": "공사장 방화 의혹과 보수 공정"
-      }
+      },
+      "location": "건설현장 자재창고",
+      "crimeType": "재산범죄 또는 과실 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-property-009",
@@ -1498,7 +1690,10 @@
       "tags": {
         "category": "property",
         "sourceTitle": "중고 명품 보관 대리판매 갈등"
-      }
+      },
+      "location": "위탁판매 명품 매장",
+      "crimeType": "재산범죄 또는 과실 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-reputation-002",
@@ -1521,7 +1716,10 @@
       "tags": {
         "category": "reputation",
         "sourceTitle": "연예인 음성 딥페이크 유포"
-      }
+      },
+      "location": "음성합성 유포 채널",
+      "crimeType": "명예훼손 등 표현 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-reputation-003",
@@ -1544,7 +1742,10 @@
       "tags": {
         "category": "reputation",
         "sourceTitle": "학교 커뮤니티 익명 폭로글"
-      }
+      },
+      "location": "학교 익명 커뮤니티",
+      "crimeType": "명예훼손 등 표현 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-reputation-004",
@@ -1567,7 +1768,10 @@
       "tags": {
         "category": "reputation",
         "sourceTitle": "지역 맘카페 음식점 위생 폭로"
-      }
+      },
+      "location": "지역 맘카페",
+      "crimeType": "명예훼손 등 표현 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-reputation-005",
@@ -1590,7 +1794,10 @@
       "tags": {
         "category": "reputation",
         "sourceTitle": "연예계 전속계약 위반 언론보도"
-      }
+      },
+      "location": "연예인 계약 관련 보도 페이지",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-reputation-006",
@@ -1613,7 +1820,10 @@
       "tags": {
         "category": "reputation",
         "sourceTitle": "회사 내부 고발 문건 외부 유출"
-      }
+      },
+      "location": "사내 고발 문건 유출 경로",
+      "crimeType": "명예훼손 등 표현 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-reputation-007",
@@ -1636,7 +1846,10 @@
       "tags": {
         "category": "reputation",
         "sourceTitle": "유튜브 리뷰 중 조작된 광고표시"
-      }
+      },
+      "location": "유튜브 제품 리뷰 채널",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-reputation-008",
@@ -1659,7 +1872,10 @@
       "tags": {
         "category": "reputation",
         "sourceTitle": "퇴사 직원의 회사 익명 후기"
-      }
+      },
+      "location": "직장인 익명 게시판",
+      "crimeType": "명예훼손 등 표현 관련 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-reputation-009",
@@ -1682,7 +1898,10 @@
       "tags": {
         "category": "reputation",
         "sourceTitle": "유명 선수 경기 영상 초상 이용 분쟁"
-      }
+      },
+      "location": "선수 홍보 영상 제작사",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-civil-002",
@@ -1705,7 +1924,10 @@
       "tags": {
         "category": "civil",
         "sourceTitle": "스타트업 개발납기 지연 배상"
-      }
+      },
+      "location": "개발 외주 계약 사무실",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-civil-003",
@@ -1728,7 +1950,10 @@
       "tags": {
         "category": "civil",
         "sourceTitle": "반려동물 입원비 배상 다툼"
-      }
+      },
+      "location": "동물병원 입원실",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-civil-004",
@@ -1751,7 +1976,10 @@
       "tags": {
         "category": "civil",
         "sourceTitle": "비 오는 날 상가 누수 손해배상"
-      }
+      },
+      "location": "상가 누수 현장",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-civil-005",
@@ -1774,7 +2002,10 @@
       "tags": {
         "category": "civil",
         "sourceTitle": "지인간 대여금과 공동투자금 구분"
-      }
+      },
+      "location": "친구 간 차용증 작성 현장",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-family-002",
@@ -1797,7 +2028,10 @@
       "tags": {
         "category": "family",
         "sourceTitle": "실직 뒤 양육비 조정 청구"
-      }
+      },
+      "location": "가정법원 양육비 사건",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-family-003",
@@ -1820,7 +2054,10 @@
       "tags": {
         "category": "family",
         "sourceTitle": "별거 중 자녀 면접교섭 거부"
-      }
+      },
+      "location": "별거 중 면접교섭 장소",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-family-004",
@@ -1843,7 +2080,10 @@
       "tags": {
         "category": "family",
         "sourceTitle": "외도 의혹과 혼인 파탄 책임"
-      }
+      },
+      "location": "부부 공동주거지",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-family-005",
@@ -1866,7 +2106,10 @@
       "tags": {
         "category": "family",
         "sourceTitle": "조부모의 증여와 유류분 다툼"
-      }
+      },
+      "location": "증여 재산 관리 사무소",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-family-006",
@@ -1889,7 +2132,10 @@
       "tags": {
         "category": "family",
         "sourceTitle": "가족기업 지분 상속 협약 분쟁"
-      }
+      },
+      "location": "가족기업 주주회의",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-family-007",
@@ -1912,7 +2158,10 @@
       "tags": {
         "category": "family",
         "sourceTitle": "재혼가정 전 배우자 자녀 상속"
-      }
+      },
+      "location": "재혼 가족 유산 협의장",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-family-008",
@@ -1935,7 +2184,10 @@
       "tags": {
         "category": "family",
         "sourceTitle": "상속 포기 뒤 채권자 반환 청구"
-      }
+      },
+      "location": "상속재산 분쟁 현장",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-family-009",
@@ -1958,7 +2210,10 @@
       "tags": {
         "category": "family",
         "sourceTitle": "장거리 근무로 인한 친권 변경"
-      }
+      },
+      "location": "별거 가족 양육 장소",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-family-010",
@@ -1981,7 +2236,10 @@
       "tags": {
         "category": "family",
         "sourceTitle": "부부 공동대출과 이혼 재산분할"
-      }
+      },
+      "location": "부부의 공동대출 은행",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-family-011",
@@ -2004,7 +2262,10 @@
       "tags": {
         "category": "family",
         "sourceTitle": "반려동물 양육 약정 파기 민사"
-      }
+      },
+      "location": "반려동물 양육 약정 주거지",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-professional-002",
@@ -2027,7 +2288,10 @@
       "tags": {
         "category": "professional",
         "sourceTitle": "제조업 하청 안전사고 손해배상"
-      }
+      },
+      "location": "제조업 하청 공장",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-professional-003",
@@ -2050,7 +2314,10 @@
       "tags": {
         "category": "professional",
         "sourceTitle": "퇴직 임원의 경업금지 약정 분쟁"
-      }
+      },
+      "location": "퇴직 임원과 경쟁사의 사업장",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-professional-004",
@@ -2073,7 +2340,10 @@
       "tags": {
         "category": "professional",
         "sourceTitle": "원격근무 중 과로 사망 산재 분쟁"
-      }
+      },
+      "location": "원격근무 주거지",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-professional-005",
@@ -2096,7 +2366,10 @@
       "tags": {
         "category": "professional",
         "sourceTitle": "수술 후 설명의무 위반 손해배상"
-      }
+      },
+      "location": "대학병원 수술 전 상담실",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-professional-006",
@@ -2119,7 +2392,10 @@
       "tags": {
         "category": "professional",
         "sourceTitle": "간호사 교대 인수인계 누락"
-      }
+      },
+      "location": "병동 교대 인수인계실",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-professional-007",
@@ -2142,7 +2418,10 @@
       "tags": {
         "category": "professional",
         "sourceTitle": "물류 플랫폼 계약 해지 분쟁"
-      }
+      },
+      "location": "물류 플랫폼 계약 사무실",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-professional-008",
@@ -2165,7 +2444,10 @@
       "tags": {
         "category": "professional",
         "sourceTitle": "산업용 로봇 제어 오류 배상"
-      }
+      },
+      "location": "산업용 로봇 제조 설비",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-professional-009",
@@ -2188,7 +2470,10 @@
       "tags": {
         "category": "professional",
         "sourceTitle": "산부인과 진료기록 열람 분쟁"
-      }
+      },
+      "location": "산부인과 진료기록 보관실",
+      "crimeType": "관련 형사 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-public-002",
@@ -2211,7 +2496,10 @@
       "tags": {
         "category": "public",
         "sourceTitle": "지방의회 출장비 허위 청구"
-      }
+      },
+      "location": "지방의회 회계실",
+      "crimeType": "직무 관련 부패·정보 유출 등 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-public-003",
@@ -2234,7 +2522,10 @@
       "tags": {
         "category": "public",
         "sourceTitle": "공공입찰 평가위원 이해충돌"
-      }
+      },
+      "location": "공공입찰 평가회의실",
+      "crimeType": "직무 관련 부패·정보 유출 등 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-public-004",
@@ -2257,7 +2548,10 @@
       "tags": {
         "category": "public",
         "sourceTitle": "공무원 재개발 정보 사전 거래"
-      }
+      },
+      "location": "재개발 구역 토지거래 현장",
+      "crimeType": "직무 관련 부패·정보 유출 등 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-public-005",
@@ -2280,7 +2574,10 @@
       "tags": {
         "category": "public",
         "sourceTitle": "시청 민원정보 외부 전달 의혹"
-      }
+      },
+      "location": "시청 민원처리실",
+      "crimeType": "직무 관련 부패·정보 유출 등 혐의",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     },
     {
       "id": "beta-public-006",
@@ -2303,7 +2600,10 @@
       "tags": {
         "category": "public",
         "sourceTitle": "공공조달 연구용역 표절·대금 분쟁"
-      }
+      },
+      "location": "공공 연구용역 평가회의실",
+      "crimeType": "민사·가사 청구",
+      "evidenceStatus": "제출 자료의 원본과 진술을 확인해야 하며, 일방의 주장은 확정된 사실이 아님"
     }
   ]
 }
