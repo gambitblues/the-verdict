@@ -1,0 +1,620 @@
+{
+  "format": "the-verdict-casepack/v1",
+  "packId": "starter-diverse-2026",
+  "version": "1.0.0",
+  "title": "초기 확장 예시 팩 · 사건 구조 13개",
+  "description": "500개 본편 제작 전에 JSON 설치·검증·생성·세이브 유지 기능을 시연하는 소규모 사건 원형 샘플. 판결 정답은 포함하지 않음.",
+  "archetypes": [
+    {
+      "id": "murder-campus-conflict",
+      "category": "homicide",
+      "baseKey": "murder",
+      "kind": "criminal",
+      "tag": "형사·살인",
+      "icon": "🔍",
+      "importance": 5,
+      "legal": "사망 원인·고의·행위자 특정",
+      "title": "MT에서 시작된 충돌과 사망",
+      "premise": "대학생들이 함께 떠난 숙박 행사에서 언쟁이 발생했고 이후 한 참가자가 숨졌다. 검찰은 신체적 충돌의 경위와 고의 유무를 다툰다.",
+      "trigger": "모임 참가자 사이에 누적된 말다툼이 사건 당일 격해졌다.",
+      "motive": "모임 관계를 유지하려 했으나 다툼이 확산됐다.",
+      "relationship": "참가자 사이의 일시적 친분",
+      "incident": {
+        "cause": "숙박 행사 중 언쟁",
+        "action": "일부 참가자 사이의 신체 접촉과 목격자 진술",
+        "aftermath": "응급 신고 시점에 대한 논란"
+      },
+      "evidence": [
+        {
+          "title": "참가자별 이동 시간표",
+          "proves": "누가 언제 어디에 있었는지",
+          "limitation": "집단 기억과 사후 대화의 영향을 받을 수 있음"
+        },
+        {
+          "title": "구급 출동 기록과 검시 자료",
+          "proves": "사망 원인과 구조 요청 시점",
+          "limitation": "사망 원인 감정만으로 행위자를 특정할 수 없음"
+        },
+        {
+          "title": "현장 복도 영상과 참석자 진술",
+          "proves": "현장 접근과 신체 접촉 정황",
+          "limitation": "영상 사각지대와 진술 불일치가 존재할 수 있음"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "행사 출석",
+        "단체 이동",
+        "사망원인 감정"
+      ]
+    },
+    {
+      "id": "murder-insurance-dispute",
+      "category": "homicide",
+      "baseKey": "murder",
+      "kind": "criminal",
+      "tag": "형사·살인",
+      "icon": "🔍",
+      "importance": 5,
+      "legal": "사망 원인·고의·행위자 특정",
+      "title": "채무와 보험계약이 얽힌 사망 의혹",
+      "premise": "가족의 재정 상황이 악화된 시기에 보험계약 관계자의 사망이 발생했고 수사기관은 금전적 이해관계와 실제 사망 원인을 각각 살핀다.",
+      "trigger": "채무 부담과 보험계약의 변화가 수사 초기 의심을 일으켰다.",
+      "motive": "가족 재정과 상속 권리에 대한 이해충돌",
+      "relationship": "가족 및 보험계약 관련자",
+      "incident": {
+        "cause": "보험 수익과 채무 관계",
+        "action": "보험계약과 사망 시점 사이의 연결성 논쟁",
+        "aftermath": "계약 동기와 실제 행위의 구분"
+      },
+      "evidence": [
+        {
+          "title": "보험계약 변경 내역",
+          "proves": "보험의 수익 구조와 변경 시점",
+          "limitation": "보험계약의 존재 자체는 범죄 증거가 아님"
+        },
+        {
+          "title": "부검 결과와 진료기록",
+          "proves": "직접 사망 원인",
+          "limitation": "사망 원인 판단만으로 행위자 신원을 단정할 수 없음"
+        },
+        {
+          "title": "계좌 거래와 대화 원문",
+          "proves": "재정 상황과 사건 전후 의사소통",
+          "limitation": "경제적 압박이 곧 범행 의도를 의미하지 않음"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "금융 변화",
+        "사망 원인",
+        "문서 원본"
+      ]
+    },
+    {
+      "id": "murder-previous-grievance",
+      "category": "homicide",
+      "baseKey": "murder",
+      "kind": "criminal",
+      "tag": "형사·살인",
+      "icon": "🔍",
+      "importance": 5,
+      "legal": "사망 원인·고의·행위자 특정",
+      "title": "오래된 분쟁 이후의 치명적 사건",
+      "premise": "몇 년 전 다툼으로 연락이 끊겼던 두 인물 가운데 한 사람이 사망했다. 과거의 분쟁은 수사 단서지만 사건 당일 행위자의 특정이 필요하다.",
+      "trigger": "과거 사업상 갈등이 현재의 의심으로 되살아났다.",
+      "motive": "오래된 평판과 금전 갈등",
+      "relationship": "과거 거래 관계인",
+      "incident": {
+        "cause": "수년간 연락이 없던 사이",
+        "action": "과거 갈등이 재조명됨",
+        "aftermath": "사건 당일 접촉 여부 확인"
+      },
+      "evidence": [
+        {
+          "title": "과거 민사소송 서류",
+          "proves": "당사자 사이 과거 갈등",
+          "limitation": "과거 불화만으로 새로운 범행을 입증할 수 없음"
+        },
+        {
+          "title": "현장 DNA·감식 보고서",
+          "proves": "현장 흔적의 발생 시점과 의미",
+          "limitation": "전이 오염이나 과거 방문 가능성을 점검해야 함"
+        },
+        {
+          "title": "통신·교통 이동 기록",
+          "proves": "사건일 동선 일치 여부",
+          "limitation": "통신기록의 위치 정확도는 제한될 수 있음"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "과거 소송",
+        "재접촉",
+        "법과학"
+      ]
+    },
+    {
+      "id": "sexual-party-allegation",
+      "category": "sexual",
+      "baseKey": "sexual",
+      "kind": "criminal",
+      "tag": "형사·성폭력",
+      "icon": "⚖️",
+      "importance": 5,
+      "legal": "문제 된 행위·구성요건·증명",
+      "title": "회식 이후 제기된 성폭력 신고",
+      "premise": "직장인들 사이의 모임 이후 성적 접촉에 관한 신고가 접수됐다. 행위의 존재, 당시 의사와 상태, 관련 증거가 다투어진다.",
+      "trigger": "회식 뒤 숙소 이동 경위를 두고 진술이 엇갈렸다.",
+      "motive": "신고 이후 직장생활과 평판에 대한 우려",
+      "relationship": "직장 또는 친목 모임 관계",
+      "incident": {
+        "cause": "공적 관계가 사적 만남으로 이어짐",
+        "action": "사건 이후 당사자 진술의 차이",
+        "aftermath": "모임 종료 시점의 객관 자료 확인"
+      },
+      "evidence": [
+        {
+          "title": "모임 참석자 시간대별 진술",
+          "proves": "사건 전후 시간 순서",
+          "limitation": "타인이 직접 보지 못한 행위는 추측할 수 없음"
+        },
+        {
+          "title": "귀가 수단·출입 기록",
+          "proves": "이동 경위와 동선",
+          "limitation": "동행 여부만으로 동의를 추정할 수 없음"
+        },
+        {
+          "title": "당사자 간 메시지 원문",
+          "proves": "사후 연락의 맥락",
+          "limitation": "사후 연락만으로 당시의 의사를 단정할 수 없음"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "직장 모임",
+        "의사 확인",
+        "비난 금지"
+      ]
+    },
+    {
+      "id": "sexual-workplace-power",
+      "category": "sexual",
+      "baseKey": "sexual",
+      "kind": "criminal",
+      "tag": "형사·성폭력",
+      "icon": "⚖️",
+      "importance": 5,
+      "legal": "문제 된 행위·구성요건·증명",
+      "title": "위계가 문제 된 업무 관계 사건",
+      "premise": "업무상 지위 차이가 있는 두 사람 사이에서 성적 접촉에 관한 고소가 제기됐다. 실제 행위와 적용 죄명별 요건을 독립적으로 살펴야 한다.",
+      "trigger": "평가와 인사에 영향을 줄 수 있는 업무 관계가 있었다.",
+      "motive": "인사 평가에 따른 영향과 반론",
+      "relationship": "상하 업무 관계",
+      "incident": {
+        "cause": "승진 심사를 둘러싼 의견 충돌",
+        "action": "업무상 지위·권한 확인",
+        "aftermath": "당시 의사·행위 관련 자료 제출"
+      },
+      "evidence": [
+        {
+          "title": "인사평가와 업무 배정 자료",
+          "proves": "당사자 사이 권한 관계",
+          "limitation": "직위 차이만으로 특정 범죄가 성립하지 않음"
+        },
+        {
+          "title": "업무 메시지와 일정표",
+          "proves": "일상 업무와 사건 당일 접촉",
+          "limitation": "메시지 일부만 발췌하면 맥락이 왜곡될 수 있음"
+        },
+        {
+          "title": "당사자 진술의 변천 기록",
+          "proves": "문제 된 구체적 행위와 시점",
+          "limitation": "진술 변화 이유를 함께 살펴야 함"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "업무상 권한",
+        "개별 행위",
+        "신빙성"
+      ]
+    },
+    {
+      "id": "stalking-repeat-contact",
+      "category": "violence",
+      "baseKey": "stalking",
+      "kind": "criminal",
+      "tag": "형사·스토킹",
+      "icon": "📱",
+      "importance": 3,
+      "legal": "접근 행위·반복성·특정",
+      "title": "연락 거절 이후 이어진 접근 신고",
+      "premise": "한 인물이 연락을 중단해 달라고 요청한 뒤에도 여러 차례 접근과 메시지가 있었다는 신고가 제기됐다. 반복 여부와 행위자 특정이 문제다.",
+      "trigger": "관계 종료 뒤 연락 수단이 바뀌었다.",
+      "motive": "관계 회복에 대한 기대와 갈등",
+      "relationship": "과거 지인 사이",
+      "incident": {
+        "cause": "관계 종료 요청",
+        "action": "여러 계정의 연락과 접근 진술",
+        "aftermath": "계정 소유자 특정 문제"
+      },
+      "evidence": [
+        {
+          "title": "연락 중단 요청 메시지",
+          "proves": "상대방 의사 표명 시점",
+          "limitation": "수신 여부와 문맥 확인이 필요함"
+        },
+        {
+          "title": "접근 시각별 출입 기록",
+          "proves": "반복·지속 여부",
+          "limitation": "다른 목적으로 방문한 정황도 검토해야 함"
+        },
+        {
+          "title": "여러 계정의 로그인 기록",
+          "proves": "행위자 특정",
+          "limitation": "계정 정보만으로 실제 사용자를 단정할 수 없음"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "반복 행위",
+        "계정 사용자",
+        "상대방 의사"
+      ]
+    },
+    {
+      "id": "fraud-community-investment",
+      "category": "financial",
+      "baseKey": "fraud",
+      "kind": "criminal",
+      "tag": "형사·사기",
+      "icon": "📊",
+      "importance": 3,
+      "legal": "기망·처분행위·고의",
+      "title": "친목 모임의 공동투자금 의혹",
+      "premise": "장기간 알고 지낸 사람들이 공동사업에 투자한 뒤 자금 운용 방식에 문제가 제기됐다. 초기 설명과 사업 실패를 구분해 판단해야 한다.",
+      "trigger": "공동투자 제안 이후 예상 수익이 실현되지 않았다.",
+      "motive": "사업을 유지하려는 목적과 손실 회피",
+      "relationship": "친목 모임을 통한 사업 관계",
+      "incident": {
+        "cause": "투자 권유와 모집",
+        "action": "자금 사용 경로의 문제",
+        "aftermath": "초기 기망 여부의 쟁점"
+      },
+      "evidence": [
+        {
+          "title": "최초 투자제안 원문",
+          "proves": "투자 시점의 설명 내용",
+          "limitation": "사업 전망이 틀렸다는 사실만으로 기망을 뜻하지 않음"
+        },
+        {
+          "title": "회사 자금 이체 내역",
+          "proves": "실제 자금 사용처",
+          "limitation": "일부 전용은 사용 시점과 권한도 확인해야 함"
+        },
+        {
+          "title": "사업 수행 계약과 납품 기록",
+          "proves": "투자 이후 실제 영업활동",
+          "limitation": "부실 영업과 당초 기망은 구별해야 함"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "투자 설명",
+        "사업 실패",
+        "재산 이동"
+      ]
+    },
+    {
+      "id": "fire-small-business",
+      "category": "property",
+      "baseKey": "fire",
+      "kind": "criminal",
+      "tag": "형사·방화",
+      "icon": "🔥",
+      "importance": 3,
+      "legal": "발화 원인·행위자·고의",
+      "title": "폐업 위기 점포의 야간 화재",
+      "premise": "장기간 적자가 이어진 점포에서 야간 화재가 발생했다. 전기적 발화와 인위적 원인의 가능성을 구분해야 한다.",
+      "trigger": "영업 종료를 앞두고 시설 관리가 부족했다.",
+      "motive": "폐업 비용과 생활비 압박",
+      "relationship": "임대 점포 운영 관계",
+      "incident": {
+        "cause": "영업장 폐쇄 준비",
+        "action": "발화 원인에 대한 추정 충돌",
+        "aftermath": "보험금과 점포 재정에 관한 수사"
+      },
+      "evidence": [
+        {
+          "title": "소방 화재 원인 감정",
+          "proves": "발화 지점과 원인 후보",
+          "limitation": "화재 후 손상으로 원인이 불확실할 수 있음"
+        },
+        {
+          "title": "전기 설비 정기검사 자료",
+          "proves": "시설 상태 및 관리 이력",
+          "limitation": "관리 부실과 고의 방화는 구분됨"
+        },
+        {
+          "title": "출입 기록·보험 서류",
+          "proves": "화재 전후 동선과 재산적 이해",
+          "limitation": "보험 가입과 출입만으로 행위자를 특정할 수 없음"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "발화 원인",
+        "보험",
+        "영업 손실"
+      ]
+    },
+    {
+      "id": "defamation-edited-video",
+      "category": "reputation",
+      "baseKey": "defamation",
+      "kind": "criminal",
+      "tag": "형사·명예훼손",
+      "icon": "🗣️",
+      "importance": 3,
+      "legal": "표현 내용·공연성·위법성",
+      "title": "편집된 영상으로 확산된 평판 분쟁",
+      "premise": "인터넷 방송의 짧은 영상이 재배포되면서 특정인의 발언 의도와 표현의 사실 적시 여부가 다투어졌다.",
+      "trigger": "원본보다 짧은 편집 영상이 온라인에서 빠르게 확산됐다.",
+      "motive": "평판 회복과 표현의 자유",
+      "relationship": "온라인 활동 관계인",
+      "incident": {
+        "cause": "영상 공유 계정의 확산",
+        "action": "발언 일부의 의미 논쟁",
+        "aftermath": "원본 및 재배포 범위 확인"
+      },
+      "evidence": [
+        {
+          "title": "전체 방송 원본",
+          "proves": "표현의 전체 맥락",
+          "limitation": "전체 맥락이 곧 허위성 판단을 결정하지는 않음"
+        },
+        {
+          "title": "게시물·공유 시각 기록",
+          "proves": "공연성·전파 과정",
+          "limitation": "공유 수치만으로 불법성을 단정할 수 없음"
+        },
+        {
+          "title": "게시자와 당사자 간 연락 원문",
+          "proves": "정정 요청과 고의 관련 정황",
+          "limitation": "편집 의도는 별도 증명이 필요함"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "표현 맥락",
+        "확산 경로",
+        "인물 특정"
+      ]
+    },
+    {
+      "id": "rent-unpaid-deposit",
+      "category": "civil",
+      "baseKey": "rent",
+      "kind": "civil",
+      "tag": "민사·임대차",
+      "icon": "🏠",
+      "importance": 3,
+      "legal": "계약 반환·손상·공제",
+      "title": "퇴거 후 추가 공제된 임대차 보증금",
+      "premise": "퇴거 뒤 임대인이 반환할 보증금에서 청소와 설비 교체비를 공제했다. 원상회복 의무와 실제 수리 내역이 핵심이다.",
+      "trigger": "퇴거 점검 후 예상보다 큰 수선비가 산정됐다.",
+      "motive": "원상회복 비용의 분담",
+      "relationship": "집주인과 세입자",
+      "incident": {
+        "cause": "보증금 반환기 도래",
+        "action": "공제 항목 산정에 관한 의견 대립",
+        "aftermath": "사진과 영수증의 비교"
+      },
+      "evidence": [
+        {
+          "title": "퇴거 전후 원본 사진",
+          "proves": "손상 시점",
+          "limitation": "사진만으로 손상의 원인을 특정하기 어려움"
+        },
+        {
+          "title": "임대차계약서 특약",
+          "proves": "부담하기로 한 수리 의무",
+          "limitation": "불명확한 특약은 해석 문제를 남김"
+        },
+        {
+          "title": "실제 수리비 영수증",
+          "proves": "실제 손해 규모",
+          "limitation": "견적서와 실제 지출을 구분해야 함"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "계약 해석",
+        "임대차",
+        "실손해"
+      ]
+    },
+    {
+      "id": "inherit-family-records",
+      "category": "family",
+      "baseKey": "inherit",
+      "kind": "civil",
+      "tag": "민사·상속",
+      "icon": "📜",
+      "importance": 3,
+      "legal": "상속 관계·유언·재산범위",
+      "title": "유언 전후의 가족 간 재산 이전",
+      "premise": "가족 중 한 사람이 사망한 뒤 생전에 이루어진 재산 이전과 유언서의 진정성을 두고 상속인들 사이 소송이 제기됐다.",
+      "trigger": "사망 직전 재산 이전 내역이 확인됐다.",
+      "motive": "가족 부양과 공평한 분배에 대한 생각 차이",
+      "relationship": "가족 및 상속 관련자",
+      "incident": {
+        "cause": "유언서 발견",
+        "action": "부양비 지출에 대한 엇갈린 기억",
+        "aftermath": "거래 내역을 통한 재산 범위 확인"
+      },
+      "evidence": [
+        {
+          "title": "유언서 원본과 작성 경위",
+          "proves": "유언의 형식과 진정성",
+          "limitation": "작성 경위만으로 의사능력을 단정하지 않음"
+        },
+        {
+          "title": "금융 거래 명세",
+          "proves": "생전 증여와 재산 이동",
+          "limitation": "금전 이동의 목적은 별도 증명 대상"
+        },
+        {
+          "title": "병원 진료기록과 동거 가족 진술",
+          "proves": "작성 당시 판단 능력 관련 정황",
+          "limitation": "진료기록으로 법적 의사능력을 단정할 수 없음"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "상속인",
+        "유언",
+        "생전 이전"
+      ]
+    },
+    {
+      "id": "medical-delayed-notification",
+      "category": "professional",
+      "baseKey": "medical",
+      "kind": "civil",
+      "tag": "민사·의료",
+      "icon": "🏥",
+      "importance": 3,
+      "legal": "주의의무·설명·인과관계",
+      "title": "검사 결과 통지 누락을 둘러싼 의료 분쟁",
+      "premise": "의료기관에서 검사 결과를 확인한 후 환자에게 전달한 시점이 다투어진다. 치료 지연에 따른 손해와 인과관계를 별도로 따져야 한다.",
+      "trigger": "검사 결과 통지 절차의 기록이 불완전했다.",
+      "motive": "의료기관의 업무량과 환자의 치료 선택",
+      "relationship": "환자와 의료기관",
+      "incident": {
+        "cause": "후속 검사 지연",
+        "action": "통지 여부 논쟁",
+        "aftermath": "손해 발생과 지연의 인과관계 심리"
+      },
+      "evidence": [
+        {
+          "title": "검사 의뢰 및 결과 보고서",
+          "proves": "결과 확인 날짜",
+          "limitation": "결과가 비정상이라는 사실만으로 과실이 성립하지 않음"
+        },
+        {
+          "title": "예약·통화·문자 발송 기록",
+          "proves": "정보 전달 시점",
+          "limitation": "문자 발송과 실제 설명 이행은 구분될 수 있음"
+        },
+        {
+          "title": "외부 전문가 감정서",
+          "proves": "지연과 손해 사이의 관련성",
+          "limitation": "감정에는 치료 경과상의 불확실성이 있음"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "진료 의무",
+        "통지",
+        "인과관계"
+      ]
+    },
+    {
+      "id": "bribe-consulting-contract",
+      "category": "public",
+      "baseKey": "bribe",
+      "kind": "criminal",
+      "tag": "형사·부패",
+      "icon": "🏛️",
+      "importance": 5,
+      "legal": "직무 관련성·금품·고의",
+      "title": "공공사업 자문료와 직무 관련성",
+      "premise": "공공 사업의 결정 시점과 민간 자문 계약 지급 시점이 근접하면서 금품의 성격과 직무 관련성을 둘러싼 수사가 시작됐다.",
+      "trigger": "기업과 공직 관계자의 과거 자문 계약이 드러났다.",
+      "motive": "사업 수주와 공적 신뢰에 관한 이해충돌",
+      "relationship": "민간 업체와 공직 관련자",
+      "incident": {
+        "cause": "입찰·계약 관계",
+        "action": "대가관계 여부에 대한 반박",
+        "aftermath": "지급 경위와 자문 실체 검증"
+      },
+      "evidence": [
+        {
+          "title": "자문계약 원본과 수행 보고서",
+          "proves": "용역의 구체적인 이행 여부",
+          "limitation": "보고서 존재만으로 정당한 거래가 되는 것은 아님"
+        },
+        {
+          "title": "사업 심사·결재 기록",
+          "proves": "직무 관련성과 결정 과정",
+          "limitation": "결정 시점 근접만으로 대가관계를 단정할 수 없음"
+        },
+        {
+          "title": "금융 이체와 회계 자료",
+          "proves": "금품 이동과 수수 경위",
+          "limitation": "계좌 이체만으로 직무 관련 의도를 입증하지 못함"
+        }
+      ],
+      "questions": [
+        "증거 작성·확보 경위를 구분한다",
+        "진술에서 직접 경험과 추정을 나눈다",
+        "법적 요건별 입증 정도를 확인한다"
+      ],
+      "causalTags": [
+        "직무 관련성",
+        "금품 이동",
+        "자문 실체"
+      ]
+    }
+  ]
+}

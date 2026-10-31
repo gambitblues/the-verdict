@@ -1,0 +1,70 @@
+{
+  "format": "the-verdict-casepack-index/v1",
+  "distribution": [
+    {
+      "category": "homicide",
+      "label": "살인·치사·연쇄범죄",
+      "target": 85
+    },
+    {
+      "category": "sexual",
+      "label": "성범죄·성적 자기결정권 관련 사건",
+      "target": 80
+    },
+    {
+      "category": "violence",
+      "label": "폭행·상해·스토킹",
+      "target": 40
+    },
+    {
+      "category": "financial",
+      "label": "사기·횡령·배임",
+      "target": 50
+    },
+    {
+      "category": "property",
+      "label": "절도·재산범죄·교통·방화",
+      "target": 45
+    },
+    {
+      "category": "reputation",
+      "label": "명예훼손·디지털·연예계 분쟁",
+      "target": 45
+    },
+    {
+      "category": "civil",
+      "label": "계약·금전·임대차·손해배상",
+      "target": 25
+    },
+    {
+      "category": "family",
+      "label": "이혼·불륜·양육·상속",
+      "target": 55
+    },
+    {
+      "category": "professional",
+      "label": "기업·노동·의료",
+      "target": 45
+    },
+    {
+      "category": "public",
+      "label": "정치·부패·행정·헌법 사건",
+      "target": 30
+    }
+  ],
+  "packs": [
+    "./beta-weekend-100-v1.json"
+  ],
+  "betaCounts": {
+    "homicide": 17,
+    "sexual": 16,
+    "violence": 8,
+    "financial": 10,
+    "property": 9,
+    "reputation": 9,
+    "civil": 5,
+    "family": 11,
+    "professional": 9,
+    "public": 6
+  }
+}
