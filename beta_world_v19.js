@@ -22,9 +22,8 @@ function resolveCourts(){
   const hours=8+(seed%89);if(now<arrival+hours*3600000)continue;
   const verdicts=entry.kind==='criminal'?['증거 부족으로 무죄','일부 혐의 유죄','공소사실 전부 유죄','공소기각']:['청구 일부 인용','청구 기각','청구 전부 인용','조정 성립','소송상 화해'];
   const result=verdicts[seed%verdicts.length];
-  let connection=null;
-  const ids=Object.keys(S.npcDB||{});
-  if(ids.length&&seed%7===0){const id=ids[seed%ids.length];if(NPC[id]){connection=id;remember(id,'타 재판부 기록',entry.title+' · '+result,'other-'+entry.slot);}}
+  // Do not invent a relationship between unrelated NPCs and a background case.
+  const connection=null;
   const record={slot:entry.slot,title:entry.title,day:entry.day,result,week:S.week,connection,category:'법원 판결'};
   db.resolvedSlots[entry.slot]=true;db.otherCourtDecisions.push(record);entry.result=result;
   if(updated<3||connection){news('다른 재판부 판결 · '+entry.title,result+(connection?' · '+NPC[connection].name+'의 기존 이력이 간접적으로 연결됨':''),'법조일보');}
