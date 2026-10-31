@@ -62,7 +62,7 @@ try{
   await tab('evidence');
   const inspect=page.locator('.t4 [data-kind="inspect"]:not([disabled])').first();if(await inspect.count())await inspect.click();
   const use=page.locator('.t4 [data-kind="decide"][data-choice="conditional"]:not([disabled])').first();if(await use.count())await use.click();
-  await page.locator('.t4-pagenav [data-action="t4page"]').last().click();
+  const next=page.locator('.t4-pagenav [data-action="t4page"]:not([disabled])').last();if(await next.count())await next.click();
   await tab('witness');
   const ask=page.locator('.t4 [data-kind="ask"]:not([disabled])').first();if(await ask.count())await ask.click();
   await page.locator('.t4-dock [data-action="t4end"]').click();
