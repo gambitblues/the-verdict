@@ -49,14 +49,6 @@ const HEAD={
  probe:{1:['{c} 판결 뒤에도 남은 질문들','{c}, 법정에 나오지 않은 기록'],'-1':['{c} 무엇이 증명되지 못했나','{c}, 재판부가 지적한 증거의 빈자리'],'0.5':['{c}, 인정된 것과 인정되지 않은 것']},
  balance:{1:['{c} 선고, 엇갈리는 시민 반응','{c} 판결 이후 남은 과제'],'-1':['{c} 선고, 여론과 법정 사이','{c} 판결이 던진 질문'],'0.5':['{c}, 일부 인정 판결의 의미']}
 };
-const SNS={
- anger:['이게 판결이라고?','판사 이름 기억해 둔다','상식이 안 통하는 법정','피해자는 누가 지켜주냐','이러니 법을 못 믿지'],
- sympathy:['사정을 들어보면 마음이 복잡함','저 사람 입장도 이해는 간다','처벌만이 답은 아닌 듯','끝까지 들어봐야 하는 사건이었음','양쪽 다 상처가 크겠다'],
- cynic:['어차피 다음 주면 다 잊음','돈 있으면 결과가 달라지는 거 아님?','기사 제목만 보고 싸우는 중 ㅋㅋ','또 이런 사건이네','결론 정해놓고 한 거 아니냐'],
- legal:['감정보다 증거로 판단해야지','판결문 읽어보면 이유가 나옴','의심이 남으면 책임을 묻기 어려운 게 원칙','기사 말고 기록을 봐야 함','결론보다 이유가 중요함'],
- flaw:['증거가 불법이면 못 쓰는 게 맞음','법정에서 흠이 다 드러났잖아','흠 있는 증거로 처벌하면 그게 더 문제']
-};
-const NICKS=['팩트먼저','퇴근길댓글','지나가던법대생','민트초코판사','상식인','기록덕후','판례읽는밤','유동닉','현직은아님','법알못'];
 
 /* ---------- state ---------- */
 function opponentOf(c){return c.side?.[1]}
@@ -224,7 +216,7 @@ function confirmVerdict(){
 
 function after(c,st,t,opt,dir,reasons,res){
  const side=T.sideOf(dir),match=T.opinionMatch(t.media.O,dir),ev=T.evaluate(res.score,match,t,dir,t.seed);
- const d=desk(),heat=t.media.H,count=heat>=70?3:heat>=45?2:1;
+ const d=desk(),heat=t.media.H,count=heat>=70?2:1;
  const pool=[...REPORTERS].sort((a,b)=>T.hash(c.id+a.id)-T.hash(c.id+b.id));
  if(c.importance>=4&&!pool.slice(0,count).some(r=>r.style==='law')){const i=pool.findIndex(r=>r.style==='law');pool.unshift(pool.splice(i,1)[0])}
  const headlines=pool.slice(0,count).map(r=>{
@@ -236,26 +228,34 @@ function after(c,st,t,opt,dir,reasons,res){
   news(text,`${reporterName(r)} 기자 · ${opt.label}. ${mood.mood<40?'재판부를 향한 비판적 시각이 담겼다.':mood.mood>65?'재판부의 판단 과정을 비교적 자세히 소개했다.':'판결 내용을 전하며 양측 반응을 함께 실었다.'}`,r.outlet);
   return {reporter:r.id,name:reporterName(r),outlet:r.outlet,label:r.label,text,mood:mood.mood};
  });
- const against=side*t.media.O<0,publicFlaws=t.evidence.filter(e=>e.publicFlaw).length,illegal=t.evidence.some(e=>e.flawType==='illegal'&&e.decision==='exclude');
- const weights={anger:against?Math.abs(t.media.O):5,sympathy:t.media.O<0?-t.media.O:8,cynic:heat>60&&t.media.S<40?30:10,legal:15,flaw:publicFlaws*20+(illegal?30:0)};
- const total=Object.values(weights).reduce((a,b)=>a+b,0);
- const sns=Array.from({length:6},(_,i)=>{
-  let r=T.unit(c.id+':sns:'+i)*total,cl='legal';
-  for(const [k,v] of Object.entries(weights)){if(r<v){cl=k;break}r-=v}
-  return {cluster:cl,nick:T.pick(NICKS,c.id+':n:'+i),text:T.pick(SNS[cl],c.id+':t:'+i),likes:Math.round(heat*(3+T.unit(c.id+':l:'+i)*20))};
- }).sort((a,b)=>b.likes-a.likes);
- news(`시민광장 · ${shortName(c)}`,sns.slice(0,2).map(x=>`"${x.text}"`).join(' / '),'시민광장');
+ // Media desk: fixed facts → anomalies → column / court beat / community, with running narratives.
+ const MD=window.VerdictMediaDesk;let deskOut=null;
+ if(MD){
+  const g=T.gauge(t),oppNpc=NPC[t.opponent];
+  deskOut=MD.react({caseId:c.id,caseName:c.name,category:c.tag+' '+(c.contentPack?.category||''),verdictLabel:plainLabel(opt),side,
+   P:g.P,D:g.D,skill:res.score,match,H:t.media.H,O:t.media.O,S:t.media.S,importance:c.importance,daysDone:t.daysDone,minDays:t.minDays,
+   illegalOut:t.evidence.some(e=>e.flawType==='illegal'&&e.decision==='exclude'),flip:t.witnesses.some(w=>w.flipped),twist:t.log.some(l=>l.kind==='반전'),
+   judgeName:S.name||'재판장',opponent:{id:t.opponent||'none',name:oppNpc?.name||'상대',style:t.style,styleLabel:T.LABEL.style[t.style]},
+   evidence:t.evidence.map(e=>({decision:e.decision,revealed:e.revealed,flawType:e.flawType}))},d.media);
+  d.media=deskOut.state;
+  news(deskOut.column.title,`${deskOut.column.writer} 칼럼 · ${deskOut.column.body}`,deskOut.column.outlet);
+  news(deskOut.beat.title,`${deskOut.beat.writer} 기자 · ${deskOut.beat.body}`,deskOut.beat.outlet);
+  news(`시민광장 · ${shortName(c)} (${deskOut.community.label})`,deskOut.community.comments.slice(0,2).map(x=>`"${x.text}"`).join(' / '),'시민광장');
+ }
+ const sns=deskOut?deskOut.community.comments:[];
  const opp=NPC[t.opponent];
  if(opp){opp.vsJudge??={win:0,lose:0};if(side===-1)opp.vsJudge.win++;else if(side===1)opp.vsJudge.lose++}
  t.final={option:opt.id,label:opt.label,dir,reasons,skill:res.score,items:res.items,match,review:ev.review,evaluators:ev.scores,
-  reviewAt:now()+REVIEW_AFTER,reviewShown:false,headlines,sns,proof:T.gauge(t),media:{...t.media},at:now()};
+  reviewAt:now()+REVIEW_AFTER,reviewShown:false,headlines,sns,desk:deskOut&&{summary:deskOut.summary,anomalies:deskOut.anomalies,column:deskOut.column,beat:deskOut.beat,community:{mode:deskOut.community.mode,label:deskOut.community.label},narratives:deskOut.narratives},proof:T.gauge(t),media:{...t.media},at:now()};
  t.revealAt=now()+T.between(REVEAL_MIN_DAYS,REVEAL_MAX_DAYS,t.seed+':reveal')*DAY;
  st.trialReview={skill:res.score,review:ev.review,proof:t.final.proof.P,doubt:t.final.proof.D,publicOpinion:{...t.media}};
  save();render();
  modal('선고 완료',`<p><b>${esc(plainLabel(opt))}</b></p>
   <div class="t4-delta"><span>판결 실력</span><b>${res.score}</b></div>
   <div class="t4-delta"><span>여론과 맞은 정도</span><b>${match}</b></div>
-  <h4>오늘의 헤드라인</h4>${headlines.map(x=>`<p class="t4-headline"><small>${esc(x.outlet)} · ${esc(x.name)} 기자</small><br>${esc(x.text)}</p>`).join('')}
+  ${deskOut?`<h4>📋 판결 요약</h4><div class="t4-summary">${deskOut.summary.map(l=>`<div>${esc(l)}</div>`).join('')}</div>
+  <h4>오늘의 1면</h4><p class="t4-headline"><small>${esc(deskOut.column.outlet)} · ${esc(deskOut.column.desk)}</small><br>${esc(deskOut.column.title)}</p><p class="t4-headline"><small>${esc(deskOut.beat.outlet)} · ${esc(deskOut.beat.desk)}</small><br>${esc(deskOut.beat.title)}</p>`:''}
+  ${headlines.map(x=>`<p class="t4-headline"><small>${esc(x.outlet)} · ${esc(x.name)} 기자</small><br>${esc(x.text)}</p>`).join('')}
   <p class="muted small">판결 리뷰 점수는 게임 시간 3일 뒤(현실 약 9시간 뒤) 공개됩니다.</p>`);
 }
 
@@ -348,13 +348,18 @@ function panel(c,st){
 }
 function resultPanel(c,st){
  const t=st.trial4,f=t?.final;if(!f)return '';
- const reviewed=f.reviewShown||now()>=f.reviewAt;
+ const reviewed=f.reviewShown||now()>=f.reviewAt,dk=f.desk;
  const groups={anger:'분노',sympathy:'동정',cynic:'냉소',legal:'법리 옹호',flaw:'법리 옹호'};
+ const comments=(f.sns||[]).map(x=>`<div class="t4-sns ${x.pol==='+'?'pos':x.pol==='-'||x.pol==='?'?'neg':''}"><b>${esc(x.nick)}</b>${x.cluster?` <span class="t4-tag">${groups[x.cluster]||''}</span>`:''}<p>${esc(x.text)}</p><small>▲ ${x.likes}</small>${x.reply?`<div class="t4-reply">↳ <b>${esc(x.reply.nick)}</b> ${esc(x.reply.text)}</div>`:''}</div>`).join('');
  return `<section class="panel t4"><h3>📰 선고 이후</h3>
  <div class="t4-stats"><span>판결 실력 <b>${f.skill}</b></span><span>여론과 맞은 정도 <b>${f.match}</b></span><span>판결 리뷰 <b>${reviewed?f.review:'공개 전'}</b></span></div>
  ${reviewed?`<p class="small">${f.evaluators.map(e=>`${esc(e.name)} ${e.score}점`).join(' · ')}</p>`:`<p class="muted small">판결 리뷰는 ${Math.max(1,Math.ceil((f.reviewAt-now())/HOUR))}시간 뒤 공개됩니다.</p>`}
- <h4>헤드라인</h4>${f.headlines.map(x=>`<p class="t4-headline"><small>${esc(x.outlet)} · ${esc(x.name)} 기자 (${esc(x.label)})</small><br>${esc(x.text)}</p>`).join('')}
- <h4>시민 반응</h4>${f.sns.map(x=>`<div class="t4-sns"><b>${esc(x.nick)}</b> <span class="t4-tag">${groups[x.cluster]}</span><p>${esc(x.text)}</p><small>▲ ${x.likes}</small></div>`).join('')}
+ ${dk?`<h4>📋 판결 요약</h4><div class="t4-summary">${dk.summary.map(l=>`<div>${esc(l)}</div>`).join('')}</div>
+ <article class="t4-article"><small>${esc(dk.column.outlet)} · ${esc(dk.column.desk)} · ${esc(dk.column.writer)}</small><h4>${esc(dk.column.title)}</h4><p>${esc(dk.column.body)}</p></article>
+ <article class="t4-article beat"><small>${esc(dk.beat.outlet)} · ${esc(dk.beat.desk)} · ${esc(dk.beat.writer)} 기자</small><h4>${esc(dk.beat.title)}</h4><p>${esc(dk.beat.body)}</p></article>`:''}
+ ${f.headlines?.length?`<h4>다른 매체</h4>${f.headlines.map(x=>`<p class="t4-headline"><small>${esc(x.outlet)} · ${esc(x.name)} 기자 (${esc(x.label)})</small><br>${esc(x.text)}</p>`).join('')}`:''}
+ <h4>💬 시민광장${dk?` · <span class="t4-mode ${dk.community.mode}">${esc(dk.community.label)}</span>`:''}</h4>${comments}
+ ${dk?.narratives?.length?`<h4>언론이 주목하는 흐름</h4>${dk.narratives.map(n=>`<p class="t4-narr l${n.level}">${esc(n.text)}</p>`).join('')}`:''}
  <details class="t4-log"><summary>판결 실력 계산 근거</summary>${f.items.map(i=>`<p>${i.points>0?'+':''}${i.points} · ${esc(i.text)}</p>`).join('')||'<p>가감 항목 없음</p>'}</details></section>`;
 }
 

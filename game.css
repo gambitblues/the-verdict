@@ -365,3 +365,18 @@ body{font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',s
 .t4-help summary{font-weight:700;cursor:pointer;color:#2c5a43}
 .t4-help ol{margin:8px 0 0;padding-left:18px}
 .t4-help li{margin:4px 0}
+
+/* ---- media desk ---- */
+.t4-summary{background:#18283e;color:#f3efe6;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.7}
+.t4-summary div:first-child{font-weight:700;color:#f1d39b}
+.t4-article{margin:12px 0;padding:12px 14px;border:1px solid #e3e0da;border-radius:12px;background:#fff}
+.t4-article h4{margin:6px 0;font-size:15px;line-height:1.45}
+.t4-article p{margin:0;font-size:13px;line-height:1.65;color:#3b4858}
+.t4-article small{color:var(--muted)}
+.t4-article.beat{background:#fbf8f2;border-style:dashed}
+.t4-mode{font-size:11px;border-radius:6px;padding:2px 7px;vertical-align:middle}
+.t4-mode.praise{background:#e6f3ea;color:#2c6a43}.t4-mode.criticize{background:#fbe9e7;color:#9a3b33}.t4-mode.debate{background:#f1ecfa;color:#5b4691}
+.t4-sns.pos b{color:#2c6a43}.t4-sns.neg b{color:#9a3b33}
+.t4-reply{margin:6px 0 0 12px;padding:6px 9px;background:#f4f6f8;border-radius:8px;font-size:12px}
+.t4-narr{margin:6px 0;padding:8px 10px;border-left:3px solid #c9853a;background:#fff8ef;font-size:13px;border-radius:0 8px 8px 0}
+.t4-narr.l3{border-color:#9a3b33;background:#fdeeee}
