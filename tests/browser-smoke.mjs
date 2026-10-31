@@ -43,23 +43,25 @@ try{
  assert.equal(await page.locator('.t4-tab').count(),6,'expected 6 courtroom pages');
  await page.locator('.t4-tab[data-tab="case"]').click();
  assert.ok(await page.locator('.t4-case').isVisible(),'case page not visible');
+ // the other side's requests arrive as a pop-up; answer them whenever one is open
+ const answer=async()=>{await page.waitForTimeout(150);let n=0;const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');while(await b.count()){await b.first().click();await page.waitForTimeout(100);n++}return n};
  // each page should be close to one phone screen
- for(const id of ['evidence','witness','log']){await page.locator(`.t4-tab[data-tab="${id}"]`).click();
+ for(const id of ['evidence','witness','log']){await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight)<1400,'page '+id+' scrolls too far')}
  // v4 trial loop: legacy hearing panels must be gone.
  assert.equal(await page.locator('.action-panel, .live-hearing-panel, [data-action="courtStep"]').count(),0,'legacy hearing UI still visible');
  await page.locator('.t4-tabs').first().waitFor();
  const cid=await page.evaluate(()=>ui.caseId);
  const min=await page.evaluate(id=>S.cases[id].trial4.minDays,cid);
- const tab=async id=>{await page.locator(`.t4-tab[data-tab="${id}"]`).click()};
+ const tab=async id=>{await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer()};
  // the case summary must be readable in full (no line clamp)
  await tab('case');
  assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.t4-case p')).webkitLineClamp),'none','case summary is clipped');
  for(let d=0;d<min;d++){
   await tab('day');
-  const card=page.locator('.t4 [data-kind="card"][data-choice="reject"]');
-  while(await card.count())await card.first().click();
+  assert.ok(await page.locator('.t4-todo li').count()>=3,'today checklist missing');
   await tab('evidence');
+  assert.ok(await page.locator('.t4-flaw b').first().textContent().then(x=>/약점|불법/.test(x)),'evidence weakness should be in plain words');
   const inspect=page.locator('.t4 [data-kind="inspect"]:not([disabled])').first();if(await inspect.count())await inspect.click();
   const use=page.locator('.t4 [data-kind="decide"][data-choice="conditional"]:not([disabled])').first();if(await use.count())await use.click();
   const next=page.locator('.t4-pagenav [data-action="t4page"]:not([disabled])').last();if(await next.count())await next.click();
@@ -67,6 +69,7 @@ try{
   const ask=page.locator('.t4 [data-kind="ask"]:not([disabled])').first();if(await ask.count())await ask.click();
   await page.locator('.t4-dock [data-action="t4end"]').click();
   await page.locator('#modal-root [data-action="dismiss"]').click();
+  if(d<min-1)assert.match(await page.locator('.t4-wait.big b').textContent(),/재판일 \d+[은는] \d\d:\d\d에 열려요/,'waiting state should show when the next day opens');
   await page.evaluate(id=>{S.cases[id].trial4.nextAt=0;render()},cid);
  }
  await tab('verdict');

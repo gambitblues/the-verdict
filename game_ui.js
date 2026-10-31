@@ -126,7 +126,7 @@ function priority(){
 }
 function hearingCard(c){
  const st=S.cases[c.id],waiting=st?.liveHearing&&!st.liveHearing.done&&st.liveHearing.until>Date.now();
- return '<button class="tv-case" data-action="openCase" data-id="'+esc(c.id)+'"><span class="tv-case-tag">'+esc(c.kind==='criminal'?'형사':'민사·가사')+'</span><strong>'+esc(c.name)+'</strong><small>'+(waiting?'후속 기일 준비 중':st?.phase>=3?'선고 검토':'심리 진행 중')+'</small><span aria-hidden="true">›</span></button>';
+ return '<button class="tv-case" data-action="openCase" data-id="'+esc(c.id)+'"><span class="tv-case-tag">'+esc(c.kind==='criminal'?'형사':'민사·가사')+'</span><strong>'+esc(c.name)+'</strong><small>'+(window.VerdictTrialPlay?esc(VerdictTrialPlay.stage(c,st).text):(waiting?'후속 기일 준비 중':st?.phase>=3?'선고 검토':'심리 진행 중'))+'</small><span aria-hidden="true">›</span></button>';
 }
 home=function(){
  if(!S.name)return '<div class="panel">판사 프로필을 생성해 커리어를 시작하세요.</div>';
