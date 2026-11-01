@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');
+const W=require('../advanced_world_engine.js'),S=require('../advanced_case_schema.js');
+const rules=[{id:'birth',chancePer1000:420,once:true,requiredFacts:['pregnancy_confirmed'],addFacts:['birth_recorded'],detail:'출산기록'},{id:'marital_suspicion',chancePer1000:250,once:true,requiredFacts:['birth_recorded'],addFacts:['paternity_disputed'],litigation:{id:'divorce-petition',eligible:true,category:'family'}},{id:'unrelated_job_change',chancePer1000:130,once:true}];
+const start=W.init('clinic','42',[{id:'patient',married:true}]);
+const same=W.advance(start,rules,40);
+assert.deepEqual(same,W.advance(start,rules,40));
+assert.equal(start.month,0);
+assert.ok(!same.events.some(x=>x.id==='birth'));
+const seeded={...start,facts:['pregnancy_confirmed']};
+const later=W.advance(seeded,rules,40);
+assert.ok(later.events.every(x=>x.month>=1));
+assert.ok(later.litigations.every(x=>x.status==='potential'));
+assert.throws(()=>S.catalogue([]),/100-case/);
+assert.throws(()=>S.validate({id:'empty'}),/Missing/);
+console.log('PASS advanced world deterministic optional events and case catalogue validation');
