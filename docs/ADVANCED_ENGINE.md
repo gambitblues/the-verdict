@@ -18,3 +18,10 @@ Run: `node tests/advanced-case-engine.test.cjs`.
 - `records`에는 `id,kind,source,provenance,at`와 선택적인 `eventId,deviceId,uncertaintyMinutes`를 기록한다. 시간 비교 결과는 양립 여부이지 진위, 동의, 유무죄 판정이 아니다.
 - 원본 증거로 잠기지 않은 ID를 법정 제출할 수 없다. 제출 기록은 사건 진실을 변경하지 않고 법정 이력에 추가한다. 중복 제출은 중복 기록하지 않는다.
 - 현재는 개발용 순수 데이터 모듈이며 기존 사건 화면과 연결되지 않았다. 타임라인 증거의 진위·장치 오차는 기획자가 검증하여 제공해야 한다. 테스트 파일은 `tests/advanced-timeline-evidence.test.cjs`.
+
+## Courtroom Conflict Engine v1 (독립 모듈)
+
+- `advanced_courtroom_conflict.js`: 기획자가 쓴 대사만 `claim → rebuttal → counter → intervention`로 연결한다. `line.support`에 법정 제출된 증거 ID, 앞서 기록된 증언 순번 또는 공방 ID를 명시해야 다음 대사가 해금된다.
+- `line`에는 `id,phase,speaker,text,intensity,support,replyTo`를 지정한다. `intensity`는 `analytical/firm/heated` 중 하나다. 공격적 언사는 법적 유죄 판단 또는 증명력 수치에 영향을 주지 않는다.
+- `judge`만 `intervention`을 실행할 수 있고, 모든 공방 발언은 원래 사건 사실을 변경하지 않는 법정 이력에 기록된다. 무작위 문장 생성은 하지 않는다.
+- 기본 테스트: `node tests/advanced-courtroom-conflict.test.cjs`. 실제 게임 UI 연결, 법률 절차 검증 및 사건 5건에 대한 플레이 QA는 후속 작업이다.
