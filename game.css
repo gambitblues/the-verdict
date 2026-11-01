@@ -514,7 +514,7 @@ body.t4-court #toast{bottom:168px}
 .wf-case h4{margin:0 0 8px}
 .wf-bar{display:flex;height:26px;border-radius:9px;overflow:hidden;font-size:11px;font-weight:700;color:#fff}
 .wf-bar span{display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden}
-.wf-bar .a{background:#b5643a}.wf-bar .b{background:#3f6d8c}.wf-bar .m{background:#a7a39a}
+.wf-bar .a{background:#c8442f}.wf-bar .b{background:#2f62a8}.wf-bar .m{background:#9a9790}
 .wf-steps{margin:8px 0;font-size:12.5px}.wf-steps ul{margin:6px 0;padding-left:18px}
 .wf-msg{background:#fff;border:1px solid #e6dfd0;border-radius:14px;padding:12px;margin:10px 0}
 .wf-msg.new{border-color:#d9b26a;box-shadow:0 0 0 2px rgba(217,178,106,.15)}
@@ -523,3 +523,16 @@ body.t4-court #toast{bottom:168px}
 .wf-bubble.me{background:#1d3550;color:#fff;border-radius:12px 12px 3px 12px;margin:8px 0 0 30px}
 .wf-choices{display:flex;flex-direction:column;gap:6px;margin-top:10px}.wf-choices .btn{white-space:normal;text-align:left}
 .wf-home{display:block;width:100%;text-align:left;border:1px solid #d9b26a;background:#fff8e8;color:#5d4a1f;border-radius:14px;padding:12px 14px;font:inherit;font-weight:700;margin-bottom:12px;cursor:pointer}
+
+/* v5.2 */
+.t4-tabs{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px!important;overflow:visible!important}
+.t4-tabs .t4-tab{min-width:0;padding:8px 2px!important;font-size:13px!important;white-space:nowrap;text-align:center}
+.t4-rec{margin:6px 0 10px;padding-left:18px;font-size:13.5px;line-height:1.55}.t4-rec li{margin:6px 0}
+.wf-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin:2px 0 6px;color:#3d4652}
+.wf-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.wf-bar{height:14px!important}
+.tv-pair{border:1px solid #e1d6c0;border-radius:12px;padding:8px 10px;margin:8px 0;background:#fffdf8}
+.tv-pair-head{display:flex;justify-content:space-between;font-size:12px;color:#6b5d40;margin-bottom:4px}
+.tv-reporter{font-size:12px;color:#6b6458;background:#f6f1e6;border-radius:8px;padding:6px 9px;margin:6px 0}
+.tv-media-card .lean{font-size:11px;font-weight:700;border-radius:6px;padding:1px 6px;margin-left:6px}
+.lean.p{background:#fbe2dc;color:#a33a2a}.lean.d{background:#dde8f3;color:#2e5a86}

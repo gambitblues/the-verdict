@@ -495,7 +495,7 @@ function home(){const open=openCases();const mainCase=open[0];const prof=clamp(S
 function casesPage(){const available=openCases().sort((a,b)=>b.importance-a.importance||a.week-b.week);const locked=CASES.filter(c=>c.week>S.week);return `${heading('사건 배당함','접수된 사건을 확인하고 이번 주 심리할 사건을 선택하세요.')}
  <div class="grid three mt2"><div class="stat-card"><label>미완료 사건</label><strong>${available.length}건</strong></div><div class="stat-card"><label>완료 사건</label><strong>${completed().length}건</strong></div><div class="stat-card"><label>금주 심리 여력</label><strong>${actionsLeft()}/${actionMax()}</strong></div></div>
  ${section('진행 중인 사건','모든 판결 완료 사건은 태블릿에서 열람')}<div class="case-list">${available.length?available.map(caseCard).join(''):'<div class="panel">배당된 사건이 없습니다. 시간을 진행해 보세요.</div>'}</div>
- <div class="panel mt2"><b>📂 세계에 등록된 사건 ${CASES.length}건 · 향후 생성 계속</b><p class="muted small">가상 시간이 진행되면 더 복잡하고 사회적 관심이 높은 사건이 등록됩니다. 배당된 사건은 순서를 자유롭게 정해 심리할 수 있습니다.</p></div>`}
+`}
 function court(){const available=openCases();let c=CASES.find(x=>x.id===ui.caseId&&caseOpen(x)&&!S.cases[x.id]?.referred);if(!c)c=available[0];if(!c)return `${heading('법정','아직 배당된 사건이 없습니다.')}`;ui.caseId=c.id;const st=S.cases[c.id];const left=actionsLeft();const last=st.actions.at(-1);const p=st.phase;
  let body=st.verdict?resultCase(c):`<div class="panel"><div class="row between"><div class="eyebrow">COURT RECORD / ${h(c.tag)}</div><span class="chip">심리 ${p}/3</span></div>
  <div class="court-backdrop" aria-label="미니어처 법정 장면"><div class="judge-stand">${avatar('self')}<div class="judge-bench">⚖</div></div><div class="side-stand left">${avatar(c.side[0])}<label>${c.tag.includes('형사')?'검사':'원고 측'}</label></div><div class="side-stand right">${avatar(c.side[1])}<label>피고 측</label></div></div>
