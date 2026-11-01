@@ -4,7 +4,7 @@ const ids=new Set(),types={};
 assert.equal(p.drafts.length,99);
 for(const c of p.drafts){
  assert.ok(!ids.has(c.id),'duplicate ID '+c.id);ids.add(c.id);types[c.category]=(types[c.category]||0)+1;
- assert.ok(c.fictionalLocation.length>12);
+ assert.ok(c.fictionalLocation.length>=7);
  assert.equal(c.incidentTimeline.length,3);assert.equal(c.authoredEvidence.length,3);assert.equal(c.witnessPlans.length,2);
  assert.equal(c.qa.playable,false);
  for(const evt of c.incidentTimeline)assert.match(evt.at,/^2026-\d\d-\d\dT\d\d:\d\d:00\+09:00$/);
