@@ -1,6 +1,8 @@
 /* THE VERDICT — 인맥: only the people I have actually met, drawn as a relationship map.
- * Tab 1 (관계도): me in the centre, four groups around me, closer = more trust.
- * Tab 2 (사건별): one case at a time — lawyers, the two parties and the witnesses, coloured by side.
+ * Tab 1 (관계도): me in the centre; only real, lasting ties — court colleagues, the lawyers I keep meeting, reporters.
+ *   Parties and witnesses are people of one case, so they live only in Tab 2.
+ * Tab 2 (사건별): pick a case from a drop-down — lawyers, the two parties and the witnesses, coloured by side.
+ * The romance panel is hidden for now (it will come back as a natural story event later).
  * The pre-generated legal pool stays in the world for assignments but sits in a collapsed roster. */
 (()=>{
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -19,28 +21,29 @@ function circles(){
  const add=(key,id,role,caseName)=>{if(!id||!NPC[id]||seen.has(id))return;seen.add(id);
   g[key].push({id,name:NPC[id].name,role,caseName,trust:trust(id),act:`data-action="npc" data-id="${esc(id)}"`})};
  for(const id of ['hyun','senior'])add('court',id,NPC[id]?.role||'법원');
- if(S.romance?.person)add('court',S.romance.person,{met:'알아가는 중',dating:'연인',married:'배우자'}[S.romance.stage]||'인연');
- for(const c of myCases()){const t=S.cases[c.id].trial4,crim=isCrim(c),open=!S.cases[c.id].verdict;
-  add('bar',c.side?.[0],crim?'검사':'원고 대리인',short(c));add('bar',t.opponent,crim?'변호인':'피고 대리인',short(c));
-  if(open||g.case.length<10){add('case',c.who?.[0],crim?'피고인':'원고',short(c));add('case',c.who?.[1],crim?'피해자':'피고',short(c));
-   (t.witnesses||[]).forEach(w=>add('case',w.id,'증인 · '+w.role,short(c)))}}
+ /* lawyers: one entry per person, with how many of my cases they appeared in */
+ const met={};
+ for(const c of myCases()){const t=S.cases[c.id].trial4,crim=isCrim(c);
+  for(const [id,role] of [[c.side?.[0],crim?'검사':'원고 대리인'],[t.opponent,crim?'변호인':'피고 대리인']]){if(!id||!NPC[id])continue;
+   (met[id]??={role,cases:[]}).cases.push(short(c))}}
+ for(const [id,m] of Object.entries(met))add('bar',id,m.cases.length>1?`${m.role} · 내 사건 ${m.cases.length}건`:m.role,m.cases.length>1?'':m.cases[0]);
  const W=WF(),list=W?.reporters?.()||[];
  const covering=new Set((window.VerdictMedia?.articles?.()||[]).map(a=>list.indexOf(a.reporter)).filter(i=>i>=0));
  for(const i of covering){const r=list[i],id='reporter_'+i;if(seen.has(id))continue;seen.add(id);
   g.press.push({id,name:r.name,role:r.outlet+' 기자',trust:trust(id),act:`data-action="reporter" data-i="${i}"`})}
  return g;
 }
-const GROUPS=[['court','법원·개인','#b08a3e',-90],['bar','법정의 법조인','#5b6b82',-28],['case','사건 사람들','#7a5c8e',92],['press','언론','#3f7f72',198]];
+const GROUPS=[['court','법원 동료','#b08a3e',-90],['bar','법정의 법조인','#5b6b82',20],['press','언론','#3f7f72',160]];
 const lineColor=v=>v>=55?'#3f8f5a':v>=20?'#a8a399':'#c8442f';
 
 /* ---------- 관계도 ---------- */
 function radial(g){
  const C=180,out=[],nodes=[],labels=[];
  for(const [key,label,color,angle] of GROUPS){
-  const items=g[key].slice().sort((a,b)=>b.trust-a.trust).slice(0,{court:3,bar:4,case:6,press:4}[key]),n=items.length;
-    const pos={court:[180,14,'middle'],bar:[356,30,'end'],case:[180,354,'middle'],press:[4,30,'start']}[key];
+  const items=g[key].slice().sort((a,b)=>b.trust-a.trust).slice(0,{court:4,bar:6,press:5}[key]),n=items.length;
+  const pos={court:[180,14,'middle'],bar:[356,286,'end'],press:[4,286,'start']}[key];
   labels.push(`<text x="${pos[0]}" y="${pos[1]}" class="pm-sector" text-anchor="${pos[2]}" fill="${color}">● ${esc(label)}</text>`);
-  const spread=Math.min(key==='case'?96:64,(n-1)*22);
+  const spread=Math.min(key==='court'?80:100,(n-1)*22);
   items.forEach((p,k)=>{
    const a=(angle+(n>1?-spread/2+spread*k/(n-1):0))*Math.PI/180;
    const r=Math.min(138,Math.max(66,132-p.trust*0.8)+(k%2?20:0)),x=C+Math.cos(a)*r,y=C+Math.sin(a)*r*0.9;
@@ -95,22 +98,22 @@ function caseMap(c){
 function pool(g){const met=new Set(Object.values(g).flat().map(p=>p.id));
  return (S.legalWorld?.people||[]).filter(id=>NPC[id]?.legalCareer&&!met.has(id))}
 people=function(){
- const g=circles(),tab=ui.pmTab||'map',cases=myCases(),total=Object.values(g).reduce((n,a)=>n+a.length,0);
- const tabs=`<div class="pm-tabs"><button class="${tab==='map'?'on':''}" data-action="pmtab" data-tab="map">관계도</button><button class="${tab==='case'?'on':''}" data-action="pmtab" data-tab="case">사건별 인물관계도</button></div>`;
+ const g=circles(),tab=ui.pmTab||'map',cases=myCases(),total=Object.values(g).reduce((n,a)=>n+a.length,0),caseFolk=new Set(cases.flatMap(c=>[...(c.who||[]),...(S.cases[c.id].trial4?.witnesses||[]).map(w=>w.id)])).size;
+ const tabs=`<div class="pm-tabs"><button class="${tab==='map'?'on':''}" data-action="pmtab" data-tab="map">관계도</button><button class="${tab==='case'?'on':''}" data-action="pmtab" data-tab="case">사건별 인물관계도${caseFolk?` · ${caseFolk}명`:''}</button></div>`;
  let page;
  if(tab==='case'){
   const c=cases.find(x=>x.id===ui.pmCase)||cases[0];
   page=!c?'<p class="muted">재판을 시작한 사건이 생기면 인물관계도가 그려집니다.</p>':
-   `<div class="pm-cases">${cases.slice(0,8).map(x=>`<button class="${x===c?'on':''}" data-action="pmcase" data-id="${esc(x.id)}">${esc(short(x))}${S.cases[x.id].verdict?' ✓':''}</button>`).join('')}</div>${caseMap(c)}`;
+   `<label class="sr-only" for="pm-case">사건 고르기</label><select id="pm-case" class="pm-select" data-pmcase>${[['진행 중',cases.filter(x=>!S.cases[x.id].verdict)],['선고한 사건',cases.filter(x=>S.cases[x.id].verdict)]].filter(v=>v[1].length).map(([l,list])=>`<optgroup label="${l} ${list.length}건">${list.map(x=>`<option value="${esc(x.id)}" ${x===c?'selected':''}>${esc(short(x))}</option>`).join('')}</optgroup>`).join('')}</select>${caseMap(c)}`;
  }else{
-  page=total?`${radial(g)}<div class="pm-legend"><span><i style="background:#3f8f5a"></i>신뢰 55 이상</span><span><i style="background:#a8a399"></i>보통</span><span><i style="background:#c8442f"></i>20 미만(점선)</span><span>가까울수록 신뢰가 높아요</span></div>
+  page=total?`${radial(g)}<div class="pm-legend"><span><i style="background:#3f8f5a"></i>신뢰 55 이상</span><span><i style="background:#a8a399"></i>보통</span><span><i style="background:#c8442f"></i>20 미만(점선)</span><span>가까울수록 신뢰가 높아요</span></div><p class="muted small">사건 당사자와 증인은 '사건별 인물관계도'에서 사건마다 볼 수 있어요.</p>
    ${GROUPS.map(([k,l,col])=>groupList(k,l,col,g[k].slice().sort((a,b)=>b.trust-a.trust))).join('')}`:'<p class="muted">아직 만난 사람이 없어요. 사건을 맡으면 인물이 생깁니다.</p>';
  }
  const rest=pool(g);
- return `${heading('인간관계',`실제로 만난 사람 ${total}명 · 이름을 누르면 인물카드`)}<section class="panel pm">${tabs}${page}</section>
- ${romancePanel()}
+ return `${heading('인간관계',`이어지는 인연 ${total}명 · 이름을 누르면 인물카드`)}<section class="panel pm">${tabs}${page}</section>
  ${rest.length?`<details class="panel pm-pool"><summary>법조계 명부 · 아직 만나지 않은 법조인 ${rest.length}명</summary><p class="muted small">사건이 배당될 때 이 명부에서 검사와 변호사가 정해집니다.</p><div class="pm-chips">${rest.map(id=>`<button data-action="npc" data-id="${esc(id)}">${esc(NPC[id].name)} <small>${esc(NPC[id].career||'')}</small></button>`).join('')}</div></details>`:''}`;
 };
+document.addEventListener('change',e=>{const el=e.target.closest?.('[data-pmcase]');if(!el)return;ui.pmCase=el.value;render()});
 const priorClick=clicker;
 clicker=function(e){
  const el=e.target.closest('[data-action]'),a=el?.dataset.action;

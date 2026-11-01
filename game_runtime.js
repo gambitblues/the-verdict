@@ -581,7 +581,10 @@ function people(){
  <div class="mt2"><div class="panel"><div class="row between"><b>주요 인물</b><span class="chip">${ids.length}명</span></div><div class="stack mt">${ids.map(id=>`<button data-action="npc" data-id="${id}" class="npc-card" style="text-align:left;width:100%;cursor:pointer">${avatar(id)}<span style="flex:1;min-width:0"><b>${h(NPC[id].name)}</b><small>${h(NPC[id].role)} · 신뢰 ${S.relations[id]??20}</small><span class="bar"><span style="width:${S.relations[id]??20}%"></span></span></span><span>›</span></button>`).join('')}</div></div></div>`;
 }
 
+/* Romance is hidden for now; it will return later as a natural story event. Data (S.romance) is kept. */
+const ROMANCE_ON=false;
 function romancePanel(){
+ if(!ROMANCE_ON)return '';
  const r=S.romance,person=r.person&&NPC[r.person],stage=r.stage;
  const opts=stage==='single'?`<div class="row" style="flex-wrap:wrap"><button class="btn outline mini" data-action="meetPartner" data-id="mina">서민아와 교류</button><button class="btn outline mini" data-action="meetPartner" data-id="taeo">최태오와 교류</button></div>`:
  stage==='met'?`<button class="btn gold mini" data-action="romanceStep" data-step="dating" ${r.lastYear===year()?'disabled':''}>서로 알아가며 연애 시작</button>`:

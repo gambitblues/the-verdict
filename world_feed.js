@@ -177,8 +177,13 @@ function writeArticle(c,t,r){
  if(!m.f&&m.demand&&mine==='p'&&m.days)lines.push(`검찰은 결심에서 ${m.demand} 안팎을 구형할 것으로 보인다.`);
  return {title:(HEAD[r.style]||HEAD.court)(m,x),body:lines.filter(Boolean).join(' ')};
 }
+/* Only cases on my own bench whose first hearing has opened: no coverage of cases I have not started,
+ * handed to another bench, or never took. Newest activity first. */
+function mine(c){const st=S.cases[c.id],t=st?.trial4;return !!t&&!st.referred&&(t.daysDone>0||t.log?.length>0||Object.keys(t.dates||{}).length>0||!!t.final)}
 function articles(){
- const cs=[...openCases(),...completed().slice(-10)].filter(c=>c.generated||c.contentPack);
+ const cs=CASES.filter(c=>(c.generated||c.contentPack)&&mine(c))
+  .sort((a,b)=>(!!S.cases[a.id].verdict-!!S.cases[b.id].verdict)||((S.cases[b.id].trial4.daysDone||0)-(S.cases[a.id].trial4.daysDone||0)))
+  .slice(0,14);
  const out=[];
  for(const c of cs){
   const st=S.cases[c.id],t=st?.trial4,crim=c.kind==='criminal';
@@ -192,7 +197,7 @@ function articles(){
 /* ---------- news with comments ---------- */
 function newsFeed(limit=40){
  const list=articles().slice(0,limit);
- if(!list.length)return '<p class="muted">진행 중 사건의 보도가 여기에 쌓입니다.</p>';
+ if(!list.length)return '<p class="muted">내가 맡은 사건의 첫 공판이 열리면 그 사건 기사가 여기에 실려요.</p>';
  return '<div class="tv-news-list">'+list.map(a=>{
   const c=CASES.find(x=>x.id===a.caseId),key='art'+a.index,id=a.caseId+':'+key,n=3+hash(id)%3;
   return `<article class="tv-media-card"><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div><strong>${esc(a.title)}</strong>${a.reporter?`<button class="tv-reporter" data-action="reporter" data-i="${REPORTERS.indexOf(a.reporter)}">✍ <b>${esc(a.reporter.name)} 기자</b> · ${esc(a.reporter.bio)}. ${esc(a.reporter.voice)}. <i>›</i></button>`:''}<p>${esc(a.body)}</p>
@@ -201,7 +206,7 @@ function newsFeed(limit=40){
 }
 /* ---------- public opinion, case by case ---------- */
 function opinionFeed(){
- const cs=[...openCases(),...completed().slice(-6)].filter(c=>S.cases[c.id]?.trial4).slice(0,8);
+ const cs=CASES.filter(mine).sort((a,b)=>!!S.cases[a.id].verdict-!!S.cases[b.id].verdict).slice(0,8);
  if(!cs.length)return '<p class="muted">재판이 시작된 사건의 여론이 여기에 모입니다.</p>';
  return cs.map(c=>{
   const t=S.cases[c.id].trial4,mix=stanceMix(t),f=t.final,log=t.mediaLog||[];
@@ -287,7 +292,7 @@ const priorTablet=tabletInner;
 tabletInner=function(){
  if(ui.tabletTab==='messages')return messagesView();
  if(ui.tabletTab==='social')return '<h2>＃ 여론</h2><p class="muted small">사건마다 여론이 어떻게 움직였는지, 지금 사람들이 무슨 말을 하는지 봅니다.</p>'+opinionFeed();
- if(ui.tabletTab==='news')return '<h2>📰 기사</h2><p class="muted small">사건별 보도와 독자 댓글입니다.</p>'+newsFeed(60);
+ if(ui.tabletTab==='news')return '<h2>📰 기사</h2><p class="muted small">내가 맡은 사건을 다룬 보도와 독자 댓글입니다.</p>'+newsFeed(60);
  return priorTablet();
 };
 const priorHome=home;
