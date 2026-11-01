@@ -22,7 +22,7 @@
   <div id="toast" aria-live="polite"></div>
 <script>
 /* Release version: bump together with CACHE in sw.js and the top entry of docs/CHANGELOG.md (tests/version.test.cjs checks). */
-window.VERDICT_VERSION='7.0.1';window.VERDICT_RELEASED='2026.11.02';
+window.VERDICT_VERSION='7.0.2';window.VERDICT_RELEASED='2026.11.02';
 /* Profile bootstrap must run before the deferred runtime reads the active save. */
 (()=>{const K='the_verdict_alpha_1',P='verdict_player_active',slot=id=>'verdict_player_save_'+id;
 const active=localStorage.getItem(P)||'1';const main=localStorage.getItem(K);
@@ -62,15 +62,7 @@ const saved=localStorage.getItem(slot(active));if(saved!==null)localStorage.setI
   <script src="./world_feed.js" defer></script>
   <script src="./people_map.js" defer></script>
   <script src="./v6_world.js" defer></script>
-  <script>
-  /* v7.0: some Android home-screen launches (Chrome shortcut / minimal UI on Galaxy Fold) report a layout viewport taller
-     than what is actually visible, and give no safe-area inset for the gesture bar. Keep the bottom bar inside the
-     visible area by measuring the gap between the layout and the visual viewport. */
-  (function(){var vv=window.visualViewport,root=document.documentElement;
-   function fix(){var gap=vv?Math.max(0,Math.round(window.innerHeight-(vv.height+vv.offsetTop))):0;root.style.setProperty('--vv-gap',gap+'px');
-    var mini=window.matchMedia&&(matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: minimal-ui)').matches);root.classList.toggle('app-mode',!!mini)}
-   if(vv){vv.addEventListener('resize',fix);vv.addEventListener('scroll',fix)}window.addEventListener('resize',fix);window.addEventListener('orientationchange',fix);fix()})();
-  </script>
+  <script src="./viewport_fix.js"></script>
   <script src="./app_install.js" defer></script>
 </body>
 </html>

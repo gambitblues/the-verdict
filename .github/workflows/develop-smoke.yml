@@ -40,6 +40,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Visual layer (mobile, tablet, desktop, read-only rendering)
         run: node tests/visuals.mjs
+      - name: Responsive layout (phones, Fold folded/unfolded, tablet, desktop)
+        run: node tests/responsive.mjs
       - name: Evidence shapes and witness moments (visual review gallery)
         run: node tests/evidence-moments.mjs
       - name: Run mobile viewport browser test

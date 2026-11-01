@@ -32,7 +32,7 @@ node tests/narrative-qa.cjs        # 집필 사건 문장·조사·구조 검사
 node tests/version.test.cjs        # index.html 버전 = sw.js CACHE = CHANGELOG 첫 항목
 node tests/v6-case-matrix.test.cjs  # 60건 × 80시드 증거·결정성 (개발자 추가)
 node tests/v6-behaviour.test.cjs    # 증인 태도·이의·증거 반박·대질·주문 결과 순수 함수
-ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/visuals.mjs; node tests/evidence-moments.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/long-career.mjs 40; rm node_modules
+ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/visuals.mjs; node tests/responsive.mjs; node tests/evidence-moments.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/long-career.mjs 40; rm node_modules
 ```
 - `curated/*.js`를 고치면 `node tests/build-curated.cjs`로 `curated_cases.js`를 다시 만든다.
 - 화면을 바꾸면 Playwright로 390px 모바일 스크린샷을 찍어 직접 확인한다.
@@ -57,4 +57,5 @@ git push origin "$M:refs/heads/main"
 - v6.5 반영 끝: 60건 모두 후속 노드(`curated/follow1~11.js`, registry가 각 사건 `followUps`에 합침). 노드 필드: id·issue·type·to·day·after(heard 'w:q' / got·miss·done 노드 / contra 쟁점 / any·all)·ask·evidence(출처: by·when·how·caveat, 진실별 값)·witness·recall{w,q}·answer{p,d}·have/none. 결정형은 `now:true`(그 자리 질문). 5기일부터는 recall·explain만. 노드는 앞선 노드만 참조(QA 검사). 새 사건을 쓰면 노드 5개 이상 + recall·explain·3기일 이후 노드 + 거절/없음 뒤 miss 노드가 있어야 narrative-qa 통과.
 - v6.6 반영 끝: 증거 모양 11가지(`court_visuals.js` EV_TYPES, 순서가 중요), 증인 순간(`trial_play.js` momentOf → `VerdictVisuals.record(...,moment)`, 증인 `moments`). 갤러리 `qa-visuals/evidence-gallery.png`로 눈 검수.
 - v6.9 반영 끝: 기자 인터뷰(`world_feed.js` IQ/interviewStep → 기사·여론), 문자 문장 풀(TPL text 배열), 배석판사 의견(`v6_world.js` ADVICE/ADVICE2), 인물 학력 고증(`fitPeople`, EDU 표), '주문' 탭(기록 탭은 선고 뒤에만), 새 증거·증인 먼저(`orderOf`), 피고인·당사자 신문(`curated/party1~4.js` → 사건 `party`, `askParty`, 진술 거부 20%), 선고 때 남기는 말(`remarksFor`).
+- v7.0.x 반응형: 화면 구간 ≤599 / 600~1100(하단 메뉴 유지) / ≥1101(사이드바). 하단 메뉴·재판 버튼 줄·본문 여백은 `game.css` 맨 끝 v7.0.2 블록 한 곳(`--nav-total`)에서만 정한다. 숨은 화면 높이는 `viewport_fix.js`(`--vv-gap`, 키보드 `kb-open`, 홈 화면 실행 `app-mode`). 화면을 바꾸면 `tests/responsive.mjs`도 돌린다.
 - 다음 후보 아이디어: 기자와의 관계를 문자·인터뷰 외 이벤트로 확장, 서버·AI 연동 준비.
