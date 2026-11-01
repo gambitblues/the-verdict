@@ -25,3 +25,11 @@ Run: `node tests/advanced-case-engine.test.cjs`.
 - `line`에는 `id,phase,speaker,text,intensity,support,replyTo`를 지정한다. `intensity`는 `analytical/firm/heated` 중 하나다. 공격적 언사는 법적 유죄 판단 또는 증명력 수치에 영향을 주지 않는다.
 - `judge`만 `intervention`을 실행할 수 있고, 모든 공방 발언은 원래 사건 사실을 변경하지 않는 법정 이력에 기록된다. 무작위 문장 생성은 하지 않는다.
 - 기본 테스트: `node tests/advanced-courtroom-conflict.test.cjs`. 실제 게임 UI 연결, 법률 절차 검증 및 사건 5건에 대한 플레이 QA는 후속 작업이다.
+
+## Courtroom Conflict Engine v2 — 구체적 사실 중심 공방
+
+모든 대사는 `id, phase, speaker, text, purpose, issueId, target.fact, support`를 요구한다. `phase`는 `question → answer → confrontation → explanation → claim → rebuttal → counter → intervention`을 지원하며 `replyTo`로 인과적 선행 발언을 지정한다. `support`는 이미 제출된 증거(`evidence`), 기록된 증언 순번(`testimony`), 선행 법정 발언(`argument`)만 가리킬 수 있다. 대사는 기획자가 직접 작성하며 자유 생성하지 않는다.
+
+`intervention`은 `speaker=judge`, `replyTo`, `trigger`가 필수이며, 선행 발언의 `triggerEvent`가 정확히 일치할 때만 허용한다. 예: 실제 인신공격 발언에 `triggerEvent: 'personal_attack'`을 지정한 경우에만 `trigger:'personal_attack'`인 주의가 등장한다. 다만 v2에서 `triggerEvent`는 **제작자 명시 메타데이터**이며 내용의 자동 의미 판독은 아니다. `heated`라는 말투만으로 경고를 출력하지 않는다.
+
+`target.fact`는 작성자에게 특정 진술·시간·영상 장면·장소 등 무엇을 다투는지 기술하도록 강제하지만, v2는 대사 자연어의 사실 일치 여부를 자동 판정하지 못한다. 사건 콘텐츠 QA에서 이를 별도 검수해야 한다. 구형·법정형이나 동의·유무죄 판정은 이 엔진이 수행하지 않는다. `tests/advanced-courtroom-conflict.test.cjs`는 발언 순서, 증거 미제출 상태 차단, 무근거 경고 차단, 사건 진실 고정의 회귀 테스트를 제공한다.
