@@ -49,6 +49,7 @@ jobs:
           node tests/advanced-assembled-99.test.cjs
           node tests/advanced-legacy-60.test.cjs
           node tests/career-hearing-events.test.cjs
+          node tests/avatar-500.test.cjs
           node tests/advanced-content-qa.cjs
       - name: Install browser test tooling
         run: |
