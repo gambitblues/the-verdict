@@ -31,10 +31,10 @@ function witness(w,p,latest){
 function evidence(e,d,excerpt,when){
  if(!excerpt)return '';
  const k=String(d?.kind||'')+' '+e.title;
- const type=/메신저|문자|카카오|대화/.test(k)?'message':/영상|CCTV|사진|녹화/.test(k)?'media':/감정|진단|검사|소견/.test(k)?'report':'document';
- const label={message:'대화 기록',media:'영상·사진 기록',report:'감정·검사 기록',document:'제출 문서'}[type];
+ const type=/녹음|음성|통화 내용|오디오/.test(k)?'audio':/메신저|문자|카카오|대화/.test(k)?'message':/영상|CCTV|사진|녹화|블랙박스|카메라/.test(k)?'media':/감정|진단|검사|소견/.test(k)?'report':'document';
+ const label={audio:'녹음 기록',message:'대화 기록',media:'영상·사진 기록',report:'감정·검사 기록',document:'제출 문서'}[type];
  const stamp={use:'채택',conditional:'조건부 채택',exclude:'배제'}[e.decision];
- return `<div class="cv-evidence cv-${type}"><div class="cv-evidence-top"><span>${esc(d?.kind||label)}${d?.by?' · '+esc(d.by):''}</span><span>${esc(when||'')}</span></div><div class="cv-paper"><span class="cv-kicker">EXHIBIT · ${esc(e.id)}</span>${type==='media'?'<div class="cv-media-mark" aria-hidden="true">◉ <span>영상·사진의 기재 내용</span></div>':''}<blockquote class="t4-excerpt">${esc(excerpt)}</blockquote>${stamp?`<div class="cv-stamp ${e.decision}">${stamp}</div>`:''}</div><div class="cv-evidence-foot">${type==='media'?'원본 이미지가 아닌 기록 내용입니다.':'사건 기록에 기재된 원문'}<span aria-hidden="true">THE VERDICT</span></div></div>`;
+ return `<div class="cv-evidence cv-${type}"><div class="cv-evidence-top"><span>${esc(d?.kind||label)}${d?.by?' · '+esc(d.by):''}</span><span>${esc(when||'')}</span></div><div class="cv-paper"><span class="cv-kicker">EXHIBIT · ${esc(e.id)}</span>${type==='media'?'<div class="cv-media-mark" aria-hidden="true">◉ <span>영상·사진의 기재 내용</span></div>':''}${type==='audio'?'<div class="cv-audio-mark" aria-hidden="true"><i></i><span>녹음을 글로 옮긴 내용</span></div>':''}<blockquote class="t4-excerpt">${esc(excerpt)}</blockquote>${stamp?`<div class="cv-stamp ${e.decision}">${stamp}</div>`:''}</div><div class="cv-evidence-foot">${type==='media'?'원본 이미지가 아닌 기록 내용입니다.':type==='audio'?'원본 음성이 아닌 녹취 내용입니다.':'사건 기록에 기재된 원문'}<span aria-hidden="true">THE VERDICT</span></div></div>`;
 }
 function record(caseId,kind,text,actor=null){if(!text)return;last={caseId,kind,text,actor,serial:++eventSerial};}
 function event(caseId){

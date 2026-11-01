@@ -1156,7 +1156,7 @@ if(typeof courtList==='function'){
   html=line+html;
   html=html.replace('접수된 사건을 확인하고 이번 주 심리할 사건을 선택하세요.','맡은 사건을 골라 재판을 이어가세요.')
    .replace(/<div class="stat-card"><label>금주 심리 여력<\/label><strong>[^<]*<\/strong><\/div>/,`<div class="stat-card"><label>판결 리뷰 평균</label><strong>${(()=>{const r=desk().reviews;return r.length?Math.round(r.reduce((a,x)=>a+x.review,0)/r.length)+'점':'-'})()}</strong></div>`)
-   .replace(/<div class="grid three mt2"><div class="stat-card">[\s\S]*?<\/div><\/div><\/div>\s*/,'')
+   .replace(/<div class="grid three mt2">(?:<div class="stat-card"><label>[^<]*<\/label><strong>[^<]*<\/strong><\/div>){3}<\/div>\s*/,'') // only the three stat cards: the summary line above replaces them
    .replace(/시간을 진행해 보세요\./,'새 사건은 매일 10시~22시에 들어옵니다.')
    .replace(/가상 시간이 진행되면/,'시간이 흐르면');
   return html.replace(/data-id="([^"]+)"([\s\S]*?)심리 \d\/3/g,(m,id,mid)=>{const c=CASES.find(x=>x.id===id),st=S.cases[id],t=st?.trial4,g=c&&stage(c,st);return `data-id="${id}"${mid}<span class="t4-st ${g?.k||''}">${esc(g?.text||'재판 전')}</span>${t?` · 기일 ${t.daysDone}/${t.minDays}`:''}`});

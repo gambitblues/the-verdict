@@ -1,5 +1,5 @@
 /* THE VERDICT service worker — network first, offline fallback. Bump CACHE on every release. */
-const CACHE='the-verdict-v6.5.0'; // includes the courtroom visuals (court_visuals.js/.css)
+const CACHE='the-verdict-v6.5.1'; // includes the courtroom visuals (court_visuals.js/.css)
 const FILES=['./','./index.html','./game.css','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png','./apple-touch-icon.png',
  './names.js','./deep_case_engine.js','./story_engine.js','./case_pack_engine.js','./curated_cases.js','./continuity_engine.js','./npc_life_justice.js','./family_engine.js',
  './save_store.js','./court_visuals.js','./court_visuals.css','./game_runtime.js','./game_hearings.js','./game_professions.js','./game_ui.js','./trial_core.js','./media_desk.js','./trial_play.js','./world_feed.js','./people_map.js','./v6_world.js','./app_install.js',
