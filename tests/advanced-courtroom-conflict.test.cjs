@@ -23,7 +23,7 @@ const script={lines:[
 assert.equal(Court.validate(script),true);
 assert.deepEqual(Court.choices(initial,script),[]);
 const withTestimony=Case.append(initial,{type:'testimony',witnessId:'clerk',text:'업혀 들어오는 것을 보았습니다.'});
-assert.deepEqual(Court.choices(withTestimony,script),['q'].map(id=>({id,...Court.choices(withTestimony,script)[0],id})));
+assert.deepEqual(Court.choices(withTestimony,script).map(x=>x.id),['q']);
 let s=withTestimony;for(const id of ['q','a'])s=Court.play(s,script,id);
 assert.deepEqual(Court.choices(s,script),[]); // CCTV not yet submitted
 s=Case.append(s,{type:'submission',evidenceId:'camera'});
