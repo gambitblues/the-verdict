@@ -104,6 +104,9 @@ window.LifeJustice=(()=>{
   }
  }
  function custodySummary(p,w){const hist=p.custodyHistory||[];if(!hist.length)return '확정된 복역 이력 없음';return hist.slice(-3).map(x=>`${x.caseId}: ${x.releasedWeek?'출소 완료':isFree(p,w)?'형기 종료':'복역 중'} (${Math.round(x.termWeeks/52*10)/10}년 상당)`).join(' · ')}
- function summary(p,yr,w){return [`${p.gender||'미상'} · ${p.bornYear?yr-p.bornYear+'세':'연령 미상'}`,`학위 ${p.degree||'미상'} (${p.educationField||'전공 미상'})`,`부모 경제수준 ${p.parentWealth??'?'} / 100`,`형제 ${p.siblings||p.family||'미상'}`,`혼인 ${p.maritalStatus||'미상'} · 자녀 ${p.children??0}명`,`MBTI ${p.mbti||'-'} / 혈액형 ${p.blood||'-'}`,`생활 ${p.legalStatus||'일반 생활'}`].join(' · ')}
- return {enrich,hydrate,isFree,currentSentence,applyVerdict,weekTick,annualLifeTick,summary,custodySummary};
+ /* Sibling words depend on whose point of view: 형/누나 for a man, 오빠/언니 for a woman. */
+ function sibText(p){const f=/여/.test(p?.gender||'');let s=String(p?.siblings||p?.family||'미상');
+  return f?s.replace(/^형 /,'오빠 ').replace(/^누나 /,'언니 '):s.replace(/^오빠 /,'형 ').replace(/^언니 /,'누나 ')}
+ function summary(p,yr,w){return [`${p.gender||'미상'} · ${p.bornYear?yr-p.bornYear+'세':'연령 미상'}`,`학위 ${p.degree||'미상'} (${p.educationField||'전공 미상'})`,`부모 경제수준 ${p.parentWealth??'?'} / 100`,`형제 ${sibText(p)}`,`혼인 ${p.maritalStatus||'미상'} · 자녀 ${p.children??0}명`,`MBTI ${p.mbti||'-'} / 혈액형 ${p.blood||'-'}`,`생활 ${p.legalStatus||'일반 생활'}`].join(' · ')}
+ return {sibText,enrich,hydrate,isFree,currentSentence,applyVerdict,weekTick,annualLifeTick,summary,custodySummary};
 })();

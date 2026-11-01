@@ -18,7 +18,7 @@ window.FamilyEngine=(()=>{
   const sur=kind==='parent'&&index===0||kind==='sibling'?baseSur:kind==='child'?(baseFemale&&spouse?VerdictNames.split(spouse.name)[0]:baseSur):null;
   const n={id,name:VerdictNames.make({seed:'name:'+id,gender,bornYear:by,surname:sur}),bornYear:by,gender,role:kind==='child'?'학생':'일반 시민',career:kind==='child'?'학생':'일반 시민',wealth:kind==='parent'?base.parentWealth:limit(Math.round((base.wealth||50)*(0.5+r()))),parentWealth:base.parentWealth,alive:true,maritalStatus:kind==='spouse'?'기혼':'미혼',familyIds:[],relationships:{},jobHistory:[{year,job:'일반 시민',reason:'가족 인물 생성'}],financialHistory:[],relationshipHistory:[],biographyVersion:2,origin:'family',familyAnchor:base.id};
   // relatives created late in a long career may be very old: an elder past 85 has usually passed away already
-  const old=year-n.bornYear;if(old>85&&r()<Math.min(.97,.35+(old-85)*.06)){n.alive=false;n.deathYear=Math.max(n.bornYear+70,year-Math.floor(r()*Math.max(1,old-75)));if(n.deathYear>year)n.deathYear=year}
+  const old=year-n.bornYear;if(old>=100||old>85&&r()<Math.min(.97,.35+(old-85)*.06)){n.alive=false;n.deathYear=Math.max(n.bornYear+70,year-Math.floor(r()*Math.max(1,old-75)));if(n.deathYear>year)n.deathYear=year}
   NPC[id]=n;S.npcDB??={};S.npcDB[id]=n;addLink(base,n,kind);return n;
  }
  function ensure(S,NPC,id,year){const p=NPC[id];if(!p||id==='self'||p.familyGraphVersion)return;p.id??=id;if(!p.relationships||typeof p.relationships!=='object'||Array.isArray(p.relationships))p.relationships={};p.familyIds??=[];p.bornYear??=year-40;const r=randFor('links-'+id);p.familyGraphVersion=1;
