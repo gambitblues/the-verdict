@@ -86,8 +86,24 @@ const claimOf=c=>curOf(c)?.claim||null,chargeOf=c=>curOf(c)?.charge||null,issues
 const prosName=c=>NPC[c.side?.[0]]?.name||'검사';
 const sideWord=(c,which)=>isCriminal(c)?(which==='p'?'검사':'변호인'):(which==='p'?'원고 대리인':'피고 대리인');
 
+/* ---------- gender facts the story depends on (curated sex spec) ---------- */
+const isF=p=>/여/.test(p?.gender||'');
+function swapName(c,p,old){if(!old||old===p.name)return;
+ const walk=o=>{if(!o||typeof o!=='object')return;for(const k of Object.keys(o)){const v=o[k];if(typeof v==='string'&&v.includes(old))o[k]=v.split(old).join(p.name);else if(v&&typeof v==='object')walk(v)}};
+ walk(c)}
+function setSex(c,id,g){const p=NPC[id];if(!p||!g||(g==='여')===isF(p))return;
+ const old=p.name;p.gender=g==='여'?'여성':'남성';p.name=VerdictNames.make({gender:p.gender,bornYear:p.bornYear,rand,people:NPC});swapName(c,p,old)}
+const other=p=>isF(p)?'남':'여',same=p=>isF(p)?'여':'남';
+function fixSex(c){const s=curOf(c)?.sex;if(!s||c.sexFixed||!c.who)return;c.sexFixed=true;
+ const [a,b]=c.who;setSex(c,a,s.A);setSex(c,b,s.B);
+ if(s.AB==='same')setSex(c,b,same(NPC[a]));else if(s.AB==='diff')setSex(c,b,other(NPC[a]))}
+function witnessSex(c,i,id){const r=curOf(c)?.sex?.W?.[i];if(!r)return;const ref=NPC[c.who?.[r.endsWith('A')?0:1]];if(!ref)return;
+ setSex(c,id,r.startsWith('same')?same(ref):other(ref))}
+window.VerdictSex={fix:fixSex};
+
 function ensure(c,st){
  if(st.trial4)return upgrade(c,st.trial4);
+ fixSex(c);
  const seed=c.id+':'+(S.rng||1);
  const witnesses=witnessSeeds(c).map((w,i)=>{
   let id=w.existing;
@@ -96,6 +112,7 @@ function ensure(c,st){
    const g0=NPC[id].gender;
    if(/할머니|어머니|딸|누나|언니|아내/.test(w.role))NPC[id].gender='여';else if(/할아버지|아버지|아들|형|오빠|남편/.test(w.role)&&!/형제/.test(w.role))NPC[id].gender='남';
    if(NPC[id].gender!==g0)NPC[id].name=VerdictNames.make({gender:NPC[id].gender,bornYear:NPC[id].bornYear,rand,people:NPC});
+   witnessSex(c,i,id);
    remember(id,'관련 사건',c.name+'의 증인으로 출석',c.id)}
   return {id,role:w.role,knowledge:w.knowledge,interest:w.interest,story:w.story||''};
  });
