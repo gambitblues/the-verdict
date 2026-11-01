@@ -516,7 +516,7 @@ function act(kind,id,choice){
   addLog(t,card.type==='objection'?'이의':'연기',`${cardText(card,t,c).title}: ${choice==='accept'?'받아들임':'기각'}`);
  }
  save();
- if(say)toast(say);
+ if(say){window.VerdictVisuals?.record(c.id,kind,say);toast(say)}
  if(kind==='card'){if(t.cards.some(v=>!v.choice))return askRequests(true);ui.modal=null;render();return askNotices(false)}
  render();
 }
@@ -845,7 +845,7 @@ function evidenceCard(e,t,locked,c){
  return `<article class="t4-card t4-ev"><header><b>${esc(e.title)}</b>${e.late?'<span class="t4-tag new">새로 제출됨</span>':''}</header>
  ${d?`<p class="t4-meta">${esc(d.kind||'')} · ${esc(byWord[d.by]||d.by||'')} · ${esc(tell(c,t,d.when||''))}</p>`:''}
  ${e.scope?`<p class="t4-shows">${esc(e.scope)}</p>`:''}
- ${d?.excerpt?`<blockquote class="t4-excerpt">${esc(tell(c,t,d.excerpt))}</blockquote>`:''}
+ ${d?.excerpt?(window.VerdictVisuals?.evidence(e,d,tell(c,t,d.excerpt),tell(c,t,d.when||''))||`<blockquote class="t4-excerpt">${esc(tell(c,t,d.excerpt))}</blockquote>`):''}
  ${d?.how?`<p class="small"><b>확보 경위</b> ${esc(tell(c,t,d.how))}</p>`:''}
  ${e.note?`<p class="small"><b>한계</b> ${esc(e.note)}</p>`:''}
  ${d?.check?`<p class="small t4-check"><b>대조해 볼 것</b> ${esc(tell(c,t,d.check))}</p>`:''}
@@ -863,7 +863,7 @@ function witnessCard(w,t,locked,c){
  const extra=t.heard.filter(h=>h.w===i&&h.text).map(h=>`<div class="t4-qa v6"><p class="q">${String(h.q).startsWith('face:')?'⚖ 대질':'📁 증거를 보여 줌'}</p><p class="a">"${esc(h.text)}"</p><small>${esc(h.label||'')}</small></div>`).join('');
  const cf=locked?[]:conflicts(c,t,i);
  const confrontBox=cf.length?`<div class="t4-confront"><p class="t4-ask-head">⚠ 이 증인의 말과 어긋나는 증거 <small>· 보여 주며 물으면 신문 1번</small></p>${cf.map(e=>`<button class="t4-q cf" data-action="t4" data-kind="confront" data-id="${i}" data-choice="${esc(e.id)}" ${can?'':'disabled'}>📁 ${esc(P(e.title,'을'))} 보여 주며 묻기</button>`).join('')}</div>`:'';
- return `<article class="t4-card"><header><button class="t4-name" data-action="npc" data-id="${esc(w.id)}">👤 ${esc(p?.name||'증인')}</button><span class="t4-tag">${esc(w.role)}</span></header>
+ return `<article class="t4-card">${window.VerdictVisuals?.witness(w,p,asked.length)||`<header><button class="t4-name" data-action="npc" data-id="${esc(w.id)}">👤 ${esc(p?.name||'증인')}</button><span class="t4-tag">${esc(w.role)}</span></header>`}
  ${w.story?`<p class="t4-story">${esc(w.story)}</p>`:''}${w.interest?`<p class="small muted">이해관계 · ${esc(w.interest)}</p>`:''}
  ${heard||'<p class="muted small">아직 묻지 않았습니다.</p>'}${extra}${confrontBox}
  ${left.length?`<p class="t4-ask-head">물어볼 질문 ${locked?'':`· 오늘 남은 신문 ${t.qLeft}/${t.qpd||QPD}`}</p>${left.map(q=>`<button class="t4-q" data-action="t4" data-kind="ask" data-id="${i}" data-choice="${esc(q.id)}" ${can?'':'disabled'}>🗣 ${esc(tell(c,t,q.q))}${q.hidden?' <i>새 질문</i>':''}</button>`).join('')}`:'<p class="muted small">이 증인에게 물을 질문을 모두 물었습니다.</p>'}
@@ -1090,7 +1090,7 @@ court=function(){
  else if(ui.t4tab==='witness')page=`<section class="panel t4"><div class="t4-head"><h3>증인</h3><span class="t4-tag">오늘 남은 신문 ${t.qLeft}/${t.qpd||QPD}</span></div>${faceList(c,t,wait||!sessionOpen(t))}${pager('witness',t.witnesses,w=>witnessCard(w,t,wait,c),'증인')}</section>`;
  else if(ui.t4tab==='verdict')page=verdictPage(c,st);
  const nav=`<nav class="t4-tabs" aria-label="재판 화면">${tabs.map(([id,label,badge])=>`<button class="t4-tab ${ui.t4tab===id?'on':''}" data-action="t4tab" data-tab="${id}">${label}${badge?`<i>${badge}</i>`:''}</button>`).join('')}</nav>`;
- return `<div class="court-play t4app">${header?header.outerHTML:''}${nav}<div class="t4-page">${page}</div>${t?dock(c,st):''}</div>`;
+ return `<div class="court-play t4app">${header?header.outerHTML:''}${window.VerdictVisuals?.scene(c,t,ui.t4tab,st.verdict?'선고 완료':stage(c,st).short)||''}${nav}<div class="t4-page">${window.VerdictVisuals?.event(c.id)||''}${page}</div>${t?dock(c,st):''}</div>`;
 };
 function swipeInit(){
  let sx=0,sy=0,box=null;

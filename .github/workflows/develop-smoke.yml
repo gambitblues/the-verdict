@@ -48,3 +48,14 @@ jobs:
         run: node tests/v5-migration.mjs
       - name: 60 cases × 30 casts narrative checks
         run: node tests/v6-narrative-combos.mjs
+      - name: Visual layer (mobile, tablet, desktop, read-only rendering)
+        run: node tests/visuals.mjs
+      - name: Visual update long-career regression
+        run: node tests/long-career.mjs 40
+      - name: Save graphical QA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: graphical-qa
+          path: qa-visuals/
+          if-no-files-found: ignore
