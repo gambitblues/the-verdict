@@ -38,21 +38,29 @@ const POOL={
  late:[f=>`${f.late} 나오고 나서 생각이 좀 바뀌었어요`,f=>`막판에 ${f.late}? 타이밍이 묘하네요`],
  flip:[f=>`${f.flip} 증인 말이 바뀐 게 제일 큰 변수 같아요`,f=>`증인이 말을 바꾸면 뭘 믿어야 하나요`],
  illegal:[f=>`${f.illegal} 뺀 건 잘했다고 봅니다. 절차는 지켜야죠`,f=>`불법으로 얻은 증거라도 진실이면 써야 하는 거 아닌가`],
+ /* before the verdict people guess; after it they judge the judge */
+ guessP:[f=>`이건 ${f.crim?'유죄':'원고 승'} 나온다에 한 표`,f=>`${f.ev} 나온 순간 끝났다고 봅니다`,f=>`${f.A} 쪽 표정 보니 본인들도 아는 듯`,f=>`${f.crim?'구형대로 갈 것 같네요':'청구 대부분 인정될 것 같아요'}`,f=>`판사가 증거만 제대로 보면 결론은 뻔해요`],
+ guessD:[f=>`${f.crim?'무죄':'원고 패소'} 가능성 꽤 있다고 봅니다`,f=>`${f.ev}만으로는 부족해 보이는데요`,f=>`판사가 절차 꼼꼼히 보면 뒤집힐 수도`,f=>`여론이랑 판결은 다를 거예요. 두고 봅시다`,f=>`${f.A} 쪽 변호인이 만만치 않던데요`],
+ guessM:[f=>`이번 재판부는 어떻게 볼지 정말 궁금하네요`,f=>`다음 기일에 뭐가 나오느냐가 관건`,f=>`예상이 반반으로 갈리는 사건`,f=>`판결 나오면 이유부터 읽어 볼 생각입니다`],
+ praise:[f=>`판결 이유 읽어 보니 증거를 하나하나 따졌네요. 납득됩니다`,f=>`여론에 휘둘리지 않은 판결이라 봅니다`,f=>`${f.verdict}${f.sentence?`, ${f.sentence}`:''}… 적절하다고 봐요`,f=>`이번 재판장 꼼꼼하네요. 절차를 제대로 지켰어요`,f=>`처음엔 반대였는데 판결문 보고 생각이 바뀌었습니다`],
+ blame:[f=>`${f.verdict}라니 판사가 뭘 본 건지 모르겠네요`,f=>`${f.sentence||f.verdict}? 이건 아니죠`,f=>`판사가 ${f.ev}를 너무 가볍게 봤어요`,f=>`이러니 법원 판결을 못 믿는 겁니다`,f=>`재판부가 한쪽 말만 들은 것 같아요`],
  after:[f=>`${f.verdict}${f.sentence?`, ${f.sentence}`:''}… 판결문 이유를 읽어 보니 이해는 갑니다`,f=>`${f.verdict}라니 솔직히 예상 못 했어요`,f=>`${f.sentence||f.verdict}이 적당한지는 모르겠네요`,f=>`결과보다 판결 이유가 궁금했는데 꽤 자세하네요`]
 };
 const REPLY={pro:[`그건 결과론 아닌가요`,`증거가 그거 하나뿐이에요?`,`저도 같은 생각입니다`],con:[`그럼 피해자는요?`,`절차 얘기만 하면 끝이 없죠`,`맞아요, 아직 모르는 게 많아요`],mid:[`이게 제일 맞는 말`,`판단 보류도 하나의 의견이죠`,`그래도 여론은 이미 기울었어요`]};
 function stanceMix(t){const O=t?.media?.O??0,pro=Math.max(5,Math.min(85,Math.round(45+O*0.45))),con=Math.max(5,Math.min(80,Math.round(35-O*0.35)));return {pro,con,mid:Math.max(5,100-pro-con)}}
 function thread(c,key,count){
  const st=S.cases[c.id],t=st?.trial4,f=facts(c,t),mix=stanceMix(t),stage=t?.final?'v':String(t?.daysDone||0);
+ const agree=t?.final?T.opinionMatch(t.media.O,t.final.dir):null;
  const out=[];
  for(let i=0;i<count;i++){
   const s=`${c.id}:${key}:${stage}:${i}`,r=hash(s)%100;
-  let pool=r<mix.pro?'pro':r<mix.pro+mix.con?'con':'mid';
-  if(t?.final&&i<2)pool='after';else if(f.late&&i===1)pool='late';else if(f.flip&&i===2)pool='flip';else if(f.illegal&&i===3)pool='illegal';
+  let pool;
+  if(t?.final){pool=r<Math.max(15,Math.min(85,agree))*0.85?'praise':r<90?'blame':'mid';if(i===0&&agree<40)pool='blame';if(i===0&&agree>=60)pool='praise'}
+  else{pool=r<mix.pro?'guessP':r<mix.pro+mix.con?'guessD':'guessM';if(f.late&&i===1)pool='late';else if(f.flip&&i===2)pool='flip';else if(f.illegal&&i===3)pool='illegal'}
   const text=pick(POOL[pool],s+'t')(f);
-  const base=pool==='after'||pool==='late'||pool==='flip'||pool==='illegal'?'mid':pool;
+  const base={guessP:'pro',praise:'pro',guessD:'con',blame:'con'}[pool]||(pool==='pro'||pool==='con'?pool:'mid');
   const replies=Array.from({length:hash(s+'n')%4},(_,k)=>({nick:nick(s+'r'+k),text:pick(REPLY[k%2?base:base==='pro'?'con':base==='con'?'pro':'mid'],s+'rt'+k),likes:hash(s+'rl'+k)%40}));
-  out.push({id:s,nick:nick(s),text,likes:hash(s+'l')%300+(pool==='after'?120:0),stance:pool,replies});
+  out.push({id:s,nick:nick(s),text,likes:hash(s+'l')%300+(pool==='praise'||pool==='blame'?120:0),stance:base,phase:t?.final?'after':'before',pool,replies});
  }
  return out.sort((a,b)=>b.likes-a.likes);
 }
@@ -138,30 +146,15 @@ const HEAD={
  online:(m,x)=>`${m.name}, 인터넷은 이미 판결을 내렸다?`,
  scholar:(m,x)=>`${m.name}, 법은 무엇을 증명하라고 하나`
 };
+/* Before the verdict a reporter forecasts; after it they grade the bench. The two reporters of a case write from
+ * opposite sides, so when the verdict goes against a reporter's side the article criticises the judge, and when it
+ * goes their way it praises the reasoning. Only what was said or shown in court is used. */
 function writeArticle(c,t,r){
- const m=material(c,t),mine=r.side;
+ const m=material(c,t),mine=r.side,judge=S.name||'재판장';
  const evPick=m.evs.filter(e=>e.side===mine&&e.decision!=='exclude');const ev=evPick[hash(c.id+r.name)%Math.max(1,evPick.length)]||m.evs[hash(c.id+r.name)%Math.max(1,m.evs.length)]||{title:'핵심 증거',shows:'',caveat:''};
  const quoteFrom=m.said.filter(x=>x.side===mine||(x.side==='m'));const q=quoteFrom[hash(r.name+c.id)%Math.max(1,quoteFrom.length)];
- const other=m.evs.find(e=>e.side!==mine&&e.decision&&e.decision!=='exclude');
  const issue=m.issues[hash(r.name)%Math.max(1,m.issues.length)];
- const gap=mine==='d'?(ev.caveat||issue?.open):'';
- const x={ev,quote:q?.text,issue,gap};
- const lines=[];
- // 1. lead
- if(m.f)lines.push(`${m.name} 사건에 "${m.f.label}"${m.f.sentence?`(${m.f.sentence})`:''} 판결이 선고됐다.`);
- else if(m.days)lines.push(`${m.name} 재판이 ${m.days}차 공판까지 진행됐다. ${m.logline}`);
- else lines.push(m.logline);
- // 2. the side's claim, in one line
- lines.push(mine==='p'?m.claimP:m.claimD);
- // 3. a fact from the record
- if(mine==='p')lines.push(`${Pj(ev.title,'은')} ${ev.shows.replace(/[.。]$/,'')}는 점을 보여 준다.${ev.decision==='use'?' 재판부도 이 증거를 판단 자료로 받아들였다.':''}`);
- else lines.push(`다만 ${ev.title}에는 한계가 있다. ${ev.caveat.replace(/[.。]$/,'')}.${ev.illegal&&ev.decision==='exclude'?' 결국 재판부는 이 증거를 판단에서 뺐다.':''}`);
- // 4. testimony heard in court
- if(q)lines.push(`${q.role} ${Pj(q.who,'은')} 법정에서 "${q.text}"라고 말했다.`);
- else if(m.days)lines.push(mine==='p'?'증언대에 선 사람들의 말은 아직 한쪽으로 모이지 않았다.':'아직 법정에서 결정적인 증언은 나오지 않았다.');
- // 5. something that changed
- if(m.late)lines.push(`공판 사이에 ${Pj(m.late.title,'이')} 새로 제출돼 ${mine==='p'?'흐름이 바뀌었다는 평가가 나온다':'반박할 시간이 충분했는지 의문이 남는다'}.`);
- // 6. critique in the reporter's voice
+ const v=hash(c.id+r.name+'v')%3;
  const crit={
   victim:`판결문 몇 줄로는 정리할 수 없는 시간이 ${m.hurt}에게 남았다.`,police:`수사팀이 쌓은 기록을 가볍게 넘겨서는 안 된다.`,hot:`재판정 밖에서는 벌써 결론을 둘러싼 말들이 오간다.`,
   money:`잃은 돈은 숫자지만, 그 돈으로 버티던 생활은 숫자가 아니다.`,safety:`같은 구조가 그대로라면 같은 일은 또 일어난다.`,voice:`당사자의 말을 한 번 더 들어야 하는 이유다.`,
@@ -173,16 +166,49 @@ function writeArticle(c,t,r){
   history:`비슷한 정황만으로 유죄가 났다가 뒤집힌 사건이 적지 않았다.`,family:`${Pj(m.accused,'의')} 가족도 판결을 기다리며 같은 시간을 견디고 있다.`,
   online:`인터넷의 확신이 법정의 증거를 앞서 가고 있는 것은 아닌가.`,scholar:`법이 요구하는 것은 짐작이 아니라 증명이다. ${issue?`특히 "${issue.title}"가 그렇다.`:''}`
  }[r.style];
+ const lines=[];
+ if(!m.f){
+  /* ---- forecast ---- */
+  const lean=m.evs.filter(e=>e.decision&&e.decision!=='exclude').reduce((n,e)=>n+(e.side==='p'?1:e.side==='d'?-1:0),0)+m.said.reduce((n,x)=>n+(x.side==='p'?1:x.side==='d'?-1:0),0);
+  const win=m.crim?'유죄':'원고 승소',lose=m.crim?'무죄':'원고 패소';
+  const title=mine==='p'?[`[전망] ${m.name}, ${Pj(cut(ev.title,16),'이')} 승부를 가를까`,`[전망] ${m.name}, ${win}에 무게 싣는 법정`,`[전망] ${m.name} "${cut(issue?.title||'핵심 쟁점',18)}"… 검증대에 선 ${m.crim?'공소사실':'청구'}`][v]
+   :[`[전망] ${m.name}, "${cut(issue?.title||'핵심 쟁점',18)}"에 답 못 하면 뒤집힌다`,`[전망] ${m.name}, ${lose} 가능성은 남아 있나`,`[전망] ${m.name}, ${Pj(cut(ev.title,16),'의')} 빈칸을 재판부는 볼까`][v];
+  lines.push(m.days?`${m.name} 재판이 ${m.days}차 공판까지 진행됐다. ${m.logline}`:`${m.name} 재판이 시작됐다. ${m.logline}`);
+  lines.push(mine==='p'?m.claimP:m.claimD);
+  if(mine==='p')lines.push(`${Pj(ev.title,'은')} ${ev.shows.replace(/[.。]$/,'')}는 점을 보여 준다.`);
+  else lines.push(`다만 ${ev.title}에는 한계가 있다. ${ev.caveat.replace(/[.。]$/,'')}.`);
+  if(q)lines.push(`${q.role} ${Pj(q.who,'은')} 법정에서 "${q.text}"라고 말했다.`);
+  if(m.late)lines.push(`공판 사이에 ${Pj(m.late.title,'이')} 새로 제출돼 변수가 됐다.`);
+  const tilt=mine==='p'?lean:-lean;
+  lines.push(tilt>0?`법조계에서는 ${mine==='p'?win:lose} 쪽에 무게를 싣는 관측이 많다.`:tilt<0?`다만 지금까지 법정에 나온 것만 보면 ${mine==='p'?win:lose}을 장담하기는 어렵다는 말도 나온다.`:`지금으로서는 어느 쪽도 장담하기 어렵다는 것이 중론이다.`);
+  lines.push(crit);
+  if(m.demand&&mine==='p'&&m.days)lines.push(`검찰은 결심에서 ${m.demand} 안팎을 구형할 것으로 보인다.`);
+  lines.push(`판결은 ${Pj(judge,'이')} 맡은 재판부가 내린다.`);
+  return {title,body:lines.filter(Boolean).join(' '),phase:'before'};
+ }
+ /* ---- evaluation ---- */
+ const side=T.sideOf(m.f.dir),won=(side>0&&mine==='p')||(side<0&&mine==='d'),half=side===0.5||side===0;
+ const used=m.evs.filter(e=>e.decision&&e.decision!=='exclude'),dropped=m.evs.filter(e=>e.decision==='exclude');
+ const theirs=used.find(e=>e.side===mine)||ev,ignored=dropped.find(e=>e.side===mine)||used.find(e=>e.side===mine)||ev;
+ const title=half?[`[평가] ${m.name}, 절반의 판결이 남긴 것`,`[평가] ${m.name}, 양쪽 모두 웃지 못한 선고`,`[평가] ${m.name} "${cut(m.f.label,14)}"… 재판부의 계산법`][v]
+  :won?[`[평가] ${m.name}, 증거로 답한 재판부`,`[평가] ${m.name} "${cut(m.f.label,14)}"… ${judge} 재판장의 판단이 옳았다`,`[평가] ${m.name}, 여론보다 기록을 본 판결`][v]
+  :[`[비판] ${m.name} 판결, 재판부는 "${cut(issue?.title||'핵심 쟁점',18)}"를 외면했다`,`[비판] ${m.name}, ${judge} 재판장의 판단에 묻는다`,`[비판] ${m.name} "${cut(m.f.label,14)}"… 납득하기 어려운 이유들`][v];
+ lines.push(`${m.name} 사건에 "${m.f.label}"${m.f.sentence?`(${m.f.sentence})`:''} 판결이 선고됐다. 재판장은 ${judge} 판사다.`);
+ if(half)lines.push(`재판부는 양쪽 주장을 일부씩만 받아들였다. ${mine==='p'?m.claimP:m.claimD}`);
+ else if(won)lines.push(`재판부는 ${Pj(theirs.title,'을')} 판단의 중심에 뒀다. ${theirs.shows?Pj(theirs.title,'은')+' '+theirs.shows.replace(/[.。]$/,'')+'는 점을 보여 준 자료다.':''}`);
+ else lines.push(`그러나 재판부는 ${Pj(ignored.title,'을')} 충분히 따지지 않았다. ${ignored.decision==='exclude'?'판단 자료에서 아예 빠졌다.':'판결 이유에서 그 무게는 가볍게 다뤄졌다.'}`);
+ if(q)lines.push(`법정에서 ${q.role} ${Pj(q.who,'이')} "${q.text}"라고 했던 말이 ${won?'결국 받아들여진 셈이다':'판결에 얼마나 반영됐는지는 의문이다'}.`);
  lines.push(crit);
- if(!m.f&&m.demand&&mine==='p'&&m.days)lines.push(`검찰은 결심에서 ${m.demand} 안팎을 구형할 것으로 보인다.`);
- return {title:(HEAD[r.style]||HEAD.court)(m,x),body:lines.filter(Boolean).join(' ')};
+ lines.push(half?'판결은 확정됐고, 남은 쪽들은 각자의 몫을 감당하게 됐다.':won?`${judge} 재판장의 판결 이유는 기록에 충실했다는 평가를 받는다.`:`${judge} 재판장의 판단은 비판을 피하기 어렵다. 이 세계에는 항소가 없고, 판결은 그대로 확정된다.`);
+ return {title,body:lines.filter(Boolean).join(' '),phase:'after',tone:half?'mixed':won?'praise':'blame'};
 }
-/* Only cases on my own bench whose first hearing has opened: no coverage of cases I have not started,
+/* Only cases on my own bench (assigned to me, not handed on): no coverage of cases I never took,
  * handed to another bench, or never took. Newest activity first. */
-function mine(c){const st=S.cases[c.id],t=st?.trial4;return !!t&&!st.referred&&(t.daysDone>0||t.log?.length>0||Object.keys(t.dates||{}).length>0||!!t.final)}
+/* My bench: cases assigned to me and not handed on. Before the first hearing they already draw forecast articles. */
+function mine(c){const st=S.cases[c.id];return !!st&&!st.referred&&!!TP.curOf(c)&&(!!st.verdict||c.week<=S.week)}
 function articles(){
  const cs=CASES.filter(c=>(c.generated||c.contentPack)&&mine(c))
-  .sort((a,b)=>(!!S.cases[a.id].verdict-!!S.cases[b.id].verdict)||((S.cases[b.id].trial4.daysDone||0)-(S.cases[a.id].trial4.daysDone||0)))
+  .sort((a,b)=>(!!S.cases[a.id].verdict-!!S.cases[b.id].verdict)||((S.cases[b.id].trial4?.daysDone||0)-(S.cases[a.id].trial4?.daysDone||0)))
   .slice(0,14);
  const out=[];
  for(const c of cs){
@@ -190,14 +216,14 @@ function articles(){
   if(!TP.curOf(c))continue;
   const [rp,rd]=reporterPair(c);
   for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r);
-   out.push({caseId:c.id,outlet:r.outlet,title:a.title,body:a.body,day:st?.closedWeek||c.week,index:idx,frame:lean==='p'?(crim?'검찰 측 시각':'원고 측 시각'):(crim?'변호인 측 시각':'피고 측 시각'),reporter:r,lean})}
+   out.push({caseId:c.id,outlet:r.outlet,title:a.title,body:a.body,day:st?.closedWeek||c.week,index:idx,phase:a.phase,tone:a.tone||null,frame:(a.phase==='after'?(a.tone==='praise'?'판결 호평 · ':a.tone==='blame'?'판결 비판 · ':'판결 평가 · '):'재판 전망 · ')+(lean==='p'?(crim?'검찰 측 시각':'원고 측 시각'):(crim?'변호인 측 시각':'피고 측 시각')),reporter:r,lean})}
  }
  return out;
 }
 /* ---------- news with comments ---------- */
 function newsFeed(limit=40){
  const list=articles().slice(0,limit);
- if(!list.length)return '<p class="muted">내가 맡은 사건의 첫 공판이 열리면 그 사건 기사가 여기에 실려요.</p>';
+ if(!list.length)return '<p class="muted">내가 맡은 사건이 생기면 재판 전 전망 기사부터 실려요.</p>';
  return '<div class="tv-news-list">'+list.map(a=>{
   const c=CASES.find(x=>x.id===a.caseId),key='art'+a.index,id=a.caseId+':'+key,n=3+hash(id)%3;
   return `<article class="tv-media-card"><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div><strong>${esc(a.title)}</strong>${a.reporter?`<button class="tv-reporter" data-action="reporter" data-i="${REPORTERS.indexOf(a.reporter)}">✍ <b>${esc(a.reporter.name)} 기자</b> · ${esc(a.reporter.bio)}. ${esc(a.reporter.voice)}. <i>›</i></button>`:''}<p>${esc(a.body)}</p>
@@ -209,12 +235,12 @@ function opinionFeed(){
  const cs=CASES.filter(mine).sort((a,b)=>!!S.cases[a.id].verdict-!!S.cases[b.id].verdict).slice(0,8);
  if(!cs.length)return '<p class="muted">재판이 시작된 사건의 여론이 여기에 모입니다.</p>';
  return cs.map(c=>{
-  const t=S.cases[c.id].trial4,mix=stanceMix(t),f=t.final,log=t.mediaLog||[];
+  const t=S.cases[c.id].trial4,mix=stanceMix(t),f=t?.final,log=t?.mediaLog||[];
   const labels=f?['판결 지지','판결 반대','판단 보류']:[c.kind==='criminal'?'처벌 요구':'원고 지지',c.kind==='criminal'?'피고인 동정':'피고 지지','판단 보류'];
   const agree=f?T.opinionMatch(t.media.O,f.dir):null;
   const dist=f?{a:Math.round(agree*0.8),b:Math.round((100-agree)*0.8),m:0}:{a:mix.pro,b:mix.con,m:mix.mid};if(f)dist.m=100-dist.a-dist.b;
   const steps=log.map(l=>`<li>${esc(TP.session(c,l.s))} 뒤 · ${labels[0]} ${Math.max(5,Math.min(85,Math.round(45+l.O*0.45)))}%${l.ev?` · <b>${esc(l.ev)}</b>`:''}</li>`).join('');
-  return `<section class="wf-case"><h4>${esc(shortName(c))} ${f?'· 선고 후':'· 재판 중'}</h4>
+  return `<section class="wf-case"><h4>${esc(shortName(c))} ${f?'· 선고 후 · 판결을 두고':t?.daysDone?'· 재판 중 · 결과를 두고':'· 재판 전 · 예상'}</h4>
   <div class="wf-legend"><span><i style="background:#c8442f"></i>${labels[0]} ${dist.a}%</span><span><i style="background:#2f62a8"></i>${labels[1]} ${dist.b}%</span><span><i style="background:#9a9790"></i>${labels[2]} ${dist.m}%</span></div>
   <div class="wf-bar"><span class="a" style="width:${dist.a}%"></span><span class="b" style="width:${dist.b}%"></span><span class="m" style="width:${dist.m}%"></span></div>
   ${steps?`<details class="wf-steps"><summary>기일마다 여론 변화</summary><ul>${steps}</ul></details>`:''}
@@ -307,7 +333,7 @@ const priorTablet=tabletInner;
 tabletInner=function(){
  if(ui.tabletTab==='messages')return messagesView();
  if(ui.tabletTab==='social')return '<h2>＃ 여론</h2><p class="muted small">사건마다 여론이 어떻게 움직였는지, 지금 사람들이 무슨 말을 하는지 봅니다.</p>'+opinionFeed();
- if(ui.tabletTab==='news')return '<h2>📰 기사</h2><p class="muted small">내가 맡은 사건을 다룬 보도와 독자 댓글입니다.</p>'+newsFeed(60);
+ if(ui.tabletTab==='news')return '<h2>📰 기사</h2><p class="muted small">내가 맡은 사건의 보도예요. 판결 전에는 전망을, 판결 뒤에는 판결에 대한 평가를 씁니다.</p>'+newsFeed(60);
  return priorTablet();
 };
 const priorHome=home;

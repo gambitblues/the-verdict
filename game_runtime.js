@@ -432,9 +432,12 @@ function trimPeople(){const cap=(a,n)=>Array.isArray(a)&&a.length>n?a.slice(-n):
   p.jobHistory=cap(p.jobHistory,8);p.relationshipHistory=cap(p.relationshipHistory,12);p.familyCaseHistory=cap(p.familyCaseHistory,6)}
  for(const id of Object.keys(S.memories||{}))S.memories[id]=cap(S.memories[id],12)}
 /* Start over on this slot: stop all writes first, then clear the save, its slot copy and its snapshots. */
-function wipeGame(){const id=localStorage.getItem('verdict_player_active')||'1';VerdictStore.halt();
- try{localStorage.removeItem(KEY);localStorage.removeItem('verdict_player_save_'+id)}catch{}
- const done=()=>location.reload();Promise.race([window.VerdictSnapshots?VerdictSnapshots.clear(id):Promise.resolve(),new Promise(r=>setTimeout(r,800))]).then(done,done)}
+/* New game = clean slate on this device (until accounts exist): every save slot, the slot copies, the automatic
+ * snapshots in IndexedDB and every other game key are removed, so nothing from an earlier game can come back. */
+function wipeGame(){VerdictStore.halt();
+ try{const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^(the_verdict|verdict_)/.test(k))keys.push(k)}keys.forEach(k=>localStorage.removeItem(k));localStorage.setItem('verdict_player_active','1')}catch{}
+ try{sessionStorage.clear()}catch{}
+ const done=()=>location.reload();Promise.race([window.VerdictSnapshots?VerdictSnapshots.clearAll():Promise.resolve(),new Promise(r=>setTimeout(r,3000))]).then(done,done)}
 function save(){const build=()=>JSON.stringify({...S,casePacks:(S.casePacks||[]).filter(p=>p.packId!=='starter-diverse-2026')});
  try{archiveOld(false)}catch(e){console.warn('archive',e)}
  VerdictStore.save(KEY,build)}
@@ -568,7 +571,7 @@ function tabletInner(){switch(ui.tabletTab){
  }
  case 'backup':return `<h3 class="no-margin">💾 내 기록 백업·복원</h3><p class="small muted">게임 데이터는 오직 이 기기 브라우저에 저장됩니다. 서버 계정이나 친구와의 연결은 없습니다. 앱 데이터 삭제·기기 변경에 대비해 백업 파일을 보관하세요.</p>
  <div class="grid two mt"><button class="btn primary" data-action="export">게임 기록 백업</button><button class="btn outline" data-action="import">기록 불러오기</button></div><input id="importFile" type="file" accept="application/json,.json" class="hidden">
- <hr class="muted-line"><b>이 기기에서 새로 시작하기</b><p class="small muted">현재 진행 기록과 구매 내역을 모두 삭제합니다. 필요하면 먼저 백업하세요.</p><button class="btn outline mini" data-action="reset">게임 초기화</button>`;
+ <hr class="muted-line"><b>이 기기에서 새로 시작하기</b><p class="small muted">두 슬롯의 진행 기록과 자동 저장본까지 이 기기의 게임 기록을 모두 삭제합니다. 필요하면 먼저 백업하세요.</p><button class="btn outline mini" data-action="reset">게임 초기화</button>`;
  default:return `<h3>태블릿 앱을 선택하세요.</h3>`;
  }}
 
@@ -819,7 +822,7 @@ function importSave(file){if(!file)return;
   }catch{toast('올바른 THE VERDICT 저장 파일이 아닙니다.')}
  };reader.readAsText(file);
 }
-function askReset(){modal('이 기기의 게임 초기화',`<p>현재 판결, 커리어, 자산, 메모가 모두 삭제됩니다. 복구하려면 미리 저장 파일을 백업해야 합니다.</p>`,`<button class="btn outline" data-action="dismiss">취소</button><button class="btn primary" data-action="resetConfirm">전부 삭제</button>`)}
+function askReset(){modal('이 기기의 게임 초기화',`<p>두 슬롯의 판결, 커리어, 자산, 메모와 자동 저장본이 모두 삭제됩니다. 복구하려면 미리 저장 파일을 백업해야 합니다.</p>`,`<button class="btn outline" data-action="dismiss">취소</button><button class="btn primary" data-action="resetConfirm">전부 삭제</button>`)}
 function setup(){
  modal('THE VERDICT에 오신 것을 환영합니다',`<p>법정에서 내린 판단이 커리어와 인간관계에 남는 싱글플레이 게임입니다. 모든 기록은 이 폰에만 저장됩니다.</p>
  <div class="control-wrap mt"><label for="playerName">판사 이름</label><input class="control" id="playerName" maxlength="16" placeholder="예: 정우진" autocomplete="off"></div>
@@ -1108,7 +1111,7 @@ box.querySelectorAll('[data-profile]').forEach(b=>b.onclick=()=>change(b.dataset
 box.querySelector('#profile-continue').onclick=()=>box.remove();
 // no confirm(): some in-app browsers block it silently, which made this button do nothing. Ask with a second tap instead.
 const resetBtn=box.querySelector('#profile-reset');let armed=false;
-resetBtn.onclick=()=>{if(has&&!armed){armed=true;resetBtn.textContent='한 번 더 누르면 지금 기록을 지우고 새로 시작해요';resetBtn.classList.add('danger');setTimeout(()=>{armed=false;resetBtn.textContent='이 슬롯에서 새 게임';resetBtn.classList.remove('danger')},6000);return}resetBtn.disabled=true;resetBtn.textContent='새 게임 준비 중…';wipeGame()};
+resetBtn.onclick=()=>{if(has&&!armed){armed=true;resetBtn.textContent='한 번 더 누르면 이 기기의 모든 기록을 지우고 새로 시작해요';resetBtn.classList.add('danger');setTimeout(()=>{armed=false;resetBtn.textContent='이 슬롯에서 새 게임';resetBtn.classList.remove('danger')},6000);return}resetBtn.disabled=true;resetBtn.textContent='새 게임 준비 중…';wipeGame()};
 box.querySelector('#profile-import').onclick=()=>{box.remove();const inp=document.getElementById('importFile');if(inp)inp.click();else {ui.tabletTab='backup';changeTab('tablet');document.getElementById('importFile')?.click();}};
 }
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}

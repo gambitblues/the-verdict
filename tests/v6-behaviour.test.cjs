@@ -75,4 +75,16 @@ const steady=share(seeds(3000),s=>T.faceOffOutcome({traits:{honesty:90,stressCon
 assert.ok(steady>0.7,'a steady honest witness should outlast a story-changer');
 assert.deepEqual(T.faceOffOutcome(w(),w(),'did','z'),T.faceOffOutcome(w(),w(),'did','z'),'face-off must replay');
 
-console.log('v6 behaviour tests passed · attitude, lawyer skill, confrontation, face-off, 180 written witnesses');
+// ---- judge's orders: results come only from what exists ----
+for(const s of seeds(300)){
+ assert.equal(T.orderOutcome({type:'records',to:'p',has:false},s),'none','nothing written means the honest answer is "none"');
+ const o=T.orderOutcome({type:'records',to:'d',crim:true,skill:60},s);assert.ok(['done','late','declined'].includes(o)||o==='partial');
+ assert.notEqual(T.orderOutcome({type:'records',to:'d',crim:false,skill:60},s),'declined','only a criminal defence may decline');
+ assert.notEqual(T.orderOutcome({type:'witness',to:'p',skill:60,delayed:true},s),'late','an order delayed once is not delayed again');
+ assert.ok(['done','late'].includes(T.orderOutcome({type:'recall',skill:10},s)),'recalling a witness never fails');
+ assert.equal(T.orderOutcome({type:'expert',to:'n',skill:50},s),T.orderOutcome({type:'expert',to:'n',skill:50},s),'orders replay');
+}
+const full=k=>share(seeds(3000),s=>T.orderOutcome({type:'records',to:'p',skill:k},s)==='done');
+assert.ok(full(90)>full(20)+0.2,'a more capable party answers an order in full more often');
+
+console.log('v6 behaviour tests passed · attitude, lawyer skill, confrontation, face-off, judge orders, 180 written witnesses');

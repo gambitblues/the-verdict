@@ -82,6 +82,18 @@ for(const id of C.ids){
    if(q.hidden&&!qs.some(o=>(o.next||[]).includes(q.id)))problems.push(`${id} witness[${i}] ${q.id}: hidden question never opens`)}});
  if(variants<2)problems.push(id+': needs at least two truth-dependent answers');
  if(!c.late||!c.late.title||!c.late.rebut||!iss.has(c.late.issue))problems.push(id+': late evidence incomplete');
+ // judge's orders (followUps): valid issue / type / target, complete evidence or witness, answers for every truth
+ const fids=new Set();
+ for(const f of c.followUps||[]){const at=`${id} followUp ${f.id}`;if(fids.has(f.id))problems.push(at+': duplicate id');fids.add(f.id);
+  if(!iss.has(f.issue))problems.push(at+': unknown issue');if(!['records','witness','explain','expert','compare','alibi'].includes(f.type))problems.push(at+': bad type');
+  if(!['p','d','both'].includes(f.to))problems.push(at+': bad target');if(!f.ask)problems.push(at+': needs the order text');
+  if(f.to==='d'&&crim&&f.evidence&&!f.none)problems.push(at+': a defence order in a criminal case needs a "none" answer (no burden of proof)');
+  if(f.evidence){const E=f.evidence;for(const k of ['title','kind','by','when','excerpt','shows','side','caveat','how','check'])if(!E[k])problems.push(at+': evidence needs '+k);
+   for(const k of ['excerpt','shows','side'])if(typeof E[k]==='object'){for(const tr of ['did','didnt','reason'])if(E[k][tr]==null)problems.push(at+': evidence '+k+' needs '+tr)}
+   if(typeof E.side==='object'&&Object.values(E.side).some(v=>!['p','d','n'].includes(v)))problems.push(at+': evidence side must be p/d/n')}
+  if(f.witness){const qs=f.witness.q||[];if(qs.length<3)problems.push(at+': witness needs 3 questions');for(const q of qs)if(!iss.has(q.issue))problems.push(at+': witness question with unknown issue')}
+  if(!f.evidence&&!f.witness&&f.type!=='explain')problems.push(at+': nothing can come back');
+  if(f.have&&Object.values(f.have).includes(false)&&!f.none)problems.push(at+': material may not exist, so a "none" answer is needed')}
  if(!c.rebut||!c.closing)problems.push(id+': needs rebuttal and closing');
  for(const names of NAME_SETS)walk(c,'',c,names);
 }

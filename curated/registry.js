@@ -22,7 +22,7 @@ function fill(text,names){
 for(const d of window.VERDICT_CURATED_DETAIL||[]){const c=cases[d.id];if(!c)continue;
  c.evidence=c.evidence.map((e,i)=>({...e,...(d.evidence?.[i]||{})}));
  c.witnesses=c.witnesses.map((w,i)=>({...w,...(d.witnesses?.[i]||{})}));
- for(const k of ['charge','demand','claim','decision','issues','late','rebut','closing'])if(d[k]!=null)c[k]=d[k];
+ for(const k of ['charge','demand','claim','decision','issues','followUps','late','rebut','closing'])if(d[k]!=null)c[k]=d[k];
 }
 /* Gender facts a story depends on. A/B: fixed gender; AB: same or opposite to each other;
  * W: witness index → sameA / sameB / diffA / diffB. Everything else stays random. */

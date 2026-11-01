@@ -630,3 +630,14 @@ body.t4-court #toast{bottom:168px}
 .t4-bench .t4-who{border:0;background:none;padding:0;font:inherit;font-weight:800;color:#2e4a6b;cursor:pointer;text-decoration:underline;text-decoration-color:#b9c6d8;text-underline-offset:3px}
 .v6-book{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#f3f1fa;border:1px solid #ddd6ee;font-size:13.5px;line-height:1.55}.v6-book p{margin:3px 0}
 .v6-depts{display:flex;flex-direction:column;gap:6px}
+.t4-sumline{display:flex;gap:14px;justify-content:flex-end;margin:0 0 4px;font-size:12px;color:#7b715f}.t4-sumline b{color:#1d2b3a;font-weight:800;margin-left:3px}
+
+/* v6.2 · 재판장 주문 */
+.t4-orders{margin:10px 0;border:1px solid #e3d6bb;border-radius:12px;background:#fffaf0;padding:8px 10px}
+.t4-orders summary{font-weight:800;cursor:pointer;color:#5d4a1f;font-size:14px}.t4-orders summary small{font-weight:400;color:#7b715f}
+.t4-q.order{display:block;text-align:left;margin-top:6px;background:#fff;border-color:#e8d7b2;line-height:1.5}
+.t4-q.order .t4-tag{display:inline-block;margin:0 0 3px;font-size:11px}.t4-q.order small{display:block;color:#8a6d3b;font-size:11.5px;margin-top:2px}
+.t4-orders-issued{list-style:none;margin:6px 0 4px;padding:0;font-size:13px;line-height:1.5}.t4-orders-issued li{margin:3px 0}
+.t4-changes{margin:8px 0 12px;padding:10px 12px;border-radius:12px;background:#eef5f0;border:1px solid #cfe3d6}
+.t4-changes b{color:#2c5a43}.t4-changes ul{list-style:none;margin:6px 0 0;padding:0;font-size:13.5px;line-height:1.55}.t4-changes li{display:flex;gap:6px;margin:4px 0}
+.t4-rec-orders{font-size:13px;line-height:1.55;margin:4px 0 10px;padding-left:16px}
