@@ -28,10 +28,16 @@ function assign(id,person,gender,age){
  const fixed=CATALOG.find(s=>s.id===person.avatarSeedId);
  return fixed||CATALOG[oldStart+oldOffset+hash('npc:'+stableId)%oldLength];
 }
-function assignNew(id,person,age){
+function assignNew(id,person,age,usedIds){
  const g=genderOf(person,id),band=age<30?0:age<40?1:age<50?2:age<60?3:4;
  const start=g==='female'?1000:500,offset=[0,60,180,320,440][band],length=[60,120,140,120,60][band];
- return CATALOG[start+offset+hash('npc-new:'+String(id))%length];
+ const used=usedIds instanceof Set?usedIds:new Set(usedIds||[]);
+ // First prefer the correct age range; when full, draw from same gender's other seeds.
+ const candidates=[];
+ for(let i=0;i<length;i++)candidates.push(start+offset+(hash('new:'+id)+i)%length);
+ for(let i=0;i<500;i++)candidates.push(start+(hash('overflow:'+id)+i)%500);
+ const found=candidates.find(n=>!used.has(CATALOG[n].id));
+ return CATALOG[found===undefined?candidates[0]:found];
 }
 
 const safe=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
