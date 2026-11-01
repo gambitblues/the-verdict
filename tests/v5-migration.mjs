@@ -69,9 +69,7 @@ try{
    const end=page.locator('.t4-dock [data-action="t4end"]');if(await end.count()){await end.click();await answer()}
    await page.evaluate(id=>{S.cases[id].trial4.nextAt=0;render()},inProgress);
   }
-  await tab('verdict');await page.locator('.t4-verdict [data-action="t4verdict"]').first().click();
-  const cite=page.locator('.t4-cite').first();if(await cite.count())await cite.click();
-  await page.locator('.t4-verdict [data-action="t4confirm"]').click();await page.waitForTimeout(500);await answer();
+  await tab('verdict');await page.locator('[data-action="t4sheet"][data-v="open"]').click();await page.locator('.t4-verdict [data-action="t4verdict"]').first().click();for(let k=0;k<4&&!(await page.locator('.t4-sheet .t4-cite').count());k++)await page.locator('.t4-sheet-foot .btn.primary').click();if(await page.locator('.t4-sheet .t4-cite').count())await page.locator('.t4-sheet .t4-cite').first().click();for(let k=0;k<4&&!(await page.locator('.t4-verdict [data-action="t4confirm"]').count());k++)await page.locator('.t4-sheet-foot .btn.primary').click();await page.locator('.t4-verdict [data-action="t4confirm"]').click();await page.waitForTimeout(500);await answer();
   assert.ok(await page.evaluate(id=>!!S.cases[id].verdict,inProgress),mode+': resumed trial could not reach a verdict');
   // save, restart, read the old record
   await page.evaluate(()=>{save();VerdictStore.flush()});

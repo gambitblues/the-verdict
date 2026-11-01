@@ -81,9 +81,7 @@ try{
  }
  await tab('verdict');
  await answer();
- await page.locator('.t4-verdict [data-action="t4verdict"]').last().click();
- await page.locator('.t4-cite').first().click();
- await page.locator('.t4-verdict [data-action="t4confirm"]').click();
+ await page.locator('[data-action="t4sheet"][data-v="open"]').click();await page.locator('.t4-verdict [data-action="t4verdict"]').last().click();for(let k=0;k<4&&!(await page.locator('.t4-sheet .t4-cite').count());k++)await page.locator('.t4-sheet-foot .btn.primary').click();await page.locator('.t4-sheet .t4-cite').first().click();for(let k=0;k<4&&!(await page.locator('.t4-verdict [data-action="t4confirm"]').count());k++)await page.locator('.t4-sheet-foot .btn.primary').click();await page.locator('.t4-verdict [data-action="t4confirm"]').click();
  await page.locator('.t4-headline').first().waitFor();
  const verdict=await page.evaluate(id=>({v:S.cases[id].verdict,final:!!S.cases[id].trial4.final,heads:S.cases[id].trial4.final.headlines.length,dir:S.cases[id].trial4.final.dir}),cid);
  assert.ok(verdict.v&&verdict.final,'verdict not recorded through the v4 loop');

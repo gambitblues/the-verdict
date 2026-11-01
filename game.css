@@ -647,4 +647,31 @@ body.t4-court #toast{bottom:168px}
 .wf-more{display:inline-block;margin-top:4px;font-size:11px;color:#8a7a5c}.wf-more:after{content:' ▾'}
 .wf-art[open] .wf-more{display:none}
 .wf-art[open]>summary{margin-bottom:6px}
+/* v6.8 judge's orders: a panel of their own near the top of the hearing */
+.t4-orders-panel{margin:12px 0 14px;padding:12px 12px 10px;border:1.5px solid #c9a96a;border-radius:12px;background:linear-gradient(180deg,#fff8e8,#fffdf7);box-shadow:0 4px 14px #8a6a2a1a}
+.t4-orders-panel.is-open{border-color:#b8913f;box-shadow:0 0 0 3px #e9d6a655,0 4px 14px #8a6a2a22}
+.t4-orders-panel.is-done{background:#f7f4ec;border-style:dashed}
+.t4-orders-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.t4-orders-top b{font-size:15px;color:#5b4520}
+.t4-orders-count{font-size:11px;font-weight:700;color:#fff;background:#8a6a2a;border-radius:999px;padding:2px 9px}
+.t4-orders-why{font-size:12px;color:#7a6542;margin:4px 0 8px}
+.t4-orders-panel .t4-q.order{display:block;width:100%;text-align:left;margin:6px 0;border:1px solid #e1cfa3;background:#fff;border-radius:10px;padding:10px 12px}
+.t4-orders-panel .t4-q.order small{display:block;margin-top:4px;color:#8a7650}
+.t4-orders-more summary{cursor:pointer;font-size:12px;color:#8a6a2a;padding:6px 2px}
+/* v6.8 verdict window */
+.t4-sheet-open{font-size:16px;padding:14px}
+.t4-sheet-veil{position:fixed;inset:0;z-index:9000;background:rgba(14,22,30,.62);display:flex;align-items:flex-end;justify-content:center}
+.t4-sheet{width:min(560px,100%);max-height:92vh;display:flex;flex-direction:column;background:#fffdf8;border-radius:18px 18px 0 0;box-shadow:0 -10px 40px #0005;margin:0!important}
+@media(min-width:700px){.t4-sheet-veil{align-items:center}.t4-sheet{border-radius:16px}}
+.t4-sheet-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;border-bottom:1px solid #eee4d1}.t4-sheet-head small{display:block;font-size:11px;color:#8a7650;letter-spacing:.08em}.t4-sheet-head b{font-size:16px;color:#22313f}
+.t4-sheet-x{background:none;border:0;font-size:26px;line-height:1;color:#6c6250;min-width:40px;min-height:40px;cursor:pointer}
+.t4-steps{display:flex;gap:4px;list-style:none;margin:0;padding:10px 12px;border-bottom:1px solid #eee4d1;overflow-x:auto}
+.t4-steps li{flex:1}.t4-steps button{width:100%;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;font:inherit;font-size:11px;color:#9a8f7b;cursor:pointer;padding:2px}
+.t4-steps button span{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#ece5d6;color:#7b705c;font-weight:700;font-size:12px}
+.t4-steps li.on button{color:#22313f;font-weight:700}.t4-steps li.on button span{background:#22313f;color:#fff}
+.t4-steps li.done button span{background:#3d7d5b;color:#fff}.t4-steps button:disabled{opacity:.45;cursor:default}
+.t4-sheet-body{padding:12px 16px;overflow-y:auto;flex:1}
+.t4-sheet-lead{font-size:13px;color:#5d5546;margin:0 0 8px}
+.t4-sheet-foot{display:flex;justify-content:space-between;gap:10px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #eee4d1;background:#fffaf0}
+.t4-sheet-foot .btn{min-width:110px}
+.t4-sheet-sum{border:1px solid #e3d6ba;border-radius:10px;background:#fff;padding:4px 12px}.t4-sheet-sum p{display:flex;gap:10px;margin:0;padding:9px 0;border-bottom:1px dashed #e8dcc2;font-size:13px}.t4-sheet-sum p:last-child{border-bottom:0}.t4-sheet-sum span{flex:none;width:72px;color:#8a7650;font-size:12px}
 
