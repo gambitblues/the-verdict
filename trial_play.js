@@ -146,7 +146,7 @@ function witnessProfile(c,i,id){const cur=curOf(c),w=cur?.witnesses?.[i],p=NPC[i
  if(r&&r.every(Number.isFinite))setAge(c,id,r[0],r[1]);
  if(!/의 |배우자|동생|자녀|둘째|할머니|할아버지|친구/.test(role))setJob(p,role);
  sanityDegree(p,role)}
-window.VerdictSex={fix:c=>{fixSex(c);fixProfile(c);decisionVerdicts(c)}};
+window.VerdictSex={fix:c=>{fixSex(c);fixProfile(c);decisionVerdicts(c);window.VerdictMatchPlay?.fixParties(c)}};
 
 /* ---------- v6: people shape the trial ----------
  * A witness's attitude, reliability and memory come from who they are (honesty, stress control, impulsivity,
@@ -170,10 +170,10 @@ const prepWord=id=>{const s=lawyerSkill(id);return s>=78?'준비가 철저함':s
 
 function ensure(c,st){
  if(st.trial4)return upgrade(c,st.trial4);
- fixSex(c);fixProfile(c);decisionVerdicts(c);
+ fixSex(c);fixProfile(c);decisionVerdicts(c);window.VerdictMatchPlay?.fixParties(c);
  const seed=c.id+':'+(S.rng||1);
  const strictCase=!!curOf(c);
- const witnesses=witnessSeeds(c).map((w,i)=>{
+ const witnesses=window.VerdictMatchPlay?.witnesses(c)||witnessSeeds(c).map((w,i)=>{
   let id=w.existing;
   const ex=!id&&strictCase?window.VerdictV6?.expertFor?.(w.role,c):null;
   if(ex){id=ex.id;remember(id,'관련 사건',c.name+'의 증인으로 다시 출석 ('+w.role+')',c.id)}
@@ -195,6 +195,7 @@ function ensure(c,st){
   delayAccepted:false,twistUsed:false,log:[],media:T.pressStart(c.importance,{criminal:isCriminal(c),heatBonus:heat}),startedAt:now()};
  t.witnesses.forEach(w=>{w.askedIds=[];w.opened=[]});
  t.cards=dressCards(c,t,skilled(c,t,T.cards(t,1,seed),1));
+ window.VerdictMatchPlay?.attach(c,st,t);
  st.trial4=t;
  S.trial4History=[...history,{archetypeId:rolled.archetypeId,truth:rolled.truth,firstFlaw:rolled.firstFlaw}].slice(-60);
  save();
@@ -585,7 +586,7 @@ document.addEventListener('toggle',e=>{const d=e.target;if(d?.matches?.('details
 function act(kind,id,choice){
  const x=current();if(!x||x.st.verdict)return;
  const {c,st}=x,t=ensure(c,st);
- if(kind==='open'){if(waiting(t)||sessionOpen(t))return;openSession(c,st);resolveOrders(c,t);window.VerdictV6?.onSessionOpen?.(c,t);addLog(t,'개정',`${session(c,t.day)} 개정 · ${dlabel(t.dates[t.day])}`);save();ui.t4tab='day';render();window.scrollTo({top:0,behavior:'instant'});
+ if(kind==='open'){if(waiting(t)||sessionOpen(t))return;openSession(c,st);resolveOrders(c,t);window.VerdictMatchPlay?.onOpen(c,t);window.VerdictV6?.onSessionOpen?.(c,t);addLog(t,'개정',`${session(c,t.day)} 개정 · ${dlabel(t.dates[t.day])}`);save();ui.t4tab='day';render();window.scrollTo({top:0,behavior:'instant'});
   if(!askRequests(true))askNotices(false);return}
  if(kind==='handoff')return handoff(c,st);
  if(!sessionOpen(t)&&!waiting(t)){toast(`먼저 ${session(c,t.day)}을 여세요.`);return}
@@ -689,6 +690,7 @@ function askNotices(force){
 function endDay(){
  const x=current();if(!x||x.st.verdict)return;
  const {c,st}=x,t=ensure(c,st);
+ if(t.match&&window.VerdictMatchPlay)return window.VerdictMatchPlay.endDay(c,st,t);
  if(waiting(t))return;
  openSession(c,st);
  if(t.cards.some(v=>!v.choice&&v.type!=='media')){askRequests(true);return}
@@ -834,6 +836,10 @@ function confirmVerdict(){
  const score=sent?.score?{...sent.score,mitig:fs.filter(f=>f[2]<0).length,aggr:fs.filter(f=>f[2]>0).length}:null;
  const res=T.skill(t,{dir,criminal:isCriminal(c),cites:cites.map(i=>({label:i.label,side:i.side,illegal:i.illegal,struck:i.struck})),sentence:score});
  const judgment=writeJudgment(c,t,opt,dir,cites,sp,sent,fs);
+ finish(c,st,t,opt,dir,res,judgment,sent?.text||null);
+}
+/* Record the verdict through the career pipeline (conclude) and run the press: shared by the scripted and match trials. */
+function finish(c,st,t,opt,dir,res,judgment,sentText){
  st.phase=3;st.liveHearing=null;st.nextHearingWeek=null;st.hearingHistory??=[];
  while(st.hearingHistory.filter(h=>h.kind==='resumed').length<4)st.hearingHistory.push({kind:'resumed',week:S.week,v4:true});
  S.actions=0;
@@ -842,7 +848,7 @@ function confirmVerdict(){
  try{conclude(opt.id)}finally{StoryEngine.evaluate=prevEval}
  if(!st.verdict){toast('선고를 기록하지 못했습니다. 다시 시도해 주세요.');console.warn('v5 verdict blocked',c.id);return}
  st.grade=res.score;ui.t4v=null;
- after(c,st,t,opt,dir,res,{judgment,sentence:sent?.text||null});
+ after(c,st,t,opt,dir,res,{judgment,sentence:sentText});
 }
 /* The written judgment: what happened, what it rests on, each issue, and the sentence. Only cited material is quoted. */
 function writeJudgment(c,t,opt,dir,cites,sp,sent,fs){
@@ -1046,6 +1052,7 @@ function issueView(c,t,brief){
 const HELP=`<details class="t4-help"><summary>❔ 재판은 이렇게 진행돼요</summary><ol><li><b>증거</b> 탭에서 원문과 확보 경위를 읽고 <b>쓸지, 조건 붙여 쓸지, 뺄지</b> 정하세요. 불법으로 얻은 증거는 쓸 수 없어요.</li><li><b>증인</b> 탭에서 질문을 고르세요. 한 기일에 ${QPD}번까지 물을 수 있고, 답에 따라 새 질문이 열려요. 묻지 않은 질문의 답은 판결 전까지 모를 수 있어요.</li><li>기일이 열리면 상대가 이의나 연기를 신청할 때가 있어요. 대상과 이유를 읽고 받아들일지 정하세요.</li><li>정해진 횟수만큼 기일을 마치면 <b>판결</b> 탭에서 결론, 형량(배상액), 판결 이유를 정해 선고하세요.</li></ol></details>`;
 function tabsFor(c,st){
  const t=st.trial4;
+ if(t?.match&&window.VerdictMatchPlay)return window.VerdictMatchPlay.tabs(c,st,t);
  if(st.verdict)return [['result','선고 이후'],['case','사건'],['log','기록']];
  const pending=waiting(t)?0:t.cards.filter(v=>!v.choice&&v.type!=='media').length,undecided=t.evidence.filter(e=>!e.decision).length,ready=t.daysDone>=t.minDays;
  const orderable=!waiting(t)&&canOrder(c,t)&&!(t.courtOrders||[]).some(o=>o.day===t.day)&&availableOrders(c,t).length>0;
@@ -1168,6 +1175,7 @@ function verdictPage(c,st){
 }
 function dock(c,st){
  const t=st.trial4;if(st.verdict)return '';
+ if(t.match&&window.VerdictMatchPlay)return window.VerdictMatchPlay.dock(c,st,t);
  const wait=waiting(t),pending=t.cards.filter(v=>!v.choice&&v.type!=='media').length,moreDays=!isDecision(c)&&t.daysDone<t.minDays+EXTRA_DAYS;
  if(wait&&t.daysDone>=t.minDays)return `<div class="t4-dock"><span class="small">기일 더 열기: ${clock(t.nextAt)}부터</span><button class="btn primary" data-action="t4tab" data-tab="verdict">판결하러 가기</button></div>`;
  if(!wait&&!sessionOpen(t))return `<div class="t4-dock"><span class="small">${esc(session(c,t.day))} · ${esc(dlabel(dateOf(t)))}</span><button class="btn primary" data-action="t4" data-kind="open">▶ ${esc(session(c,t.day))} 열기</button></div>`;
@@ -1241,7 +1249,9 @@ court=function(){
   ${t?.log?.length?`<details class="t4-more"><summary>전체 기록 ${t.log.length}건</summary>${t.log.map(l=>`<p class="small"><b>${esc(session(c,l.day))} · ${esc(l.kind)}</b> ${esc(l.text)}</p>`).join('')}</details>`:''}</section>`;
  let page='';
  const wait=t&&waiting(t);
- if(ui.t4tab==='case')page=casePage;
+ const mpPage=t?.match&&window.VerdictMatchPlay?.page(c,st,t,ui.t4tab);
+ if(mpPage)page=mpPage;
+ else if(ui.t4tab==='case')page=casePage;
  else if(ui.t4tab==='log')page=logPage;
  else if(ui.t4tab==='orders')page=ordersPage(c,t);
  else if(ui.t4tab==='result')page=resultPanel(c,st);
@@ -1251,7 +1261,7 @@ court=function(){
  else if(ui.t4tab==='verdict')page=verdictPage(c,st);
  if(ui.t4tab==='day'&&t&&!st.verdict){
   const evApi=window.VerdictHearingEvents;
-  const opts=(evApi?.available(c,st,sessionOpen(t)&&!wait)||[]).filter(o=>o.id!=='defendant_question'||partyOf(c,t));
+  const opts=(evApi?.available(c,st,sessionOpen(t)&&!wait)||[]).filter(o=>o.id!=='defendant_question'||(!t.match&&partyOf(c,t)));
   const records=(st.hearingEvents||[]).map(v=>'<div class="t4-order-hist"><p><b>'+esc(v.id==='defendant_question'?'피고인 질문':v.id==='reflection'?'반성문':'합의·피해 회복')+'</b></p><p>'+esc(v.text)+'</p></div>').join('');
   if(opts.length||records)page+='<section class="panel t4"><h3>⚖ 당사자가 낸 자료</h3><p class="muted small">'+(isCriminal(c)?'피고인':'당사자')+' 쪽이 낸 자료와 진술은 공판 기록에 남습니다. 얼마나 믿을지는 재판장이 판단합니다.</p>'+opts.map(o=>'<button class="btn outline" style="margin:4px" data-action="t4hearing" data-id="'+esc(o.id)+'">'+esc(o.label)+'</button>').join('')+(records||'<p class="muted small">아직 진행한 이벤트가 없습니다.</p>')+'</section>';
  }
@@ -1293,6 +1303,7 @@ const priorClick=clicker;
 clicker=function(e){
  const el=e.target.closest('[data-action]');
  const a=el?.dataset.action;
+ if(a==='mp'||a==='mpv'||a==='mpgo'){const x=current();if(x&&window.VerdictMatchPlay?.click(e,el,x))return}
  if(a==='t4hearing'&&el.dataset.id==='defendant_question'){e.preventDefault();const x=current();if(!x)return;ui.t4tab='witness';ui.partyOpen=x.c.id;render();document.querySelector('details.t4-party')?.scrollIntoView({block:'center'});return}
  if(a==='t4hearing'){e.preventDefault();const x=current();if(!x)return;try{const item=window.VerdictHearingEvents.apply(x.c,x.st,el.dataset.id,sessionOpen(x.st.trial4)&&!waiting(x.st.trial4),x.st.trial4?.seed||String(S.rng||0));save();render();toast('공판 기록에 반영했습니다.')}catch(err){toast(err.message)}return}
  if(a==='t4'){e.preventDefault();act(el.dataset.kind,el.dataset.id,el.dataset.choice);return}
@@ -1358,5 +1369,6 @@ setInterval(()=>{
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&tick()&&!ui.modal)render()});
 setTimeout(()=>{if(tick()&&!ui.modal)render()},1500);
 
+window.VerdictMatchPlay?.bind({namesOf,setSex,setAge,setJob,session,dlabel,dateOf,sessionOpen,waiting,openSession,addLog,finish,DAY_WAIT,EXTRA_DAYS,minsLeft,clock,today});
 window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel,addToModal,orders:{available:availableOrders,issue:issueOrder,resolve:resolveOrders,state:nodeState},qById,questions:(c,t,i)=>questionsOf(c,t,i),ask:askQuestion,moment:momentOf};
 })();

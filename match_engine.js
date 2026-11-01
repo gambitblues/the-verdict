@@ -19,6 +19,11 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 const WORD={'높음':16,'강함':16,'보통':11,'낮음':6,'약함':6};
 const num=(v,d=11)=>{const s=String(v||'');for(const [w,n] of Object.entries(WORD))if(s.startsWith(w))return n;return d};
 const sideOf=by=>/검찰|원고|신청/.test(by||'')?'p':'d';
+/* 「자료 이름」 + 은/는 · 을/를 by the last syllable (a trailing note in brackets does not count) */
+const jong=w=>{const t=String(w).replace(/\s*\([^)]*\)\s*$/,'').trim(),c=t.slice(-1).charCodeAt(0);return c>=0xAC00&&c<=0xD7A3?(c-0xAC00)%28!==0:/[0136789LMNRlmnr]$/.test(t)};
+const q=(title,a,b)=>`「${title}」${jong(title)?a:b}`;
+const sideName=(sheet,side)=>sheet.card.kind==='criminal'?(side==='p'?'검찰':'변호인'):(side==='p'?'원고 쪽':'피고 쪽');
+const title=(sheet,side)=>sheet.card.kind==='criminal'&&side==='p'?'검사':'변호사';
 
 /* ---------- lawyers ---------- */
 const SURN='김이박최정강조윤장임한오서신권황안송류홍'.split(''),GIV=['세윤','태경','민재','하늘','도현','서아','지훈','유진','현우','다은','준서','가온','수빈','재원','이안','채원'];
@@ -98,7 +103,7 @@ function available(sheet,st){
   if(w.said.open)for(const [id,r] of Object.entries(st.records))if(r.status==='in'&&!w.said['c:'+id]&&relevant(sheet,w,id))out.push({type:'confront',w:w.key,r:id,label:`${p.name}에게 「${sheet.records.find(x=>x.id===id).title}」 제시`});
  }
  if(st.party.asked<2)out.push({type:'party',label:`피고인 ${name(sheet,sheet.card.accused)}에게 직접 묻기`});
- for(const r of sheet.records)if(st.records[r.id].status==='none')out.push({type:'order',r:r.id,label:`주문: ${r.unlock||r.title+' 제출'} (${sideOf(r.by)==='p'?'검찰':'변호인'})`});
+ for(const r of sheet.records)if(st.records[r.id].status==='none')out.push({type:'order',r:r.id,label:`주문: ${r.unlock||r.title+' 제출'} (${sideName(sheet,sideOf(r.by))})`});
  return out;
 }
 function act(sheet,st,a){
@@ -123,7 +128,7 @@ function ask(sheet,st,w,q,k){
 function confront(sheet,st,w,id,by,force,k){
  const who=name(sheet,w.key),rec=sheet.records.find(r=>r.id===id),content=world(sheet,st).records[id];
  w.said['c:'+id]=true;
- const asker=by==='judge'?'재판장':`${st.law[by].name} ${by==='p'?'검사':'변호사'}`;
+ const asker=by==='judge'?'재판장':`${st.law[by].name} ${title(sheet,by)}`;
  push(st,asker,`「${rec.title}」에는 이렇게 적혀 있습니다. "${content}" 증인의 말과 맞습니까?`);
  if(!relevant(sheet,w,id)){push(st,who,pick(['그 자료는 제가 본 일과는 관계가 없어서 잘 모르겠습니다.','그건 제가 직접 겪은 부분이 아닙니다.'],k),'확인');return 'unrelated'}
  if(!contradicts(sheet,st,w,id)){push(st,who,pick(['기록에 그렇게 나와 있다면 맞을 겁니다.','네, 제 기억과 다르지 않습니다.','그 부분은 기록이 맞습니다.'],k),'확인');return 'same'}
@@ -143,7 +148,7 @@ function party(sheet,st,k){
 }
 function order(sheet,st,id){
  const rec=sheet.records.find(r=>r.id===id),side=sideOf(rec.by);st.records[id].status='ordered';
- st.orders.push({r:id,side,day:st.day});push(st,'재판장',`${side==='p'?'검찰':'변호인'}은 다음 기일까지 「${rec.title}」을(를) 제출하십시오.`,'주문');
+ st.orders.push({r:id,side,day:st.day});push(st,'재판장',`${sideName(sheet,side)}은 다음 기일까지 ${q(rec.title,'을','를')} 제출하십시오.`,'주문');
 }
 
 /* ---------- end of a hearing day: lawyers move, orders come back ---------- */
@@ -153,14 +158,14 @@ function endDay(sheet,st){
  st.day++;st.actions=4;push(st,'법정',`제${st.day}회 공판을 엽니다.`);
  for(const o of st.orders.filter(o=>!o.done)){const L=st.law[o.side],rec=sheet.records.find(r=>r.id===o.r),R=st.records[o.r];
   const hurts=leaning(sheet,st,o.r)&&leaning(sheet,st,o.r)!==o.side;
-  if(o.side==='d'&&sheet.card.kind==='criminal'&&hurts&&roll(k+o.r+'dec')>12){o.done=true;R.status='declined';push(st,`${L.name} 변호사`,`「${rec.title}」은 제출하지 않겠습니다. 피고인에게 그럴 의무는 없습니다.`,'제출 거부');continue}
-  if(roll(k+o.r+'late')>L.prep+6&&!o.late){o.late=true;push(st,`${L.name} ${o.side==='p'?'검사':'변호사'}`,`「${rec.title}」은 회신이 늦어 다음 기일에 내겠습니다.`,'지연');continue}
+  if(o.side==='d'&&sheet.card.kind==='criminal'&&hurts&&roll(k+o.r+'dec')>12){o.done=true;R.status='declined';push(st,`${L.name} 변호사`,`${q(rec.title,'은','는')} 제출하지 않겠습니다. 피고인에게 그럴 의무는 없습니다.`,'제출 거부');continue}
+  if(roll(k+o.r+'late')>L.prep+6&&!o.late){o.late=true;push(st,`${L.name} ${title(sheet,o.side)}`,`${q(rec.title,'은','는')} 회신이 늦어 다음 기일에 내겠습니다.`,'지연');continue}
   o.done=true;R.status='in';R.day=st.day;push(st,'법정',`새 자료 도착: 「${rec.title}」 — ${world(sheet,st).records[o.r]}`,'새 자료');
   if(/시계|시각/.test(rec.title+rec.unlock))for(const r of Object.values(st.records))r.disputed=false;}
  return st;
 }
 function lawyerMove(sheet,st,side,k){
- const L=st.law[side],who=`${L.name} ${side==='p'?'검사':'변호사'}`,other=side==='p'?'d':'p';
+ const L=st.law[side],who=`${L.name} ${title(sheet,side)}`,other=side==='p'?'d':'p';
  // a witness lying for the other side, and a record in court that contradicts them: confront (any tactic, if prepared)
  for(const w of Object.values(st.witnesses)){if(w.broken||!w.said.open)continue;const helps=w.leans===sheet.card.accused?'d':w.leans===sheet.card.complainant?'p':null;
   if(helps!==other)continue;const id=Object.keys(st.records).find(r=>st.records[r].status==='in'&&contradicts(sheet,st,w,r)&&!w.said['c:'+r]);
@@ -170,7 +175,7 @@ function lawyerMove(sheet,st,side,k){
   const fixed=sheet.records.some(r=>/시계|시각/.test(r.title+(r.unlock||''))&&st.records[r.id].status==='in');
   if(id&&!fixed){st.records[id].disputed=true;push(st,who,`「${sheet.records.find(r=>r.id===id).title}」의 시각이 다른 기록과 맞지 않습니다. 이 자료로는 그 순간을 증명할 수 없습니다.`,'시각 공방');return}}
  if(L.tactic==='source'){const id=sheet.records.find(r=>st.records[r.id].status==='in'&&!st.records[r.id].disputed&&/사본|요약|점검.*않|하지 않음|빠져/.test(r.how)&&leaning(sheet,st,r.id)!==side)?.id;
-  if(id){st.records[id].disputed=true;push(st,who,`「${sheet.records.find(r=>r.id===id).title}」은 ${sheet.records.find(r=>r.id===id).how.split(/[.,]/)[0]}. 원본성과 확보 경위를 믿기 어렵습니다.`,'증거 다툼');return}}
+  if(id){st.records[id].disputed=true;push(st,who,`${q(sheet.records.find(r=>r.id===id).title,'은','는')} ${sheet.records.find(r=>r.id===id).how.split(/[.,]/)[0]}. 원본성과 확보 경위를 믿기 어렵습니다.`,'증거 다툼');return}}
  // press: shake an honest but forgetful witness who hurts this side
  const target=Object.values(st.witnesses).find(w=>w.said.open&&w.m<=11&&w.stance==='honest'&&!w.shaken&&(w.leans!==(side==='p'?sheet.card.complainant:sheet.card.accused)));
  if(target&&(L.tactic==='press'||roll(k+'pr')<=6)&&L.exam+roll(k+'x',8)>target.m+8){target.shaken=true;target.cred-=1;

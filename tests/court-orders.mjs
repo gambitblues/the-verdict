@@ -21,6 +21,7 @@ await new Promise(o=>server.listen(0,'127.0.0.1',o));
 const url='http://127.0.0.1:'+server.address().port+'/';
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:390,height:844}});
+await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
 const errs=[];page.on('pageerror',e=>errs.push(e.message));
 const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(100);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().click();continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}};
 // anything else that pops up during a long simulated career (season choices, notices): close it the way a player would
@@ -176,7 +177,7 @@ try{
  // ---- new game wipes everything: both player slots, snapshots, the old career ----
  await page.evaluate(()=>{localStorage.setItem('verdict_player_save_2','{"name":"옛 판사"}');localStorage.setItem('verdict_player_save_1','{"name":"옛 판사"}')});
  const nav=page.waitForNavigation();await page.evaluate(()=>wipeGame());await nav;await page.waitForTimeout(1500);
- const w=await page.evaluate(()=>({keys:Object.keys(localStorage).filter(k=>/^(the_verdict|verdict_)/.test(k)).sort(),name:S.name,cases:(S.generatedCases||[]).length,npc:Object.keys(S.npcDB||{}).length}));
+ const w=await page.evaluate(()=>({keys:Object.keys(localStorage).filter(k=>/^(the_verdict|verdict_)/.test(k)&&k!=='verdict_match_off').sort(),name:S.name,cases:(S.generatedCases||[]).length,npc:Object.keys(S.npcDB||{}).length}));
  assert.deepEqual(w.keys,['the_verdict_alpha_1','verdict_player_active'],'only a blank fresh save may remain');
  assert.ok(!w.name&&!w.cases&&!w.npc,'the old career must be gone after starting over');
  console.log('  ✓ new game wipes both slots and the old career');

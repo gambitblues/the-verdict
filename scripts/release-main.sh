@@ -4,7 +4,7 @@
 # Usage: scripts/release-main.sh 7.0.3
 set -euo pipefail
 V=${1:?usage: scripts/release-main.sh X.Y.Z}
-DEV_ONLY=(dev advanced-content world-sheets)   # test screens, draft case data, hidden-truth world sheets
+DEV_ONLY=(dev advanced-content world-sheets)   # test screens, draft case data, world-sheet sources and drafts (the game copy is world_sheets.js, built without sources)
 git fetch -q origin +refs/heads/main:refs/remotes/origin/main
 D=$(git rev-parse HEAD)
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT

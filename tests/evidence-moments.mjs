@@ -18,6 +18,7 @@ await new Promise(o=>server.listen(0,'127.0.0.1',o));
 await mkdir(path.join(base,'qa-visuals'),{recursive:true});
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:390,height:844}});
+await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
 const errs=[];page.on('pageerror',e=>errs.push(e.message));
 try{
  await page.goto('http://127.0.0.1:'+server.address().port+'/',{waitUntil:'networkidle'});

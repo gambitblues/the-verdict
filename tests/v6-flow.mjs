@@ -18,6 +18,7 @@ const server=http.createServer(async(q,r)=>{const f=path.resolve(base,'.'+decode
 await new Promise(o=>server.listen(0,'127.0.0.1',o));
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:390,height:844}});
+await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
 const errs=[];page.on('pageerror',e=>errs.push(e.message));
 const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(100);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().click();continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}};
 const tab=async id=>{await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer()};
@@ -35,7 +36,7 @@ try{
  await page.locator('[data-action="start"]').last().click();
  await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});
  await page.waitForFunction(()=>!!S.bench?.assoc&&(S.casePacks||[]).some(p=>p.packId==='v6-new-30'),null,{timeout:10000});
- assert.equal(await page.evaluate(()=>CasePackEngine.pool(S).length),60);
+ assert.equal(await page.evaluate(()=>CasePackEngine.pool(S).length-(window.VerdictSheets?.pack?.archetypes?.length||0)),60);   // 60 curated + the world-sheet cases (v8)
  // free up the docket so test cases can be created
  await page.evaluate(()=>{for(const c of S.generatedCases)S.cases[c.id].referred=true;save()});
 

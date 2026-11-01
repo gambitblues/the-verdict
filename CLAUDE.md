@@ -31,7 +31,7 @@
   - 개발용 화면·시범 사건은 `dev/`(예: `dev/advanced-pilot/advanced_pilot.html`), 초안 사건 데이터는 `advanced-content/`에 둔다. 둘 다 main에 올라가지 않는다.
   - Advanced 초안 99건은 아직 틀에서 찍어낸 초안이다. `tests/advanced-content-qa.cjs`가 사건 사이 반복 문장·시각 불일치·주제형 증인 역할을 세고, 문제가 남은 사건은 플레이 가능 표시를 못 한다.
   - 기존 60건 → Advanced 변환은 `advanced_legacy_adapter.js`(집필 문장만 사용, 이름 토큰 유지, 없는 시각·장소는 'needs_authoring'으로 표시).
-- **세계 시트(2026-11 확정):** 사건의 고정 사실을 세 세계로 쓰는 양식 `world-sheets/template.json`, 사건은 `world-sheets/cases/<id>.json`(견본 clinic-001). 기획자는 실제 판례를 바탕으로 새 사건을 여기에 올리고, 기존 60건은 요청이 오면 Claude가 같은 수준으로 써서 커밋한다. 법정 진술·전략은 쓰지 않는다(엔진 몫). 폴더는 main에 안 올라간다. 시트를 읽는 매치 엔진 시범 `match_engine.js` + 개발 화면 `dev/match-engine/` (검사·변호사 능력치 4개와 전술 4개, 증인 태도 정직·감싸기·두려움, 거짓은 다른 세계의 같은 칸을 빌림, 자료 제시로 번복 판정, 시각·효력 다툼 중인 자료는 증명에서 빠짐, 판결은 법정 기록으로 가려낼 수 있었는지로 평가). 아직 게임에 연결 안 됨.
+- **세계 시트(2026-11 확정):** 사건의 고정 사실을 세 세계로 쓰는 양식 `world-sheets/template.json`, 사건은 `world-sheets/cases/<id>.json`(견본 clinic-001). 기획자는 실제 판례를 바탕으로 새 사건을 여기에 올리고, 기존 60건은 요청이 오면 Claude가 같은 수준으로 써서 커밋한다. 법정 진술·전략은 쓰지 않는다(엔진 몫). 폴더는 main에 안 올라간다. 시트를 읽는 매치 엔진 시범 `match_engine.js` + 개발 화면 `dev/match-engine/` (검사·변호사 능력치 4개와 전술 4개, 증인 태도 정직·감싸기·두려움, 거짓은 다른 세계의 같은 칸을 빌림, 자료 제시로 번복 판정, 시각·효력 다툼 중인 자료는 증명에서 빠짐, 판결은 법정 기록으로 가려낼 수 있었는지로 평가). **v8.0부터 게임에 연결됨:** `node tests/build-sheets.cjs`가 review·ready 시트를 `world_sheets.js`(게임 데이터, main에 올라감 — 숨은 진실 공개는 집필 사건과 같음)로 만들고, 60건에 없는 시트는 사건팩 `world-sheets-v1`로 배당 풀에 들어간다. `match_play.js`가 법정 화면(사건·공판·자료·기록·판결 탭)을 맡고 `trial_play.js`의 `finish`로 선고·언론·커리어를 잇는다. 세이브에는 `trial4.match`(엔진 상태)만. 시트가 있는 집필 사건은 새로 시작하는 재판부터 매치 엔진, 진행 중인 옛 재판(`t.match` 없음)은 옛 엔진. 시트를 고치면 반드시 다시 빌드.
 - 정리 원칙(사용자 요청): 프로그램에 영향 없는 옛 코드·안 쓰는 파일·중복 코드는 검수 때 지운다. 이미 올라간 커밋 기록은 고쳐 쓰지 않는다(공유 브랜치 강제 푸시 금지).
 
 ## 확정된 설계 결정
@@ -58,7 +58,8 @@ node tests/v6-behaviour.test.cjs    # 증인 태도·이의·증거 반박·대�
 node tests/career-hearing-events.test.cjs  # 40년 경력 성장 속도·공판 중 당사자 자료
 node tests/world-sheets.test.cjs   # 세계 시트(world-sheets/cases) 구조·세 세계 구별
 node tests/match-engine.test.cjs   # 매치 엔진: 세계 불변·거짓은 다른 세계 사실에서만·판마다 다른 재판
-ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/visuals.mjs; node tests/responsive.mjs; node tests/hearing-events.mjs; node tests/evidence-moments.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/long-career.mjs 40; rm node_modules
+node tests/build-sheets.cjs --check  # world_sheets.js가 시트와 같은지 (시트 고치면 node tests/build-sheets.cjs)
+ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/visuals.mjs; node tests/responsive.mjs; node tests/hearing-events.mjs; node tests/evidence-moments.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/match-play.mjs; node tests/long-career.mjs 40; rm node_modules
 ```
 - `curated/*.js`를 고치면 `node tests/build-curated.cjs`로 `curated_cases.js`를 다시 만든다.
 - 화면을 바꾸면 Playwright로 390px 모바일 스크린샷을 찍어 직접 확인한다.

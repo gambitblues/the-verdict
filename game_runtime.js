@@ -426,7 +426,7 @@ function archiveOld(all){let n=0;for(const c of S.generatedCases||[]){const st=S
  if(c.story?.evidenceDetails)c.story.evidenceDetails=c.story.evidenceDetails.map(e=>({id:e.id,title:e.title,type:e.type}));
  if(Array.isArray(c.stages))c.stages=c.stages.map(x=>({prompt:x.prompt,actions:[]}));
  delete c.participantSnapshots;
- if(st.trial4){const t=st.trial4;t.log=(t.log||[]).slice(-12)}
+ if(st.trial4){const t=st.trial4;t.log=(t.log||[]).slice(-12);if(t.match?.log)t.match.log=t.match.log.filter(l=>['번복','선고','새 자료','제출 거부','일부 인정'].includes(l.tag)).slice(-12)}
  c.archived=true;n++}
  if(n){FamilyEngine.prune(S,NPC);trimPeople()}return n}
 // Yearly wealth snapshots are kept for the last five years; events with a reason other than the yearly snapshot stay.

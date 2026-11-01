@@ -22,7 +22,7 @@ try{
   await ctx.addInitScript(({store,mode})=>{if(sessionStorage.getItem('seeded'))return;sessionStorage.setItem('seeded','1');localStorage.clear();
    for(const [k,v] of Object.entries(store))localStorage.setItem(k,v);
    if(mode==='compressed')localStorage.setItem('v5-compress-pending','1')},{store:fixture.localStorage,mode});
-  const page=await ctx.newPage();const errs=[];page.on('pageerror',e=>errs.push(e.message));
+  const page=await ctx.newPage();await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   /* this test covers the scripted trial; match trials: tests/match-play.mjs */const errs=[];page.on('pageerror',e=>errs.push(e.message));
   await page.goto(url,{waitUntil:'networkidle'});
   if(mode==='compressed'){
    // rewrite the main save in the compressed form the store uses for big careers, then reload
@@ -37,7 +37,7 @@ try{
   await page.waitForTimeout(1600); // v6 boot: case pack install, bench
   const now=await page.evaluate(()=>({name:S.name,cases:S.generatedCases.map(c=>c.id),npc:Object.keys(S.npcDB||{}),relations:S.relations,
    family:Object.fromEntries(Object.entries(S.npcDB||{}).map(([k,v])=>[k,v.familyIds||[]])),news:S.news.map(n=>n.title),journal:S.journal.length,
-   packs:(S.casePacks||[]).map(p=>p.packId),pool:CasePackEngine.pool(S).length}));
+   packs:(S.casePacks||[]).map(p=>p.packId),pool:CasePackEngine.pool(S).length-(window.VerdictSheets?.pack?.archetypes?.length||0)}));
   assert.equal(now.name,old.name,mode+': judge name changed');
   assert.deepEqual(now.cases,old.generatedCases.map(c=>c.id),mode+': case list changed');
   for(const id of Object.keys(old.npcDB||{}))assert.ok(now.npc.includes(id),mode+': NPC '+id+' lost');

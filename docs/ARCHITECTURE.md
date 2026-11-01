@@ -119,3 +119,11 @@
 
 - 표시만 담당한다. 진실·결함·성향·점수를 읽지 않고, 세이브에 아무것도 쓰지 않는다. 초상화는 NPC id로 정해진다.
 - 법정 전경(접기/펼치기), 증인석, 증거 문서 모양(문서·대화·영상·녹음·감정), 짧은 법정 알림. `trial_play.js`는 `window.VerdictVisuals`가 있으면 쓰고 없으면 글로만 보여 준다. 검사는 `tests/visuals.mjs`.
+
+## v8: 매치 엔진 재판 (`match_engine.js` · `world_sheets.js` · `match_play.js`)
+
+- `world_sheets.js`: `world-sheets/cases/*.json` 중 review·ready만 담은 빌드 산출물(`node tests/build-sheets.cjs`). 사람 이름은 `{A}`·`{W1}` 자리표로 바꾼다. 집필 60건에 없는 시트는 사건팩 `world-sheets-v1` 원형으로 함께 싣는다.
+- `match_play.js`: 사건팩 풀 확장(`CasePackEngine.pool`), 당사자 성별·나이·직업을 시트에 맞춤(`fixParties`), 증인을 시트 인물로 만듦(`witnesses`), 새 재판에 엔진 상태를 붙임(`attach` → `trial4.match`), 법정 화면 탭(사건·공판·자료·기록·판결)과 하단 버튼 줄, 공판 마치기(`endDay`)·다음 공판 열 때 양측 움직임과 주문 결과(`onOpen` → `VerdictMatch.endDay`), 판결(결론·형 → `trial_play.finish`).
+- `trial_play.js`는 `VerdictMatchPlay.bind(...)`로 필요한 함수(공판 열기·대기·이름 채우기·선고 처리)를 넘기고, `t.match`가 있으면 화면·버튼 줄·공판 마치기·탭을 매치 쪽에 맡긴다. `t.match`가 없는 옛 재판은 그대로.
+- 점수: 판결 실력 = 엔진 판정(법정 기록으로 가려낼 수 있었는지 4단계) + 형의 어울림. 엔진 판정 문구는 진실이 드러날 때(`truthShown`) '기록' 탭에 보인다.
+- 시트가 바뀌어 봉인값이 달라지면 진실은 그대로 두고 새 시트로 다시 봉인한다(`sheetFor`).

@@ -16,6 +16,7 @@ const browser=await chromium.launch({headless:true});
 try{
  for(const [name,w,h] of [['iphone',390,844],['fold-folded',412,915]]){
   const page=await browser.newPage({viewport:{width:w,height:h},isMobile:true,hasTouch:true});
+  await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
   const errs=[];page.on('pageerror',e=>errs.push(e.message));
   const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(80);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().dispatchEvent('click');continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().dispatchEvent('click');continue}break}await page.evaluate(()=>{if(ui.modal){ui.modal='';render()}})};
   await page.goto(url,{waitUntil:'networkidle'});
