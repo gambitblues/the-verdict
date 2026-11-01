@@ -25,6 +25,8 @@ jobs:
           node --check people_map.js
           node --check v6_world.js
           node --check save_store.js
+          node --check career_balance.js
+          node --check hearing_events.js
           node tests/media-desk.test.cjs
           node tests/save-store.test.cjs
           node --check curated_cases.js
@@ -52,6 +54,7 @@ jobs:
           node tests/avatar-500.test.cjs
           node tests/avatar-production-budget.test.cjs
           node tests/advanced-content-qa.cjs
+          node tests/career-hearing-events.test.cjs
       - name: Install browser test tooling
         run: |
           npm install --no-save playwright
@@ -60,6 +63,8 @@ jobs:
         run: node tests/visuals.mjs
       - name: Responsive layout (phones, Fold folded/unfolded, tablet, desktop)
         run: node tests/responsive.mjs
+      - name: Party materials on the hearing page (defendant questions, reflection, settlement)
+        run: node tests/hearing-events.mjs
       - name: Evidence shapes and witness moments (visual review gallery)
         run: node tests/evidence-moments.mjs
       - name: Run mobile viewport browser test

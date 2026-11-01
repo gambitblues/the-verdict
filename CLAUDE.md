@@ -54,7 +54,8 @@ node tests/narrative-qa.cjs        # 집필 사건 문장·조사·구조 검사
 node tests/version.test.cjs        # index.html 버전 = sw.js CACHE = CHANGELOG 첫 항목
 node tests/v6-case-matrix.test.cjs  # 60건 × 80시드 증거·결정성 (개발자 추가)
 node tests/v6-behaviour.test.cjs    # 증인 태도·이의·증거 반박·대질·주문 결과 순수 함수
-ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/visuals.mjs; node tests/responsive.mjs; node tests/evidence-moments.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/long-career.mjs 40; rm node_modules
+node tests/career-hearing-events.test.cjs  # 40년 경력 성장 속도·공판 중 당사자 자료
+ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/visuals.mjs; node tests/responsive.mjs; node tests/hearing-events.mjs; node tests/evidence-moments.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/long-career.mjs 40; rm node_modules
 ```
 - `curated/*.js`를 고치면 `node tests/build-curated.cjs`로 `curated_cases.js`를 다시 만든다.
 - 화면을 바꾸면 Playwright로 390px 모바일 스크린샷을 찍어 직접 확인한다.

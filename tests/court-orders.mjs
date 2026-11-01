@@ -158,7 +158,7 @@ try{
   const id=await page.evaluate(a=>{for(const c of S.generatedCases)S.cases[c.id].referred=true;const cand=CasePackEngine.pool(S).find(x=>x.a.id===a);const c=createGeneratedCase(cand);S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};c.week=S.week;ui.tab='court';ui.caseId=c.id;render();return c.id},aid);
   await page.locator('.t4-tabs').waitFor();
   for(let d=0;d<5;d++){
-   await tab('day');const ob=page.locator('.t4-dock [data-kind="open"]');if(!(await ob.count()))break;await ob.click();await answer();
+   await tab('day');const ob=page.locator('.t4-dock [data-kind="open"]');if(!(await ob.count()))break;await clear();await ob.click();await answer();
    if(d>0&&await page.locator('.t4-changes').count())changesSeen++;
    await tab('witness');
    for(let k=0;k<2;k++){const q=page.locator('.t4-pager .t4-q:not([disabled]):not(.cf):not(.face):not(.order)').first();if(await q.count()){await q.dispatchEvent('click');await answer()}}

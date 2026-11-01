@@ -363,7 +363,7 @@ else if(isNew())firstFour().catch(err=>console.warn(err));
    }).join('');
  }
  home=function(){
-  const html=priorHome(),f=S.legalWorld?.playerFame||0;
+  const html=priorHome(),f=Math.round(S.legalWorld?.playerFame||0);
   return html+'<section class="panel court-fame-summary"><div class="row between"><h3>🏅 법조계 평판</h3><span class="chip">나의 인지도 '+f+'/100</span></div><p class="muted small">유명세는 재판의 규모·언론 노출·경력으로 쌓이고 시간이 지나면 줄어듭니다. 공정한 판단력과는 별도입니다.</p><details><summary>주목받는 법조인 TOP 5</summary>'+leaders()+'</details></section>';
  };
  people=function(){

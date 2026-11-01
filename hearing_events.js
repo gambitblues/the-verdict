@@ -3,7 +3,7 @@
 'use strict';
 const hash=s=>{let h=2166136261;for(const c of String(s))h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;return h>>>0};
 const choices=[
- {id:'defendant_question',label:'피고인에게 직접 질문',criminalOnly:true},
+ {id:'defendant_question',label:'피고인에게 직접 질문',criminalOnly:true,opens:'party'},   // opens the case's own authored party questions (trial_play partyCard), no stock dialogue
  {id:'reflection',label:'반성문 제출 및 내용 확인',criminalOnly:true},
  {id:'settlement',label:'합의·피해회복 자료 확인',criminalOnly:false}
 ];
@@ -17,7 +17,7 @@ function event(c,st,id,open,seed){
  const person=c.kind==='criminal'?'피고인':'당사자';
  let text;
  if(id==='defendant_question'){
-  text=[`재판장: 피고인, 공소사실 중 직접 인정하는 행동과 부인하는 행동을 구분해 말씀하세요.\n피고인: 당시 그 자리에 있었던 것은 맞습니다. 다만 공소장에 적힌 행동을 모두 인정하는 것은 아닙니다.`,`재판장: 앞서 제출한 진술서와 오늘 말씀 사이에 차이가 있습니다. 어느 시점의 기억입니까?\n피고인: 처음 조사 때에는 시각을 정확히 기억하지 못했습니다. 기록을 보고 일부를 바로잡았습니다.`,`재판장: 사건 이후 피해 회복을 위해 실제로 취한 조치가 있습니까?\n피고인: 연락을 시도했지만 상대방이 원하지 않아 더 진행하지 않았습니다.`][n];
+  throw Error('피고인 질문은 사건별 신문 카드에서 진행합니다.');
  }else if(id==='reflection'){
   text=[`피고인 반성문: 사건으로 상대방에게 고통을 준 점을 후회합니다. 다만 혐의 사실 전체를 인정하는 것은 아닙니다.`,`피고인 반성문: 제 행동을 돌아보고 재발 방지 교육을 받았습니다. 구체적인 피해 회복 여부는 별도 자료가 없습니다.`,`피고인 반성문: 당시의 판단이 경솔했습니다. 제출일 이후 실제 행동 변화에 관한 자료는 없습니다.`][n]+'\n재판장: 반성문 제출 사실과 진정성 및 양형상 의미는 구분해 검토합니다.';
  }else{
