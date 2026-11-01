@@ -1,0 +1,25 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>매치 엔진 시범</title>
+<style>
+:root{--bg:#f6f1e7;--card:#fffdf8;--ink:#1f2a36;--mut:#5b6876;--line:#e3d8c4;--acc:#7a4a1d;--p:#1f4e79;--d:#7a2e2e}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a22;--card:#1c2530;--ink:#e6ebf0;--mut:#9aa6b2;--line:#2e3a48;--acc:#e0a96d;--p:#8fb8e8;--d:#e89a9a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+main{max-width:860px;margin:auto;padding:16px}h1{font-size:20px;margin:4px 0 2px}h2{font-size:16px;margin:0 0 8px}
+.sub{color:var(--mut);font-size:13px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}select,input,button{font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);min-height:42px}
+button{cursor:pointer}button.main{background:var(--acc);color:#fff;border-color:var(--acc)}button:disabled{opacity:.4}
+.acts button{display:block;width:100%;text-align:left;margin:6px 0}.grp{font-size:12px;color:var(--mut);margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.log p{margin:6px 0;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.03)}.log b{margin-right:4px}.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;background:var(--acc);color:#fff;margin-left:6px}
+.tag.거짓{background:#8a5a00}.tag.번복{background:#2f6b3a}.tag.버팀{background:#6b2f2f}.tag.회피{background:#555}
+.rec{font-size:14px;margin:6px 0}.rec small{color:var(--mut)}.disp{color:var(--d);font-size:12px}
+.grade{font-size:18px;font-weight:700}.p{color:var(--p)}.d{color:var(--d)}
+</style></head><body><main>
+<h1>⚖ 매치 엔진 시범</h1><div class="sub">세계 시트를 읽어 판마다 다른 재판을 만듭니다. 게임과 분리된 개발용 화면입니다.</div>
+<div class="card row"><label>사건 <select id="case"><option value="clinic-001">마취실의 12분</option><option value="gym-001">새벽 6시의 스쿼트랙</option></select></label>
+<label>판 번호 <input id="seed" size="8" value="1"></label><button id="new" class="main">새 판</button><button id="reroll">다른 변호사로</button>
+<label class="sub">QA: 진실 <select id="force"><option value="">무작위(숨김)</option><option>did</option><option>didnt</option><option>reason</option></select></label></div>
+<div id="app"></div>
+<div class="card"><h2>같은 사건을 30판 자동으로 돌려 보기</h2><div class="sub">판사가 같은 순서로 진행할 때, 변호사 조합과 판정만으로 결과가 얼마나 달라지는지 봅니다.</div><button id="bulk">돌리기</button><div id="bulkout"></div></div>
+</main>
+<script src="../../match_engine.js"></script><script src="./app.js"></script></body></html>

@@ -55,6 +55,7 @@ jobs:
           node tests/avatar-production-budget.test.cjs
           node tests/advanced-content-qa.cjs
           node tests/world-sheets.test.cjs
+          node tests/match-engine.test.cjs
       - name: Install browser test tooling
         run: |
           npm install --no-save playwright
@@ -63,6 +64,8 @@ jobs:
         run: node tests/visuals.mjs
       - name: Responsive layout (phones, Fold folded/unfolded, tablet, desktop)
         run: node tests/responsive.mjs
+      - name: Match engine dev screen (play a trial, 30-trial run)
+        run: node tests/match-engine-screen.mjs
       - name: Party materials on the hearing page (defendant questions, reflection, settlement)
         run: node tests/hearing-events.mjs
       - name: Evidence shapes and witness moments (visual review gallery)
