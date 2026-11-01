@@ -1,4 +1,4 @@
-/* THE VERDICT — 500 deterministic Korean avatar identities. Vector only: no image downloads.
+/* THE VERDICT — 1500 deterministic Korean avatar identities. Vector only: no image downloads.
    Fixed seed identity; age/outfits/eyewear do not mutate original NPC or saved state. */
 (function(root,factory){const a=factory();if(typeof module==='object'&&module.exports)module.exports=a;if(root)root.VerdictAvatars=a;})(typeof window!=='undefined'?window:null,function(){
 'use strict';
@@ -8,19 +8,20 @@ const skins=['#efcdb7','#e5bda2','#dcae90','#f2d3b9','#c99372','#e9bfa7','#d3a18
 const suit=['#263b52','#394d68','#3c464c','#465968','#654e5c','#273f45','#545066','#364e5b'];
 const hair=['#252128','#31272b','#412e2a','#222b32','#54372d','#352b36'];
 const fmt=n=>String(n).padStart(3,'0');
-function profile(n){if(n<0||n>=500||!Number.isInteger(n))throw Error('avatar index');
- const gender=n<250?'male':'female',slot=n%250;
- // 30/60/70/60/30 per gender = 60/120/140/120/60 combined.
- const ages=[30,60,70,60,30];let group=0,k=slot;
+function profile(n){if(n<0||n>=1500||!Number.isInteger(n))throw Error('avatar index');
+ const gender=n<750?'male':'female',slot=n%750;
+ // 90/180/210/180/90 per gender = 180/360/420/360/180 combined.
+ const ages=[90,180,210,180,90];let group=0,k=slot;
  while(k>=ages[group])k-=ages[group++];
  const band=['20s','30s','40s','50s','60s'][group],h=hash('the-verdict-avatar-v1:'+n);
  return Object.freeze({id:'KR-'+(gender==='male'?'M':'F')+'-'+fmt(slot+1),index:n,gender,ageBand:band,face:pick(h,12),eyes:pick(h,9,4),brows:pick(h,7,8),nose:pick(h,8,12),mouth:pick(h,8,16),hair:pick(h,24,3),skin:pick(h,skins.length,9),glasses:pick(h,11,18)===0,facialHair:gender==='male'&&pick(h,7,17)===0,style:pick(h,6,21)});
 }
-const CATALOG=Object.freeze(Array.from({length:500},(_,i)=>profile(i)));
+const CATALOG=Object.freeze(Array.from({length:1500},(_,i)=>profile(i)));
 function genderOf(person,id){const v=String(person?.gender||'').toLowerCase();if(/여|female|woman/.test(v))return 'female';if(/남|male|man/.test(v))return 'male';if(person?.name&&/[희연윤지수나미아은]/.test(String(person.name).slice(-1)))return 'female';return id==='self'?'male':hash(id)%2?'female':'male'}
 function assign(id,person,gender,age){const g=gender||genderOf(person,id),band=age<30?0:age<40?1:age<50?2:age<60?3:4;
- const start=g==='female'?250:0,offset=[0,30,90,160,220][band],length=[30,60,70,60,30][band];
- return CATALOG[start+offset+hash('npc:'+id)%length];
+ const start=g==='female'?750:0,offset=[0,90,270,480,660][band],length=[90,180,210,180,90][band];
+ const stableId=String(id||person?.id||person?.name||'unknown');
+ return CATALOG[start+offset+hash('npc:'+stableId)%length];
 }
 const safe=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function svg(seed,opts={}){
