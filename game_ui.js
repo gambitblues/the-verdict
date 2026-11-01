@@ -118,11 +118,18 @@ function clockData(){
  return {time:format(),gameDate,next:candidate.toLocaleString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}),weekday:d.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})};
 }
 function priority(){
- const db=S.realtimeInbox,now=Date.now();
+ const db=S.realtimeInbox,now=Date.now(),D=window.VerdictDocket,cap=D?.MAX_ACTIVE||5,active=openCases().length;
  const offers=(db?.offers||[]).filter(o=>o.status==='available'&&o.expires>now).sort((a,b)=>b.created-a.created);
- const limit=db?.acceptedByDay?.[new Date().toLocaleDateString('sv-SE')]||0;
- return '<section class="panel tv-inbox"><div class="row between"><h3>📨 신규 사건</h3><small>오늘 '+limit+'/4건 선택</small></div>'+
- (offers.length?offers.slice(0,4).map(o=>'<div class="tv-offer"><div><b>'+esc(o.title)+'</b><small>'+esc(o.tag)+'</small></div><button class="btn primary mini" data-action="acceptDocket" data-slot="'+esc(o.slot)+'" '+(limit>=4||openCases().length>=12?'disabled':'')+'>수락</button></div>').join(''):'<p class="muted small">새로운 사건은 매일 10:00–22:00 사이에 들어옵니다.</p>')+'</section>';
+ const left=o=>{const m=Math.max(1,Math.ceil((o.expires-now)/60000));return m>=60?Math.floor(m/60)+'시간 '+(m%60)+'분':m+'분'};
+ const heat=x=>x.importance>=5?'화제성 높음':x.importance>=4?'화제성 보통':'조용한 사건';
+ const next=D?new Date(D.nextSlot()).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'';
+ const missed=D?.missedToday()||0;
+ return '<section class="panel tv-inbox"><div class="row between"><h3>📨 사건 배당</h3><small>맡은 사건 '+active+'/'+cap+'</small></div>'+
+ '<p class="muted small">매시 정각 두 사건 중 하나를 고르세요. 3시간 안에 고르지 않으면 둘 다 다른 재판부로 넘어가요.</p>'+
+ (offers.length?offers.slice(0,3).map(o=>'<div class="tv-pair"><div class="tv-pair-head"><b>'+new Date(o.created).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})+' 도착</b><span>⏳ '+left(o)+' 남음</span></div>'+
+  (o.options||[]).map((x,k)=>'<div class="tv-offer"><div><b>'+esc(x.title)+'</b><small>'+esc(x.tag)+(x.importance?' · 중요도 '+x.importance+' · 최소 기일 '+(x.importance>=5?4:x.importance>=4?3:2)+'회 · '+heat(x):'')+'</small>'+(x.logline?'<p class="small">'+esc(x.logline)+'</p>':'')+'</div><button class="btn primary mini" data-action="acceptDocket" data-slot="'+esc(o.slot)+'" data-opt="'+k+'" '+(active>=cap?'disabled':'')+'>이 사건 맡기</button></div>').join('')+'</div>').join('')
+ :'<p class="muted small">지금 고를 수 있는 사건이 없어요.</p>')+
+ '<p class="small">다음 사건 '+esc(next)+' 도착'+(missed?' · 오늘 다른 재판부로 간 사건 '+missed+'건':'')+(active>=cap?' · <b>자리가 꽉 찼어요. 진행 중인 사건을 먼저 선고하세요.</b>':'')+'</p></section>';
 }
 function hearingCard(c){
  const st=S.cases[c.id],waiting=st?.liveHearing&&!st.liveHearing.done&&st.liveHearing.until>Date.now();
@@ -132,7 +139,7 @@ home=function(){
  if(!S.name)return '<div class="panel">판사 프로필을 생성해 커리어를 시작하세요.</div>';
  const t=clockData(),cases=openCases().slice(0,5),articles=window.VerdictMedia?.articles().slice(0,4)||[];
  return '<div class="tv-home"><section class="tv-welcome"><div><span class="eyebrow">THE VERDICT · JUDICIAL CAREER</span><h2>오늘도 법정은 열립니다.</h2><p>'+esc(S.name)+' 판사 · '+esc(S.post)+' · 진행 중 '+openCases().length+'건</p></div><div class="tv-judge-photo">'+avatar('self')+'</div></section>'+
- '<section class="tv-clock"><div><small>실제 현재시간</small><strong class="tv-clock-local">'+esc(t.time)+'</strong><span>'+esc(t.weekday)+'</span></div><div><small>게임 세계의 날짜</small><strong>'+esc(t.gameDate)+'</strong><span>게임 속 달력</span></div><div><small>다음 배당</small><strong class="tv-clock-next">'+esc(t.next)+'</strong><span>10:00–22:00 · 매시 정각</span></div></section>'+
+ '<section class="tv-clock"><div><small>실제 현재시간</small><strong class="tv-clock-local">'+esc(t.time)+'</strong><span>'+esc(t.weekday)+'</span></div><div><small>게임 달력</small><strong>'+esc(t.gameDate)+'</strong><span>공판이 열릴 때 흘러요</span></div><div><small>다음 배당</small><strong class="tv-clock-next">'+esc(t.next)+'</strong><span>10:00–22:00 · 매시 정각</span></div></section>'+
  priority()+
  '<section class="tv-open-cases"><div class="row between"><h3>⚖ 진행 중인 재판</h3><button class="btn ghost mini" data-action="tab" data-tab="courtList">전체 사건</button></div>'+
  (cases.length?cases.map(hearingCard).join(''):'<p class="muted">배당된 사건이 없습니다.</p>')+'</section>'+

@@ -351,7 +351,7 @@ function ensureGeneratedCases(){
  // Fixed introductory 6 cases coexist with unlimited-by-count, bounded-by-variety procedural cases.
  if(S.week<14||age()>=75)return;
  if(openCases().length>=4)return;
- if(S.week>=S.nextCaseWeek){createGeneratedCase();S.nextCaseWeek=S.week+6+Math.floor(rand()*5);}
+ if(!S.realtimeInbox?.enabled&&S.week>=S.nextCaseWeek){createGeneratedCase();S.nextCaseWeek=S.week+6+Math.floor(rand()*5);}
 }
 function finalizeCareer(){if(S.ended)return;
  S.ended=true;const count=completed().length;log('은퇴','75세 · 법관 커리어 종료',`총 ${count}건 판결 · 최종 직위 ${currentPost()} · 판결은 기록으로 남습니다.`);

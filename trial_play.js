@@ -104,7 +104,7 @@ function ensure(c,st){
  rolled.witnesses.forEach((w,i)=>{w.story=witnesses[i]?.story||''});
  const opponent=opponentOf(c),style=styleOf(opponent);
  const heat=/살인|치사/.test(c.tag)?20:/연예|celebrity/.test(c.tag+(c.contentPack?.category||''))?25:/성/.test(c.tag)?10:0;
- const t={...rolled,v:5,seed,opponent,style,day:1,daysDone:0,minDays:T.minDays(c.importance),qLeft:QPD,cards:[],nextAt:0,heard:[],notices:[],
+ const t={...rolled,v:5,seed,opponent,style,day:1,daysDone:0,minDays:T.minDays(c.importance),qLeft:QPD,cards:[],nextAt:0,heard:[],notices:[],dates:{},nextDate:today()+7,
   delayAccepted:false,twistUsed:false,log:[],media:T.pressStart(c.importance,{criminal:isCriminal(c),heatBonus:heat}),startedAt:now()};
  t.witnesses.forEach(w=>{w.askedIds=[];w.opened=[]});
  t.cards=dressCards(c,t,T.cards(t,1,seed));
@@ -115,8 +115,8 @@ function ensure(c,st){
 }
 /* A trial started under the older rules keeps going under the new ones. */
 function upgrade(c,t){
- if(t.v>=5)return t;
- t.v=5;t.heard??=[];t.notices??=[];t.qLeft=QPD;delete t.energy;
+ if(t.v>=5){t.dates??={};t.nextDate??=today();return t}
+ t.v=5;t.heard??=[];t.notices??=[];t.qLeft=QPD;delete t.energy;t.dates??={};t.nextDate??=today();
  if(curOf(c))t.evidence.forEach(e=>{e.revealed=2});
  t.witnesses.forEach(w=>{w.askedIds??=[];w.opened??=[]});
  t.cards=dressCards(c,t,t.cards||[]);
@@ -135,13 +135,17 @@ function answerOf(c,t,i,q){
  if(w?.flipped&&key!=='reason')key=key==='did'?'didnt':'did';
  return {text:tell(c,t,q.a[key]),side:key==='did'?'p':key==='didnt'?'d':'m'};
 }
-/* Trial dates on the game calendar (the world clock: 3 real hours = 1 game day). */
-function courtTime(ms){
- const db=S.realtimeInbox,base=(S.week||0)*7+(db?.dayProgress||0)+((ms-(db?.lastSync||now()))/(3*HOUR));
- const d=new Date(Date.UTC(2027,2,1)+Math.max(0,base)*DAY);
- const wd='일월화수목금토'[d.getUTCDay()];
- return `${d.getUTCMonth()+1}월 ${d.getUTCDate()}일(${wd})`;
+/* Trial dates on the game calendar. A session is dated when it opens; the next one is set two weeks later
+ * (more when a delay is granted). Opening a session moves the world calendar forward to that date. */
+const cal=()=>window.VerdictCalendar;
+const today=()=>cal()?cal().today():0;
+const dlabel=d=>cal()&&d!=null?cal().label(d):'';
+function openSession(c,st){
+ const t=st?.trial4;if(!t||st.verdict||waiting(t)||t.dates?.[t.day]!=null)return false;
+ t.dates??={};const d=Math.max(today(),t.nextDate??today());
+ if(cal())cal().advanceTo(d);t.dates[t.day]=d;return true;
 }
+const dateOf=t=>t.dates?.[t.day]??t.nextDate;
 const session=(c,n)=>isCriminal(c)?`제${n}회 공판`:`제${n}회 변론기일`;
 const clock=ms=>new Date(ms).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
 // 재판일 1은 / 재판일 2는: particle after a spoken Korean number
@@ -155,7 +159,7 @@ function stage(c,st){
  if(!t||(!t.daysDone&&!t.log.length))return {k:'new',text:'재판 전 · 바로 시작할 수 있어요',short:'재판 전'};
  const pending=t.cards.filter(v=>!v.choice&&v.type!=='media').length;
  if(t.daysDone>=t.minDays&&!(pending&&!waiting(t)))return {k:'verdict',text:'⚖ 판결할 수 있어요',short:'판결 가능'};
- if(waiting(t))return {k:'wait',text:`⏳ ${session(c,t.day)} · ${courtTime(t.nextAt)} (${minsLeft(t)}분 뒤)`,short:`${minsLeft(t)}분 뒤 ${session(c,t.day)}`};
+ if(waiting(t))return {k:'wait',text:`⏳ ${session(c,t.day)} · ${dlabel(t.nextDate)} (${minsLeft(t)}분 뒤)`,short:`${minsLeft(t)}분 뒤 ${session(c,t.day)}`};
  if(pending)return {k:'req',text:`✋ 상대 측 신청 ${pending}건 · 답할 차례`,short:'상대 신청 답하기'};
  return {k:'ready',text:`▶ ${session(c,t.day)} 진행할 수 있어요`,short:`${session(c,t.day)} 진행 가능`};
 }
@@ -218,8 +222,8 @@ function cardText(card,t,c){
 /* ---------- actions ---------- */
 function act(kind,id,choice){
  const x=current();if(!x||x.st.verdict)return;
- const {c,st}=x,t=ensure(c,st);
- if(waiting(t)){toast(`${session(c,t.day)}은 ${courtTime(t.nextAt)}에 열려요.`);return}
+ const {c,st}=x,t=ensure(c,st);openSession(c,st);
+ if(waiting(t)){toast(`${session(c,t.day)}(${dlabel(t.nextDate)})은 ${minsLeft(t)}분 뒤에 열려요.`);return}
  let say='';
  if(kind==='decide'){
   const e=t.evidence.find(v=>v.id===id);if(!e||!T.LABEL.decision[choice]||e.decision===choice)return;
@@ -301,6 +305,7 @@ function endDay(){
  const x=current();if(!x||x.st.verdict)return;
  const {c,st}=x,t=ensure(c,st);
  if(waiting(t))return;
+ openSession(c,st);
  if(t.cards.some(v=>!v.choice&&v.type!=='media')){askRequests(true);return}
  const today=t.heard.filter(h=>h.day===t.day&&!h.tainted).length,decided=t.evidence.filter(e=>e.decision).length;
  let twist=null;
@@ -322,6 +327,7 @@ function endDay(){
  const more=t.daysDone<t.minDays+EXTRA_DAYS;
  if(more){
   t.day++;t.qLeft=QPD;t.cards=dressCards(c,t,T.cards(t,t.day,t.seed));
+  t.nextDate=(t.dates?.[t.day-1]??today())+14+(t.delayAccepted?(t.delayWeeks||2)*7:0);
   t.nextAt=now()+DAY_WAIT+(t.delayAccepted?DELAY_EXTRA:0);t.delayAccepted=false;
   if(t.daysDone===1&&curOf(c)?.rebut)t.notices.push({type:'rebut',day:t.day});
   if(t.lateDue&&!t.lateDone){addLate(c,t);t.lateDue=false}
@@ -334,7 +340,7 @@ function endDay(){
   `<div class="t4-result">${twist?`<p class="t4-twist">⚡ ${esc(twist)}</p>`:''}
   <p>오늘 법정에서 증언 <b>${today}건</b>을 들었고, 증거 <b>${decided}/${t.evidence.length}건</b>의 사용 여부를 정했습니다.</p>
   ${issueView(c,t,true)}
-  <p class="muted small">${can?(more?`이제 판결할 수 있습니다. 기일을 더 열고 싶다면 ${session(c,t.day)}(${courtTime(t.nextAt)})에 이어서 할 수 있어요.`:'이제 판결할 수 있습니다.'):`판결하려면 기일이 ${t.minDays-t.daysDone}번 더 필요합니다. ${session(c,t.day)}은 <b>${courtTime(t.nextAt)}</b>에 열립니다(현실 시각 ${clock(t.nextAt)}, ${minsLeft(t)}분 뒤). 그동안 다른 사건을 진행하세요.`}</p></div>`);
+  <p class="muted small">${can?(more?`이제 판결할 수 있습니다. 기일을 더 열고 싶다면 ${session(c,t.day)}(${dlabel(t.nextDate)})에 이어서 할 수 있어요.`:'이제 판결할 수 있습니다.'):`판결하려면 기일이 ${t.minDays-t.daysDone}번 더 필요합니다. ${session(c,t.day)}은 <b>${dlabel(t.nextDate)}</b>로 잡혔습니다(현실 시각 ${clock(t.nextAt)}, ${minsLeft(t)}분 뒤 열림). 그동안 다른 사건을 진행하세요.`}</p></div>`);
 }
 /* Evidence one side files between trial days. It arrives with the next day. */
 function addLate(c,t){
@@ -640,12 +646,12 @@ function dayPage(c,st){
  if(wait){
   const can=t.daysDone>=t.minDays;
   return `<section class="panel t4"><div class="t4-head"><h3>${esc(session(c,t.daysDone))} 끝</h3><span class="t4-tag">${t.daysDone}/${t.minDays}</span></div>
-  <div class="t4-wait big"><b>${can?'⚖ 지금 판결할 수 있어요':`⏳ ${esc(session(c,t.day))} · ${esc(courtTime(t.nextAt))}`}</b><span>${can?`기일을 더 열고 싶다면 ${courtTime(t.nextAt)}부터 가능해요.`:`현실 시각 ${clock(t.nextAt)}, ${minsLeft(t)}분 뒤에 열려요. 그동안 다른 사건을 진행하세요. 열리면 알려 드려요.`}</span>
+  <div class="t4-wait big"><b>${can?'⚖ 지금 판결할 수 있어요':`⏳ ${esc(session(c,t.day))} · ${esc(dlabel(t.nextDate))}`}</b><span>${can?`기일을 더 열고 싶다면 ${session(c,t.day)}(${dlabel(t.nextDate)})을 ${clock(t.nextAt)}부터 열 수 있어요.`:`현실 시각 ${clock(t.nextAt)}, ${minsLeft(t)}분 뒤에 열려요. 그동안 다른 사건을 진행하세요. 열리면 알려 드려요.`}</span>
   <div class="t4-row">${can?'<button class="btn primary mini" data-action="t4tab" data-tab="verdict">판결하러 가기</button>':''}<button class="btn outline mini" data-action="tab" data-tab="courtList">다른 사건 보기</button></div></div>
   <h4>재판 현황</h4>${issueView(c,t)}${outside}${recent}</section>`;
  }
  const act=(()=>{if(!cur?.acts?.length)return '';const i=Math.min(cur.acts.length-1,Math.floor(t.daysDone*cur.acts.length/Math.max(1,t.minDays)));const a=cur.acts[i];return `<div class="t4-act"><small>오늘의 법정 · ${esc(a.title)}</small><p>${esc(tell(c,t,a.text))}</p></div>`})();
- return `<section class="panel t4"><div class="t4-head"><h3>${esc(session(c,t.day))} <small>/ 최소 ${t.minDays}회</small></h3><span class="t4-tag">${esc(courtTime(t.nextAt||now()))}</span></div>
+ return `<section class="panel t4"><div class="t4-head"><h3>${esc(session(c,t.day))} <small>/ 최소 ${t.minDays}회</small></h3><span class="t4-tag">${esc(dlabel(dateOf(t)))}</span></div>
  ${act}
  <h4>오늘 할 일</h4>${todo(c,t)}
  <h4>재판 현황</h4>${issueView(c,t)}
@@ -684,7 +690,7 @@ function verdictPage(c,st){
  const cites=opt?`<h4>${sp?'3':'2'}. 판결 이유 (1~3개)</h4><p class="muted small">판결문에 근거로 적을 증거와 증언을 고르세요. 쓰기로 정한 증거와 법정에서 들은 증언만 고를 수 있어요.</p>
   ${items.length?items.map(i=>`<button class="t4-cite ${v.cites.includes(i.key)?'on':''}" data-action="t4v" data-k="cite" data-v="${esc(i.key)}"><b>${v.cites.includes(i.key)?'☑':'☐'} ${esc(i.label)}</b>${i.text?`<small>${esc(short(i.text,70))}</small>`:''}</button>`).join(''):'<p class="notice">쓰기로 정한 증거나 들은 증언이 없습니다. 증거 탭과 증인 탭을 먼저 확인하세요.</p>'}
   <button class="btn primary full mt" data-action="t4confirm" ${v.cites.length&&canVerdict?'':'disabled'}>선고하기</button>`:'';
- return `<section class="panel t4 t4-verdict"><h3>⚖ 판결</h3>${canVerdict?'':`<p class="notice">기일이 ${t.minDays-t.daysDone}번 더 필요해요.${waiting(t)?` ${esc(session(c,t.day))}은 ${esc(courtTime(t.nextAt))}에 열려요.`:''}</p>`}
+ return `<section class="panel t4 t4-verdict"><h3>⚖ 판결</h3>${canVerdict?'':`<p class="notice">기일이 ${t.minDays-t.daysDone}번 더 필요해요.${waiting(t)?` ${esc(session(c,t.day))}은 ${esc(dlabel(t.nextDate))}에 열려요.`:''}</p>`}
  ${closing}<h4>재판 현황</h4>${issueView(c,t)}
  <h4>1. 결론</h4>${optBtns}${sentence}${cites}</section>`;
 }
@@ -740,7 +746,7 @@ court=function(){
  const overviewHtml=overview?overview.innerHTML:'';
  const argsHtml=grab('.court-screen-arguments'),evidHtml=grab('.court-screen-evidence'),histHtml=grab('.court-screen-history');
  const header=tpl.content.querySelector('.court-play-header');
- const t=st.verdict?st.trial4:ensure(c,st);
+ const t=st.verdict?st.trial4:ensure(c,st);if(t&&openSession(c,st))save();
  if(lastCaseId!==c.id){lastCaseId=c.id;ui.t4ev=0;ui.t4w=0;ui.t4tab=st.verdict?'result':(t.daysDone===0&&!t.log.length?'case':'day')}
  const tabs=t?tabsFor(c,st):[['case','사건'],['log','기록']];
  if(!tabs.some(v=>v[0]===ui.t4tab))ui.t4tab=tabs[0][0];
@@ -833,5 +839,5 @@ setInterval(()=>{
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&tick()&&!ui.modal)render()});
 setTimeout(()=>{if(tick()&&!ui.modal)render()},1500);
 
-window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,courtTime,curOf,tell};
+window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel};
 })();
