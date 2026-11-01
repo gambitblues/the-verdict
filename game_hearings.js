@@ -155,6 +155,8 @@ const esc=v=>h(String(v??''));
 function initClock(){
  if(!S.name)return null;
  if(!S.realtimeInbox){S.realtimeInbox={enabled:true,startedAt:Date.now(),lastSync:Date.now(),dayProgress:0,offers:[],acceptedByDay:{},otherCourt:[],processedSlots:{}};save();}
+ // In real-time mode cases only arrive by choice. The old built-in story cases (week 1–10) must not open by themselves.
+ for(const c of CASES){if(c.generated)continue;const st=S.cases[c.id];if(st&&!st.verdict&&!st.referred&&!(st.actions||[]).length&&!st.trial4)st.referred=true}
  S.realtimeInbox.v??=1;
  if(S.realtimeInbox.v<2){S.realtimeInbox.v=2;for(const o of S.realtimeInbox.offers)if(o.status==='available'&&!o.options){o.options=[{title:o.title,tag:o.tag,category:o.category,kind:o.kind,archetypeId:o.archetypeId,packId:o.packId}];o.expires=Math.min(o.expires,Date.now()+OFFER_LIFE)}}
  return S.realtimeInbox;

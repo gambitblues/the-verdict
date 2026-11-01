@@ -117,6 +117,7 @@ function clockData(){
  else candidate.setHours(hour+1);
  return {time:format(),gameDate,next:candidate.toLocaleString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}),weekday:d.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})};
 }
+window.VerdictDockPanel=()=>priority();
 function priority(){
  const db=S.realtimeInbox,now=Date.now(),D=window.VerdictDocket,cap=D?.MAX_ACTIVE||5,active=openCases().length;
  const offers=(db?.offers||[]).filter(o=>o.status==='available'&&o.expires>now).sort((a,b)=>b.created-a.created);

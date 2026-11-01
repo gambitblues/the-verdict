@@ -61,13 +61,46 @@ function threadView(list){
  ${open.has(x.id)?`<div class="wf-replies">${x.replies.map(r=>`<p>↳ <b>${esc(r.nick)}</b> ${esc(r.text)} <small>공감 ${r.likes}</small></p>`).join('')}</div>`:''}</div>`).join('');
 }
 
+/* ---------- reporters: two articles per case, one from each side ---------- */
+/* Each reporter has a beat, a habit and a past that shows in how they write. side p = leans to the prosecution or
+ * claimant, d = leans to the defence or respondent. */
+const REPORTERS=[
+ {name:'서은채',outlet:'중앙사회신문',side:'p',bio:'피해자 지원센터 취재로 이름을 알린 사회부 12년 차',voice:'피해자의 하루가 어떻게 무너졌는지부터 쓴다'},
+ {name:'이재석',outlet:'서울법정일보',side:'p',bio:'경찰서 출입만 9년, 수사 기록을 가장 먼저 읽는 기자',voice:'수사팀이 쌓은 증거의 무게를 믿는 편이다'},
+ {name:'구태오',outlet:'데일리이슈',side:'p',bio:'조회수 1위를 놓친 적 없는 화제성 담당',voice:'방청석의 분노를 그대로 옮겨 적는다'},
+ {name:'정하린',outlet:'오늘의법',side:'p',bio:'소비자·노동 분쟁을 오래 쫓아온 경제사회부 기자',voice:'힘이 약한 쪽의 손해가 얼마나 되는지를 묻는다'},
+ {name:'윤도경',outlet:'탐사저널K',side:'d',bio:'강압 수사 보도로 상을 받은 탐사 기자',voice:'증거를 어떻게 얻었는지부터 의심한다'},
+ {name:'박서윤',outlet:'코리아재판뉴스',side:'d',bio:'국선 변호인 출신으로 피고인 인권을 다뤄 온 법조 기자',voice:'"아직 증명되지 않았다"는 문장을 아끼지 않는다'},
+ {name:'마지훈',outlet:'리걸포커스',side:'d',bio:'판결문을 숫자와 구조로 읽는 칼럼니스트',voice:'빈칸이 남은 증거를 하나씩 짚는다'},
+ {name:'한민지',outlet:'법조일보',side:'d',bio:'법원 출입 10년 차, 양쪽 말을 다 들어야 쓰는 기자',voice:'여론보다 절차를 먼저 본다'}
+];
+function reporterPair(c){const P=REPORTERS.filter(r=>r.side==='p'),D=REPORTERS.filter(r=>r.side==='d');return [P[hash(c.id+'rp')%P.length],D[hash(c.id+'rd')%D.length]]}
+function articles(){
+ const cs=[...openCases(),...completed().slice(-10)].filter(c=>c.generated||c.contentPack);
+ const out=[];
+ for(const c of cs){
+  const st=S.cases[c.id],t=st?.trial4,cur=TP.curOf(c),f=facts(c,t),crim=c.kind==='criminal',name=shortName(c);
+  const claims=cur?.claims||[],tell=x=>TP.tell(c,t,x||'');
+  const pro=(t?.heard||[]).filter(x=>x.side==='p').length,con=(t?.heard||[]).filter(x=>x.side==='d').length;
+  const [rp,rd]=reporterPair(c);
+  const progress=t?.final?`선고 결과는 "${f.verdict}"${f.sentence?`, ${f.sentence}`:''}였다.`:t?.daysDone?`${TP.session(c,t.daysDone)}까지 진행됐다.`:'첫 공판을 앞두고 있다.';
+  const P=(w,p)=>window.VerdictCurated?VerdictCurated.particle(w,p):w+p;
+  const pBody=[tell(claims[0]),f.ev&&t?.daysDone?`법정에 나온 ${P(f.ev,'이')} 이를 뒷받침한다는 평가다.`:'',pro?`증언 ${pro}건이 같은 방향을 가리켰다.`:'',progress].filter(Boolean).join(' ');
+  const dBody=[tell(claims[1]),f.illegal?`${P(f.illegal,'은')} 위법하게 얻은 증거로 판단에서 빠졌다.`:'',con?`의문을 남긴 증언도 ${con}건 나왔다.`:'',f.late?`막판에 제출된 ${P(f.late,'을')} 두고도 해석이 갈린다.`:'',progress].filter(Boolean).join(' ');
+  const pTitle=t?.final?(T.sideOf(t.final.dir)>0?`${name}, "늦었지만 책임을 물었다"`:`${name}, ${crim?'피해자 측':'원고 측'} "납득할 수 없다"`):`${name}, ${crim?'"증거가 가리키는 곳은 한 곳"':'"손해는 분명히 있었다"'}`;
+  const dTitle=t?.final?(T.sideOf(t.final.dir)<0?`${name}, 증명되지 않은 것은 처벌하지 않았다`:`${name} 판결, 남은 빈칸들`):`${name}, ${crim?'아직 증명되지 않은 것들':'청구액의 근거는 충분한가'}`;
+  out.push({caseId:c.id,outlet:rp.outlet,title:pTitle,body:pBody,day:st?.closedWeek||c.week,index:0,frame:crim?'검찰 측 시각':'원고 측 시각',reporter:rp,lean:'p'});
+  out.push({caseId:c.id,outlet:rd.outlet,title:dTitle,body:dBody,day:st?.closedWeek||c.week,index:1,frame:crim?'변호인 측 시각':'피고 측 시각',reporter:rd,lean:'d'});
+ }
+ return out;
+}
 /* ---------- news with comments ---------- */
 function newsFeed(limit=40){
- const list=(window.VerdictMedia?.articles()||[]).slice(0,limit);
+ const list=articles().slice(0,limit);
  if(!list.length)return '<p class="muted">진행 중 사건의 보도가 여기에 쌓입니다.</p>';
  return '<div class="tv-news-list">'+list.map(a=>{
   const c=CASES.find(x=>x.id===a.caseId),key='art'+a.index,id=a.caseId+':'+key,n=3+hash(id)%3;
-  return `<article class="tv-media-card"><div class="tv-media-head"><b>${esc(a.outlet)}</b><span>${esc(a.frame)}</span></div><strong>${esc(a.title)}</strong><p>${esc(a.body)}</p>
+  return `<article class="tv-media-card"><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div><strong>${esc(a.title)}</strong>${a.reporter?`<p class="tv-reporter">✍ ${esc(a.reporter.name)} 기자 · ${esc(a.reporter.bio)}. ${esc(a.reporter.voice)}.</p>`:''}<p>${esc(a.body)}</p>
   <button class="wf-link" data-action="wfopen" data-id="${esc(id)}">💬 ${open.has(id)?'댓글 접기':`댓글 ${n}개`}</button>${open.has(id)&&c?`<div class="wf-thread">${threadView(thread(c,key,n))}</div>`:''}</article>`;
  }).join('')+'</div>';
 }
@@ -82,7 +115,8 @@ function opinionFeed(){
   const dist=f?{a:Math.round(agree*0.8),b:Math.round((100-agree)*0.8),m:0}:{a:mix.pro,b:mix.con,m:mix.mid};if(f)dist.m=100-dist.a-dist.b;
   const steps=log.map(l=>`<li>${esc(TP.session(c,l.s))} 뒤 · ${labels[0]} ${Math.max(5,Math.min(85,Math.round(45+l.O*0.45)))}%${l.ev?` · <b>${esc(l.ev)}</b>`:''}</li>`).join('');
   return `<section class="wf-case"><h4>${esc(shortName(c))} ${f?'· 선고 후':'· 재판 중'}</h4>
-  <div class="wf-bar"><span class="a" style="width:${dist.a}%">${labels[0]} ${dist.a}%</span><span class="b" style="width:${dist.b}%">${labels[1]} ${dist.b}%</span><span class="m" style="width:${dist.m}%">${dist.m>=12?`${labels[2]} ${dist.m}%`:''}</span></div>
+  <div class="wf-legend"><span><i style="background:#c8442f"></i>${labels[0]} ${dist.a}%</span><span><i style="background:#2f62a8"></i>${labels[1]} ${dist.b}%</span><span><i style="background:#9a9790"></i>${labels[2]} ${dist.m}%</span></div>
+  <div class="wf-bar"><span class="a" style="width:${dist.a}%"></span><span class="b" style="width:${dist.b}%"></span><span class="m" style="width:${dist.m}%"></span></div>
   ${steps?`<details class="wf-steps"><summary>기일마다 여론 변화</summary><ul>${steps}</ul></details>`:''}
   <div class="wf-thread">${threadView(thread(c,'plaza',5))}</div></section>`;
  }).join('')+'<p class="muted small">여론은 사회의 반응일 뿐, 판결의 정답이 아닙니다.</p>';
@@ -143,7 +177,7 @@ function messagesView(){
 }
 
 /* ---------- hooks ---------- */
-if(window.VerdictMedia){window.VerdictMedia.newsFeed=newsFeed;window.VerdictMedia.socialFeed=()=>opinionFeed()}
+if(window.VerdictMedia){window.VerdictMedia.articles=articles;window.VerdictMedia.newsFeed=newsFeed;window.VerdictMedia.socialFeed=()=>opinionFeed()}
 const priorTablet=tabletInner;
 tabletInner=function(){
  if(ui.tabletTab==='messages')return messagesView();

@@ -61,6 +61,10 @@ try{
  assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.t4-case p')).webkitLineClamp),'none','case summary is clipped');
  for(let d=0;d<min;d++){
   await tab('day');
+  // a session opens only when the judge opens it; requests come after that
+  assert.equal(await page.locator('#modal-root [data-kind="card"]').count(),0,'requests must wait until the session opens');
+  const openBtn=page.locator('.t4-dock [data-kind="open"]');if(await openBtn.count())await openBtn.click();
+  await answer();
   assert.ok(await page.locator('.t4-todo li').count()>=3,'today checklist missing');
   await tab('evidence');
   assert.equal(await page.locator('.t4-flaw').count(),0,'evidence must not show a reliability verdict');
