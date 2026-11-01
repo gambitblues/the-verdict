@@ -516,7 +516,7 @@ function act(kind,id,choice){
   addLog(t,card.type==='objection'?'이의':'연기',`${cardText(card,t,c).title}: ${choice==='accept'?'받아들임':'기각'}`);
  }
  save();
- if(say){window.VerdictVisuals?.record(c.id,kind,say);toast(say)}
+ if(say){window.VerdictVisuals?.record(c.id,kind,say,['ask','confront'].includes(kind)?t.witnesses[Number(id)]?.id:null);toast(say)}
  if(kind==='card'){if(t.cards.some(v=>!v.choice))return askRequests(true);ui.modal=null;render();return askNotices(false)}
  render();
 }
@@ -843,7 +843,7 @@ function evidenceCard(e,t,locked,c){
  const opt=(v,l)=>`<button class="t4-chip ${e.decision===v?'on':''}" data-action="t4" data-kind="decide" data-id="${esc(e.id)}" data-choice="${v}" ${dis||e.decision===v?'disabled':''}>${l}</button>`;
  const iss=issuesOf(c).find(i=>i.id===d?.issue);
  return `<article class="t4-card t4-ev"><header><b>${esc(e.title)}</b>${e.late?'<span class="t4-tag new">새로 제출됨</span>':''}</header>
- ${d?`<p class="t4-meta">${esc(d.kind||'')} · ${esc(byWord[d.by]||d.by||'')} · ${esc(tell(c,t,d.when||''))}</p>`:''}
+ ${d&&!window.VerdictVisuals?`<p class="t4-meta">${esc(d.kind||'')} · ${esc(byWord[d.by]||d.by||'')} · ${esc(tell(c,t,d.when||''))}</p>`:''}
  ${e.scope?`<p class="t4-shows">${esc(e.scope)}</p>`:''}
  ${d?.excerpt?(window.VerdictVisuals?.evidence(e,d,tell(c,t,d.excerpt),tell(c,t,d.when||''))||`<blockquote class="t4-excerpt">${esc(tell(c,t,d.excerpt))}</blockquote>`):''}
  ${d?.how?`<p class="small"><b>확보 경위</b> ${esc(tell(c,t,d.how))}</p>`:''}

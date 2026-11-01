@@ -38,6 +38,8 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
+      - name: Visual layer (mobile, tablet, desktop, read-only rendering)
+        run: node tests/visuals.mjs
       - name: Run mobile viewport browser test
         run: node tests/browser-smoke.mjs
       - name: v6 features end to end (decision cases, witnesses, confrontation, face-off, bench, truth, experts, pressure, personnel season)
@@ -48,8 +50,6 @@ jobs:
         run: node tests/v5-migration.mjs
       - name: 60 cases × 30 casts narrative checks
         run: node tests/v6-narrative-combos.mjs
-      - name: Visual layer (mobile, tablet, desktop, read-only rendering)
-        run: node tests/visuals.mjs
       - name: Visual update long-career regression
         run: node tests/long-career.mjs 40
       - name: Save graphical QA screenshots

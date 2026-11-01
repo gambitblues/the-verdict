@@ -4,7 +4,7 @@
 'use strict';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const hash=s=>{let n=2166136261;for(const c of String(s))n=Math.imul(n^c.charCodeAt(0),16777619);return n>>>0};
-let serial=0,eventSerial=0,last=null,shown=0,collapsed=null;
+let serial=0,eventSerial=0,last=null,shown=0,portraitShown=0,collapsed=null;
 function portrait(id,p={},age=35){
  const n=hash(id),uid='cvp'+(++serial),female=/여/.test(p.gender||''),old=age>=58;
  const skin=['#e4bda2','#d6a788','#efcdb5','#c69778'][n%4],hair=old?['#74736e','#606260','#8a8880'][n%3]:['#282b2c','#3a302c','#24262a','#453832'][n%4];
@@ -18,14 +18,15 @@ function person(id,label){
 function scene(c,t,tab,status){
  if(!t)return '';
  const folded=collapsed??!['case','day'].includes(tab);
- const wi=Math.min(t.witnesses.length-1,Math.max(0,ui.t4w||0)),w=t.witnesses[wi];
+ const witnesses=t.witnesses||[],wi=Math.min(witnesses.length-1,Math.max(0,ui.t4w||0)),w=witnesses[wi];
  const live=tab==='witness',left=/criminal/.test(c.kind||'')?'검사':'원고 측';
  return `<section class="cv-court ${folded?'is-collapsed':''}" aria-label="법정 전경"><div class="cv-court-bar"><span><i></i> ${esc(status)}</span><button type="button" data-cv-toggle aria-expanded="${!folded}" aria-controls="cv-court-stage">법정 ${folded?'펼치기':'접기'} <span aria-hidden="true">${folded?'＋':'−'}</span></button></div><div id="cv-court-stage" class="cv-stage" ${folded?'hidden':''}>
  <svg class="cv-room" viewBox="0 0 700 240" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="cvwall" x2="0" y2="1"><stop stop-color="#1f3138"/><stop offset="1" stop-color="#34454a"/></linearGradient><linearGradient id="cvwood" x2="0" y2="1"><stop stop-color="#8a6b4d"/><stop offset="1" stop-color="#463d35"/></linearGradient></defs><path d="M0 0h700v240H0z" fill="url(#cvwall)"/><path d="M0 148h700v92H0z" fill="#68645a"/><path d="m0 240 150-92h400l150 92M350 148v92M0 206h700" fill="none" stroke="#ddd4bf" opacity=".15"/><path d="M160 0v148m380-148v148M175 0v148m350-148v148" stroke="#ba9c6d" opacity=".35"/><path d="M198 15h304v91H198z" fill="#172b32" stroke="#ae946a" stroke-opacity=".3"/><path d="M215 27h270v67H215z" fill="none" stroke="#ae946a" stroke-opacity=".12"/><circle cx="350" cy="53" r="22" fill="none" stroke="#c0a477"/><path d="M350 38v29m-13-20h26m-26 0-7 14h14zm26 0-7 14h14zM339 70h22" stroke="#c0a477" stroke-width="1.4" fill="none"/><path d="M20 20h90v88H20zM590 20h90v88h-90z" fill="#c9c4ac" opacity=".09"/><path d="M65 20v88m-45-44h90m525-44v88m-45-44h90" stroke="#b5bcb3" opacity=".12"/><path d="M35 145h185v38H35zm445 0h185v38H480z" fill="url(#cvwood)"/><path d="M32 141h191v7H32zm445 0h191v7H477z" fill="#ac8b61"/><path d="M290 146h120v49H290z" fill="url(#cvwood)"/><path d="M286 142h128v8H286z" fill="#b79970"/><path d="M0 216h700v24H0z" fill="#302e2a"/><path d="M0 216h700" stroke="#b89a70" stroke-width="4"/><path d="m299 224 7-10h89l7 10z" fill="#e5ded0" opacity=".6"/></svg>
  <div class="cv-seat cv-left">${person(c.side?.[0],left)}</div><div class="cv-seat cv-center ${live?'is-speaking':''}">${person(w?.id,live?'신문 중 · '+(NPC[w?.id]?.name||'증인'):'증인석')}</div><div class="cv-seat cv-right">${person(t.opponent,'변호인')}</div><span class="cv-perspective">재판장석에서 바라본 법정</span></div></section>`;
 }
 function witness(w,p,latest){
- return `<div class="cv-witness"><button class="cv-witness-photo" data-action="npc" data-id="${esc(w.id)}" aria-label="${esc(p?.name||'증인')} 인물 기록">${window.verdictPhoto?.(w.id)||''}</button><div><span class="cv-kicker">WITNESS · 증인석</span><h4>${esc(p?.name||'증인')}</h4><p>${esc(w.role)}</p><span class="cv-witness-state">${latest?'진술 기록 있음':'신문을 기다리는 중'}</span></div><svg class="cv-mic" viewBox="0 0 40 70" aria-hidden="true"><path d="M20 65V37Q20 20 29 11" stroke="currentColor" fill="none" stroke-width="2"/><rect x="24" y="3" width="7" height="19" rx="3" transform="rotate(25 28 12)" fill="currentColor"/><ellipse cx="20" cy="65" rx="13" ry="3" fill="currentColor"/></svg></div>`;
+ const speaking=last?.actor===w.id&&portraitShown!==last.serial;if(speaking)portraitShown=last.serial;
+ return `<div class="cv-witness ${speaking?'cv-speaking':''}"><button class="cv-witness-photo" data-action="npc" data-id="${esc(w.id)}" aria-label="${esc(p?.name||'증인')} 인물 기록">${window.verdictPhoto?.(w.id)||''}</button><div><span class="cv-kicker">WITNESS · 증인석</span><h4>${esc(p?.name||'증인')}</h4><p>${esc(w.role)}</p><span class="cv-witness-state">${latest?'진술 기록 있음':'신문을 기다리는 중'}</span></div><svg class="cv-mic" viewBox="0 0 40 70" aria-hidden="true"><path d="M20 65V37Q20 20 29 11" stroke="currentColor" fill="none" stroke-width="2"/><rect x="24" y="3" width="7" height="19" rx="3" transform="rotate(25 28 12)" fill="currentColor"/><ellipse cx="20" cy="65" rx="13" ry="3" fill="currentColor"/></svg></div>`;
 }
 function evidence(e,d,excerpt,when){
  if(!excerpt)return '';
@@ -33,9 +34,9 @@ function evidence(e,d,excerpt,when){
  const type=/메신저|문자|카카오|대화/.test(k)?'message':/영상|CCTV|사진|녹화/.test(k)?'media':/감정|진단|검사|소견/.test(k)?'report':'document';
  const label={message:'대화 기록',media:'영상·사진 기록',report:'감정·검사 기록',document:'제출 문서'}[type];
  const stamp={use:'채택',conditional:'조건부 채택',exclude:'배제'}[e.decision];
- return `<div class="cv-evidence cv-${type}"><div class="cv-evidence-top"><span>${esc(label)}</span><span>${esc(when||d?.by||'')}</span></div><div class="cv-paper"><span class="cv-kicker">EXHIBIT · ${esc(e.id)}</span><h4>${esc(e.title)}</h4>${type==='media'?'<div class="cv-media-mark" aria-hidden="true">◉ <span>영상·사진의 기재 내용</span></div>':''}<blockquote class="t4-excerpt">${esc(excerpt)}</blockquote>${stamp?`<div class="cv-stamp ${e.decision}">${stamp}</div>`:''}</div><div class="cv-evidence-foot">${type==='media'?'원본 이미지가 아닌 기록 내용입니다.':'사건 기록에 기재된 원문'}<span aria-hidden="true">THE VERDICT</span></div></div>`;
+ return `<div class="cv-evidence cv-${type}"><div class="cv-evidence-top"><span>${esc(label)}</span><span>${esc(when||d?.by||'')}</span></div><div class="cv-paper"><span class="cv-kicker">EXHIBIT · ${esc(e.id)}</span>${type==='media'?'<div class="cv-media-mark" aria-hidden="true">◉ <span>영상·사진의 기재 내용</span></div>':''}<blockquote class="t4-excerpt">${esc(excerpt)}</blockquote>${stamp?`<div class="cv-stamp ${e.decision}">${stamp}</div>`:''}</div><div class="cv-evidence-foot">${type==='media'?'원본 이미지가 아닌 기록 내용입니다.':'사건 기록에 기재된 원문'}<span aria-hidden="true">THE VERDICT</span></div></div>`;
 }
-function record(caseId,kind,text){if(!text)return;last={caseId,kind,text,serial:++eventSerial};}
+function record(caseId,kind,text,actor=null){if(!text)return;last={caseId,kind,text,actor,serial:++eventSerial};}
 function event(caseId){
  if(!last||last.caseId!==caseId)return '';
  const fresh=shown!==last.serial;shown=last.serial;

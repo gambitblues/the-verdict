@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 import http from 'node:http';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 
@@ -49,7 +49,7 @@ try{
   if(await b.count()){await b.first().click();n++;continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}return n};
  // each page should be close to one phone screen
  for(const id of ['evidence','witness','log']){await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer();
-  assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight)<1400,'page '+id+' scrolls too far')}
+  await mkdir('qa-visuals',{recursive:true});await page.screenshot({path:'qa-visuals/smoke-'+id+'.png',fullPage:true});const height=await page.evaluate(()=>document.documentElement.scrollHeight);assert.ok(height<1400,'page '+id+' scrolls too far: '+height)}
  // v4 trial loop: legacy hearing panels must be gone.
  assert.equal(await page.locator('.action-panel, .live-hearing-panel, [data-action="courtStep"]').count(),0,'legacy hearing UI still visible');
  await page.locator('.t4-tabs').first().waitFor();
