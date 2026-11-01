@@ -101,6 +101,7 @@ try{
      if(dec)for(const x of t.changes?.items||[])add(kinds,'now-'+x.kind);
      t.daysDone++;t.day++;t.qLeft=t.qpd;t.nextAt=0;maxDay=Math.max(maxDay,d);
     }
+    if((dec||(c.kind!=='criminal'&&t.minDays<=1))&&(t.cards||[]).some(v=>v.type==='delay'))bad.push(tag+': a case decidable at its first hearing got a delay request');
     add(lastDays,dec?'decision':Math.min(t.daysDone,6));
     if(!dec){O.resolve(c,t);const ev=t.evidence.length,w=t.witnesses.length;O.resolve(c,t);if(t.evidence.length!==ev||t.witnesses.length!==w)bad.push(tag+': resolving twice changed the trial')}
     if(dec&&(t.courtOrders||[]).some(o=>!o.now))bad.push(tag+': a decision case got a between-hearings order');
