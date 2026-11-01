@@ -49,4 +49,10 @@ git push origin "$M:refs/heads/main"
 
 ## 현재 상태
 - 최신 버전은 `docs/CHANGELOG.md` 맨 위를 본다.
+- **v6.1 예정 (사용자 확정, 사용자의 v6.0 테스트 체크리스트와 함께 반영):**
+  1. 청탁·압력 문자: 전관 변호사·동기·지역 유력자 → 거절/보고/모른 척, 관계·명성·나중 기사로 돌아옴.
+  2. 인사철·커리어 선택: 매년 2월 희망 부서(형사·민사·가사·영장전담), 배당 사건 유형 변화, 올해의 판결 연감.
+  3. v6 기능 전용 테스트: confront, faceOff, behaviour, skilled, 재판부(benchAdvice·onVerdict 성장·전보), tellTruth, 결정형 사건. 지금은 일회성 스크립트로만 확인됨.
+  4. CI(`.github/workflows/develop-smoke.yml`) 문법 검사에 v6_world.js, world_feed.js, people_map.js 추가.
+  - 열린 기획 질문(사용자에게 확인): 청탁 보고 시 징계·수사까지 갈지, 모른 척 누적 시 뒤늦은 기사 위험, 희망 부서가 배당을 '완전히 바꿀지/더 자주만'(추천: 더 자주).
 - 다음 후보 아이디어: 기자와의 관계를 문자·인터뷰 외 이벤트로 확장, 서버·AI 연동 준비.
