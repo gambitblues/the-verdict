@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');const A=require('../avatar_system.js');
+assert.equal(A.CATALOG.length,500);
+assert.equal(new Set(A.CATALOG.map(x=>x.id)).size,500);
+assert.equal(A.CATALOG.filter(x=>x.gender==='male').length,250);
+assert.equal(A.CATALOG.filter(x=>x.gender==='female').length,250);
+for(const [band,count] of Object.entries({'20s':60,'30s':120,'40s':140,'50s':120,'60s':60}))assert.equal(A.CATALOG.filter(x=>x.ageBand===band).length,count,band);
+const a=A.assign('npc-404',{gender:'여성'},null,34),b=A.assign('npc-404',{gender:'여성'},null,34);
+assert.equal(a.id,b.id);assert.equal(a.gender,'female');assert.equal(a.ageBand,'30s');
+const svg=A.render('self',{gender:'남성'},{age:38,role:'judge'});assert.match(svg,/svg/);assert.match(svg,/avatar-v2/);
+const old=A.svg(a,{age:30}),older=A.svg(a,{age:68});assert.notEqual(old,older);
+const bytes=fs.statSync(path.join(__dirname,'../avatar_system.js')).size;
+assert.ok(bytes<150000,'avatar source too large');
+assert.equal(A.staticImageBytes,0);
+console.log('PASS 500 vector portraits, 250/250 genders, age quotas, stable identity, no image assets, '+bytes+' bytes code');
