@@ -227,17 +227,21 @@ const TPL={
   choices:[['time','반박 기회를 충분히 주겠다','좋아. 늦게 나온 증거일수록 양쪽 말을 다 들어야 탈이 없어.',{rel:3}],
    ['enough','지금으로 충분하다','네가 판단했다면 됐다. 판결문에 그 이유만 분명히 남겨.',{rel:0}],
    ['thanks','조언 고맙습니다, 더 생각해 보겠습니다','그래, 혼자 끙끙대지 말고.',{rel:2}]]},
+ interview:{text:(c,r)=>`${r.outlet} ${r.name} 기자입니다. 저희는 ${shortName(c)} 판결을 비판적으로 보도했습니다. 그래도 판사님이 왜 그렇게 판단하셨는지 직접 듣고 싶습니다. 짧게 인터뷰 가능하실까요?`,
+  choices:[['accept','짧게 인터뷰에 응한다','감사합니다. 판사님 말씀은 왜곡 없이 그대로 싣겠습니다.',{rel:10,news:(c,r)=>[`[인터뷰] "${shortName(c)}, 기록이 말한 만큼만 판단했다"`,`${r.outlet} ${r.name} 기자가 재판장을 만나 판결 이유를 물었다. 재판장은 "증거로 확인된 것과 확인되지 않은 것을 나눠 판단했다"고 말했다.`]}],
+   ['decline','정중히 거절한다','알겠습니다. 그래도 다음 판결도 계속 지켜보겠습니다.',{rel:-3}],
+   ['office','공보판사를 통해 달라고 한다','공보 창구로 다시 요청드리겠습니다.',{rel:1,press:2}]]},
  review:{from:'senior',text:c=>`${shortName(c)} 리뷰 봤다. 너무 신경 쓰지 마. 다음엔 뭘 다르게 해 볼 생각이야?`,
   choices:[['proc','증거 절차를 더 꼼꼼히 보겠습니다','그게 제일 중요하지. 절차가 무너지면 결론도 같이 무너져.',{rel:3}],
    ['crowd','여론은 신경 쓰지 않겠습니다','그래야지. 대신 판결 이유는 누구나 읽을 수 있게 써.',{rel:1}],
    ['unfair','솔직히 억울합니다','그럴 수 있어. 리뷰가 늘 맞는 것도 아니고. 술 한잔하자.',{rel:4}]]}
 };
 function threads(){S.threads??=[];return S.threads}
-function addThread(kind,c){
- const tp=TPL[kind];if(!tp||!NPC[tp.from])return;
- threads().unshift({id:kind+':'+c.id,kind,caseId:c.id,from:tp.from,week:S.week,at:Date.now(),lines:[{me:false,text:tp.text(c)}],picked:null});
+function addThread(kind,c,from){
+ const tp=TPL[kind],who=from||tp?.from;if(!tp||!NPC[who])return;const r=NPC[who].reporter!=null?REPORTERS[NPC[who].reporter]:null;
+ threads().unshift({id:kind+':'+c.id+(from?':'+from:''),kind,caseId:c.id,from:who,week:S.week,at:Date.now(),lines:[{me:false,text:tp.text(c,r)}],picked:null});
  threads().splice(40);
- if(typeof toast==='function')toast(`💬 ${NPC[tp.from].name}에게서 문자가 왔어요`);
+ if(typeof toast==='function')toast(`💬 ${NPC[who].name}${r?' 기자':''}에게서 문자가 왔어요`);
 }
 function scan(){
  if(!S?.name)return false;let added=false;
@@ -246,6 +250,12 @@ function scan(){
   if(t.final&&!has('press')&&(t.final.media?.H??0)>=50){addThread('press',c);added=true}
   if(t.lateDone&&!t.final&&!has('late')){addThread('late',c);added=true}
   if(t.final?.reviewShown&&t.final.review<60&&!has('review')){addThread('review',c);added=true}
+  if(t.final&&!t.final.pressDone){t.final.pressDone=true;added=true;const side=T.sideOf(t.final.dir);
+   if(side===1||side===-1)for(const r of reporterPair(c)){const i=REPORTERS.indexOf(r),id=reporterNPC(i);if(!id)continue;
+    const up=(side===1)===(r.side==='p');S.relations[id]=Math.max(0,Math.min(100,(S.relations[id]??30)+(up?6:-6)));
+    S.pressBook??={};const b=S.pressBook[i]??={up:0,down:0,asked:false};up?b.up++:b.down++;
+    remember(id,'기사',`${shortName(c)} 판결을 ${up?'호의적으로':'비판적으로'} 보도`,c.id);
+    if(!up&&!b.asked&&(b.down>=2||c.importance>=4)){b.asked=true;addThread('interview',c,id)}}}
  }
  if(added)save();return added;
 }
@@ -257,7 +267,7 @@ function answer(id,choiceId){
  S.relations[th.from]=Math.max(0,Math.min(100,(S.relations[th.from]??30)+(eff.rel||0)));
  if(eff.press&&S.press4?.reporters)for(const r of Object.values(S.press4.reporters))r.mood=Math.max(0,Math.min(100,(r.mood??50)+eff.press));
  const t=c&&S.cases[c.id]?.trial4;if(eff.heat&&t)t.media.H=Math.min(100,t.media.H+eff.heat);
- if(eff.news&&c){const [title,body]=eff.news(c);news(title,body,'법조일보')}
+ if(eff.news&&c){const rr=NPC[th.from]?.reporter!=null?REPORTERS[NPC[th.from].reporter]:null;const [title,body]=eff.news(c,rr);news(title,body,rr?.outlet||'법조일보')}
  if(typeof remember==='function')remember(th.from,'문자',`${c?shortName(c):'사건'}에 대해 "${ch[1]}"라고 답함`,c?.id||null);
  save();render();
 }
@@ -297,5 +307,5 @@ clicker=function(e){
 };
 setInterval(()=>{if(scan()&&!ui.modal&&(ui.tab==='home'||ui.tab==='tablet'))render()},30000);
 setTimeout(()=>{if(scan()&&!ui.modal)render()},2500);
-window.VerdictWorld={scan,thread,opinionFeed,newsFeed,answer};
+window.VerdictWorld={scan,thread,opinionFeed,newsFeed,answer,reporters:()=>REPORTERS,reporterNPC};
 })();
