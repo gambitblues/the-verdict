@@ -32,6 +32,11 @@ const SEX={
  'beta-violence-003':{W:{1:'diffB'}}                         // the victim's spouse
 };
 for(const [id,s] of Object.entries(SEX))if(cases[id])cases[id].sex=s;
+/* Sex crimes, stalking, marriage, divorce, custody and affairs: the two parties are always of opposite sex.
+ * Matched by id, charge, claim and summary so new cases in these categories follow the rule automatically. */
+const OPPOSITE=/sexual|stalking|affair|divorce|추행|강간|성폭력|성희롱|촬영물|스토킹|이혼|혼인|부부|불륜|외도|상간|면접교섭|양육|사실혼/;
+for(const c of Object.values(cases)){const text=[c.id,c.charge?.name,c.claim?.what,c.summary].join(' ');
+ if(OPPOSITE.test(text)&&!c.sex?.AB)c.sex={...(c.sex||{}),AB:'diff'}}
 window.VerdictCurated={cases,ids:Object.keys(cases),fill,particle,active:list.length>0};
 if(typeof CasePackEngine!=='undefined'&&list.length){
  const basePool=CasePackEngine.pool;
