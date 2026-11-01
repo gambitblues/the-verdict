@@ -687,3 +687,12 @@ body.t4-court #toast{bottom:168px}
 .t4-party>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center;padding:2px 0}.t4-party>summary::-webkit-details-marker{display:none}
 .t4-party>summary b{color:#5b4520}.t4-party>summary span{font-size:12px;color:#8a7650}.t4-party>summary:after{content:'▾';color:#8a6a2a}.t4-party[open]>summary:after{content:'▴'}
 .t4-party{border:1.5px solid #c9a96a;background:#fffaf0}
+/* v6.9.1 Galaxy Fold unfolded / small tablets (761–1100px): the bottom app bar is shown here too, so the trial dock
+   must sit above it, and the court screen gets the same full-height layout as on phones */
+@media (min-width:761px) and (max-width:1100px){
+ .t4-dock{bottom:calc(76px + env(safe-area-inset-bottom))}
+ body.t4-court .topbar{display:none}
+ body.t4-court .main{padding-top:calc(14px + env(safe-area-inset-top))}
+ .t4-tabs{top:env(safe-area-inset-top)}
+ .t4-sheet-veil{padding-bottom:76px}
+}
