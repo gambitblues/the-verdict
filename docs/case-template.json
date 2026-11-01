@@ -1,0 +1,129 @@
+{
+ "id": "v7-영문-소문자-하이픈 (예: v7-violence-night-market)",
+
+ "meta": {
+  "title": "사건 제목 (짧게)",
+  "category": "homicide | sexual | violence | financial | property | reputation | civil | family | professional | public 중 하나",
+  "kind": "criminal | civil | decision 중 하나",
+  "tag": "목록에 붙는 꼬리표 (예: 형사·상해)",
+  "icon": "이모지 하나",
+  "importance": "1~5 숫자 (3 이상이면 선고 뒤 기자 인터뷰가 올 수 있음)",
+  "legal": "법적 핵심 한 줄 (예: 정당방위의 한계·인과관계)"
+ },
+
+ "story": {
+  "logline": "한 문장 소개",
+  "summary": "3~4문장. {A}·{B}로 인물을 부르고, 조사는 {A|이} {B|을} 처럼 쓴다",
+  "people": { "A": "당사자 A 소개 2문장", "B": "당사자 B 소개 2문장" },
+  "claims": ["한쪽 주장 1문장", "다른 쪽 주장 1문장"],
+  "acts": [
+   { "title": "발단", "text": "1~2문장" },
+   { "title": "전개", "text": "1~2문장" },
+   { "title": "위기", "text": "1~2문장" },
+   { "title": "절정", "text": "1~2문장" }
+  ],
+  "truth": {
+   "did": "진실 1: 형사=유죄 쪽이 맞음 / 민사=청구한 쪽이 맞음",
+   "didnt": "진실 2: 형사=무죄 쪽이 맞음 / 민사=상대가 맞음",
+   "reason": "진실 3: 행동은 있었지만 사정이 있음(형사) / 일부만 맞음(민사)"
+  },
+  "endings": {
+   "convict": "형사만: 유죄 선고 뒤 이야기 1~2문장",
+   "acquit": "형사만: 무죄 선고 뒤 이야기",
+   "claimant": "민사·결정만: 청구(신청) 받아들인 뒤 이야기",
+   "respondent": "민사·결정만: 기각한 뒤 이야기"
+  }
+ },
+
+ "profile": {
+  "A": { "job": "직업", "age": [30, 45], "deg": "고졸 | 전문학사 | 학사 | 석사 | 박사 | 대학 재학", "mar": "미혼 | 기혼 | 이혼 | 사별 (선택)", "kids": "자녀 수 (선택)" },
+  "B": { "job": "직업", "age": [30, 45] }
+ },
+ "sex": "선택. 이야기가 성별에 기댈 때만 {\"A\":\"여\"} / {\"AB\":\"diff\"} / {\"W\":{\"1\":\"diffB\"}}",
+
+ "court": {
+  "charge": { "name": "형사만: 죄명", "law": "형법 제000조", "min": 0, "max": 7, "life": false, "fine": 1000 },
+  "demand": "형사만: 구형(년, charge.min~max 안). 벌금이면 {\"fine\":500}",
+  "claim": { "amount": 3000, "fair": [500, 1500], "what": "민사만: 무엇을 청구하나 (금액은 만 원, fair=적정 인용 범위)" },
+  "decision": { "what": "결정형만: 신청 내용", "yes": "인용 짧은 이름", "no": "기각 짧은 이름", "yesNote": "인용 이유 한 줄", "noNote": "기각 이유 한 줄", "yesOrder": "인용 주문문", "noOrder": "기각 주문문" },
+  "issues": [
+   { "id": "i1", "title": "쟁점 1 (질문형)", "open": "지금 무엇이 비어 있는지 1문장" },
+   { "id": "i2", "title": "쟁점 2", "open": "..." },
+   { "id": "i3", "title": "쟁점 3 (선택, 2~3개)", "open": "..." }
+  ],
+  "rebut": "검찰(원고)이 반대쪽 주장에 다시 하는 말 1~2문장",
+  "closing": "최종 의견 1~2문장"
+ },
+
+ "evidence": [
+  {
+   "title": "증거 이름",
+   "kind": "종류 (CCTV 영상·메신저 캡처·감정서 등 — 화면 그림 모양이 여기서 정해짐)",
+   "by": "검찰 | 변호인 | 원고 | 피고",
+   "when": "언제 자료인가",
+   "excerpt": "원문 발췌 (기록 그대로의 말투, 시각·숫자 포함)",
+   "shows": "이 증거가 보여 주는 것 1문장",
+   "caveat": "한계 1문장",
+   "how": "어떻게 확보했나 (출처·경위)",
+   "check": "판사에게 주는 힌트: 무엇과 맞춰 보라",
+   "issue": "i1",
+   "side": "p(검찰·원고 쪽) | d(피고인·피고 쪽) | n(중립)",
+   "flaw": "none | timing(시각 문제) | source(출처 문제) | illegal(위법 수집)"
+  },
+  "… 정확히 3개"
+ ],
+
+ "late": {
+  "title": "공판 중 새로 들어오는 증거 1건",
+  "kind": "", "by": "", "when": "", "excerpt": "", "shows": "", "caveat": "", "how": "",
+  "issue": "i2", "side": "p | d | n", "flaw": "none",
+  "reason": "도착 안내 1문장 (예: 통신사 회신이 도착했습니다.)",
+  "rebut": "반대쪽 반박 1문장"
+ },
+
+ "witnesses": [
+  {
+   "role": "증인 역할 (관계·직업이 드러나게)",
+   "story": "배경 2문장",
+   "says": "첫 진술. 1인칭, 끝에 마침표 없음",
+   "stake": "이해관계 1문장 (태도 계산에 쓰임)",
+   "lead": "상대가 이의할 만한 유도 질문",
+   "q": [
+    { "id": "q1", "q": "판사가 묻는 말", "issue": "i1", "side": "n", "a": "진실과 상관없이 같은 답이면 문자열 + side" },
+    { "id": "q2", "q": "...", "issue": "i2", "a": { "did": "진실 1일 때 답", "didnt": "진실 2일 때 답", "reason": "진실 3일 때 답" } },
+    { "id": "q3", "q": "...", "issue": "i1", "side": "d", "a": "...", "next": ["q4"] },
+    { "id": "q4", "hidden": true, "q": "q3을 들은 뒤에만 열리는 질문 (선택)", "issue": "i1", "side": "d", "a": "..." }
+   ]
+  },
+  "… 정확히 3명"
+ ],
+
+ "followUps": [
+  {
+   "id": "n1",
+   "type": "records | original | alibi | expert | witness | recall | explain | compare",
+   "issue": "i1",
+   "to": "p | d | both",
+   "day": 1,
+   "after": "선택. 열리는 조건 (아래 설명)",
+   "ask": "판사의 주문 문장 (\"검찰은 ~를 내 주세요.\")",
+   "evidence": "records·original·alibi·expert·compare: 돌아오는 증거 (위 evidence 칸 + 값을 진실별로 {did,didnt,reason} 가능)",
+   "witness": "witness: 새 증인 (role·story·stake·lead·q 3개)",
+   "recall": "recall: {\"w\":0, \"q\":[새 질문 2~3개]}",
+   "answer": "explain: {\"p\":\"검찰(원고) 설명\", \"d\":\"변호인(피고) 설명\"} — 진실별로도 가능",
+   "have": "선택. 자료가 없는 진실: {\"didnt\":false}",
+   "none": "have에 false가 있거나 형사 변호인에게 낸 증거 요구면 필수: 없다고 답하는 문장",
+   "rebut": "선택. 상대 반박 1문장"
+  }
+ ],
+
+ "party": {
+  "who": "A | B",
+  "role": "형사는 반드시 피고인 / 민사는 원고·피고 / 결정형은 신청인·상대방",
+  "q": [
+   { "id": "p1", "issue": "i1", "q": "판사가 당사자에게 직접 묻는 말", "a": { "did": "", "didnt": "", "reason": "" }, "side": { "did": "p", "didnt": "d", "reason": "m" } },
+   { "id": "p2", "issue": "i2", "q": "", "a": { "did": "", "didnt": "", "reason": "" } },
+   { "id": "p3", "issue": "i3", "q": "", "a": { "did": "", "didnt": "", "reason": "" } }
+  ]
+ }
+}
