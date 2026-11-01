@@ -22,7 +22,18 @@ function convert(c){
  for(const t of truthKeys){
  const es=clone(events);es[1].action=specific(c.truth[t]);
  const evidence=c.evidence.map((e,i)=>({id:'evidence-'+i,kind:e.title||'사건 자료',source:'기존 창작 사건 자료집',excerpt:specific(get(e.excerpt,t)||get(e.shows,t)||e.shows||e.title||''),caveat:specific(e.caveat||''),provenance:'기존 창작 기록: 확보 경위 추가 감수 필요'}));
- const witnesses=c.witnesses.map((w,i)=>({id:'witness-'+i,role:w.role||'증인',observedEventIds:['e-arrival'],interest:w.stake||'',script:{opening:{prompt:`${w.role||'증인'}은 사건 현장에서 무엇을 직접 관찰했습니까?`,confrontEvidenceIds:['evidence-'+Math.min(i,evidence.length-1)],responses:{initial:{text:specific(get(w.answers,t)||get(w.says,t)||w.says||'제가 직접 본 상황만 설명하겠습니다.'),knowledgeSource:'memory',eventId:'e-arrival'},clarify:{text:'앞서 말한 것은 제가 직접 목격한 범위입니다. 직접 보지 않은 부분은 모릅니다.',knowledgeSource:'memory'},confront:{text:'제 기억과 기록에 차이가 있다면, 원본 기록 시각과 관찰 위치를 확인해야 합니다.',knowledgeSource:'document'}}}}));
+ const witnesses=c.witnesses.map((w,i)=>({
+  id:'witness-'+i,role:w.role||'증인',observedEventIds:['e-arrival'],interest:w.stake||'',
+  script:{opening:{
+   prompt:(w.role||'증인')+'은 사건 현장에서 무엇을 직접 관찰했습니까?',
+   confrontEvidenceIds:['evidence-'+Math.min(i,evidence.length-1)],
+   responses:{
+    initial:{text:specific(get(w.answers,t)||get(w.says,t)||w.says||'직접 본 상황을 설명하겠습니다.'),knowledgeSource:'memory',eventId:'e-arrival'},
+    clarify:{text:'제가 직접 목격한 범위와 추정을 구분하겠습니다.',knowledgeSource:'memory'},
+    confront:{text:'제 기억과 자료의 시각이 달라 원본 기록을 확인해야 합니다.',knowledgeSource:'document'}
+   }
+  }}
+ }));
  variants[t]={events:es,evidence,witnesses};
  }
  return {id:c.id,version:1,title:specific(c.logline||c.id),provenance:{type:'original_fiction',courtJudgmentRequired:false,realCaseVerified:false},adaptation:{generatedDate:date,locationSource:c.location?'location':'narrative',timestampStatus:'synthetic_requires_editorial_review',witnessObservationStatus:'provisional',enhancementStatus:'draft'},legacy:{story:specific(c.summary||''),acts:clone(c.acts||[]),endings:clone(c.endings||{}),followUps:clone(c.followUps||[])},definition:{id:c.id,version:1,variants}};
