@@ -1279,7 +1279,7 @@ window.VERDICT_CURATED_DETAIL=(window.VERDICT_CURATED_DETAIL||[]).concat([
  witnesses:[
   {lead:'아이가 원고를 무서워한다고 말했죠?',q:[
    {id:'q1',q:'아이 그림이 바뀐 건 언제부터입니까?',issue:'i1',side:'n',a:'2학기 들어서요. 그 전엔 세 사람과 강아지를 그렸어요'},
-   {id:'q2',q:'아이가 원고 이야기를 한 적이 있습니까?',issue:'i1',a:{did:'다른 집 부모 이야기를 하면 안 된다고, 그러면 집에서 다들 슬퍼진다고 했어요',didnt:'그 집에 가면 무서운 아저씨가 소리를 지른다고 했어요',reason:'보고 싶은데 가면 집에 남은 부모가 운다고 했어요'}},
+   {id:'q2',q:'아이가 원고 이야기를 한 적이 있습니까?',issue:'i1',a:{did:'다른 집 부모 이야기를 하면 안 된다고, 그러면 집에서 다들 슬퍼진다고 했어요',didnt:'그 집에 가면 무서운 어른이 소리를 지른다고 했어요',reason:'보고 싶은데 가면 집에 남은 부모가 운다고 했어요'}},
    {id:'q3',q:'아이에게 바라는 것이 있다면요?',issue:'i3',side:'n',a:'어른들 일로 아이가 고르지 않게 해 주셨으면 해요'}
   ]},
   {lead:'원고 집에 다녀온 아이가 겁에 질렸던 거죠?',q:[
@@ -1955,6 +1955,18 @@ for(const d of window.VERDICT_CURATED_DETAIL||[]){const c=cases[d.id];if(!c)cont
  c.witnesses=c.witnesses.map((w,i)=>({...w,...(d.witnesses?.[i]||{})}));
  for(const k of ['charge','demand','claim','issues','late','rebut','closing'])if(d[k]!=null)c[k]=d[k];
 }
+/* Gender facts a story depends on. A/B: fixed gender; AB: same or opposite to each other;
+ * W: witness index → sameA / sameB / diffA / diffB. Everything else stays random. */
+const SEX={
+ 'beta-homicide-009':{AB:'same',W:{0:'sameA',1:'sameA'}},   // dorm roommates, the dorm supervisor and the student next door
+ 'beta-family-003':{AB:'diff'},                              // separated parents
+ 'beta-family-011':{AB:'diff'},                              // former couple who lived together
+ 'beta-sexual-009':{AB:'diff'},                              // former couple
+ 'stalking-repeat-contact':{AB:'diff'},                      // met on a blind date
+ 'beta-reputation-004':{A:'여'},                             // a mom-cafe regular
+ 'beta-violence-003':{W:{1:'diffB'}}                         // the victim's spouse
+};
+for(const [id,s] of Object.entries(SEX))if(cases[id])cases[id].sex=s;
 window.VerdictCurated={cases,ids:Object.keys(cases),fill,particle,active:list.length>0};
 if(typeof CasePackEngine!=='undefined'&&list.length){
  const basePool=CasePackEngine.pool;

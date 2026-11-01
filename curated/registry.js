@@ -20,6 +20,18 @@ for(const d of window.VERDICT_CURATED_DETAIL||[]){const c=cases[d.id];if(!c)cont
  c.witnesses=c.witnesses.map((w,i)=>({...w,...(d.witnesses?.[i]||{})}));
  for(const k of ['charge','demand','claim','issues','late','rebut','closing'])if(d[k]!=null)c[k]=d[k];
 }
+/* Gender facts a story depends on. A/B: fixed gender; AB: same or opposite to each other;
+ * W: witness index → sameA / sameB / diffA / diffB. Everything else stays random. */
+const SEX={
+ 'beta-homicide-009':{AB:'same',W:{0:'sameA',1:'sameA'}},   // dorm roommates, the dorm supervisor and the student next door
+ 'beta-family-003':{AB:'diff'},                              // separated parents
+ 'beta-family-011':{AB:'diff'},                              // former couple who lived together
+ 'beta-sexual-009':{AB:'diff'},                              // former couple
+ 'stalking-repeat-contact':{AB:'diff'},                      // met on a blind date
+ 'beta-reputation-004':{A:'여'},                             // a mom-cafe regular
+ 'beta-violence-003':{W:{1:'diffB'}}                         // the victim's spouse
+};
+for(const [id,s] of Object.entries(SEX))if(cases[id])cases[id].sex=s;
 window.VerdictCurated={cases,ids:Object.keys(cases),fill,particle,active:list.length>0};
 if(typeof CasePackEngine!=='undefined'&&list.length){
  const basePool=CasePackEngine.pool;

@@ -213,6 +213,11 @@ const CASE_BLUEPRINTS=[
  {key:'privacy',tag:'형사·정보범죄',icon:'🔐',legal:'정보 접근 권한·고의',importance:3,kind:'criminal',titles:['퇴사 후 유출된 고객 명단','비공개 자료에 접근한 직원','유명인의 연락처를 판매한 혐의'],premises:['내부 자료가 외부에 전달됐다. 피고인은 정상적인 업무 인수인계였다고 주장한다.','접근 권한이 제한된 자료를 열람한 흔적이 확인됐다. 권한과 사용 목적이 쟁점이다.','민감한 고객 정보가 제3자에게 전달됐다. 전송 주체와 고의가 다투어진다.'],docs:['접근 로그와 다운로드 이력','내부 정보보안 규정','전달 내역·계정 사용자 기록'],questions:['접근 권한의 범위 확인','접속 계정과 실제 사용자 구분','전송 경로와 목적 검토']}
 ];
 function choose(a){return a[Math.floor(rand()*a.length)]}
+/* Legacy contacts retire or die over a long career; fall back to the living legal roster, then to a new hire. */
+const alive=id=>NPC[id]&&NPC[id].alive!==false;
+function livePool(ids,role,label,serial){const live=ids.filter(alive);if(live.length)return live;
+ const roster=(S.legalWorld?.people||[]).filter(id=>alive(id)&&NPC[id].legalCareer?.role===role);if(roster.length)return roster;
+ return [freshNPC(label,serial,'law')]}
 function freshNPC(role,caseSerial,category){
  const id=`person_${caseSerial}_${Math.floor(rand()*1e8)}`,gender=rand()<.5?'여':'남';
  const bornYear=year()-(23+Math.floor(rand()*46));
@@ -262,7 +267,7 @@ function createGeneratedCase(selectedCandidate=null){
  const lifeSeed=appropriate.length&&rand()<.65?choose(appropriate):null;
  const c=StoryEngine.build({caseId,blueprint:bp,instance:i,loc,now:day(),week:S.week,r:rand,
   makeNPC:(role)=>freshNPC(role,serial,bp.key),oldCriminal:recidivist,priorDecision:prior,
-  prosecutorPool:['soo','jun'],counselPool:['jiyu','seon'],people:NPC});
+  prosecutorPool:livePool(['soo','jun'],'prosecutor','검사',serial),counselPool:livePool(['jiyu','seon'],'lawyer','변호사',serial),people:NPC});
  if(lifeSeed){
   lifeSeed.consumed=true;
   c.lifeConnection={npcId:lifeSeed.id,originWeek:lifeSeed.week,type:lifeSeed.type,detail:lifeSeed.change};
@@ -270,6 +275,7 @@ function createGeneratedCase(selectedCandidate=null){
   c.story.lifeContext=`${NPC[lifeSeed.id].name}의 과거 생활 변화: ${lifeSeed.change}. 이 변화가 현재 사건의 법적 책임을 증명하지는 않습니다.`;
   c.story.lifeRelated=true;
  }
+ window.VerdictSex?.fix(c);
  const continuity=ContinuityEngine.audit(c,NPC,S.week,CASES);
  c.continuityAudit=continuity;
  if(!continuity.pass){S.caseSerial--;throw new Error(`사건 연속성 검증 실패: ${continuity.errors.join(', ')}`)};
@@ -330,7 +336,7 @@ function makeAnnualEvent(){
  log('커리어',title,`${post} · 법조 경력 ${y}년 · 누적 판결 ${completed().length}건`);
  if(y%5===0)message('hyun',`벌써 ${y}년이 흘렀네. 첫 발령이 엊그제 같은데. 예전에 내렸던 판결들 기억나?`);
  if(y%2===0){const id=choose(Object.keys(WORLD_ROSTER)),p=NPC[id];remember(id,'사회 경력',`${year()}년 · ${p.career} 직무 관련 활동 지속`,'world-'+year());news('가상 사회',`${p.name}(${p.career})의 주요 사회 활동 소식이 전해졌다.`,'사회 소식');}
- if(y%3===0){const x=choose(['hyun','senior','jiyu','seon','soo','jun','reporter']);modifyRel(x,rand()<.5?-2:2);remember(x,'커리어',`${y}년 차 인사·사회 변화 속 관계 재정립`,'career-'+y)}
+ if(y%3===0){const x=choose(['hyun','senior','jiyu','seon','soo','jun','reporter'].filter(alive));modifyRel(x,rand()<.5?-2:2);remember(x,'커리어',`${y}년 차 인사·사회 변화 속 관계 재정립`,'career-'+y)}
  // 항소·재심은 연차별 무작위가 아니라 사건별 제출·심리 기한으로 관리합니다.
 }
 function moveOldCasesToOtherCourt(){
@@ -710,7 +716,7 @@ function advanceWeek(silent=false){
   S.market[x.id]=clamp(Math.round(S.market[x.id]*(1+(rand()-.5)*.07*x.beta+cycle+eco+shock)*100)/100,15,950);
  });
  if(S.week%26===0){
-  const who=choose(['hyun','senior','jiyu','seon','soo','jun']);
+  const who=choose(['hyun','senior','jiyu','seon','soo','jun'].filter(alive).concat(['hyun']));
   message(who,`${Math.floor(S.week/52)}년 가까이 법원에서 일하고 있네. 최근 사건은 잘 마무리됐어?`);
   remember(who,'관계','연락을 주고받음','letter-'+S.week);
  }
@@ -886,7 +892,7 @@ if(document.readyState==='complete')init();else document.addEventListener('DOMCo
  };
  const roleTag=(id,c)=>c.side?.[0]===id?(c.kind==='criminal'?'검사':'원고 대리인'):c.side?.[1]===id?'피고 측 변호인':c.who?.[0]===id?(c.kind==='criminal'?'피고인':'원고'):c.who?.[1]===id?(c.kind==='criminal'?'피해자·관계인':'피고'):'증인·관계인';
  function photo(id){
-  const p=NPC[id]||NPC.self,seed=hash(id+'-portrait-1'),male=p.gender?p.gender==='남성':![4,5].includes(p.hair),yr=p.bornYear||1986,ageN=Math.max(8,Math.min(95,year()-yr));
+  const p=NPC[id]||NPC.self,seed=hash(id+'-portrait-1'),male=p.gender?/남/.test(p.gender):![4,5].includes(p.hair),yr=p.bornYear||1986,ageN=Math.max(8,Math.min(95,year()-yr));
   const shades=['#edd0b7','#dcb394','#bb8768','#edbb98','#c99678'];const skin=shades[(seed>>>2)%shades.length];
   const hair=['#252c32','#3c2d2b','#4c3b35','#302927','#6b4c3e','#85817a'][Math.min(5,Math.floor(ageN/70)+(seed%5))];
   const coat=/(검사|판사|변호사|법원|공직|교수|대표|의원)/.test(p.role||'')?['#1d3553','#283d50','#3d3637'][seed%3]:['#425b69','#755b62','#455350','#62616d'][seed%4];
