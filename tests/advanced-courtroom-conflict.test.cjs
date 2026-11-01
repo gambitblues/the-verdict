@@ -11,7 +11,7 @@ const initial=Case.create({id:'hall-contradiction',version:1,variants},'fixed','
 const anchor={fact:'종업원의 등에 업혀 들어왔다는 진술과 CCTV 보행 장면의 불일치',eventId:'corridor'};
 const line=(id,phase,speaker,text,purpose,support,replyTo,extra={})=>({id,phase,speaker,text,purpose,support,replyTo,issueId:'witness-reliability',target:anchor,...extra});
 const script={lines:[
- line('q','question','defense','경찰 조사에서 피고인이 피해자를 업고 들어왔다고 말씀하셨습니까?','establish',[{type:'testimony',id:'2'}]),
+ line('q','question','defense','경찰 조사에서 피고인이 피해자를 업고 들어왔다고 말씀하셨습니까?','establish',[{type:'testimony',id:'1'}]),
  line('a','answer','witness','네, 그렇게 기억합니다.','clarify',[{type:'argument',id:'q'}],'q'),
  line('c','confrontation','defense','6월 12일 00시 43분 CCTV에서는 피해자가 직접 걷습니다. 같은 때를 보신 겁니까?','impeach',[{type:'argument',id:'a'},{type:'evidence',id:'camera'}],'a'),
  line('e','explanation','witness','정확한 시각은 기억나지 않습니다. 다른 손님과 혼동했을 수도 있습니다.','explain',[{type:'argument',id:'c'}],'c'),
