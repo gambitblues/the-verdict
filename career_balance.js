@@ -9,12 +9,12 @@ function award(state,caseId,grade,importance,year){
  const a=state.careerProgress;
  if(a.completed[caseId])return {applied:false};
  const years=Math.max(0,(Number(year)||2026)-(Number(a.lastVisibilityYear)||2026));
- state.publicity=clamp((Number(state.publicity)||0)*Math.pow(.90,Math.min(40,years)));
+ state.publicity=clamp((Number(state.publicity)||0)*Math.pow(.82,Math.min(40,years)));
  a.lastVisibilityYear=Number(year)||2026;
  const skill=(Math.max(0,Math.min(100,grade))-50)/220+(grade>=80?.19:.04);
  const skillDelta=Math.max(.06,Math.min(.48,skill))*(1-(Number(state.professional)||0)/125);
  state.professional=clamp((Number(state.professional)||0)+skillDelta);
- const visibility=(importance>=4?1.5:importance>=3?.65:.12)*(grade>=80?1.1:.75);
+ const visibility=(importance>=4?1.0:importance>=3?.28:.06)*(grade>=80?1.1:.75);
  state.publicity=clamp(state.publicity+visibility);
  a.completed[caseId]=true;
  return {applied:true,skillDelta,visibility};
