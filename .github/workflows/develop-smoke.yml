@@ -34,6 +34,13 @@ jobs:
           node tests/v6-behaviour.test.cjs
           node tests/version.test.cjs
           node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('content-packs/court-editorial-100-v1.json'));if(p.cases.length!==100)process.exit(1)"
+      - name: Advanced case engine and linked pilot regression
+        run: |
+          node tests/advanced-case-engine.test.cjs
+          node tests/advanced-witness-engine.test.cjs
+          node tests/advanced-timeline-evidence.test.cjs
+          node tests/advanced-courtroom-conflict.test.cjs
+          node tests/advanced-pilot-integration.test.cjs
       - name: Install browser test tooling
         run: |
           npm install --no-save playwright
