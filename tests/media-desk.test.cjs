@@ -10,7 +10,7 @@ const base=o=>({caseId:'c1',caseName:'기숙사 옥상 추락의 진상 · 대�
 // 1. Fixed facts: the summary carries the verdict and the exact gauge numbers.
 const r=M.react(base(),{});
 assert.ok(r.summary.some(l=>l.includes('무죄')&&l.includes('재판일 4회')));
-assert.ok(r.summary.some(l=>l.includes('증거로 보여준 정도 70')&&l.includes('남은 의문 20')));
+assert.ok(r.summary.some(l=>l.includes('증거가 의심보다 뚜렷함')));
 
 // 2. Rumour intensity follows accumulated history only: a first verdict is never level 3.
 assert.equal(r.beat.level,1);

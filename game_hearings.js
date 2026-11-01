@@ -308,6 +308,8 @@ clicker=function(e){const b=e.target.closest('[data-action]');if(!b)return;
  if(b.dataset.action==='advancedBackup'){ui.tabletTab='backup';changeTab('tablet');return;}
  return click(e);
 };
+async function clearSnapshots(id){const db=await openDB();const xs=await records(id);return new Promise(res=>{const tx=db.transaction(STORE,'readwrite'),st=tx.objectStore(STORE);for(const x of xs)st.delete(x.id);tx.oncomplete=()=>res(xs.length);tx.onerror=()=>res(0)})}
+window.VerdictSnapshots={clear:id=>clearSnapshots(id||who()).catch(()=>0)};
 async function recovery(){const xs=await records(who()),good=xs.find(x=>valid(x.data));if(!good)throw Error('no valid snapshot');if(!confirm('최근 정상 저장본으로 복구할까요? 현재 진행 상황을 덮어씁니다.'))return;localStorage.setItem(KEY,good.data);location.reload();}
 const prevTablet=tabletInner;
 tabletInner=function(){if(ui.tabletTab!=='backup')return prevTablet();

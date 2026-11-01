@@ -27,6 +27,8 @@ const LABEL=Object.freeze({
  decision:{use:'쓴다',conditional:'조건 붙여 쓴다',exclude:'뺀다'}
 });
 
+/* Korean object particle after a title: 진단서를 / 기록을 */
+function obj(w){const c=String(w||'').trim().slice(-1).charCodeAt(0);return w+(c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28?'을':'를')}
 /* Legacy story engine truth → v4 truth. */
 function truthFromStory(kind){return kind==='substantial'?'did':kind==='contradicted'?'didnt':kind==='partial'?'reason':null}
 
@@ -60,10 +62,12 @@ function roll(c,seed,history=[]){
   const s=seed+':ev:'+i,odds=e.hintFlaw==='none'?flawOdds*0.4:flawOdds,flawed=unit(s+':f')<odds;
   let flawType=flawed?pick(['source','timing','illegal'],s+':t'):'none';
   if(flawed&&e.hintFlaw&&e.hintFlaw!=='none')flawType=e.hintFlaw;
+  // written cases: the evidence text already describes its weakness, so the hidden layer follows the text
+  if(c.strict&&e.hintFlaw)flawType=e.hintFlaw;
   if(e.hintIllegal&&flawed)flawType='illegal';
   const strength=between(40,82,s+':s'),flaw=flawType==='none'?0:between(25,85,s+':size');
   const surface=flawType==='none'?strength:clamp(strength+between(12,28,s+':shine'),0,96);
-  return {id:e.id,title:e.title,note:e.note||'',scope:e.scope||'',strength,flawType,flaw,surface,revealed:0,decision:null,publicFlaw:false};
+  return {id:e.id,title:e.title,note:e.note||'',scope:e.scope||'',strength,flawType,flaw,surface,revealed:c.strict?2:0,decision:null,publicFlaw:false};
  });
  if(previous&&previous.truth===truth&&evidence[0]&&previous.firstFlaw===evidence[0].flawType){
   const e=evidence[0];e.flawType=FLAWS[(FLAWS.indexOf(e.flawType)+1)%FLAWS.length];e.flaw=e.flawType==='none'?0:Math.max(e.flaw,40);
@@ -102,7 +106,13 @@ function gauge(t){
   else if(e.decision==='conditional'){p+=e.strength*(1-f*known*0.5)*0.4;d+=f*known*15}
   else if(e.decision==='exclude'){d+=6}
  }
- for(const w of t.witnesses){const s=testimony(w,t.truth);p+=s.p;d+=s.d;discord+=s.discord}
+ const heard=t.heard||[];
+ // v5: what each answered question said counts; the old per-witness signal stays as a smaller background
+ const k=heard.length?0.5:1;
+ for(const w of t.witnesses){const s=testimony(w,t.truth);p+=s.p*k;d+=s.d*k;discord+=s.discord}
+ for(const h of heard){if(h.struck)continue;const rel=clamp(t.witnesses[h.w]?.reliability??60)/100;
+  if(h.side==='p')p+=6*rel;else if(h.side==='d')d+=7*rel;else if(h.side==='m'){p+=3*rel;d+=3.5*rel}}
+ for(const i of new Set(heard.filter(h=>!h.struck).map(h=>h.issue))){const sides=new Set(heard.filter(h=>!h.struck&&h.issue===i).map(h=>h.side));if(sides.has('p')&&sides.has('d'))discord++}
  d+=discord*15;
  const P=Math.round(clamp(p)),D=Math.round(clamp(d));
  return {P,D,margin:P-D,discord};
@@ -117,11 +127,11 @@ function skill(t,verdict){
   if(!e.decision)continue;
   if(e.decision==='use'&&e.flawType==='illegal'&&known)add(k,-15,`불법으로 얻은 증거(${e.title})를 알고도 썼음`);
   else if(e.decision==='use'&&!known&&e.revealed<1)add(k,-5,`${e.title}의 흠을 확인하지 않고 썼음`);
-  else if(e.decision==='use'&&known&&e.flaw>=60)add(k,-4,`큰 흠이 있는 ${e.title}을(를) 조건 없이 썼음`);
+  else if(e.decision==='use'&&known&&e.flaw>=60)add(k,-4,`큰 흠이 있는 ${obj(e.title)} 조건 없이 썼음`);
   else if(e.decision==='conditional'&&e.revealed>=1&&e.flawType!=='none'&&e.flawType!=='illegal')add(k,2,`${e.title}의 흠을 감안해 조건을 붙였음`);
-  else if(e.decision==='exclude'&&e.flawType==='illegal'&&known)add(k,5,`불법으로 얻은 ${e.title}을(를) 뺐음`);
-  else if(e.decision==='exclude'&&e.flawType==='none'&&known)add(k,-5,`흠 없는 ${e.title}을(를) 뺐음`);
-  else if(e.decision==='exclude'&&e.revealed===0)add(k,-3,`${e.title}을(를) 확인 없이 뺐음`);
+  else if(e.decision==='exclude'&&e.flawType==='illegal'&&known)add(k,5,`불법으로 얻은 ${obj(e.title)} 뺐음`);
+  else if(e.decision==='exclude'&&e.flawType==='none'&&known)add(k,-5,`흠 없는 ${obj(e.title)} 뺐음`);
+  else if(e.decision==='exclude'&&e.revealed===0)add(k,-3,`${obj(e.title)} 확인 없이 뺐음`);
  }
  for(const c of t.cards||[]){
   if(!c.choice)continue;
@@ -141,6 +151,17 @@ function skill(t,verdict){
   else if(side===-1)add('verdict',g.margin<need?10:g.margin>=need+25?-10:4,g.margin<need?'의문이 남아 책임을 인정하지 않았음':'증거가 충분한데 책임을 인정하지 않았음');
   else if(side===0.5)add('verdict',g.margin>=need-15&&g.margin<need+20?6:-5,'일부만 인정하는 판단');
   for(const r of verdict.reasons||[]){const fit=reasonFits(r,t,g);add('reason:'+r,fit?4:-4,fit?'판결 이유가 기록과 맞음':'판결 이유가 기록과 맞지 않음')}
+  // v5: cited evidence and testimony must point the way the verdict goes
+  (verdict.cites||[]).slice(0,3).forEach((c,i)=>{
+   if(c.illegal){add('cite:'+i,-6,`불법으로 얻은 증거(${c.label})를 판결 근거로 삼았음`);return}
+   if(c.struck){add('cite:'+i,-4,`이의가 받아들여진 진술(${c.label})을 근거로 삼았음`);return}
+   const fit=side===0.5?true:side===1?c.side!=='d':c.side!=='p';
+   add('cite:'+i,fit?3:-3,fit?`판결 근거가 결론과 맞음: ${c.label}`:`결론과 반대 방향의 자료를 근거로 들었음: ${c.label}`);
+  });
+  if(verdict.sentence){const s=verdict.sentence,lighter=s.value<s.lo,heavier=s.value>s.hi;
+   if(!lighter&&!heavier)add('sentence',4,`${s.what}이 참고 범위 안에 있음`);
+   else if((lighter&&s.mitig>0)||(heavier&&s.aggr>0))add('sentence',0,`${s.what}이 참고 범위를 벗어났지만 그 사유를 밝혔음`);
+   else add('sentence',-4,`${s.what}이 사유 없이 참고 범위를 벗어남`);}
  }
  const total=Object.values(items).reduce((a,x)=>a+x.points,0);
  return {score:Math.round(clamp(60+total)),total,items:Object.entries(items).map(([key,v])=>({key,...v}))};

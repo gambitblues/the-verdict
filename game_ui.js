@@ -83,7 +83,7 @@ function comments(c,qty,offset=0){
  }
  return items;
 }
-const card=a=>'<article class="tv-media-card"><div class="tv-media-head"><b>'+esc(a.outlet)+'</b><span>가상 보도 · '+esc(a.frame)+'</span></div><strong>'+esc(a.title)+'</strong><p>'+esc(a.body)+'</p></article>';
+const card=a=>'<article class="tv-media-card"><div class="tv-media-head"><b>'+esc(a.outlet)+'</b><span>'+esc(a.frame)+'</span></div><strong>'+esc(a.title)+'</strong><p>'+esc(a.body)+'</p></article>';
 function newsFeed(limit=30){
  const list=articles().slice(0,limit);
  return '<div class="tv-news-list">'+(list.length?list.map(card).join(''):'<p class="muted">진행 중 사건의 보도가 여기에 쌓입니다.</p>')+'</div>';
@@ -93,7 +93,7 @@ function socialFeed(limit=48){
  const result=[];
  for(const c of cs)result.push(...comments(c,Math.max(8,Math.ceil(limit/Math.max(1,cs.length)))));
  return '<div class="tv-community">'+result.slice(0,limit).map(x=>
-  '<article class="tv-post"><div class="tv-user"><b>@'+esc(x.handle)+'</b><small>가상 커뮤니티</small></div>'+
+  '<article class="tv-post"><div class="tv-user"><b>@'+esc(x.handle)+'</b><small>커뮤니티</small></div>'+
   '<p>'+esc(x.text)+'</p><small>공감 '+x.likes+' · 답글 '+x.reply+'</small></article>').join('')+'</div>';
 }
 window.VerdictMedia={outlets:OUTLETS,articles,comments,newsFeed,socialFeed};
@@ -132,7 +132,7 @@ home=function(){
  if(!S.name)return '<div class="panel">판사 프로필을 생성해 커리어를 시작하세요.</div>';
  const t=clockData(),cases=openCases().slice(0,5),articles=window.VerdictMedia?.articles().slice(0,4)||[];
  return '<div class="tv-home"><section class="tv-welcome"><div><span class="eyebrow">THE VERDICT · JUDICIAL CAREER</span><h2>오늘도 법정은 열립니다.</h2><p>'+esc(S.name)+' 판사 · '+esc(S.post)+' · 진행 중 '+openCases().length+'건</p></div><div class="tv-judge-photo">'+avatar('self')+'</div></section>'+
- '<section class="tv-clock"><div><small>실제 현재시간</small><strong class="tv-clock-local">'+esc(t.time)+'</strong><span>'+esc(t.weekday)+'</span></div><div><small>게임 세계의 날짜</small><strong>'+esc(t.gameDate)+'</strong><span>현실 3시간 = 게임 1일</span></div><div><small>다음 배당</small><strong class="tv-clock-next">'+esc(t.next)+'</strong><span>10:00–22:00 · 매시 정각</span></div></section>'+
+ '<section class="tv-clock"><div><small>실제 현재시간</small><strong class="tv-clock-local">'+esc(t.time)+'</strong><span>'+esc(t.weekday)+'</span></div><div><small>게임 세계의 날짜</small><strong>'+esc(t.gameDate)+'</strong><span>게임 속 달력</span></div><div><small>다음 배당</small><strong class="tv-clock-next">'+esc(t.next)+'</strong><span>10:00–22:00 · 매시 정각</span></div></section>'+
  priority()+
  '<section class="tv-open-cases"><div class="row between"><h3>⚖ 진행 중인 재판</h3><button class="btn ghost mini" data-action="tab" data-tab="courtList">전체 사건</button></div>'+
  (cases.length?cases.map(hearingCard).join(''):'<p class="muted">배당된 사건이 없습니다.</p>')+'</section>'+
@@ -174,7 +174,7 @@ shell=function(content){
  out=out.replace(/<div class="quick-top">[\s\S]*?<\/div>/,'');
  out=out.replace(/<span class="date-pill">[\s\S]*?<\/span>/,'<span class="date-pill">⏱ '+esc(clockData().time)+'</span>');
  out=out.replace(/<div class="side-bottom">[\s\S]*?<\/div>/,
-  '<div class="side-bottom">실시간 커리어 · 자동 저장<br><span class="muted">현실 3시간 = 게임 1일</span></div>');
+  '<div class="side-bottom">실시간 커리어 · 자동 저장</div>');
  return out;
 };
 clicker=function(e){
