@@ -12,7 +12,8 @@ const files=process.argv.slice(2).length?process.argv.slice(2):fs.existsSync(DIR
 const TRUTHS=['did','didnt','reason'],KINDS=['criminal','civil','decision'];
 const CATS=['homicide','sexual','violence','financial','property','reputation','civil','family','professional','public'];
 const GENDERED=/남자|여자|남성|여성|아빠|엄마|남편|아내|장남|장녀|누나|오빠|언니|사위|며느리/;
-const sec=t=>{const m=/^(\d\d):(\d\d)(?::(\d\d))?$/.exec(String(t||''));return m?(+m[1])*3600+(+m[2])*60+(+(m[3]||0)):null};
+/* "HH:MM(:SS)" or with a date for events on other days: "MM-DD HH:MM" / "YYYY-MM-DD HH:MM". */
+const sec=t=>{const m=/^(?:(?:(\d{4})-)?(\d\d)-(\d\d) )?(\d\d):(\d\d)(?::(\d\d))?$/.exec(String(t||''));if(!m)return null;const d=m[2]?Date.UTC(+(m[1]||2026),+m[2]-1,+m[3])/1000:0;return d+(+m[4])*3600+(+m[5])*60+(+(m[6]||0))};
 let failed=0;const STOCK=new Map();
 for(const file of files){
  const E=[],W=[],err=m=>E.push(m),warn=m=>W.push(m);let cerr=err;   // content-quality issues: errors once a sheet leaves draft
@@ -47,7 +48,7 @@ for(const file of files){
  if(R.size<3)err('records는 3개 이상');
  // common timeline
  if(!/^\d{4}-\d\d-\d\d$/.test(s.common?.date||''))err('common.date는 YYYY-MM-DD');
- const ordered=(list,at)=>{let last=-1,day=0;for(const e of list||[]){let t=sec(e.at);if(t!=null&&t+day<last&&last-(t+day)>43200)day+=86400;if(t!=null)t+=day;if(t==null){err(`${at}: 시각 "${e.at}" 형식은 HH:MM 또는 HH:MM:SS`);continue}if(t<last)err(`${at}: ${e.at}가 앞 항목보다 이름`);last=t;
+ const ordered=(list,at)=>{let last=-1,day=0,base=0;for(const e of list||[]){let t=sec(e.at);if(t!=null&&/^\d\d-|^\d{4}-/.test(e.at))base=Math.floor(t/86400)*86400;else if(t!=null)t+=base;   // a time without a date belongs to the last date givenif(t!=null&&t+day<last&&last-(t+day)>43200)day+=86400;if(t!=null)t+=day;if(t==null){err(`${at}: 시각 "${e.at}" 형식은 HH:MM, HH:MM:SS 또는 날짜를 붙인 MM-DD HH:MM`);continue}if(t<last)err(`${at}: ${e.at}가 앞 항목보다 이름`);last=t;
   if(e.place&&!PL.has(e.place))err(`${at} ${e.at}: 장소 ${e.place} 없음`);for(const w of e.who||[])if(!P.has(w))err(`${at} ${e.at}: 인물 ${w} 없음`)}};
  if(!(s.common?.timeline||[]).length)err('common.timeline 비어 있음');ordered(s.common?.timeline,'common.timeline');
  // worlds
