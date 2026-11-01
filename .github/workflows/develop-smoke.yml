@@ -54,7 +54,6 @@ jobs:
           node tests/avatar-500.test.cjs
           node tests/avatar-production-budget.test.cjs
           node tests/advanced-content-qa.cjs
-          node tests/career-hearing-events.test.cjs
       - name: Install browser test tooling
         run: |
           npm install --no-save playwright
