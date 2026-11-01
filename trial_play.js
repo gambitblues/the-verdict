@@ -296,6 +296,9 @@ const P=(name,p)=>window.VerdictCurated?VerdictCurated.particle(name,p):name+p;
 const OBJ={lead:'유도신문',hearsay:'전문증거(남에게 들은 말)',relevance:'관련성 없음'};
 function dressCards(c,t,cards){
  return cards.map(card=>{
+  // a case that can be decided at its first hearing (one-hearing civil, decision cases) gets no delay requests from
+  // the parties: only the judge opens more hearings when the first one is not enough
+  if(card.type==='delay'&&!card.choice&&(isDecision(c)||(!isCriminal(c)&&t.minDays<=1))){card.void=true;return card}
   if(card.dressed||card.type==='media')return card;
   if(card.type==='objection'&&!t.witnesses.length){card.void=true;return card}
   const h=T.hash(t.seed+':'+card.id),wi=h%Math.max(1,t.witnesses.length);
@@ -524,7 +527,8 @@ function momentOf(c,t,kind,id,pre){
   else moment=String(h.q).includes('.')?'recall':'answer'}
  else if(kind==='confront'&&h){wi=h.w;moment=/바꾸지 않은/.test(h.label)?'hold':/정정/.test(h.label)?'correct':/처음 진술/.test(h.label)?'revert':'admit'}
  else if(kind==='face'&&h){wi=h.w;moment=/물러선/.test(h.label)?'yield':'standoff'}
- else if(kind==='card')moment='objection';
+ else if(kind==='card'){const card=(t.cards||[]).find(v=>v.id===id);moment=card?.type==='delay'?'delay':'objection';
+  return {moment,actor:card?.type==='delay'?(card.by==='p'?c.side?.[0]:t.opponent):t.opponent}}
  const w=wi!=null?t.witnesses[wi]:null;
  if(w&&moment&&!['answer','recall','objection'].includes(moment)){w.moments=[...new Set([...(w.moments||[]),moment])].slice(-6);save()}
  return {moment,actor:w?.id||(['ask','confront'].includes(kind)?t.witnesses[Number(id)]?.id:null)};

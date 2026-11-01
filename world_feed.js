@@ -108,6 +108,7 @@ function reporterNote(i){const r=REPORTERS[i];if(!r)return '';
  return `<h4>📰 기자 수첩</h4><div class="detail"><p><b>${esc(r.outlet)}</b> · ${esc(STYLE_LABEL[r.style]||'')} · ${r.side==='p'?'검찰·원고 쪽에서 보는 편':'변호인·피고 쪽에서 보는 편'}</p><p>${esc(r.bio)}. ${esc(r.voice)}.</p>${tone}</div>${mine.length?`<h4>쓴 기사</h4>${mine.slice(0,5).map(a=>`<p class="small">· ${esc(a.title)}</p>`).join('')}`:''}`}
 function reporterPair(c){const Pr=REPORTERS.filter(r=>r.side==='p'),Dr=REPORTERS.filter(r=>r.side==='d');return [Pr[hash(c.id+'rp')%Pr.length],Dr[hash(c.id+'rd')%Dr.length]]}
 const Pj=(w,p)=>window.VerdictCurated?VerdictCurated.particle(w,p):w+p;
+const cop=x=>{x=String(x);const ch=x.charCodeAt(x.length-1);return x+(ch>=0xAC00&&ch<=0xD7A3&&(ch-0xAC00)%28?'이다':'다')};
 const cut=(x,n=38)=>{x=String(x||'').replace(/[.。]$/,'');return x.length>n?x.slice(0,n-1)+'…':x};
 /* Everything a reporter may use: only what has been said or shown in court, plus the public case summary. */
 function material(c,t){
@@ -173,17 +174,19 @@ function writeArticle(c,t,r){
   const win=m.crim?'유죄':'원고 승소',lose=m.crim?'무죄':'원고 패소';
   const title=mine==='p'?[`[전망] ${m.name}, ${Pj(cut(ev.title,16),'이')} 승부를 가를까`,`[전망] ${m.name}, ${win}에 무게 싣는 법정`,`[전망] ${m.name} "${cut(issue?.title||'핵심 쟁점',18)}"… 검증대에 선 ${m.crim?'공소사실':'청구'}`][v]
    :[`[전망] ${m.name}, "${cut(issue?.title||'핵심 쟁점',18)}"에 답 못 하면 뒤집힌다`,`[전망] ${m.name}, ${lose} 가능성은 남아 있나`,`[전망] ${m.name}, ${Pj(cut(ev.title,16),'의')} 빈칸을 재판부는 볼까`][v];
-  lines.push(m.days?`${m.name} 재판이 ${m.days}차 공판까지 진행됐다. ${m.logline}`:`${m.name} 재판이 시작됐다. ${m.logline}`);
-  lines.push(mine==='p'?m.claimP:m.claimD);
-  if(mine==='p')lines.push(`${Pj(ev.title,'은')} ${ev.shows.replace(/[.。]$/,'')}는 점을 보여 준다.`);
-  else lines.push(`다만 ${ev.title}에는 한계가 있다. ${ev.caveat.replace(/[.。]$/,'')}.`);
-  if(q)lines.push(`${q.role} ${Pj(q.who,'은')} 법정에서 "${q.text}"라고 말했다.`);
-  if(m.late)lines.push(`공판 사이에 ${Pj(m.late.title,'이')} 새로 제출돼 변수가 됐다.`);
-  const tilt=mine==='p'?lean:-lean;
-  lines.push(tilt>0?`법조계에서는 ${mine==='p'?win:lose} 쪽에 무게를 싣는 관측이 많다.`:tilt<0?`다만 지금까지 법정에 나온 것만 보면 ${mine==='p'?win:lose}을 장담하기는 어렵다는 말도 나온다.`:`지금으로서는 어느 쪽도 장담하기 어렵다는 것이 중론이다.`);
-  lines.push(crit);
+  const pk=(key,arr)=>arr[hash(c.id+r.name+key)%arr.length];
+  const LG=mine==='p'?m.logline:'';
+  lines.push(m.days?pk('o1',[`${m.name} 재판이 ${m.days}차 공판까지 진행됐다. ${LG}`,`${m.days}차 공판을 마친 ${m.name} 재판이 반환점을 돌고 있다. ${LG}`,`${m.name} 재판정의 공기가 ${m.days}차 공판을 거치며 달라지고 있다. ${LG}`]):pk('o0',[`${m.name} 재판이 시작됐다. ${LG}`,`${LG} ${m.name} 재판의 막이 올랐다.`,`첫 공판을 앞둔 ${m.name} 사건, 쟁점은 분명하다. ${LG}`]));
+  lines.push(pk('cl',[mine==='p'?m.claimP:m.claimD,`${mine==='p'?(m.crim?'검찰':'원고 측'):(m.crim?'변호인':'피고 측')}의 입장은 이렇다. ${mine==='p'?m.claimP:m.claimD}`,`${mine==='p'?m.claimP:m.claimD} 이것이 ${mine==='p'?(m.crim?'검찰':'원고 측'):(m.crim?'변호인':'피고 측')}의 논리다.`]));
+  if(mine==='p')lines.push(pk('ev',[`${Pj(ev.title,'은')} ${ev.shows.replace(/[.。]$/,'')}는 점을 보여 준다.`,`눈여겨볼 자료는 ${cop(ev.title)}. ${ev.shows.replace(/[.。]$/,'')}는 대목이 핵심이다.`,`${ev.title}에 따르면 ${ev.shows.replace(/[.。]$/,'')}.`]));
+  else lines.push(pk('ev',[`다만 ${ev.title}에는 한계가 있다. ${ev.caveat.replace(/[.。]$/,'')}.`,`${Pj(ev.title,'이')} 결정적이라고 보기는 이르다. ${ev.caveat.replace(/[.。]$/,'')}.`,`반대쪽이 파고드는 곳은 ${ev.title}의 빈틈이다. ${ev.caveat.replace(/[.。]$/,'')}.`]));
+  if(q)lines.push(pk('q',[`${q.role} ${Pj(q.who,'은')} 법정에서 "${q.text}"라고 말했다.`,`"${q.text}" — ${q.role} ${q.who}의 증언이다.`,`증인석의 ${Pj(q.who,'은')} "${q.text}"라고 답했다.`]));
+  if(m.late)lines.push(pk('lt',[`공판 사이에 ${Pj(m.late.title,'이')} 새로 제출돼 변수가 됐다.`,`뒤늦게 나온 ${Pj(m.late.title,'이')} 판을 흔들 수 있다.`]));
+  const tilt=mine==='p'?lean:-lean,goal=mine==='p'?win:lose;
+  lines.push(tilt>0?pk('tl',[`법조계에서는 ${goal} 쪽에 무게를 싣는 관측이 많다.`,`지금 흐름이라면 ${goal} 쪽이 유리하다는 평가가 나온다.`,`법정 주변에서는 ${Pj(goal,'을')} 점치는 목소리가 커지고 있다.`]):tilt<0?pk('tl',[`다만 지금까지 법정에 나온 것만 보면 ${Pj(goal,'을')} 장담하기는 어렵다는 말도 나온다.`,`그러나 기록만 놓고 보면 ${goal}까지는 갈 길이 멀다.`,`${Pj(goal,'을')} 기대하기엔 아직 증거가 모자라 보인다.`]):pk('tl',['지금으로서는 어느 쪽으로도 기울지 않았다는 평가가 많다.','판세는 아직 팽팽하다.','결론을 점치기엔 이르다는 말이 법정 주변의 중론이다.','양쪽 모두 결정타는 아직 내놓지 못했다.','어느 쪽 말이 맞는지 가릴 자료는 아직 법정에 다 나오지 않았다.','방청석의 예상도 반반으로 갈린다.']));
+  lines.push(hash(c.id+r.name+'cr')%3?crit:pk('cr2',['결국 재판부가 무엇을 믿을지가 관건이다.','남은 공판에서 무엇이 새로 나올지 지켜볼 일이다.','법정 밖의 확신과 법정 안의 증거는 다를 수 있다.']));
   if(m.demand&&mine==='p'&&m.days)lines.push(`검찰은 결심에서 ${m.demand} 안팎을 구형할 것으로 보인다.`);
-  lines.push(`판결은 ${Pj(judge,'이')} 맡은 재판부가 내린다.`);
+  if(hash(c.id+r.name+'jd?')%2)lines.push(pk('jd',[`판결은 ${Pj(judge,'이')} 맡은 재판부가 내린다.`,`최종 판단은 ${judge} 재판장의 몫이다.`,`선고는 ${judge} 재판장이 맡는다.`,`${judge} 재판장이 어떤 결론을 내릴지 관심이 쏠린다.`,`공은 이제 ${judge} 재판장에게 넘어갔다.`]));
   return {title,body:lines.filter(Boolean).join(' '),phase:'before'};
  }
  /* ---- evaluation ---- */
@@ -193,13 +196,14 @@ function writeArticle(c,t,r){
  const title=half?[`[평가] ${m.name}, 절반의 판결이 남긴 것`,`[평가] ${m.name}, 양쪽 모두 웃지 못한 선고`,`[평가] ${m.name} "${cut(m.f.label,14)}"… 재판부의 계산법`][v]
   :won?[`[평가] ${m.name}, 증거로 답한 재판부`,`[평가] ${m.name} "${cut(m.f.label,14)}"… ${judge} 재판장의 판단이 옳았다`,`[평가] ${m.name}, 여론보다 기록을 본 판결`][v]
   :[`[비판] ${m.name} 판결, 재판부는 "${cut(issue?.title||'핵심 쟁점',18)}"를 외면했다`,`[비판] ${m.name}, ${judge} 재판장의 판단에 묻는다`,`[비판] ${m.name} "${cut(m.f.label,14)}"… 납득하기 어려운 이유들`][v];
- lines.push(`${m.name} 사건에 "${m.f.label}"${m.f.sentence?`(${m.f.sentence})`:''} 판결이 선고됐다. 재판장은 ${judge} 판사다.`);
- if(half)lines.push(`재판부는 양쪽 주장을 일부씩만 받아들였다. ${mine==='p'?m.claimP:m.claimD}`);
- else if(won)lines.push(`재판부는 ${Pj(theirs.title,'을')} 판단의 중심에 뒀다. ${theirs.shows?Pj(theirs.title,'은')+' '+theirs.shows.replace(/[.。]$/,'')+'는 점을 보여 준 자료다.':''}`);
- else lines.push(`그러나 재판부는 ${Pj(ignored.title,'을')} 충분히 따지지 않았다. ${ignored.decision==='exclude'?'판단 자료에서 아예 빠졌다.':'판결 이유에서 그 무게는 가볍게 다뤄졌다.'}`);
- if(q)lines.push(`법정에서 ${q.role} ${Pj(q.who,'이')} "${q.text}"라고 했던 말이 ${won?'결국 받아들여진 셈이다':'판결에 얼마나 반영됐는지는 의문이다'}.`);
- lines.push(crit);
- lines.push(half?'판결은 확정됐고, 남은 쪽들은 각자의 몫을 감당하게 됐다.':won?`${judge} 재판장의 판결 이유는 기록에 충실했다는 평가를 받는다.`:`${judge} 재판장의 판단은 비판을 피하기 어렵다. 이 세계에는 항소가 없고, 판결은 그대로 확정된다.`);
+ const pk=(key,arr)=>arr[hash(c.id+r.name+key)%arr.length],sen=m.f.sentence?`(${m.f.sentence})`:'';
+ lines.push(pk('o',[`${m.name} 사건에 "${m.f.label}"${sen} 판결이 선고됐다. 재판장은 ${judge} 판사다.`,`${judge} 재판장이 ${m.name} 사건에서 "${m.f.label}"${sen} 판결을 선고했다.`,`"${m.f.label}"${sen}. ${m.name} 사건의 결론이 나왔다.`]));
+ if(half)lines.push(pk('h',[`재판부는 양쪽 주장을 일부씩만 받아들였다. ${mine==='p'?m.claimP:m.claimD}`,`어느 쪽도 완전히 이기지 못했다. ${mine==='p'?m.claimP:m.claimD}`]));
+ else if(won)lines.push(pk('w',[`재판부는 ${Pj(theirs.title,'을')} 판단의 중심에 뒀다. ${theirs.shows?Pj(theirs.title,'은')+' '+theirs.shows.replace(/[.。]$/,'')+'는 점을 보여 준 자료다.':''}`,`판결의 무게중심은 ${theirs.title}에 있었다. ${theirs.shows?theirs.shows.replace(/[.。]$/,'')+'.':''}`,`${Pj(theirs.title,'이')} 결론을 이끌었다. ${theirs.shows?theirs.shows.replace(/[.。]$/,'')+'는 점이 받아들여졌다.':''}`]));
+ else lines.push(pk('l',[`그러나 재판부는 ${Pj(ignored.title,'을')} 충분히 따지지 않았다. ${ignored.decision==='exclude'?'판단 자료에서 아예 빠졌다.':'판결 이유에서 그 무게는 가볍게 다뤄졌다.'}`,`${ignored.title}에 대한 판단이 아쉽다. ${ignored.decision==='exclude'?'재판부는 이 자료를 아예 쓰지 않았다.':'판결문은 이 자료를 몇 줄로 지나갔다.'}`,`가장 큰 의문은 ${cop(ignored.title)}. ${ignored.decision==='exclude'?'재판부는 이를 판단에서 뺐다.':'재판부는 그 의미를 작게 봤다.'}`]));
+ if(q)lines.push(pk('q',[`법정에서 ${q.role} ${Pj(q.who,'이')} "${q.text}"라고 했던 말이 ${won?'결국 받아들여진 셈이다':'판결에 얼마나 반영됐는지는 의문이다'}.`,`"${q.text}" — ${q.role} ${q.who}의 이 증언은 ${won?'판결과 같은 방향을 가리켰다':'끝내 무게를 얻지 못했다'}.`]));
+ lines.push(hash(c.id+r.name+'cr')%3?crit:pk('cr2',['판결문은 남고, 그 무게는 당사자들이 진다.','이번 선고가 남긴 질문은 법정 밖에서 계속될 것이다.','기록은 판결보다 오래 남는다.']));
+ lines.push(half?pk('e',['판결은 확정됐고, 남은 쪽들은 각자의 몫을 감당하게 됐다.','누구도 웃지 못한 판결이 그대로 확정됐다.']):won?pk('e',[`${judge} 재판장의 판결 이유는 기록에 충실했다는 평가를 받는다.`,`증거를 따라간 ${judge} 재판장의 판단에 힘이 실린다.`,`${judge} 재판장은 여론이 아니라 기록으로 답했다.`]):pk('e',[`${judge} 재판장의 판단은 비판을 피하기 어렵다. 이 세계에는 항소가 없고, 판결은 그대로 확정된다.`,`항소가 없는 세계에서 ${judge} 재판장의 이 판결은 그대로 확정된다. 그래서 더 아쉽다.`,`${judge} 재판장은 이 판결에 대한 질문에 답해야 한다. 판결은 이미 확정됐다.`]));
  return {title,body:lines.filter(Boolean).join(' '),phase:'after',tone:half?'mixed':won?'praise':'blame'};
 }
 /* Only cases on my own bench (assigned to me, not handed on): no coverage of cases I never took,
@@ -221,13 +225,16 @@ function articles(){
  return out;
 }
 /* ---------- news with comments ---------- */
+/* articles open from their headline; which ones the reader opened is remembered for this visit only */
+const readOpen=new Set();
+document.addEventListener('toggle',e=>{const d=e.target;if(!d?.matches?.('details.wf-art'))return;d.open?readOpen.add(d.dataset.art):readOpen.delete(d.dataset.art)},true);
 function newsFeed(limit=40){
  const list=articles().slice(0,limit);
  if(!list.length)return '<p class="muted">내가 맡은 사건이 생기면 재판 전 전망 기사부터 실려요.</p>';
  return '<div class="tv-news-list">'+list.map(a=>{
   const c=CASES.find(x=>x.id===a.caseId),key='art'+a.index,id=a.caseId+':'+key,n=3+hash(id)%3;
-  return `<article class="tv-media-card"><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div><strong>${esc(a.title)}</strong>${a.reporter?`<button class="tv-reporter" data-action="reporter" data-i="${REPORTERS.indexOf(a.reporter)}">✍ <b>${esc(a.reporter.name)} 기자</b> · ${esc(a.reporter.bio)}. ${esc(a.reporter.voice)}. <i>›</i></button>`:''}<p>${esc(a.body)}</p>
-  <button class="wf-link" data-action="wfopen" data-id="${esc(id)}">💬 ${open.has(id)?'댓글 접기':`댓글 ${n}개`}</button>${open.has(id)&&c?`<div class="wf-thread">${threadView(thread(c,key,n))}</div>`:''}</article>`;
+  return `<article class="tv-media-card"><details class="wf-art" data-art="${esc(id)}" ${readOpen.has(id)||open.has(id)?'open':''}><summary><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div><strong>${esc(a.title)}</strong><small class="wf-more">기사 펼치기</small></summary>${a.reporter?`<button class="tv-reporter" data-action="reporter" data-i="${REPORTERS.indexOf(a.reporter)}">✍ <b>${esc(a.reporter.name)} 기자</b> · ${esc(a.reporter.bio)}. ${esc(a.reporter.voice)}. <i>›</i></button>`:''}<p>${esc(a.body)}</p>
+  <button class="wf-link" data-action="wfopen" data-id="${esc(id)}">💬 ${open.has(id)?'댓글 접기':`댓글 ${n}개`}</button>${open.has(id)&&c?`<div class="wf-thread">${threadView(thread(c,key,n))}</div>`:''}</details></article>`;
  }).join('')+'</div>';
 }
 /* ---------- public opinion, case by case ---------- */

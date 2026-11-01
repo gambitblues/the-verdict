@@ -19,10 +19,18 @@ function scene(c,t,tab,status){
  if(!t)return '';
  const folded=collapsed??!['case','day'].includes(tab);
  const witnesses=t.witnesses||[],wi=Math.min(witnesses.length-1,Math.max(0,ui.t4w||0)),w=witnesses[wi];
- const live=tab==='witness',left=/criminal/.test(c.kind||'')?'검사':'원고 측';
+ const live=tab==='witness'&&!!w,left=/criminal/.test(c.kind||'')?'검사':'원고 측';
  return `<section class="cv-court ${folded?'is-collapsed':''}" aria-label="법정 전경"><div class="cv-court-bar"><span><i></i> ${esc(status)}</span><button type="button" data-cv-toggle aria-expanded="${!folded}" aria-controls="cv-court-stage">법정 ${folded?'펼치기':'접기'} <span aria-hidden="true">${folded?'＋':'−'}</span></button></div><div id="cv-court-stage" class="cv-stage" ${folded?'hidden':''}>
  <svg class="cv-room" viewBox="0 0 700 240" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="cvwall" x2="0" y2="1"><stop stop-color="#1f3138"/><stop offset="1" stop-color="#34454a"/></linearGradient><linearGradient id="cvwood" x2="0" y2="1"><stop stop-color="#8a6b4d"/><stop offset="1" stop-color="#463d35"/></linearGradient></defs><path d="M0 0h700v240H0z" fill="url(#cvwall)"/><path d="M0 148h700v92H0z" fill="#68645a"/><path d="m0 240 150-92h400l150 92M350 148v92M0 206h700" fill="none" stroke="#ddd4bf" opacity=".15"/><path d="M160 0v148m380-148v148M175 0v148m350-148v148" stroke="#ba9c6d" opacity=".35"/><path d="M198 15h304v91H198z" fill="#172b32" stroke="#ae946a" stroke-opacity=".3"/><path d="M215 27h270v67H215z" fill="none" stroke="#ae946a" stroke-opacity=".12"/><circle cx="350" cy="53" r="22" fill="none" stroke="#c0a477"/><path d="M350 38v29m-13-20h26m-26 0-7 14h14zm26 0-7 14h14zM339 70h22" stroke="#c0a477" stroke-width="1.4" fill="none"/><path d="M20 20h90v88H20zM590 20h90v88h-90z" fill="#c9c4ac" opacity=".09"/><path d="M65 20v88m-45-44h90m525-44v88m-45-44h90" stroke="#b5bcb3" opacity=".12"/><path d="M35 145h185v38H35zm445 0h185v38H480z" fill="url(#cvwood)"/><path d="M32 141h191v7H32zm445 0h191v7H477z" fill="#ac8b61"/><path d="M290 146h120v49H290z" fill="url(#cvwood)"/><path d="M286 142h128v8H286z" fill="#b79970"/><path d="M0 216h700v24H0z" fill="#302e2a"/><path d="M0 216h700" stroke="#b89a70" stroke-width="4"/><path d="m299 224 7-10h89l7 10z" fill="#e5ded0" opacity=".6"/></svg>
- <div class="cv-seat cv-left">${person(c.side?.[0],left)}</div><div class="cv-seat cv-center ${live?'is-speaking':''}">${person(w?.id,live?'증인 · '+(NPC[w?.id]?.name||'증인'):'증인석')}</div><div class="cv-seat cv-right">${person(t.opponent,'변호인')}</div><span class="cv-perspective">재판장석에서 바라본 법정</span></div></section>`;
+ ${(()=>{const ev=last&&last.caseId===c.id?last:null,crim=/criminal/.test(c.kind||'');
+  const evW=ev&&witnesses.find(x=>x.id===ev.actor),sw=live?w:evW,seated=!!sw;
+  const mood=ev?.moment&&MOMENTS[ev.moment]?.[2]||'';
+  const say=ev?(ev.moment==='objection'?'이의 있습니다!':ev.moment==='delay'?'기일을 미뤄 주십시오':ev.moment&&MOMENTS[ev.moment]?MOMENTS[ev.moment][0]:''):'';
+  const bubble=who=>ev&&ev.actor===who&&say?`<span class="cv-bubble-say ${mood?'cv-m-'+mood:''}">${esc(say)}</span>`:'';
+  const seat=(cls,id,label)=>`<div class="cv-seat ${cls} ${ev&&ev.actor===id?'is-speaking '+(mood?'cv-mood-'+mood:''):''}">${bubble(id)}${person(id,label)}</div>`;
+  return seat('cv-left',t.opponent,crim?'변호인':'피고 측')
+   +(seated?seat('cv-center'+(live?' is-live':''),sw.id,'증인 · '+(NPC[sw.id]?.name||'증인')):`<div class="cv-seat cv-center"><div class="cv-seat-empty"><span>증인석</span></div></div>`)
+   +seat('cv-right',c.side?.[0],left)})()}</div></section>`;
 }
 const CHIP={flip:['말이 바뀜','flip'],shift:['자기 말과 어긋남','clash'],clash:['다른 증인과 엇갈림','clash'],admit:['증거 앞에서 털어놓음','turn'],correct:['정정함','turn'],revert:['처음 말로 돌아옴','turn'],hold:['증거에도 버팀','hold'],yield:['대질에서 물러섬','turn'],standoff:['대질에서 버팀','hold']};
 function witness(w,p,latest){
@@ -72,7 +80,7 @@ const MOMENTS={
  flip:['진술이 흔들립니다','≋','flip'],shift:['앞선 자기 진술과 어긋납니다','⚠','clash'],clash:['다른 증인의 말과 엇갈립니다','⇄','clash'],
  admit:['증거 앞에서 털어놓았습니다','◆','turn'],correct:['증거를 보고 정정했습니다','✎','turn'],revert:['처음 진술로 돌아왔습니다','↩','turn'],hold:['증거를 보고도 버팁니다','▮','hold'],
  yield:['대질 끝에 한쪽이 물러섰습니다','⇆','turn'],standoff:['대질에서 둘 다 물러서지 않았습니다','⇹','hold'],
- objection:['이의에 대한 결정','✋','']
+ objection:['이의에 대한 결정','✋',''],delay:['기일 연기 신청에 대한 결정','⏳','']
 };
 function record(caseId,kind,text,actor=null,moment=null){if(!text)return;last={caseId,kind,text,actor,moment,serial:++eventSerial};}
 function event(caseId){
