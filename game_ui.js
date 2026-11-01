@@ -139,7 +139,7 @@ function hearingCard(c){
 home=function(){
  if(!S.name)return '<div class="panel">판사 프로필을 생성해 커리어를 시작하세요.</div>';
  const t=clockData(),cases=openCases().slice(0,5),articles=window.VerdictMedia?.articles().slice(0,4)||[];
- return '<div class="tv-home"><section class="tv-welcome"><div><span class="eyebrow">THE VERDICT · JUDICIAL CAREER</span><h2>오늘도 법정은 열립니다.</h2><p>'+esc(S.name)+' 판사 · '+esc(S.post)+' · 진행 중 '+openCases().length+'건</p></div><div class="tv-judge-photo">'+avatar('self')+'</div></section>'+
+ return '<div class="tv-home"><section class="tv-welcome"><div><span class="eyebrow">THE VERDICT · JUDICIAL CAREER <span class="ver-badge">v'+esc(window.VERDICT_VERSION||'')+' · '+esc(window.VERDICT_RELEASED||'')+'</span></span><h2>오늘도 법정은 열립니다.</h2><p>'+esc(S.name)+' 판사 · '+esc(S.post)+' · 진행 중 '+openCases().length+'건</p></div><div class="tv-judge-photo">'+avatar('self')+'</div></section>'+
  '<section class="tv-clock"><div><small>실제 현재시간</small><strong class="tv-clock-local">'+esc(t.time)+'</strong><span>'+esc(t.weekday)+'</span></div><div><small>게임 달력</small><strong>'+esc(t.gameDate)+'</strong><span>공판이 열릴 때 흘러요</span></div><div><small>다음 배당</small><strong class="tv-clock-next">'+esc(t.next)+'</strong><span>10:00–22:00 · 매시 정각</span></div></section>'+
  priority()+
  '<section class="tv-open-cases"><div class="row between"><h3>⚖ 진행 중인 재판</h3><button class="btn ghost mini" data-action="tab" data-tab="courtList">전체 사건</button></div>'+
