@@ -206,7 +206,16 @@ function ensure(c,st){
  return t;
 }
 /* A trial started under the older rules keeps going under the new ones. */
+/* Written cases rolled before v6.0.1 could have had their first evidence's hidden flaw rotated on a repeat. Bring any
+ * unfinished trial back in line with the text the player reads; finished verdicts keep their record as scored. */
+function syncFlaws(c,t){
+ if(!curOf(c)||t.final||t.flawSynced)return;t.flawSynced=true;
+ for(const e of t.evidence){const want=evDetail(c,e)?.flaw||(e.late?curOf(c)?.late?.flaw:null);if(!want||e.flawType===want)continue;
+  e.flawType=want;if(want==='none'){e.flaw=0;e.surface=e.strength}else{e.flaw=Math.max(e.flaw||0,40);e.surface=Math.max(e.surface||0,e.strength)}
+  if(want==='none')e.publicFlaw=false}
+}
 function upgrade(c,t){
+ syncFlaws(c,t);
  if(t.v>=5){t.dates??={};t.nextDate??=today();return t}
  t.v=5;t.heard??=[];t.notices??=[];t.qLeft=QPD;t.qpd=QPD;delete t.energy;t.dates??={};t.nextDate??=today();
  if(curOf(c))t.evidence.forEach(e=>{e.revealed=2});
