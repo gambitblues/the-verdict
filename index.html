@@ -22,7 +22,7 @@
   <div id="toast" aria-live="polite"></div>
 <script>
 /* Release version: bump together with CACHE in sw.js and the top entry of docs/CHANGELOG.md (tests/version.test.cjs checks). */
-window.VERDICT_VERSION='7.0.2';window.VERDICT_RELEASED='2026.11.02';
+window.VERDICT_VERSION='8.0.0';window.VERDICT_RELEASED='2026.11.02';
 /* Profile bootstrap must run before the deferred runtime reads the active save. */
 (()=>{const K='the_verdict_alpha_1',P='verdict_player_active',slot=id=>'verdict_player_save_'+id;
 const active=localStorage.getItem(P)||'1';const main=localStorage.getItem(K);
@@ -52,12 +52,18 @@ const saved=localStorage.getItem(slot(active));if(saved!==null)localStorage.setI
 </style>
   <script src="./save_store.js" defer></script>
   <script src="./court_visuals.js" defer></script>
+  <script src="./career_balance.js" defer></script>
+  <script src="./avatar_system.js" defer></script>
   <script src="./game_runtime.js" defer></script>
   <script src="./game_hearings.js" defer></script>
   <script src="./game_professions.js" defer></script>
   <script src="./game_ui.js" defer></script>
   <script src="./trial_core.js" defer></script>
+  <script src="./hearing_events.js" defer></script>
   <script src="./media_desk.js" defer></script>
+  <script src="./match_engine.js" defer></script>
+  <script src="./world_sheets.js" defer></script>
+  <script src="./match_play.js" defer></script>
   <script src="./trial_play.js" defer></script>
   <script src="./world_feed.js" defer></script>
   <script src="./people_map.js" defer></script>

@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');const A=require('../avatar_system.js');
+assert.equal(A.CATALOG.length,1500);
+assert.equal(new Set(A.CATALOG.map(x=>x.id)).size,1500);
+assert.equal(A.CATALOG.filter(x=>x.gender==='male').length,750);
+assert.equal(A.CATALOG.filter(x=>x.gender==='female').length,750);
+for(const [band,count] of Object.entries({'20s':180,'30s':360,'40s':420,'50s':360,'60s':180}))assert.equal(A.CATALOG.filter(x=>x.ageBand===band).length,count,band);
+const a=A.assign('npc-404',{gender:'여성'},null,34),b=A.assign('npc-404',{gender:'여성'},null,34);
+assert.equal(a.id,b.id);assert.equal(a.gender,'female');assert.equal(a.ageBand,'30s');
+assert.equal(A.profile(0).id,'KR-M-001');assert.equal(A.profile(250).id,'KR-F-001');
+assert.equal(A.profile(500).id,'KR-M-251');assert.equal(A.profile(1000).id,'KR-F-251');
+assert.ok(A.assignNew('new-person-1',{gender:'여성'},34).index>=1000);
+assert.ok(A.assignNew('new-person-2',{gender:'남성'},56).index>=500);
+const svg=A.render('self',{gender:'남성'},{age:38,role:'judge'});assert.match(svg,/svg/);assert.match(svg,/avatar-v2/);
+const old=A.svg(a,{age:30}),older=A.svg(a,{age:68});assert.notEqual(old,older);
+const bytes=fs.statSync(path.join(__dirname,'../avatar_system.js')).size;
+assert.ok(bytes<1150000,'avatar source too large');
+assert.equal(A.staticImageBytes,0);
+console.log('PASS 1500 vector portraits, 750/750 genders, age quotas, stable identity, no image assets, '+bytes+' bytes code');

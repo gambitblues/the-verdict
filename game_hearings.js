@@ -166,7 +166,7 @@ function hashOf(s){let x=2166136261;for(const ch of String(s))x=Math.imul(x^ch.c
 const busy=()=>new Set(openCases().map(c=>c.contentPack?.archetypeId).filter(Boolean));
 function preview(item){const a=item.a,cur=window.VerdictCurated?.cases[a.id];
  return {title:a.title,tag:a.tag,category:a.category,kind:a.kind,archetypeId:a.id,packId:item.pack.packId,importance:a.importance||3,
-  logline:cur?window.VerdictCurated.fill(cur.logline,{}):'',legal:a.legal||''}}
+  logline:cur?window.VerdictCurated.fill(cur.logline,{}):(window.VerdictMatchPlay?.logline(a.id)||''),legal:a.legal||''}}
 /* Two contrasting cases for one hour: different archetypes, and when possible a different kind or weight. */
 function offerPair(slot){
  const taken=busy(),pool=candidates().filter(x=>!taken.has(x.a.id));const list=pool.length?pool:candidates();

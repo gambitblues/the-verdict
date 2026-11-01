@@ -152,7 +152,7 @@ function ranking(){
  const categories=[['judge','판사'],['prosecutor','검사'],['lawyer','변호사']];
  const sorted=(role)=>ids.filter(id=>NPC[id].legalCareer.role===role).sort((a,b)=>(NPC[b].legalCareer.fame||0)-(NPC[a].legalCareer.fame||0)||NPC[b].legalCareer.trialSkill-NPC[a].legalCareer.trialSkill);
  return '<div class="tv-ranking"><h2>🏆 법조계 랭킹</h2><p class="muted small">가상 법조인의 인지도·실력·대표 사건이 누적돼. 유명세는 법적 책임과 별개야.</p>'+
- '<div class="tv-my-fame"><b>나의 법조계 인지도</b><strong>'+(S.legalWorld?.playerFame||0)+'/100</strong></div>'+
+ '<div class="tv-my-fame"><b>나의 법조계 인지도</b><strong>'+Math.round(S.legalWorld?.playerFame||0)+'/100</strong></div>'+
  categories.map(([role,label])=>'<section class="tv-rank-group"><h3>'+label+'</h3>'+
  (sorted(role).slice(0,8).map((id,i)=>{
  const p=NPC[id],c=p.legalCareer,firm=(S.legalWorld?.firms||[]).find(f=>f.id===c.firmId);

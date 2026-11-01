@@ -716,6 +716,23 @@ body.t4-court #toast{bottom:168px}
  #modal-root .modal{max-width:min(680px,88vw)}
 }
 
+/* ===== v8.0 match trials (match_play.js) ===== */
+.mp-group{margin:8px 0;border:1px solid #e6dfcf;border-radius:12px;background:#fffdf8}
+.mp-group>summary{padding:10px 12px;font-weight:700;font-size:14px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.mp-group>summary::-webkit-details-marker{display:none}
+.mp-group>summary i{font-style:normal;font-size:12px;min-width:22px;text-align:center;padding:1px 7px;border-radius:999px;background:#efe7d6;color:#6b5a3a}
+.mp-group[open]>summary{border-bottom:1px solid #eee6d6}
+.mp-group .t4-q{margin:6px 10px;width:calc(100% - 20px)}
+.mp-log{display:flex;flex-direction:column;gap:8px}
+.mp-line{padding:8px 10px;border-radius:10px;background:#fff;border:1px solid #ece5d6}
+.mp-line.court{background:#f5f1e8}
+.mp-line b{font-size:12.5px;color:#6b5a3a}.mp-line p{margin:3px 0 0;font-size:14px;line-height:1.55}
+.mp-line .t4-tag{display:inline-block;margin-top:5px}
+.mp-raw{font-size:13.5px;line-height:1.55;white-space:pre-wrap}
+.mp-facts li{margin:3px 0}
+.mp-choices .t4-q b{display:block;font-size:14.5px}
+.mp-choices .t4-q span{display:block;margin-top:2px;font-size:12.5px;color:#5d6773}
+.mp-choices .t4-q.on{border-color:#b98a3e;background:#fff6e3;box-shadow:0 0 0 2px rgba(185,138,62,.25)}
 /* ===== v7.0.2 one place for the bottom app bar, the trial dock and the space below the content =====
    Widths: ≤599 phones / folded Fold (one column) · 600–1100 Fold unfolded / small tablets (wider, bar at the bottom)
    · ≥1101 desktop (sidebar, no bottom bar). --vv-gap comes from viewport_fix.js: the part of the layout viewport that
@@ -746,3 +763,16 @@ body.t4-court #toast{bottom:168px}
 /* unfolded Fold / small tablets: the case list uses two columns */
 @media (min-width:820px) and (max-width:1100px){.case-list{display:grid;grid-template-columns:1fr 1fr;gap:12px}.case-list>*{margin:0!important}}
 
+
+/* Folded Galaxy Fold readability experiment — develop only, no release/version bump.
+   Applies to narrow touch phones up to 430px (Fold folded ≈412px, iPhone 390~430), not the unfolded/tablet layout. */
+@media (max-width:430px) and (pointer:coarse){
+ body{font-size:15px;line-height:1.6}
+ .small,.t4-sheet-lead,.t4-order-hist li p,.t4-orders-issued,.t4-rec-orders{font-size:14px}
+ .xs,.t4-orders-why,.t4-orders-hint span,.t4-order-hist li small,.t4-newflag,.t4-newjump{font-size:13px}
+ .t4-q.order,.t4-orders-panel .t4-q.order{font-size:14px;line-height:1.55;min-height:44px}
+ .t4-q.order small,.t4-orders-panel .t4-q.order small,.t4-order-hist li div{font-size:12px}
+ .t4-sheet-body,.t4-sheet-sum p{font-size:14px;line-height:1.6}
+ .t4-steps button{font-size:12px}
+ .t4-sheet-foot .btn,.bottom-nav button{min-height:44px}
+}

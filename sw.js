@@ -1,8 +1,8 @@
 /* THE VERDICT service worker — network first, offline fallback. Bump CACHE on every release. */
-const CACHE='the-verdict-v7.0.2'; // includes the courtroom visuals (court_visuals.js/.css)
+const CACHE='the-verdict-v8.0.0'; // v8: match trials (match_engine.js · world_sheets.js · match_play.js)
 const FILES=['./','./index.html','./game.css','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png','./apple-touch-icon.png',
  './names.js','./deep_case_engine.js','./story_engine.js','./case_pack_engine.js','./curated_cases.js','./continuity_engine.js','./npc_life_justice.js','./family_engine.js',
- './save_store.js','./viewport_fix.js','./court_visuals.js','./court_visuals.css','./game_runtime.js','./game_hearings.js','./game_professions.js','./game_ui.js','./trial_core.js','./media_desk.js','./trial_play.js','./world_feed.js','./people_map.js','./v6_world.js','./app_install.js',
+ './save_store.js','./avatar_system.js','./viewport_fix.js','./court_visuals.js','./court_visuals.css','./career_balance.js','./game_runtime.js','./game_hearings.js','./game_professions.js','./game_ui.js','./trial_core.js','./hearing_events.js','./media_desk.js','./match_engine.js','./world_sheets.js','./match_play.js','./trial_play.js','./world_feed.js','./people_map.js','./v6_world.js','./app_install.js',
  './content-packs/index.json','./content-packs/starter-v1.json','./content-packs/beta-weekend-100-v1.json','./content-packs/v6-new-30-v1.json','./content-packs/narrative-100-v1.json',
  './content-packs/drama-100-v1.json','./content-packs/court-editorial-100-v1.json','./content-packs/forensic-detail-33-v1.json'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting())));

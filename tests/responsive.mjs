@@ -26,10 +26,11 @@ const url='http://127.0.0.1:'+server.address().port+'/';
 await mkdir(path.join(base,'qa-visuals'),{recursive:true});
 const VIEWS=[['iphone',390,844],['android',360,780],['fold-folded',412,915],['fold-open',884,1004],['fold-open-landscape',1004,884],['tablet',1024,1366],['short-phone',390,640],['desktop',1280,800]];
 const browser=await chromium.launch({headless:true});
-const report=[];
+const report=[];let docksLifted=0;
 try{
  for(const [name,w,h] of VIEWS){
   const page=await browser.newPage({viewport:{width:w,height:h},isMobile:w<=1100,hasTouch:w<=1100});
+  await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
   const errs=[];page.on('pageerror',e=>errs.push(e.message));
   const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(60);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().dispatchEvent('click');continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().dispatchEvent('click');continue}break}};
   const noSideways=async where=>{const o=await page.evaluate(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth}));assert.ok(o.sw<=o.cw+1,`${name}/${where}: sideways scroll ${o.sw}>${o.cw}`)};
@@ -65,10 +66,10 @@ try{
   await page.screenshot({path:`qa-visuals/responsive-${name}-4-verdict.png`});
   await page.locator('[data-action="t4sheet"][data-v="close"]').dispatchEvent('click');
   // Android home-screen launch: a 48px hidden strip lifts the bar and the dock by exactly that much
-  if(w<=1100){const before=await page.evaluate(()=>[document.querySelector('.bottom-nav').getBoundingClientRect().bottom,document.querySelector('.t4-dock')?.getBoundingClientRect().bottom]);
-   await page.evaluate(()=>document.documentElement.style.setProperty('--vv-gap','48px'));await page.waitForTimeout(50);
+  if(w<=1100){const before=await page.evaluate(()=>[document.querySelector('.bottom-nav').getBoundingClientRect().bottom,document.querySelector('.t4-dock')?.getBoundingClientRect().bottom,document.querySelector('.bottom-nav').getBoundingClientRect().top]);
+   await page.evaluate(()=>document.documentElement.style.setProperty('--vv-gap','48px'));await page.waitForTimeout(400);
    const after=await page.evaluate(()=>[document.querySelector('.bottom-nav').getBoundingClientRect().bottom,document.querySelector('.t4-dock')?.getBoundingClientRect().bottom]);
-   assert.equal(Math.round(before[0]-after[0]),48,`${name}: bar lifted by the hidden strip`);if(before[1]&&after[1])assert.equal(Math.round(before[1]-after[1]),48,`${name}: dock lifted with it`);
+   assert.equal(Math.round(before[0]-after[0]),48,`${name}: bar lifted by the hidden strip`);if(before[1]&&after[1]&&Math.abs(before[1]-before[2])<=3){assert.equal(Math.round(before[1]-after[1]),48,`${name}: dock lifted with it`);docksLifted++}   // the dock is sticky: it only rides the bar while it is stuck above it (short pages leave it in place)
    await page.evaluate(()=>{document.documentElement.classList.add('kb-open')});assert.ok(!(await page.locator('.bottom-nav').isVisible()),`${name}: bar hides while typing`);
    await page.evaluate(()=>{document.documentElement.classList.remove('kb-open');document.documentElement.style.setProperty('--vv-gap','0px')})}
   // fold / unfold: same page, new size, game kept
@@ -78,5 +79,5 @@ try{
   assert.deepEqual(errs,[],name+': page errors');
   report.push(`${name} ${w}×${h}`);await page.close();
  }
- console.log('PASS: responsive · '+report.join(' · '));
+ assert.ok(docksLifted>=3,'the dock rides the bar on at least three phone-sized screens ('+docksLifted+')');console.log('PASS: responsive · docks lifted '+docksLifted+' · '+report.join(' · '));
 }finally{await browser.close();server.close()}

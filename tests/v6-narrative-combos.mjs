@@ -20,6 +20,7 @@ const server=http.createServer(async(q,r)=>{const f=path.resolve(base,'.'+decode
 await new Promise(o=>server.listen(0,'127.0.0.1',o));
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage();const errs=[];page.on('pageerror',e=>errs.push(e.message));
+await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
 try{
  await page.goto('http://127.0.0.1:'+server.address().port+'/',{waitUntil:'networkidle'});
  await page.locator('#profile-continue').click();await page.locator('#playerName').fill('서사 검증');

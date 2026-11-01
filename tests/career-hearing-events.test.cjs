@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict');
+const Balance=require('../career_balance.js');
+const Events=require('../hearing_events.js');
+let s={professional:40,publicity:10,legalWorld:{playerFame:2}};
+for(let i=0;i<100;i++){Balance.award(s,'case-'+i,85,3,2026+Math.floor(i/12));Balance.fame(s,'case-'+i,85,3)}
+assert.ok(s.professional<80,'career skill saturates too fast');
+assert.ok(s.publicity<25,'publicity must fade with elapsed years');
+assert.ok(s.legalWorld.playerFame<60,'legal fame saturates too fast');
+const prev=s.professional;
+assert.equal(Balance.award(s,'case-0',85,4,2045).applied,false);
+assert.equal(s.professional,prev);
+const c={id:'criminal-1',kind:'criminal'},st={trial4:{day:1,log:[]}};
+assert.equal(Events.available(c,st,true).length,3);
+assert.throws(()=>Events.apply(c,st,'reflection',false,'a'));
+const a=Events.apply(c,st,'reflection',true,'a');
+assert.equal(st.hearingEvents.length,1);assert.equal(st.trial4.log.length,1);assert.equal(a.effect,'none');
+assert.ok(!Events.available(c,st,true).some(x=>x.id==='reflection'));
+assert.throws(()=>Events.apply(c,st,'reflection',true,'a'));
+const civil={id:'civil-1',kind:'civil'};
+assert.deepEqual(Events.available(civil,{trial4:{day:1}},true).map(x=>x.id),['settlement']);
+console.log('PASS forty-year career pacing, idempotence and courtroom event gates');

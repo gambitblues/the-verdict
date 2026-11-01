@@ -25,6 +25,11 @@ jobs:
           node --check people_map.js
           node --check v6_world.js
           node --check save_store.js
+          node --check career_balance.js
+          node --check hearing_events.js
+          node --check match_play.js
+          node --check world_sheets.js
+          node tests/build-sheets.cjs --check
           node tests/media-desk.test.cjs
           node tests/save-store.test.cjs
           node --check curated_cases.js
@@ -34,6 +39,26 @@ jobs:
           node tests/v6-behaviour.test.cjs
           node tests/version.test.cjs
           node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('content-packs/court-editorial-100-v1.json'));if(p.cases.length!==100)process.exit(1)"
+      - name: Advanced case engine and linked pilot regression
+        run: |
+          node tests/advanced-case-engine.test.cjs
+          node tests/advanced-witness-engine.test.cjs
+          node tests/advanced-timeline-evidence.test.cjs
+          node tests/advanced-courtroom-conflict.test.cjs
+          node tests/advanced-pilot-integration.test.cjs
+          node tests/advanced-world-schema.test.cjs
+          node tests/advanced-production-ledger.test.cjs
+          node tests/advanced-story-beats-99.test.cjs
+          node tests/advanced-expanded-99.test.cjs
+          node tests/advanced-individualized-005.test.cjs
+          node tests/advanced-assembled-99.test.cjs
+          node tests/advanced-legacy-60.test.cjs
+          node tests/career-hearing-events.test.cjs
+          node tests/avatar-500.test.cjs
+          node tests/avatar-production-budget.test.cjs
+          node tests/advanced-content-qa.cjs
+          node tests/world-sheets.test.cjs
+          node tests/match-engine.test.cjs
       - name: Install browser test tooling
         run: |
           npm install --no-save playwright
@@ -42,6 +67,12 @@ jobs:
         run: node tests/visuals.mjs
       - name: Responsive layout (phones, Fold folded/unfolded, tablet, desktop)
         run: node tests/responsive.mjs
+      - name: Match engine dev screen (play a trial, 30-trial run)
+        run: node tests/match-engine-screen.mjs
+      - name: Match trials in the game (pool, real screen, verdict, every sheet case)
+        run: node tests/match-play.mjs
+      - name: Party materials on the hearing page (defendant questions, reflection, settlement)
+        run: node tests/hearing-events.mjs
       - name: Evidence shapes and witness moments (visual review gallery)
         run: node tests/evidence-moments.mjs
       - name: Run mobile viewport browser test
