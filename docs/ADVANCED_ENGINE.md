@@ -11,3 +11,10 @@ This module is **experimental** and does not replace the currently running trial
 
 Run: `node tests/advanced-case-engine.test.cjs`.
 \n## Witness Engine v1 — 작성 규칙 (Advanced 전용)\n\n`advanced_witness_engine.js`는 기존 게임에 아직 연결되지 않은 독립 모듈이다. `AdvancedCase.create()`에 제공되는 세 진실별 `witnesses[]` 안에 `script`를 작성한다. 응답은 오직 `script[questionId].responses.initial/clarify/confront/recall.text`에 기록한 문구 중에서 선택하며 자동 문장 생성과 임의 사실 추가를 하지 않는다.\n\n- `traits` 선택 수치: `memoryAccuracy`, `memoryConfidence`, `honesty`, `pressureSensitivity`, `interest` (각 0~100). v1에서는 메타데이터이고 사실이나 응답을 자동 변경하지 않는다.\n- `observedEventIds`는 증인이 실제 관찰한 고정 사건 ID다. 직접 목격 응답은 `knowledgeSource: 'direct'`와 해당 `eventId`를 명시해야 한다. 기억·전언·자료 열람은 `memory/hearsay/document/inference/unknown`으로 구별한다.\n- `initial`: 첫 질문에서만 가능. `clarify`: 같은 질문의 선행 답변 뒤 가능. `confront`: 같은 질문의 선행 답변 + `confrontEvidenceIds` 중 하나가 법정에 제출된 뒤 가능. `recall`: 선행 답변 + 그 증인에 대한 재소환 명령 기록이 있을 때 가능.\n- 응답은 항상 제작자가 쓴 대사 그대로 저장한다. 같은 시드·같은 행동 이력에서는 같은 답변이 나온다. 이 엔진은 진술의 진실성·범죄 성립·동의 여부를 자동 판단하지 않는다.\n- `tests/advanced-witness-engine.test.cjs`로 기본 상태 전이·법정 증거 대조·재소환·세이브 재현을 검증하도록 마련했다.\n- **남은 작업:** 최초 증언·추가 증언의 플레이 화면 연결, 허위 직접 목격의 허용 여부 등 고급 지식 모델, 신청의 적법성 검토, 작성자용 실제 사건 시드 3~5건과 통합 브라우저 QA.\n
+## Timeline & Evidence Engine v1 (독립 모듈)
+
+- `advanced_timeline_evidence.js`: 확정된 사건 시드의 `events` 및 `evidence` ID와 대조하여 기록의 시각·출처·확보 경위를 확인한다.
+- 시간은 반드시 날짜와 시간대가 포함된 ISO 값(`2026-06-12T00:43+09:00`)으로 기획한다. `devices[deviceId].offsetMinutes`는 **장치 표시 시간 = 실제 시간 + 오차(분)**으로 정의한다. 동일 장치의 모든 관련 기록에 같은 오차를 적용한다.
+- `records`에는 `id,kind,source,provenance,at`와 선택적인 `eventId,deviceId,uncertaintyMinutes`를 기록한다. 시간 비교 결과는 양립 여부이지 진위, 동의, 유무죄 판정이 아니다.
+- 원본 증거로 잠기지 않은 ID를 법정 제출할 수 없다. 제출 기록은 사건 진실을 변경하지 않고 법정 이력에 추가한다. 중복 제출은 중복 기록하지 않는다.
+- 현재는 개발용 순수 데이터 모듈이며 기존 사건 화면과 연결되지 않았다. 타임라인 증거의 진위·장치 오차는 기획자가 검증하여 제공해야 한다. 테스트 파일은 `tests/advanced-timeline-evidence.test.cjs`.
