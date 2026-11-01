@@ -33,6 +33,11 @@ try{
  await page.locator('[data-action="start"]').last().click();
  await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});
  await page.waitForFunction(()=>(S.casePacks||[]).some(p=>p.packId==='v6-new-30'),null,{timeout:10000});
+ // the court tab lists the trials in progress under the assignment box (v6.5.1: a summary-line change had hidden it)
+ await page.evaluate(()=>{ui.tab='courtList';ui.caseId=null;render()});
+ assert.equal(await page.locator('.case-list > *').count(),await page.evaluate(()=>openCases().length),'court tab must list every open trial');
+ assert.ok(await page.locator('.t4-sumline').count(),'one-line summary on top');
+ console.log('  ✓ court tab: summary line + trials in progress');
  // ---- A ----
  const id=await page.evaluate(()=>{for(const c of S.generatedCases)S.cases[c.id].referred=true;const cand=CasePackEngine.pool(S).find(x=>x.a.id==='v6-homicide-cold-storage');const c=createGeneratedCase(cand);S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};c.week=S.week;ui.tab='court';ui.caseId=c.id;save();render();return c.id});
  await page.locator('.t4-tabs').waitFor();await tab('day');
