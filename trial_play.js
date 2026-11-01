@@ -99,11 +99,49 @@ function fixSex(c){const s=curOf(c)?.sex;if(!s||c.sexFixed||!c.who)return;c.sexF
  if(s.AB==='same')setSex(c,b,same(NPC[a]));else if(s.AB==='diff')setSex(c,b,other(NPC[a]))}
 function witnessSex(c,i,id){const r=curOf(c)?.sex?.W?.[i];if(!r)return;const ref=NPC[c.who?.[r.endsWith('A')?0:1]];if(!ref)return;
  setSex(c,id,r.startsWith('same')?same(ref):other(ref))}
-window.VerdictSex={fix:fixSex};
+
+/* ---------- who people are: ages, jobs, degrees and marriage that match the story ---------- */
+const ageOf=p=>p?.bornYear?year()-p.bornYear:null;
+function setAge(c,id,lo,hi){const p=NPC[id];if(!p)return;lo=Math.max(18,Math.round(lo));hi=Math.max(lo,Math.round(hi));const now=ageOf(p);
+ if(now!=null&&now>=lo&&now<=hi)return;const age=lo+Math.floor(rand()*(hi-lo+1)),old=p.bornYear;p.bornYear=year()-age;p.ageAtStart=age;
+ if(Math.abs((old||p.bornYear)-p.bornYear)>=8){const was=p.name;p.name=VerdictNames.make({gender:p.gender,bornYear:p.bornYear,rand,people:NPC});swapName(c,p,was)}}
+const BLUE=/기사|정비공|사장|택배|간호조무사|대리운전|임대업|건물주|무직/;
+function sanityDegree(p,job){const a=ageOf(p)||40;
+ if(/석사|박사/.test(p.degree||'')&&(BLUE.test(job||'')||a<26))p.degree=a<23?'대학 재학':'학사'}
+function setJob(p,job){if(!job)return;p.career=job;if(p.jobHistory?.length)p.jobHistory[p.jobHistory.length-1].job=job}
+function fixProfile(c){const pr=curOf(c)?.profile;if(!pr||c.profileFixed||!c.who)return;c.profileFixed=true;
+ ['A','B'].forEach((k,n)=>{const x=pr[k],id=c.who[n],p=NPC[id];if(!x||!p)return;
+  if(x.same==='A'&&ageOf(NPC[c.who[0]])!=null){const a=ageOf(NPC[c.who[0]]);setAge(c,id,a,a)}else setAge(c,id,x.age[0],x.age[1]);
+  setJob(p,x.job);if(x.deg)p.degree=x.deg;if(x.mar)p.maritalStatus=x.mar;if(x.kids!=null)p.children=x.kids;sanityDegree(p,x.job)})}
+/* Witness ages: relatives and friends follow the parties, careers follow "N년째", titles set a floor. */
+function witnessProfile(c,i,id){const cur=curOf(c),w=cur?.witnesses?.[i],p=NPC[id];if(!w||!p||c.who==null)return;
+ const role=String(w.role||''),story=String(w.story||'')+' '+String(w.stake||''),txt=role+' '+story;
+ const A=ageOf(NPC[c.who[0]]),B=ageOf(NPC[c.who[1]]),crim=isCriminal(c);
+ const refOf=()=>/\{B/.test(story)&&!/\{A/.test(story)?B:/\{A/.test(story)&&!/\{B/.test(story)?A:/피해자|원고/.test(role)&&!/피고/.test(role)?(crim?B:A):/피고인|피고/.test(role)?(crim?A:B):(/피해자/.test(story)?(crim?B:A):A);
+ let r=null;
+ if(/배우자/.test(role)){const x=refOf();r=[x-4,x+4];p.maritalStatus='기혼'}
+ else if(/손위 형제/.test(role))r=[A+2,A+9];
+ else if(/동생/.test(role)){const x=refOf();r=[x-9,x-1]}
+ else if(/^둘째$/.test(role))r=[Math.min(A,B)+1,Math.max(A,B)-1];
+ else if(/자녀/.test(role)){const x=refOf();r=[x-36,x-24]}
+ else if(/할머니|할아버지/.test(role)){const x=crim?A:B;r=[Math.max(58,x+22),x+34]}
+ else if(/동기|동갑|동창|친구|학번/.test(txt)){const x=refOf();r=[x-1,x+1]}
+ else if(/후배|옆방 학생/.test(txt)){const x=refOf();r=[x-3,x-1]}
+ else if(/상사|사수/.test(role+' '+story)&&/피고인|피해자|원고|피고|\{[AB]/.test(role+story)){const x=refOf();r=[x+3,x+15]}
+ else if(/주선자|공통 지인/.test(txt)){r=[Math.min(A,B)-2,Math.max(A,B)+2]}
+ if(!r){const m=story.match(/(\d+)\s*년\s*(?:째|차|경력|가까이|동안|을|간)/)||story.match(/경력\s*(\d+)\s*년/);
+  if(m){const n=Number(m[1]);r=[Math.min(66,n+22),Math.min(72,n+40)]}}
+ if(!r){if(/은퇴|노부부/.test(txt))r=[63,82];else if(/교수/.test(role))r=[42,64];else if(/대학원|연구실 동료/.test(txt))r=[25,33];else if(/조교/.test(role))r=[24,32];
+  else if(/대학생|학생|부원/.test(txt))r=[19,26];else if(/주치의|원장|대표|사장|회장|팀장|과장|부장|책임자|관리자|감독관|감식관|매니저/.test(role))r=[36,62]}
+ if(!r){const a=ageOf(p);if(a<21)r=[22,55];else if(a>66&&!/은퇴|노/.test(txt))r=[30,62]}
+ if(r&&r.every(Number.isFinite))setAge(c,id,r[0],r[1]);
+ if(!/의 |배우자|동생|자녀|둘째|할머니|할아버지|친구/.test(role))setJob(p,role);
+ sanityDegree(p,role)}
+window.VerdictSex={fix:c=>{fixSex(c);fixProfile(c)}};
 
 function ensure(c,st){
  if(st.trial4)return upgrade(c,st.trial4);
- fixSex(c);
+ fixSex(c);fixProfile(c);
  const seed=c.id+':'+(S.rng||1);
  const witnesses=witnessSeeds(c).map((w,i)=>{
   let id=w.existing;
@@ -112,7 +150,7 @@ function ensure(c,st){
    const g0=NPC[id].gender;
    if(/할머니|어머니|딸|누나|언니|아내/.test(w.role))NPC[id].gender='여';else if(/할아버지|아버지|아들|형|오빠|남편/.test(w.role)&&!/형제/.test(w.role))NPC[id].gender='남';
    if(NPC[id].gender!==g0)NPC[id].name=VerdictNames.make({gender:NPC[id].gender,bornYear:NPC[id].bornYear,rand,people:NPC});
-   witnessSex(c,i,id);
+   witnessSex(c,i,id);witnessProfile(c,i,id);
    remember(id,'관련 사건',c.name+'의 증인으로 출석',c.id)}
   return {id,role:w.role,knowledge:w.knowledge,interest:w.interest,story:w.story||''};
  });
