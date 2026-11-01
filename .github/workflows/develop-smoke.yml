@@ -26,6 +26,7 @@ jobs:
           node --check curated_cases.js
           node tests/narrative-qa.cjs
           node tests/trial-core.test.cjs
+          node tests/v6-case-matrix.test.cjs
           node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('content-packs/court-editorial-100-v1.json'));if(p.cases.length!==100)process.exit(1)"
       - name: Install browser test tooling
         run: |
