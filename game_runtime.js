@@ -239,6 +239,10 @@ function freshNPC(role,caseSerial,category){
   reputation:Math.round(15+rand()*65),debts:Math.max(0,Math.round((65-economy)*rand())),
   socialNetwork:[],historyEvents:[]};
  LifeJustice.enrich(data,rand,year());
+ if(window.VerdictAvatars){
+  const assigned=new Set(Object.values(S.npcDB||{}).map(p=>p.avatarSeedId).filter(Boolean));
+  data.avatarSeedId=window.VerdictAvatars.assignNew(id,data,year()-bornYear,assigned).id;
+ }
  NPC[id]=data;S.npcDB[id]=data;S.relations[id]=15+Math.floor(rand()*20);S.memories[id]=[];return id;
 }
 function remember(id,type,body,caseId){
