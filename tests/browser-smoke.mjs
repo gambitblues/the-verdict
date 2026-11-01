@@ -44,7 +44,9 @@ try{
  await page.locator('.t4-tab[data-tab="case"]').click();
  assert.ok(await page.locator('.t4-case').isVisible(),'case page not visible');
  // the other side's requests arrive as a pop-up; answer them whenever one is open
- const answer=async()=>{await page.waitForTimeout(150);let n=0;const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');while(await b.count()){await b.first().click();await page.waitForTimeout(100);n++}return n};
+ // requests and notices (rebuttal, new evidence) arrive as pop-ups; answer or close them
+ const answer=async()=>{let n=0;for(let k=0;k<8;k++){await page.waitForTimeout(150);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');
+  if(await b.count()){await b.first().click();n++;continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}return n};
  // each page should be close to one phone screen
  for(const id of ['evidence','witness','log']){await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight)<1400,'page '+id+' scrolls too far')}
@@ -61,21 +63,23 @@ try{
   await tab('day');
   assert.ok(await page.locator('.t4-todo li').count()>=3,'today checklist missing');
   await tab('evidence');
-  assert.ok(await page.locator('.t4-flaw b').first().textContent().then(x=>/약점|불법/.test(x)),'evidence weakness should be in plain words');
-  const inspect=page.locator('.t4 [data-kind="inspect"]:not([disabled])').first();if(await inspect.count())await inspect.click();
+  assert.equal(await page.locator('.t4-flaw').count(),0,'evidence must not show a reliability verdict');
+  assert.ok(await page.locator('.t4-excerpt').count()>=1,'evidence card shows the original text');
   const use=page.locator('.t4 [data-kind="decide"][data-choice="conditional"]:not([disabled])').first();if(await use.count())await use.click();
   const next=page.locator('.t4-pagenav [data-action="t4page"]:not([disabled])').last();if(await next.count())await next.click();
   await tab('witness');
-  const ask=page.locator('.t4 [data-kind="ask"]:not([disabled])').first();if(await ask.count())await ask.click();
+  const ask=page.locator('.t4 .t4-q:not([disabled])').first();if(await ask.count())await ask.click();
+  assert.ok(await page.locator('.t4-qa').count()>=1,'asked question and answer are shown');
   await page.locator('.t4-dock [data-action="t4end"]').click();
-  await page.locator('#modal-root [data-action="dismiss"]').click();
-  if(d<min-1)assert.match(await page.locator('.t4-wait.big b').textContent(),/재판일 \d+[은는] \d\d:\d\d에 열려요/,'waiting state should show when the next day opens');
+  await page.locator('#modal-root [data-action="dismiss"]').first().click();
+  if(d<min-1)assert.match(await page.locator('.t4-wait.big b').textContent(),/제\d+회 (공판|변론기일) · \d+월 \d+일/,'waiting state should show the next session date');
   await page.evaluate(id=>{S.cases[id].trial4.nextAt=0;render()},cid);
  }
  await tab('verdict');
+ await answer();
  await page.locator('.t4-verdict [data-action="t4verdict"]').last().click();
- await page.locator('.t4-reason input').nth(5).check();
- await page.locator('#modal-root [data-action="t4confirm"]').click();
+ await page.locator('.t4-cite').first().click();
+ await page.locator('.t4-verdict [data-action="t4confirm"]').click();
  await page.locator('.t4-headline').first().waitFor();
  const verdict=await page.evaluate(id=>({v:S.cases[id].verdict,final:!!S.cases[id].trial4.final,heads:S.cases[id].trial4.final.headlines.length,dir:S.cases[id].trial4.final.dir}),cid);
  assert.ok(verdict.v&&verdict.final,'verdict not recorded through the v4 loop');

@@ -15,13 +15,14 @@ const VerdictStore=(()=>{
  const encode=json=>json.length>LIMIT?TAG+toText(fflate.deflateSync(fflate.strToU8(json),{level:4})):json;
  const decode=raw=>raw==null?null:raw.startsWith(TAG)?fflate.strFromU8(fflate.inflateSync(toBytes(raw.slice(TAG.length)))):raw;
  const parse=raw=>{const s=decode(raw);return s==null?null:JSON.parse(s)};
- let pending=null,timer=0,lastSize=0,onError=null;
- function flush(){clearTimeout(timer);timer=0;if(!pending)return true;const {key,build}=pending;pending=null;
+ let pending=null,timer=0,lastSize=0,onError=null,halted=false;
+ function flush(){clearTimeout(timer);timer=0;if(halted){pending=null;return true}if(!pending)return true;const {key,build}=pending;pending=null;
   try{const json=build();lastSize=json.length;localStorage.setItem(key,encode(json));return true}
   catch(e){if(onError)onError(e);return false}}
  // build() returns the JSON text; it runs at write time so a burst of saves serializes only once.
- function save(key,build){pending={key,build};if(lastSize<=LIMIT)return flush();clearTimeout(timer);timer=setTimeout(flush,WAIT);return true}
+ function save(key,build){if(halted)return true;pending={key,build};if(lastSize<=LIMIT)return flush();clearTimeout(timer);timer=setTimeout(flush,WAIT);return true}
  addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});
  addEventListener('pagehide',flush);
- return {encode,decode,parse,read:key=>parse(localStorage.getItem(key)),save,flush,onError:fn=>{onError=fn},get pending(){return !!pending}};
+ // halt(): used right before a reset, so nothing (not even a pending write on page hide) can bring the old game back
+ return {encode,decode,parse,read:key=>parse(localStorage.getItem(key)),save,flush,halt:()=>{halted=true;pending=null;clearTimeout(timer)},onError:fn=>{onError=fn},get pending(){return !!pending}};
 })();

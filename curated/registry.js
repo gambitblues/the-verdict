@@ -14,6 +14,12 @@ function particle(name,p){
 function fill(text,names){
  return String(text||'').replace(/\{([A-Z][0-9]?)(?:\|([가-힣]+))?\}/g,(m,key,p)=>{const n=names[key]||({A:'피고인',B:'상대방',L:'변호사'}[key]||'증인');return p?particle(n,p):n});
 }
+/* Courtroom detail (curated/detail*.js) is merged into each case: evidence and witnesses line up by index. */
+for(const d of window.VERDICT_CURATED_DETAIL||[]){const c=cases[d.id];if(!c)continue;
+ c.evidence=c.evidence.map((e,i)=>({...e,...(d.evidence?.[i]||{})}));
+ c.witnesses=c.witnesses.map((w,i)=>({...w,...(d.witnesses?.[i]||{})}));
+ for(const k of ['charge','demand','claim','issues','late','rebut','closing'])if(d[k]!=null)c[k]=d[k];
+}
 window.VerdictCurated={cases,ids:Object.keys(cases),fill,particle,active:list.length>0};
 if(typeof CasePackEngine!=='undefined'&&list.length){
  const basePool=CasePackEngine.pool;

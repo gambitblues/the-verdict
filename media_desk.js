@@ -41,7 +41,7 @@ function summary(x){
   `${x.caseName}`,
   `판결: ${x.verdictLabel} · 재판일 ${x.daysDone}회`,
   `증거: 씀 ${used} · 조건 붙여 씀 ${cond} · 뺌 ${out}${x.illegalOut?' (불법 획득 증거 배제)':''}`,
-  `확신 게이지: 증거로 보여준 정도 ${x.P} · 남은 의문 ${x.D}`,
+  `증거 판단: ${x.P>=x.D+30?'증거가 의심보다 뚜렷함':x.D>=x.P+15?'남은 의심이 더 큼':'증거와 의심이 팽팽함'}`,
   `상대: ${x.opponent.name} 변호사 (${x.opponent.styleLabel}) · 화제성 ${x.H}`
  ];
 }
@@ -104,7 +104,7 @@ function picker(seed,recent){
 /* ---------- 3a. legal column: structure and numbers ---------- */
 const COLUMN={
  proofButAcquit:[
-  x=>[`${x.caseShort}, 증거는 충분했는데 왜 무죄였나`,`확신 게이지로 보면 증거로 보여준 정도 ${x.P}, 남은 의문 ${ro(x.D)} 차이가 ${x.P-x.D}에 이른다. 숫자만 보면 책임을 인정할 수 있는 사건이었다. 재판부가 고른 판결 이유가 이 간극을 얼마나 설명하는지가 이번 판결의 평가를 가를 것으로 보인다.`],
+  x=>[`${x.caseShort}, 증거는 충분했는데 왜 무죄였나`,`법정 기록을 숫자로 옮기면 증거로 보여준 정도 ${x.P}, 남은 의문 ${ro(x.D)} 차이가 ${x.P-x.D}에 이른다. 숫자만 보면 책임을 인정할 수 있는 사건이었다. 재판부가 고른 판결 이유가 이 간극을 얼마나 설명하는지가 이번 판결의 평가를 가를 것으로 보인다.`],
   x=>[`${x.caseShort} 판결, 숫자와 결론이 어긋난 지점`,`제출된 증거 가운데 ${x.usedCount}건이 판단에 쓰였고, 증거로 보여준 정도는 ${was(x.P)}. 그럼에도 결론은 무죄였다. 증거 자체보다 증거와 행위자를 잇는 고리를 문제 삼았다는 해석이 가능하다.`]
  ],
  doubtButConvict:[

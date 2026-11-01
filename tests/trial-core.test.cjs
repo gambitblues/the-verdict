@@ -56,4 +56,20 @@ assert.equal(ev.scores.length,3);
 const t2={...t,truth:t.truth==='did'?'didnt':'did'};
 assert.equal(T.evaluate(80,50,t2,'acquit','seed').review,ev.review,'hidden truth must not change the review');
 
+// v5: written cases follow the text — the hinted weakness is the real one, and nothing is hidden behind '?'.
+const w5=T.roll({id:'w5',strict:true,truth:'did',evidence:[{id:'e0',hintFlaw:'illegal'},{id:'e1',hintFlaw:'none'},{id:'e2',hintFlaw:'timing'}],witnesses:[{id:'x'}]},'s5',[]);
+assert.deepEqual(w5.evidence.map(e=>e.flawType),['illegal','none','timing']);
+assert.ok(w5.evidence.every(e=>e.revealed===2));
+// testimony heard in court moves the picture; struck testimony does not
+const base5={...w5,heard:[],cards:[]};
+const pro=T.gauge({...base5,heard:[{w:0,side:'p',issue:'i1'},{w:0,side:'p',issue:'i1'}]}),none=T.gauge(base5);
+assert.ok(pro.P>none.P,'heard testimony for the charge raises proof');
+assert.equal(T.gauge({...base5,heard:[{w:0,side:'p',issue:'i1',struck:true}]}).P,none.P,'struck testimony is ignored');
+assert.ok(T.gauge({...base5,heard:[{w:0,side:'p',issue:'i1'},{w:0,side:'d',issue:'i1'}]}).discord>=1,'conflicting answers on one issue count as discord');
+// citing illegal evidence costs; a sentence inside the reference range earns, outside without reasons costs
+const sk=v=>T.skill(base5,{dir:'convict',criminal:true,...v}).total;
+assert.ok(sk({cites:[{label:'a',side:'p',illegal:true}]})<sk({cites:[{label:'a',side:'p'}]}));
+assert.ok(sk({sentence:{what:'형량',value:30,lo:24,hi:36,mitig:0,aggr:0}})>sk({sentence:{what:'형량',value:80,lo:24,hi:36,mitig:0,aggr:0}}));
+assert.ok(sk({sentence:{what:'형량',value:80,lo:24,hi:36,mitig:0,aggr:2}})>sk({sentence:{what:'형량',value:80,lo:24,hi:36,mitig:0,aggr:0}}),'reasons justify leaving the range');
+
 console.log('trial core regression tests passed');
