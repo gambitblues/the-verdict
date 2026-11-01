@@ -41,6 +41,7 @@ jobs:
           node tests/advanced-timeline-evidence.test.cjs
           node tests/advanced-courtroom-conflict.test.cjs
           node tests/advanced-pilot-integration.test.cjs
+          node tests/advanced-world-schema.test.cjs
       - name: Install browser test tooling
         run: |
           npm install --no-save playwright
