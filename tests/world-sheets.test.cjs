@@ -13,9 +13,9 @@ const TRUTHS=['did','didnt','reason'],KINDS=['criminal','civil','decision'];
 const CATS=['homicide','sexual','violence','financial','property','reputation','civil','family','professional','public'];
 const GENDERED=/남자|여자|남성|여성|아빠|엄마|남편|아내|장남|장녀|누나|오빠|언니|사위|며느리/;
 const sec=t=>{const m=/^(\d\d):(\d\d)(?::(\d\d))?$/.exec(String(t||''));return m?(+m[1])*3600+(+m[2])*60+(+(m[3]||0)):null};
-let failed=0;
+let failed=0;const STOCK=new Map();
 for(const file of files){
- const E=[],W=[],err=m=>E.push(m),warn=m=>W.push(m);
+ const E=[],W=[],err=m=>E.push(m),warn=m=>W.push(m);let cerr=err;   // content-quality issues: errors once a sheet leaves draft
  let s;try{s=JSON.parse(fs.readFileSync(file,'utf8'))}catch(e){console.log(`✗ ${path.basename(file)}: JSON을 읽을 수 없음 — ${e.message}`);failed++;continue}
  const need=(o,keys,at)=>{for(const k of keys)if(o?.[k]===undefined||o?.[k]===null||o?.[k]==='')err(`${at}.${k} 없음`)};
  if(s.format!=='verdict-world-sheet/v1')err('format은 "verdict-world-sheet/v1"');
@@ -59,6 +59,14 @@ for(const file of files){
   if(c.kind==='criminal'){if(!w.sentencing)warn(`worlds.${t}.sentencing(양형 인자)이 없음`);else for(const f of ['means','degree','count','setting','harm','victim','planning','after'])if(!w.sentencing[f])err(`worlds.${t}.sentencing.${f} 없음`)}
   for(const k of [c.accused,c.complainant])if(k&&!w.knows?.[k])err(`worlds.${t}.knows: ${k}가 아는 것`);
   }
+ cerr=s.status==='draft'?(m=>W.push('(초안) '+m)):err;
+ // records hold original wording, not conclusions: no world's act/legal sentence copied in, no verdict words
+ if(s.worlds){const acts=TRUTHS.flatMap(t=>[s.worlds[t]?.act,s.worlds[t]?.legal,s.worlds[t]?.motive]).filter(x=>typeof x==='string'&&x.length>=12);
+  for(const t of TRUTHS)for(const [id,v] of Object.entries(s.worlds[t]?.records||{})){
+   for(const a of acts)if(v.includes(a)||a.includes(v)&&v.length>=12)cerr(`worlds.${t}.records.${id}: 숨은 진실 문장이 자료에 그대로 들어감 — 자료는 원문만`);
+   if(/뒷받침한다|뒷받침함|확정할 수 없|단정할 수 없|다투어진다|입증한다|증명한다|원본 세부 내용은|사실과 일치한다/.test(v))cerr(`worlds.${t}.records.${id}: 평가 문장("${(v.match(/뒷받침한다|뒷받침함|확정할 수 없|단정할 수 없|다투어진다|입증한다|증명한다|원본 세부 내용은|사실과 일치한다/)||[])[0]}") — 판단은 caveat·traps에, 자료엔 원문만`)}
+  for(const t of TRUTHS){const w=s.worlds[t];if(w?.act&&w.act.length<40)cerr(`worlds.${t}.act가 너무 짧음 — 누가 언제 어디서 무엇을 어떻게`);if(w?.motive&&w.motive===w.act)cerr(`worlds.${t}.motive가 act와 같음`);
+   for(const [k,v] of Object.entries(w?.saw||{}))if(/[가-힣](?<![가-힣]{0}[ㄹ])로서/.test(v)&&/[^aeiou](관리인|직원|기사|원장)로서/.test(v))cerr(`worlds.${t}.saw.${k}: 조사 확인 ("${v.match(/\S+로서/)[0]}")`)}}
  // the worlds must be told apart
  if(s.worlds)for(const [a,b] of [['did','didnt'],['did','reason'],['didnt','reason']]){
   const diff=[...R.keys()].filter(id=>s.worlds[a]?.records?.[id]!==s.worlds[b]?.records?.[id]);
@@ -71,10 +79,12 @@ for(const file of files){
  // player-facing words
  const fixedSex=[c.accused,c.complainant].some(k=>P.get(k)?.sex);
  for(const [k,v] of [['card.title',c.title],['card.summary',c.summary]])if(GENDERED.test(v||'')&&!fixedSex)err(`${k}: 성별을 단정하는 말 "${(v.match(GENDERED)||[])[0]}" (성별이 정해진 사건이면 people에 sex를 적기)`);
+ for(const t of TRUTHS){const w=s.worlds?.[t]||{};if(s.status!=='draft')for(const v of [...Object.values(w.records||{}),...Object.values(w.saw||{})])for(const sent of String(v).split(/(?<=[.다음])\s+/))if(sent.length>=14){const k=sent.replace(/\{[^}]+\}|[0-9]/g,'');if(!STOCK.has(k))STOCK.set(k,new Set());STOCK.get(k).add(s.id)}}
  const name=path.basename(file);
  if(E.length){failed++;console.log(`✗ ${name}\n  - `+E.join('\n  - '))}else console.log(`✓ ${name} · ${s.status} · 자료 ${R.size} · 증인 ${witnesses.length}`);
  for(const m of W)console.log('  ! '+m);
 }
+const stock=[...STOCK].filter(([,ids])=>ids.size>=3);if(stock.length){console.log(`\n여러 사건에 같은 문장 ${stock.length}개 (3건 이상):`);for(const [k,ids] of stock.slice(0,8))console.log(`  - "${k.slice(0,60)}" ← ${[...ids].join(', ')}`);failed+=stock.length?1:0}
 if(!files.length)console.log('world-sheets/cases 에 사건이 없음');
 if(failed){console.log(`\n${failed}건 실패`);process.exit(1)}
 console.log(`PASS world sheets ${files.length}`);
