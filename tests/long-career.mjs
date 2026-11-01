@@ -25,6 +25,7 @@ const YEAR=(year)=>{
  const out={created:0,concluded:0,errors:[]};
  for(let w=0;w<52;w++){
   try{advanceWeek(true)}catch(e){out.errors.push('advance:'+e.message)}
+  try{const V=window.VerdictV6;if(V){ui.modal=null;V.seasonTick();if(S.season?.pending)V.chooseDept(['criminal','civil','family','public'][(year+w)%4]);ui.modal=null}}catch(e){out.errors.push('v6:season:'+e.message)}
   if(w%6===0){ // roughly 8–9 new cases a year
    try{const c=createGeneratedCase();if(c)out.created++}catch(e){out.errors.push('create:'+e.message)}
   }
@@ -46,6 +47,11 @@ const YEAR=(year)=>{
    }catch(e){out.errors.push('conclude:'+c.id+':'+e.message)}
   }
  }
+ // v6 world, once a year: the bar grows, the bench learns and moves on, February personnel season, late press
+ try{const V=window.VerdictV6;if(V){for(let k=0;k<12;k++)V.growLegal();V.bench();
+  for(const c of CASES.filter(c=>S.cases[c.id]?.verdict&&!S.cases[c.id].v6seen).slice(0,6)){S.cases[c.id].v6seen=true;V.onVerdict(c,S.cases[c.id].trial4||null)}
+  V.pressureTick()}}
+ catch(e){out.errors.push('v6:'+e.message)}
  ui.modal=null;
  return out;
 };
@@ -83,7 +89,14 @@ const CHECK=()=>{
  // 4. legal professionals: one active job at a time
  for(const [id,p] of people){const lc=p.legalCareer;const ko={lawyer:'변호',judge:'판사',prosecutor:'검사'}[lc?.role]||lc?.role;if(lc&&lc.role&&p.role&&/판사|검사|변호/.test(p.role)&&!p.role.includes(String(ko).replace(/ .*/,'')))issues.push(`career-mismatch:${p.name}:${p.role}/${lc.role}`)}
  const keys={};for(const [,p] of people)for(const k of Object.keys(p))keys[k]=(keys[k]||0)+1;
- return {year:yr,age:age(),npc:people.length,cases:CASES.length,done:completed().length,issues,save:localStorage.getItem('the_verdict_alpha_1')?.length,json:VerdictStore.decode(localStorage.getItem('the_verdict_alpha_1')).length,ok:!!VerdictStore.read('the_verdict_alpha_1')?.cases,keys:Object.keys(keys).filter(k=>/spouse|child|parent|family|alive|death|legal|career/.test(k))};
+ const legal=(S.legalWorld?.people||[]).filter(id=>NPC[id]&&NPC[id].alive!==false).length;
+ if(legal>(window.VerdictV6?.legalTarget?.()??210)+40)issues.push('legal-pool-overflow:'+legal);
+ for(const k of ['assoc','clerk','officer']){const b=S.bench?.[k],p=b&&NPC[b.id];if(!p){issues.push('bench-missing:'+k);continue}
+  const a=yr-p.bornYear;if(p.alive===false)issues.push('bench-dead:'+k);if(a<25||a>62)issues.push(`bench-age:${k}:${a}`)}
+ for(const x of S.bench?.alumni||[])if(!NPC[x.id])issues.push('alumni-missing:'+x.id);
+ for(const e of S.legalWorld?.experts||[])if(!NPC[e.id])issues.push('expert-missing:'+e.id);
+ const v6={legal,alumni:S.bench?.alumni?.length||0,seasons:Object.keys(S.season?.asked||{}).length,dept:S.season?.dept,experts:(S.legalWorld?.experts||[]).length};
+ return {v6,year:yr,age:age(),npc:people.length,cases:CASES.length,done:completed().length,issues,save:localStorage.getItem('the_verdict_alpha_1')?.length,json:VerdictStore.decode(localStorage.getItem('the_verdict_alpha_1')).length,ok:!!VerdictStore.read('the_verdict_alpha_1')?.cases,keys:Object.keys(keys).filter(k=>/spouse|child|parent|family|alive|death|legal|career/.test(k))};
 };
 try{
  page.on('dialog',d=>d.accept());
@@ -92,19 +105,24 @@ try{
  await page.locator('#playerName').fill('장기 검증');
  await page.locator('[data-action="start"]').last().click();
  await page.waitForFunction(()=>typeof S!=='undefined'&&S.name,{timeout:30000});
+ let last=null;
  for(let y=0;y<YEARS;y++){
   const r=await page.evaluate(YEAR,y);
   if(y%5===4||y===YEARS-1){
    await page.evaluate(()=>{save();VerdictStore.flush()});
    const v=await page.evaluate(VIEW),c=await page.evaluate(CHECK);
    console.log(`year ${y+1} · age ${c.age} · people ${c.npc} · cases ${c.cases} · stored ${c.save} chars (json ${c.json}) · issues ${c.issues.length}`);
+   console.log(`   v6 · legal ${c.v6.legal} · former bench ${c.v6.alumni} · personnel seasons ${c.v6.seasons} (${c.v6.dept}) · experts ${c.v6.experts}`);
+   last=c;
    assert.deepEqual(v.errs,[],'old cases and records must open');
    assert.ok(c.ok,'save must read back');
    assert.deepEqual(c.issues,[],'world must stay consistent');
    assert.ok(c.save<3000000,'save must stay well under the browser limit');
   }
+  const v6err=r.errors.find(e=>e.startsWith('v6:'));if(v6err)throw new Error(v6err);
   if(r.errors.length&&!/advance/.test(r.errors[0]))throw new Error(r.errors[0]);
  }
+ if(YEARS>=10){assert.ok(last.v6.seasons>=YEARS-2,'a personnel season every February');assert.ok(last.v6.alumni>=2,'bench members move on over the years');assert.ok(last.v6.legal>=150,'the bar grows toward a city-sized pool')}
  assert.deepEqual(errs,[]);
- console.log('PASS: long career');
+ console.log('PASS: long career ('+YEARS+' years)');
 }finally{await browser.close();server.close()}
