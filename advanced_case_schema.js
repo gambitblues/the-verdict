@@ -8,7 +8,8 @@ function validate(x){
  for(const k of required)if(x[k]===undefined||x[k]===null)throw Error('Missing '+k);
  if(!Object.hasOwn(kinds,x.kind))throw Error('kind invalid');
  if(typeof x.fictionalPlace!=='string'||x.fictionalPlace.length<6)throw Error('specific fictional place required');
- if(!x.source.url||!/^https:\/\//.test(x.source.url)||!x.source.verified||!x.source.caseNumber)throw Error('Verified judgment source required');
+ if(x.source.type==='original_fiction'){if(x.source.realCaseVerified!==false)throw Error('Original fiction cannot masquerade as verified case');}
+ else if(!x.source.url||!/^https:\/\//.test(x.source.url)||!x.source.verified||!x.source.caseNumber)throw Error('Verified judgment source required');
  if(!x.legal.statute||!x.legal.article||!x.legal.effectiveDate)throw Error('applicable law missing');
  if(!Array.isArray(x.participants)||x.participants.length<2)throw Error('participants required');
  for(const t of ['did','didnt','reason']){
