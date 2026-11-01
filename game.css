@@ -675,3 +675,15 @@ body.t4-court #toast{bottom:168px}
 .t4-sheet-foot .btn{min-width:110px}
 .t4-sheet-sum{border:1px solid #e3d6ba;border-radius:10px;background:#fff;padding:4px 12px}.t4-sheet-sum p{display:flex;gap:10px;margin:0;padding:9px 0;border-bottom:1px dashed #e8dcc2;font-size:13px}.t4-sheet-sum p:last-child{border-bottom:0}.t4-sheet-sum span{flex:none;width:72px;color:#8a7650;font-size:12px}
 
+/* v6.9 orders tab, day hint, new material */
+.t4-orders-hint{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:10px 0 12px;padding:11px 12px;border:1.5px solid #c9a96a;border-radius:12px;background:#fff8e8;font:inherit;cursor:pointer}
+.t4-orders-hint b{flex:none;color:#5b4520}.t4-orders-hint span{flex:1;font-size:12px;color:#7a6542}.t4-orders-hint i{font-style:normal;font-size:20px;color:#8a6a2a}
+.t4-orders-hint.is-open{box-shadow:0 0 0 3px #e9d6a655}
+.t4-order-hist{list-style:none;padding:0;margin:0}.t4-order-hist li{border:1px solid #e6dcc6;border-radius:10px;padding:9px 11px;margin:8px 0;background:#fff}
+.t4-order-hist li div{font-size:11px;color:#8a7650}.t4-order-hist li p{margin:4px 0;font-size:13px}.t4-order-hist li small{display:block;font-size:12px;color:#3f5a4d;line-height:1.55}
+.t4-newflag{margin:0 0 8px;padding:8px 10px;border-radius:9px;background:#fff1d6;border:1px solid #e3b866;color:#7a4e00;font-size:12px;font-weight:700}
+.t4-newjump{display:block;width:100%;margin:0 0 8px;padding:8px 10px;border-radius:9px;border:1px dashed #d79b2c;background:#fffaf0;color:#8a5a00;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.t4-dot.new{background:#e09a1f!important;box-shadow:0 0 0 2px #f6dca8}
+.t4-party>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center;padding:2px 0}.t4-party>summary::-webkit-details-marker{display:none}
+.t4-party>summary b{color:#5b4520}.t4-party>summary span{font-size:12px;color:#8a7650}.t4-party>summary:after{content:'▾';color:#8a6a2a}.t4-party[open]>summary:after{content:'▴'}
+.t4-party{border:1.5px solid #c9a96a;background:#fffaf0}

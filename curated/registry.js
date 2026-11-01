@@ -26,6 +26,7 @@ for(const d of window.VERDICT_CURATED_DETAIL||[]){const c=cases[d.id];if(!c)cont
 }
 /* Follow-up nodes for later hearings (curated/follow*.js), appended to any written in the detail files. */
 for(const d of window.VERDICT_CURATED_FOLLOW||[]){const c=cases[d.id];if(c)c.followUps=[...(c.followUps||[]),...d.nodes]}
+for(const d of window.VERDICT_CURATED_PARTY||[]){const c=cases[d.id];if(c)c.party={who:d.who,role:d.role,q:d.q}}
 /* Gender facts a story depends on. A/B: fixed gender; AB: same or opposite to each other;
  * W: witness index → sameA / sameB / diffA / diffB. Everything else stays random. */
 const SEX={

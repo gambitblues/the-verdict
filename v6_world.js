@@ -50,15 +50,24 @@ function registerExpert(id,role,c){if(!EXPERT.test(role||'')||!S.legalWorld)retu
  w.experts=w.experts.slice(-90)}
 
 /* ---------- the bench ---------- */
+/* What the associate judge says about a piece of evidence: a view on how it was obtained (right or wrong depending on
+ * their skill) and a remark on what this record can and cannot show. Fixed per evidence, so it does not change on reload. */
 const ADVICE={
- illegal:'확보 경위가 걸립니다. 영장이나 동의 없이 얻었다면 쓰기 어려울 수 있어요',
- source:'누가 만들고 어떻게 보관했는지 원본부터 확인해 보시죠',
- timing:'기록된 시각이 정확한지 다른 자료와 한 번 더 맞춰 봐야 할 것 같습니다',
- none:'출처와 확보 경위에 특별히 걸리는 점은 보이지 않습니다'};
+ illegal:['확보 경위가 걸립니다. 영장이나 동의 없이 얻었다면 쓰기 어려울 수 있어요','{T|을} 누가 무슨 근거로 가져왔는지 기록이 비어 있습니다. 위법하게 모은 자료라면 판단에서 빼야 합니다','내용보다 얻은 방법이 문제일 수 있어요. 동의서나 영장이 있었는지부터 보시죠'],
+ source:['누가 만들고 어떻게 보관했는지 원본부터 확인해 보시죠','{T|은} 원본이 아니라 옮겨 적은 것일 수 있어요. 만든 사람과 보관한 사람을 따로 확인해야 합니다','중간에 손댄 사람이 없는지가 관건입니다. 보관 경로가 한 번이라도 끊겼다면 무게가 확 줄어요'],
+ timing:['기록된 시각이 정확한지 다른 자료와 한 번 더 맞춰 봐야 할 것 같습니다','{T}의 시계가 맞는지부터 보시죠. 몇 분만 어긋나도 이야기가 완전히 달라집니다','시각이 핵심인 자료인데, 기계 시계는 생각보다 자주 틀립니다. 다른 기록과 대조가 필요해요'],
+ none:['출처와 확보 경위에 특별히 걸리는 점은 보이지 않습니다','{T|은} 만들어진 경위가 분명합니다. 이제 내용을 어디까지 믿을지만 따지면 될 것 같아요','형식상 흠은 안 보입니다. 쓰셔도 절차 문제는 없을 겁니다']};
+const ADVICE2=[
+ (e)=>e.scope?`다만 이 자료가 말해 주는 건 "${cutA(e.scope)}"까지예요. 그 이상은 다른 근거가 필요합니다`:'',
+ (e)=>e.note?`한계도 분명합니다. ${cutA(e.note)}`:'',
+ ()=>'증인들 말과 맞춰 보면 무게가 더 분명해질 것 같습니다',
+ (e)=>e.scope?`이게 맞다면 "${cutA(e.scope)}"는 거의 확실해지는데, 반대쪽이 그 점을 어떻게 설명할지 들어 보시죠`:'',
+ ()=>'이것 하나로 결론을 내기보다 쟁점 하나를 좁히는 데 쓰시는 게 좋겠습니다'];
+const cutA=(x,n=40)=>{x=String(x||'').replace(/[.。]$/,'');return x.length>n?x.slice(0,n-1)+'…':x};
 function makeBench(kind){
  const role={assoc:'배석판사',clerk:'재판연구원',officer:'법원 참여관'}[kind];
  const id=freshNPC(role,Math.max(1,S.caseSerial||1),'law'),p=NPC[id];
- const age={assoc:[31,36],clerk:[27,31],officer:[38,55]}[kind];
+ const age={assoc:[29,33],clerk:[26,30],officer:[38,55]}[kind];
  p.bornYear=year()-(age[0]+Math.floor(rand()*(age[1]-age[0]+1)));p.ageAtStart=year()-p.bornYear;
  p.role=role;p.career=role;p.socialStatus='법조계';p.name=VerdictNames.make({gender:p.gender,bornYear:p.bornYear,rand,people:NPC});
  if(kind!=='officer')p.degree=rand()<0.3?'석사':'학사';p.educationField='법학';
@@ -83,8 +92,12 @@ function benchAdvice(c,t,e){
  const right=T().unit(t.seed+':bench:'+e.id+':'+a.id)<a.skill/100;
  const keys=Object.keys(ADVICE),flaw=keys.includes(e.flawType)?e.flawType:'none';
  const said=right?flaw:keys.filter(k=>k!==flaw)[T().hash(t.seed+e.id+a.id)%3];
+ const h=T().hash(t.seed+':adv:'+e.id+':'+a.id),pool=ADVICE[said];
+ const P=(w,p)=>window.VerdictCurated?VerdictCurated.particle(w,p):w+p;
+ const line1=pool[h%pool.length].replace(/\{T\|([^}]+)\}/g,(m,p)=>P(e.title,p)).replace(/\{T\}/g,e.title);
+ const line2=ADVICE2[(h>>>5)%ADVICE2.length](e);
  const role=a.kind==='assoc'?'배석판사':'재판연구원';
- return `<div class="t4-bench">🧑‍⚖️ <b>${role} <button class="t4-who" data-action="npc" data-id="${esc(a.id)}">${esc(NPC[a.id]?.name)}</button></b> "${esc(ADVICE[said])}"<small>참고 의견이에요. 틀릴 때도 있어요.</small></div>`;
+ return `<div class="t4-bench">🧑‍⚖️ <b>${role} <button class="t4-who" data-action="npc" data-id="${esc(a.id)}">${esc(NPC[a.id]?.name)}</button></b> "${esc(line1)}${line2?'. '+esc(line2):''}"<small>참고 의견이에요. 틀릴 때도 있어요.</small></div>`;
 }
 function officerName(){const b=bench();return b?NPC[b.officer.id]?.name:''}
 /* after each verdict: the advisor learns; after a few years they move on */
@@ -230,9 +243,43 @@ function chooseDept(k){const s=SEASON(),y=s.pending;if(!y)return;s.asked[y]=true
 const deptLabel=()=>DEPTS.find(x=>x[0]===SEASON().dept)?.[1]||'';
 
 /* ---------- hooks ---------- */
+/* People realism (v6.9): schooling follows the job, and the two colleagues closest to the player have believable ages.
+ * Runs on boot and every minute; only rewrites what does not fit, deterministically per person. */
+const EDU=[
+ [/판사|검사|변호사|법조|재판연구원|로펌|법률|법무|공증|법원 동기/,'법학',['학사','석사'],'law'],
+ [/참여관|법원 공무원|사무관|주무관/,'법학',['학사'],'clerk'],
+ [/교수|연구원|연구자/,null,['박사'],'research'],
+ [/의사|전문의|주치의|의학|외과|내과|소아과|정신과|법의|한의/,'보건(의학)',['석사','박사'],'doctor'],
+ [/간호|약사|의료|병원|치료사|보건/,'보건',['학사'],'health'],
+ [/엔지니어|개발자|설계|기술|공학|정비|프로그래머|IT|전산|감식/,'공학',['학사','석사'],'eng'],
+ [/회계|세무|경영|대표|사업|금융|투자|은행|증권|영업|무역|마케팅|재무|임원|상무|전무|이사/,'경영',['학사','석사'],'biz'],
+ [/교사|교감|교장|강사|보육|학원/,'교육',['학사'],'edu'],
+ [/기자|언론|작가|편집|PD|방송|출판/,'인문',['학사'],'media'],
+ [/경찰|형사|공무원|소방|군인|구조|해경/,'사회과학',['학사'],'public'],
+ [/사회복지|상담|활동가|시민단체/,'사회과학',['학사'],'social'],
+ [/화가|음악|배우|가수|디자이너|예술|선수|코치|감독/,'예체능',['학사','전문학사'],'art'],
+ [/노동|생산|운전|배달|농부|농민|어민|요리|조리|자영업|상인|청소|경비|택배|건설|기사$|반장|작업자|직원/,null,['고졸','전문학사'],'trade']];
+function fitPeople(){
+ const yr=year(),me=age();
+ const fixAge=(id,lo,hi)=>{const p=NPC[id];if(!p)return;const a=yr-p.bornYear;if(!(a>=lo&&a<=hi)){p.bornYear=yr-(lo+T().hash(id+':age')%(hi-lo+1));p.ageAtStart=yr-p.bornYear}};
+ fixAge('senior',me+8,me+15);fixAge('hyun',me-1,me+1);
+ for(const [id,p] of Object.entries(NPC)){
+  if(!p||id==='self')continue;const job=String(p.career||p.role||'');if(!job||p.eduFit===job)continue;
+  const rule=EDU.find(r=>r[0].test(job)),a=yr-(p.bornYear||yr-40),h=T().hash(id+':edu');
+  if(rule){const [,field,degs,k]=rule;
+   if(field)p.educationField=field;else if(k==='research'&&!p.educationField)p.educationField='인문';
+   let deg=degs[h%degs.length];if(k==='law')deg=p.bornYear>=1986?'석사':'학사';
+   if(!degs.includes(p.degree))p.degree=deg;
+   if(k==='trade'&&['고졸','전문학사'].includes(p.degree))p.educationField=p.degree==='고졸'?'고등학교':(p.educationField||'기술');
+   if(k==='law'&&p.degree==='석사')p.lawSchool=true}
+  else if(p.degree==='박사')p.degree=a>=30?'석사':'학사';
+  if(a<24&&['석사','박사'].includes(p.degree))p.degree='학사';
+  if(a<22&&p.degree==='학사')p.degree='재학';
+  p.eduFit=job}
+}
 function boot(){
  if(typeof S==='undefined'||!S?.name)return;
- ensurePack();growLegal();bench();pressureTick();seasonTick();
+ ensurePack();growLegal();bench();fitPeople();pressureTick();seasonTick();
 }
 if(typeof clicker==='function'){const prior=clicker;clicker=function(e){const el=e.target.closest('[data-action="v6dept"]');if(el){e.preventDefault();chooseDept(el.dataset.dept);return}return prior(e)}}
 setTimeout(boot,1200);setInterval(()=>{try{boot()}catch(e){console.warn(e)}},60000);
