@@ -1,10 +1,10 @@
 /* Advanced pilot integration — independent of legacy UI and saves. */
 (function(root,factory){
  const a=typeof module==='object'&&module.exports;
- const api=factory(a?require('./advanced_case_engine.js'):root.VerdictAdvancedCase,
- a?require('./advanced_witness_engine.js'):root.VerdictWitnessEngine,
- a?require('./advanced_timeline_evidence.js'):root.VerdictTimelineEvidence,
- a?require('./advanced_courtroom_conflict.js'):root.VerdictCourtroomConflict,
+ const api=factory(a?require('../../advanced_case_engine.js'):root.VerdictAdvancedCase,
+ a?require('../../advanced_witness_engine.js'):root.VerdictWitnessEngine,
+ a?require('../../advanced_timeline_evidence.js'):root.VerdictTimelineEvidence,
+ a?require('../../advanced_courtroom_conflict.js'):root.VerdictCourtroomConflict,
  a?require('./advanced_pilot_clinic.js'):root.VerdictAdvancedPilot);
  if(a)module.exports=api;if(root)root.VerdictPilotIntegration=api;
 })(typeof window!=='undefined'?window:null,function(C,W,T,F,P){

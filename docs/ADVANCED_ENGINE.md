@@ -36,8 +36,8 @@ Run: `node tests/advanced-case-engine.test.cjs`.
 
 ## Pilot 001 — 서울 늘밝은성형외과 (모두 허구)
 
-- `advanced_pilot_clinic.js`: 서울 늘밝은성형외과 제2시술실, 사건 발생일, 의무기록, 복도 영상, 출입 로그, 감정 기록, 인물별 관찰 범위 및 진술을 세 가지 고정 진실(`did/didnt/reason`)로 기획한 시범 콘텐츠. 실제 의료기관·사건을 지칭하지 않는다.
-- `advanced_pilot_integration.js`: Case Truth, Witness, Timeline & Evidence, Courtroom Conflict 4모듈을 하나의 시범 사건에 연결. 기존 게임 화면에는 아직 탑재되지 않았다.
+- `dev/advanced-pilot/advanced_pilot_clinic.js`: 서울 늘밝은성형외과 제2시술실, 사건 발생일, 의무기록, 복도 영상, 출입 로그, 감정 기록, 인물별 관찰 범위 및 진술을 세 가지 고정 진실(`did/didnt/reason`)로 기획한 시범 콘텐츠. 실제 의료기관·사건을 지칭하지 않는다.
+- `dev/advanced-pilot/advanced_pilot_integration.js`: Case Truth, Witness, Timeline & Evidence, Courtroom Conflict 4모듈을 하나의 시범 사건에 연결. 기존 게임 화면에는 아직 탑재되지 않았다.
 - `tests/advanced-pilot-integration.test.cjs`: 세 진실 분기, 자료 제출 전 공방 금지, 증인 대조, 저장·불러오기, 공방 순서, 진실 잠금, 후속 가사 사건 조건을 확인하도록 작성.
 - 후속 `family-paternity-001`은 자동 임신 또는 자동 친자 인정이 아니다. 출산·분쟁·청구인 적격·기존 친자관계의 확인 등 별도 조건 이후 독립 사건으로 열려야 한다. 혼인 중 출생인지 등 법률상 관계에 따라 인지청구/친생부인/친생자관계존부확인의 소 중 적절한 절차를 사건 작성 단계에서 선정해야 한다. 유전자 감정 결과는 해당 가족 사건에서 별도로 관리한다.
 - 제작 목표 100건(형사 50, 민사 25, 가사 20, 행정 5)은 여전히 전체 데이터 제작·검수 대상이다. 현 단계에서 100건이 Advanced 엔진으로 변환되거나 전수 검증된 것은 아니다.

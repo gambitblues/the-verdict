@@ -16,4 +16,4 @@
 - QA 통과 전에는 `published` 표시와 실제 게임 배포 금지
 
 ## 구현 구분
-`advanced_case_schema.js`는 소스 확인 증빙을 **데이터 필드 존재 여부**로 검사한다. 실제 링크의 법률적 진위는 자동 보장하지 않는다. `advanced_pilot.html`은 정식 커리어 UI가 아닌 별도 개발용 시뮬레이터다. 후속 사건 엔진 `advanced_world_engine.js`는 후보 이벤트를 결정하지만 소송의 적법한 요건·실제 출산 여부를 자동 판단하지 않는다.
+`advanced_case_schema.js`는 소스 확인 증빙을 **데이터 필드 존재 여부**로 검사한다. 실제 링크의 법률적 진위는 자동 보장하지 않는다. `dev/advanced-pilot/advanced_pilot.html`은 정식 커리어 UI가 아닌 별도 개발용 시뮬레이터다. 후속 사건 엔진 `advanced_world_engine.js`는 후보 이벤트를 결정하지만 소송의 적법한 요건·실제 출산 여부를 자동 판단하지 않는다.

@@ -28,7 +28,10 @@
 - Advanced 엔진(`advanced_*.js`, `docs/ADVANCED_ENGINE.md`)은 기획자가 개발 중인 독립 모듈이다. 게임에 연결할 때는 아래를 따른다.
   - 세이브에 사건 전체(`lock`)를 복사하지 말고 사건 id·버전·진실·진행 기록만 저장한다(로컬 저장 5MB 한도).
   - 기획 양식은 하나로 유지한다. 기존 양식(`docs/case-template.json`)에 Advanced 칸을 선택 칸으로 더하는 방향을 제안해 둔 상태다(사용자 미확정).
-  - `advanced_pilot.html` 같은 개발용 화면은 main 공개 전에 위치를 정한다.
+  - 개발용 화면·시범 사건은 `dev/`(예: `dev/advanced-pilot/advanced_pilot.html`), 초안 사건 데이터는 `advanced-content/`에 둔다. 둘 다 main에 올라가지 않는다.
+  - Advanced 초안 99건은 아직 틀에서 찍어낸 초안이다. `tests/advanced-content-qa.cjs`가 사건 사이 반복 문장·시각 불일치·주제형 증인 역할을 세고, 문제가 남은 사건은 플레이 가능 표시를 못 한다.
+  - 기존 60건 → Advanced 변환은 `advanced_legacy_adapter.js`(집필 문장만 사용, 이름 토큰 유지, 없는 시각·장소는 'needs_authoring'으로 표시).
+- 정리 원칙(사용자 요청): 프로그램에 영향 없는 옛 코드·안 쓰는 파일·중복 코드는 검수 때 지운다. 이미 올라간 커밋 기록은 고쳐 쓰지 않는다(공유 브랜치 강제 푸시 금지).
 
 ## 확정된 설계 결정
 - **시간 두 개:** 현실 시간 배당(10~22시 매시 정각 사건 2건 제안, 3시간 안에 고르지 않으면 다른 재판부로, 진행 중 최대 5건) + 공판을 열 때만 흐르는 하나의 게임 달력(`openSession`이 `14일 ÷ 진행 중 재판 수`, 2~14일).
@@ -60,12 +63,7 @@ ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node test
 1. `index.html`의 `VERDICT_VERSION`/`VERDICT_RELEASED`, `sw.js`의 `CACHE`, `docs/CHANGELOG.md` 맨 위 항목을 같은 번호로.
 2. develop에 커밋. 작성자 `Claude <noreply@anthropic.com>`, 메시지 끝에 세션이 지정한 Co-Authored-By/Claude-Session 줄.
 3. `git push origin develop`
-4. main 반영(트리 그대로, 두 부모 병합 커밋):
-```
-git fetch origin +refs/heads/main:refs/remotes/origin/main
-D=$(git rev-parse HEAD); M=$(git commit-tree "$D^{tree}" -p origin/main -p "$D" -m "Release vX.Y.Z to main")
-git push origin "$M:refs/heads/main"
-```
+4. main 반영: `scripts/release-main.sh X.Y.Z` (두 부모 병합 커밋. 개발 전용 `dev/`·`advanced-content/`는 빼고 올린다 — 공개 사이트에 테스트 화면·초안 사건이 나가지 않게). 직전 Pages 배포가 끝났는지 먼저 `gh run list -R gambitblues/the-verdict --branch main -L 1`로 확인.
 5. 사용자에게 한국어로 짧게: 무엇이 바뀌었는지, 확인할 곳.
 
 ## 현재 상태

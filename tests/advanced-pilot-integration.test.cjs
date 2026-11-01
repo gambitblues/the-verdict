@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict');
-const Core=require('../advanced_case_engine.js'),App=require('../advanced_pilot_integration.js');
+const Core=require('../advanced_case_engine.js'),App=require('../dev/advanced-pilot/advanced_pilot_integration.js');
 for(const truth of ['did','didnt','reason']){
  let p=App.start('2026-001',truth),start=JSON.stringify(Core.read(p.state));
  assert.equal(App.check(p),true);

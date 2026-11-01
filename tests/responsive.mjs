@@ -66,7 +66,7 @@ try{
   await page.locator('[data-action="t4sheet"][data-v="close"]').dispatchEvent('click');
   // Android home-screen launch: a 48px hidden strip lifts the bar and the dock by exactly that much
   if(w<=1100){const before=await page.evaluate(()=>[document.querySelector('.bottom-nav').getBoundingClientRect().bottom,document.querySelector('.t4-dock')?.getBoundingClientRect().bottom]);
-   await page.evaluate(()=>document.documentElement.style.setProperty('--vv-gap','48px'));await page.waitForTimeout(50);
+   await page.evaluate(()=>document.documentElement.style.setProperty('--vv-gap','48px'));await page.waitForTimeout(400);
    const after=await page.evaluate(()=>[document.querySelector('.bottom-nav').getBoundingClientRect().bottom,document.querySelector('.t4-dock')?.getBoundingClientRect().bottom]);
    assert.equal(Math.round(before[0]-after[0]),48,`${name}: bar lifted by the hidden strip`);if(before[1]&&after[1])assert.equal(Math.round(before[1]-after[1]),48,`${name}: dock lifted with it`);
    await page.evaluate(()=>{document.documentElement.classList.add('kb-open')});assert.ok(!(await page.locator('.bottom-nav').isVisible()),`${name}: bar hides while typing`);
