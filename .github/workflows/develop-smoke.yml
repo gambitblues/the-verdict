@@ -46,6 +46,7 @@ jobs:
           node tests/advanced-story-beats-99.test.cjs
           node tests/advanced-expanded-99.test.cjs
           node tests/advanced-individualized-005.test.cjs
+          node tests/advanced-assembled-99.test.cjs
       - name: Install browser test tooling
         run: |
           npm install --no-save playwright
