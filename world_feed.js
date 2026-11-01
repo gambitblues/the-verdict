@@ -65,27 +65,39 @@ function threadView(list){
 /* side p = writes from the prosecution or claimant's side, d = from the defence or respondent's side.
  * style decides how they build a headline and which facts they reach for first. */
 const REPORTERS=[
- {name:'서은채',outlet:'중앙사회신문',side:'p',style:'victim',bio:'피해자 지원센터 취재로 이름을 알린 사회부 12년 차',voice:'피해자의 하루가 어떻게 무너졌는지부터 쓴다'},
- {name:'이재석',outlet:'서울법정일보',side:'p',style:'police',bio:'경찰서 출입 9년, 수사 기록을 가장 먼저 읽는 기자',voice:'수사팀이 쌓은 증거의 무게를 믿는다'},
- {name:'구태오',outlet:'민생24',side:'p',style:'hot',bio:'조회수 1위를 놓친 적 없는 화제성 담당',voice:'방청석의 분노를 그대로 옮긴다'},
- {name:'정하린',outlet:'한빛경제',side:'p',style:'money',bio:'소비자·노동 분쟁을 오래 쫓은 경제사회부 기자',voice:'힘이 약한 쪽의 손해가 얼마인지 묻는다'},
- {name:'오세진',outlet:'사회안전통신',side:'p',style:'safety',bio:'산업재해와 안전사고만 8년째 쓰는 기자',voice:'같은 일이 또 일어날 수 있는지를 따진다'},
- {name:'남궁윤',outlet:'라디오정의',side:'p',style:'voice',bio:'라디오 시사 프로그램 출신, 당사자 인터뷰를 즐겨 싣는다',voice:'당사자의 목소리를 문장 그대로 옮긴다'},
- {name:'김다온',outlet:'청년프레스',side:'p',style:'young',bio:'2년 차 막내 기자, 같은 또래 피해자 사건에 마음이 쓰인다',voice:'청년들이 이 사건을 어떻게 보는지 묻는다'},
- {name:'류태민',outlet:'현장타임즈',side:'p',style:'scene',bio:'사건 현장부터 가 보는 발로 뛰는 기자',voice:'현장의 모습으로 기사를 연다'},
- {name:'홍지아',outlet:'동부종합일보',side:'p',style:'local',bio:'지역 사회를 20년째 지킨 지역 데스크',voice:'동네가 이 사건을 어떻게 겪고 있는지 쓴다'},
- {name:'황보람',outlet:'오늘의쟁점',side:'p',style:'opinion',bio:'논설위원 출신, 단호한 문장으로 유명하다',voice:'책임을 분명히 하라고 쓴다'},
- {name:'윤도경',outlet:'시사돋보기',side:'d',style:'probe',bio:'강압 수사 보도로 상을 받은 탐사 기자',voice:'증거를 어떻게 얻었는지부터 의심한다'},
- {name:'박서윤',outlet:'코리아재판뉴스',side:'d',style:'rights',bio:'국선 변호인 출신으로 피고인 인권을 다뤄 온 법조 기자',voice:'"아직 증명되지 않았다"는 문장을 아끼지 않는다'},
- {name:'마지훈',outlet:'데이터사회',side:'d',style:'data',bio:'판결문을 숫자와 구조로 읽는 데이터 기자',voice:'빈칸이 남은 증거를 하나씩 센다'},
- {name:'한민지',outlet:'재판브리핑',side:'d',style:'court',bio:'법원 출입 10년 차, 양쪽 말을 다 들어야 쓰는 기자',voice:'여론보다 절차를 먼저 본다'},
- {name:'차은호',outlet:'팩트노트',side:'d',style:'fact',bio:'팩트체크 전담, 기사에 출처를 다 다는 기자',voice:'확인된 것과 소문을 칸을 나눠 적는다'},
- {name:'선우진',outlet:'산업과법',side:'d',style:'company',bio:'기업법무 담당, 계약서를 끝까지 읽는 기자',voice:'계약과 규정에 무엇이 적혀 있는지 본다'},
- {name:'제갈현',outlet:'대한저널',side:'d',style:'history',bio:'오판 사례를 연재해 온 사법 전문기자',voice:'과거의 오판과 겹치는 지점을 찾는다'},
- {name:'민예린',outlet:'시민포커스',side:'d',style:'family',bio:'가족과 돌봄 문제를 다루는 생활부 기자',voice:'피고인의 가족과 삶도 함께 보라고 쓴다'},
- {name:'곽도윤',outlet:'로컬이슈',side:'d',style:'online',bio:'온라인 여론과 가짜뉴스를 추적하는 기자',voice:'인터넷의 확신이 법정의 증거보다 앞서 있지 않은지 묻는다'},
- {name:'설하준',outlet:'오늘의법',side:'d',style:'scholar',bio:'법학 박사 출신 객원 기자',voice:'법 조문이 실제로 무엇을 요구하는지 풀어 쓴다'}
+ {name:'서은채',g:'여',outlet:'중앙사회신문',side:'p',style:'victim',bio:'피해자 지원센터 취재로 이름을 알린 사회부 12년 차',voice:'피해자의 하루가 어떻게 무너졌는지부터 쓴다'},
+ {name:'이재석',g:'남',outlet:'서울법정일보',side:'p',style:'police',bio:'경찰서 출입 9년, 수사 기록을 가장 먼저 읽는 기자',voice:'수사팀이 쌓은 증거의 무게를 믿는다'},
+ {name:'구태오',g:'남',outlet:'민생24',side:'p',style:'hot',bio:'조회수 1위를 놓친 적 없는 화제성 담당',voice:'방청석의 분노를 그대로 옮긴다'},
+ {name:'정하린',g:'여',outlet:'한빛경제',side:'p',style:'money',bio:'소비자·노동 분쟁을 오래 쫓은 경제사회부 기자',voice:'힘이 약한 쪽의 손해가 얼마인지 묻는다'},
+ {name:'오세진',g:'남',outlet:'사회안전통신',side:'p',style:'safety',bio:'산업재해와 안전사고만 8년째 쓰는 기자',voice:'같은 일이 또 일어날 수 있는지를 따진다'},
+ {name:'남궁윤',g:'여',outlet:'라디오정의',side:'p',style:'voice',bio:'라디오 시사 프로그램 출신, 당사자 인터뷰를 즐겨 싣는다',voice:'당사자의 목소리를 문장 그대로 옮긴다'},
+ {name:'김다온',g:'여',outlet:'청년프레스',side:'p',style:'young',bio:'2년 차 막내 기자, 같은 또래 피해자 사건에 마음이 쓰인다',voice:'청년들이 이 사건을 어떻게 보는지 묻는다'},
+ {name:'류태민',g:'남',outlet:'현장타임즈',side:'p',style:'scene',bio:'사건 현장부터 가 보는 발로 뛰는 기자',voice:'현장의 모습으로 기사를 연다'},
+ {name:'홍지아',g:'여',outlet:'동부종합일보',side:'p',style:'local',bio:'지역 사회를 20년째 지킨 지역 데스크',voice:'동네가 이 사건을 어떻게 겪고 있는지 쓴다'},
+ {name:'황보람',g:'여',outlet:'오늘의쟁점',side:'p',style:'opinion',bio:'논설위원 출신, 단호한 문장으로 유명하다',voice:'책임을 분명히 하라고 쓴다'},
+ {name:'윤도경',g:'남',outlet:'시사돋보기',side:'d',style:'probe',bio:'강압 수사 보도로 상을 받은 탐사 기자',voice:'증거를 어떻게 얻었는지부터 의심한다'},
+ {name:'박서윤',g:'여',outlet:'코리아재판뉴스',side:'d',style:'rights',bio:'국선 변호인 출신으로 피고인 인권을 다뤄 온 법조 기자',voice:'"아직 증명되지 않았다"는 문장을 아끼지 않는다'},
+ {name:'마지훈',g:'남',outlet:'데이터사회',side:'d',style:'data',bio:'판결문을 숫자와 구조로 읽는 데이터 기자',voice:'빈칸이 남은 증거를 하나씩 센다'},
+ {name:'한민지',g:'여',outlet:'재판브리핑',side:'d',style:'court',bio:'법원 출입 10년 차, 양쪽 말을 다 들어야 쓰는 기자',voice:'여론보다 절차를 먼저 본다'},
+ {name:'차은호',g:'남',outlet:'팩트노트',side:'d',style:'fact',bio:'팩트체크 전담, 기사에 출처를 다 다는 기자',voice:'확인된 것과 소문을 칸을 나눠 적는다'},
+ {name:'선우진',g:'남',outlet:'산업과법',side:'d',style:'company',bio:'기업법무 담당, 계약서를 끝까지 읽는 기자',voice:'계약과 규정에 무엇이 적혀 있는지 본다'},
+ {name:'제갈현',g:'남',outlet:'대한저널',side:'d',style:'history',bio:'오판 사례를 연재해 온 사법 전문기자',voice:'과거의 오판과 겹치는 지점을 찾는다'},
+ {name:'민예린',g:'여',outlet:'시민포커스',side:'d',style:'family',bio:'가족과 돌봄 문제를 다루는 생활부 기자',voice:'피고인의 가족과 삶도 함께 보라고 쓴다'},
+ {name:'곽도윤',g:'남',outlet:'로컬이슈',side:'d',style:'online',bio:'온라인 여론과 가짜뉴스를 추적하는 기자',voice:'인터넷의 확신이 법정의 증거보다 앞서 있지 않은지 묻는다'},
+ {name:'설하준',g:'남',outlet:'오늘의법',side:'d',style:'scholar',bio:'법학 박사 출신 객원 기자',voice:'법 조문이 실제로 무엇을 요구하는지 풀어 쓴다'}
 ];
+const STYLE_LABEL={victim:'피해자 시선',police:'수사 기록',hot:'화제성',money:'경제·생활',safety:'안전·재발 방지',voice:'당사자 인터뷰',young:'청년 시선',scene:'현장 르포',local:'지역 사회',opinion:'사설',probe:'탐사 보도',rights:'피고인 인권',data:'데이터 분석',court:'법원 출입',fact:'팩트체크',company:'기업·계약',history:'오판 연구',family:'가족·돌봄',online:'온라인 여론',scholar:'법률 해설'};
+/* A reporter becomes a real person the first time the player opens their card. */
+function reporterNPC(i){const r=REPORTERS[i];if(!r)return null;const id='reporter_'+i;if(NPC[id])return id;
+ const tmp=freshNPC('기자',0,'media'),p=NPC[tmp];delete NPC[tmp];delete S.npcDB[tmp];S.relations[id]=S.relations[tmp];delete S.relations[tmp];S.memories[id]=S.memories[tmp]||[];delete S.memories[tmp];
+ const yrs=Number((r.bio.match(/(\d+)\s*년/)||[])[1])||(/막내|2년/.test(r.bio)?2:/논설|박사/.test(r.bio)?20:10);
+ Object.assign(p,{name:r.name,gender:r.g,bornYear:year()-(25+yrs+hash(r.name)%4),role:r.outlet+' 기자',career:r.outlet+' 기자',personality:r.voice,origin:r.bio,socialStatus:'언론계',bond:'내 법정을 취재하는 기자',reporter:i,jobHistory:[{year:year()-yrs,job:r.outlet+' 기자',reason:'입사'}]});
+ NPC[id]=p;S.npcDB[id]=p;save();return id}
+function reporterNote(i){const r=REPORTERS[i];if(!r)return '';
+ const mine=articles().filter(a=>a.reporter===r);let up=0,down=0;
+ for(const a of mine){const f=S.cases[a.caseId]?.trial4?.final;if(!f||!T)continue;const side=T.sideOf(f.dir);if(side===0.5||side===0)continue;((side===1)===(r.side==='p'))?up++:down++}
+ const tone=up+down?`<p>내 판결 ${up+down}건을 다뤘고, 그중 ${up}건은 호의적으로 ${down}건은 비판적으로 썼다.</p>`:'<p>아직 내 판결을 평가한 기사는 없다.</p>';
+ return `<h4>📰 기자 수첩</h4><div class="detail"><p><b>${esc(r.outlet)}</b> · ${esc(STYLE_LABEL[r.style]||'')} · ${r.side==='p'?'검찰·원고 쪽에서 보는 편':'변호인·피고 쪽에서 보는 편'}</p><p>${esc(r.bio)}. ${esc(r.voice)}.</p>${tone}</div>${mine.length?`<h4>쓴 기사</h4>${mine.slice(0,5).map(a=>`<p class="small">· ${esc(a.title)}</p>`).join('')}`:''}`}
 function reporterPair(c){const Pr=REPORTERS.filter(r=>r.side==='p'),Dr=REPORTERS.filter(r=>r.side==='d');return [Pr[hash(c.id+'rp')%Pr.length],Dr[hash(c.id+'rd')%Dr.length]]}
 const Pj=(w,p)=>window.VerdictCurated?VerdictCurated.particle(w,p):w+p;
 const cut=(x,n=38)=>{x=String(x||'').replace(/[.。]$/,'');return x.length>n?x.slice(0,n-1)+'…':x};
@@ -183,7 +195,7 @@ function newsFeed(limit=40){
  if(!list.length)return '<p class="muted">진행 중 사건의 보도가 여기에 쌓입니다.</p>';
  return '<div class="tv-news-list">'+list.map(a=>{
   const c=CASES.find(x=>x.id===a.caseId),key='art'+a.index,id=a.caseId+':'+key,n=3+hash(id)%3;
-  return `<article class="tv-media-card"><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div><strong>${esc(a.title)}</strong>${a.reporter?`<p class="tv-reporter">✍ ${esc(a.reporter.name)} 기자 · ${esc(a.reporter.bio)}. ${esc(a.reporter.voice)}.</p>`:''}<p>${esc(a.body)}</p>
+  return `<article class="tv-media-card"><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div><strong>${esc(a.title)}</strong>${a.reporter?`<button class="tv-reporter" data-action="reporter" data-i="${REPORTERS.indexOf(a.reporter)}">✍ <b>${esc(a.reporter.name)} 기자</b> · ${esc(a.reporter.bio)}. ${esc(a.reporter.voice)}. <i>›</i></button>`:''}<p>${esc(a.body)}</p>
   <button class="wf-link" data-action="wfopen" data-id="${esc(id)}">💬 ${open.has(id)?'댓글 접기':`댓글 ${n}개`}</button>${open.has(id)&&c?`<div class="wf-thread">${threadView(thread(c,key,n))}</div>`:''}</article>`;
  }).join('')+'</div>';
 }
@@ -273,10 +285,13 @@ home=function(){
  const waiting=threads().filter(x=>!x.picked).length;
  return (waiting?`<button class="wf-home" data-action="tablet" data-sub="messages">💬 답장을 기다리는 문자 ${waiting}건</button>`:'')+priorHome();
 };
+const priorPopup=popupNPC;
+popupNPC=function(id){priorPopup(id);const p=NPC[id];if(p&&p.reporter!=null&&window.VerdictTrialPlay?.addToModal)VerdictTrialPlay.addToModal(reporterNote(p.reporter))};
 const priorClick=clicker;
 clicker=function(e){
  const el=e.target.closest('[data-action]'),a=el?.dataset.action;
  if(a==='wfopen'){e.preventDefault();const id=el.dataset.id;open.has(id)?open.delete(id):open.add(id);render();return}
+ if(a==='reporter'){e.preventDefault();const id=reporterNPC(Number(el.dataset.i));if(id)popupNPC(id);return}
  if(a==='wfreply'){e.preventDefault();answer(el.dataset.id,el.dataset.choice);return}
  return priorClick(e);
 };
