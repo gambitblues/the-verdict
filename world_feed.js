@@ -113,7 +113,7 @@ const cut=(x,n=38)=>{x=String(x||'').replace(/[.。]$/,'');return x.length>n?x.s
 function material(c,t){
  const cur=TP.curOf(c),tell=x=>TP.tell(c,t,x||'');
  const evs=(cur?.evidence||[]).map((e,i)=>{const live=t?.evidence?.[i];return {title:tell(e.title),shows:tell(e.shows),caveat:tell(e.caveat),side:e.side,decision:live?.decision||null,illegal:live?.flawType==='illegal'}});
- const said=(t?.heard||[]).filter(h=>!h.tainted&&!h.struck).map(h=>{const q=(cur?.witnesses?.[h.w]?.q||[]).find(x=>x.id===h.q);if(!q)return null;
+ const said=(t?.heard||[]).filter(h=>!h.tainted&&!h.struck).map(h=>{const q=TP.qById?TP.qById(c,t,h.w,h.q):(cur?.witnesses?.[h.w]?.q||[]).find(x=>x.id===h.q);if(!q)return null;
   let a=q.a;if(typeof a==='object'){let k=t.truth in a?t.truth:'reason';if(t.witnesses[h.w]?.flipped&&k!=='reason')k=k==='did'?'didnt':'did';a=a[k]}
   return {who:NPC[t.witnesses[h.w]?.id]?.name||'증인',role:cur.witnesses[h.w]?.role||'증인',text:tell(a),side:h.side}}).filter(Boolean);
  const issues=(cur?.issues||[]).map(i=>({title:i.title,open:tell(i.open)}));

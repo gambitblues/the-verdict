@@ -281,17 +281,38 @@ function faceOffOutcome(pw,dw,truth,seed){
 /* ---------- v6.2: what comes back from a judge's order (pure) ----------
  * none: there is no such material (a proper answer, never a penalty) · late: asks for one more hearing (once)
  * done / partial: material arrives · declined: the defence in a criminal case chooses not to submit (its right). */
+/* Follow-up nodes (curated followUps): a node opens only when what came before in the trial calls for it.
+ * node.day = earliest hearing; node.after = trigger, one of
+ *  {heard:'w:q'} testimony heard ('w' alone: anything from that witness) · {got:id} an earlier order brought something
+ *  {miss:id} an earlier order came back empty or refused · {done:id} an earlier order resolved either way
+ *  {contra:issue} testimony on that issue points both ways · {any:[...]} / {all:[...]}
+ * st = {day, heard:[{w,q,side,issue}], orders:{nodeId:'pending'|'done'|'partial'|'none'|'declined'}} */
+function nodeOpen(node,st){
+ if(!node)return false;if(node.day&&(st.day||1)<node.day)return false;
+ const heard=st.heard||[],orders=st.orders||{};
+ const ok=a=>{if(!a)return true;
+  if(a.any)return a.any.some(ok);if(a.all)return a.all.every(ok);
+  if(a.heard!=null){const [w,q]=String(a.heard).split(':');return heard.some(h=>String(h.w)===w&&(!q||h.q===q))}
+  if(a.got)return ['done','partial'].includes(orders[a.got]);
+  if(a.miss)return ['none','declined'].includes(orders[a.miss]);
+  if(a.done)return !!orders[a.done]&&orders[a.done]!=='pending';
+  if(a.contra){const s=new Set(heard.filter(h=>h.issue===a.contra).map(h=>h.side));return (s.has('p')&&s.has('d'))||(s.has('m')&&(s.has('p')||s.has('d')))}
+  return false};
+ return ok(node.after);
+}
 function orderOutcome({type,to,crim,has=true,skill=55,delayed=false},seed){
  if(!has)return 'none';
  const u=unit(seed);
  if(type==='recall'||type==='explain')return !delayed&&u>0.9?'late':'done';
+ // a criminal defence may simply decline to hand material over: a right, not a failure (about one in seven)
+ if(crim&&to==='d'&&unit(seed+':decline')<0.15)return 'declined';
  const full=clamp(0.5+skill/200,0.5,0.95);
  if(u<full)return 'done';
  if(!delayed&&u<full+0.08)return 'late';
  return crim&&to==='d'?'declined':'partial';
 }
 
-const api=Object.freeze({orderOutcome,attitudeOf,objectionValid,truthSide,confrontOutcome,faceOffScore,faceOffOutcome,LABEL,REASONS,EVALUATORS,STYLES,clamp,hash,unit,pick,between,
+const api=Object.freeze({orderOutcome,nodeOpen,attitudeOf,objectionValid,truthSide,confrontOutcome,faceOffScore,faceOffOutcome,LABEL,REASONS,EVALUATORS,STYLES,clamp,hash,unit,pick,between,
  truthFromStory,minDays,twistChance,direction,sideOf,roll,reveal,rangeOf,testimony,gauge,skill,reasonFits,cards,
  pressStart,pressDay,opinionMatch,evaluate});
 if(typeof module!=='undefined'&&module.exports)module.exports=api;

@@ -26,3 +26,5 @@ jobs:
         run: COMBOS=100 node tests/v6-narrative-combos.mjs
       - name: v5.7 save migration
         run: node tests/v5-migration.mjs
+      - name: Judge's orders, 60 cases × 80 seeds through every hearing
+        run: SEEDS=80 node tests/court-orders.mjs

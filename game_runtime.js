@@ -898,6 +898,7 @@ if(document.readyState==='complete')init();else document.addEventListener('DOMCo
  };
  const roleTag=(id,c)=>c.side?.[0]===id?(c.kind==='criminal'?'검사':'원고 대리인'):c.side?.[1]===id?'피고 측 변호인':c.who?.[0]===id?(c.kind==='criminal'?'피고인':'원고'):c.who?.[1]===id?(c.kind==='criminal'?'피해자·관계인':'피고'):'증인·관계인';
  function photo(id){
+  if(window.VerdictVisuals){const p=NPC[id]||{};return VerdictVisuals.portrait(id,p,p.bornYear?Math.max(8,year()-p.bornYear):35)}
   const p=NPC[id]||NPC.self,seed=hash(id+'-portrait-1'),male=p.gender?/남/.test(p.gender):![4,5].includes(p.hair),yr=p.bornYear||1986,ageN=Math.max(8,Math.min(95,year()-yr));
   const shades=['#edd0b7','#dcb394','#bb8768','#edbb98','#c99678'];const skin=shades[(seed>>>2)%shades.length];
   const hair=['#252c32','#3c2d2b','#4c3b35','#302927','#6b4c3e','#85817a'][Math.min(5,Math.floor(ageN/70)+(seed%5))];

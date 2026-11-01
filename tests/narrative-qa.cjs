@@ -82,18 +82,39 @@ for(const id of C.ids){
    if(q.hidden&&!qs.some(o=>(o.next||[]).includes(q.id)))problems.push(`${id} witness[${i}] ${q.id}: hidden question never opens`)}});
  if(variants<2)problems.push(id+': needs at least two truth-dependent answers');
  if(!c.late||!c.late.title||!c.late.rebut||!iss.has(c.late.issue))problems.push(id+': late evidence incomplete');
- // judge's orders (followUps): valid issue / type / target, complete evidence or witness, answers for every truth
- const fids=new Set();
- for(const f of c.followUps||[]){const at=`${id} followUp ${f.id}`;if(fids.has(f.id))problems.push(at+': duplicate id');fids.add(f.id);
-  if(!iss.has(f.issue))problems.push(at+': unknown issue');if(!['records','witness','explain','expert','compare','alibi'].includes(f.type))problems.push(at+': bad type');
+ // judge's orders (followUps): valid issue / type / target / trigger, complete evidence, witness, recall or explanation
+ const fids=new Set(),FU=c.followUps||[],allIds=new Set(FU.map(f=>f.id)),dec=!!c.decision;
+ const qExists=(w,q)=>{const W=c.witnesses[w];return !!W&&(!q||(W.q||[]).some(x=>x.id===q))};
+ const refs=a=>!a?[]:a.any||a.all?(a.any||a.all).flatMap(refs):[a];
+ for(const f of FU){const at=`${id} followUp ${f.id}`;if(fids.has(f.id))problems.push(at+': duplicate id');fids.add(f.id);
+  if(!iss.has(f.issue))problems.push(at+': unknown issue');if(!['records','original','alibi','expert','witness','recall','explain','compare'].includes(f.type))problems.push(at+': bad type');
   if(!['p','d','both'].includes(f.to))problems.push(at+': bad target');if(!f.ask)problems.push(at+': needs the order text');
+  if(!!f.now!==dec)problems.push(at+': on-the-spot questions belong to decision cases only, and decision cases only have those');
+  if(f.day!=null&&!(f.day>=1&&f.day<=4))problems.push(at+': day must be 1-4');
+  for(const r of refs(f.after)){
+   if(r.heard!=null){const [w,q]=String(r.heard).split(':');if(!qExists(Number(w),q))problems.push(at+': trigger heard '+r.heard+' does not exist')}
+   else if(r.got||r.miss||r.done){const n=r.got||r.miss||r.done;if(!allIds.has(n)||n===f.id)problems.push(at+': trigger refers to unknown node '+n);else if(FU.findIndex(x=>x.id===n)>FU.indexOf(f))problems.push(at+': trigger refers to a later node '+n)}
+   else if(r.contra){if(!iss.has(r.contra))problems.push(at+': contra on unknown issue')}
+   else problems.push(at+': unknown trigger '+JSON.stringify(r))}
   if(f.to==='d'&&crim&&f.evidence&&!f.none)problems.push(at+': a defence order in a criminal case needs a "none" answer (no burden of proof)');
-  if(f.evidence){const E=f.evidence;for(const k of ['title','kind','by','when','excerpt','shows','side','caveat','how','check'])if(!E[k])problems.push(at+': evidence needs '+k);
-   for(const k of ['excerpt','shows','side'])if(typeof E[k]==='object'){for(const tr of ['did','didnt','reason'])if(E[k][tr]==null)problems.push(at+': evidence '+k+' needs '+tr)}
+  if(f.evidence){const E=f.evidence;for(const k of ['title','kind','by','when','excerpt','shows','caveat','how','check'])if(!E[k])problems.push(at+': evidence needs '+k);
+   if(!E.side&&typeof E.excerpt!=='object')problems.push(at+': evidence needs side');
+   for(const k of ['excerpt','shows','side','part'])if(E[k]&&typeof E[k]==='object'){for(const tr of ['did','didnt','reason'])if(E[k][tr]==null)problems.push(at+': evidence '+k+' needs '+tr)}
    if(typeof E.side==='object'&&Object.values(E.side).some(v=>!['p','d','n'].includes(v)))problems.push(at+': evidence side must be p/d/n')}
-  if(f.witness){const qs=f.witness.q||[];if(qs.length<3)problems.push(at+': witness needs 3 questions');for(const q of qs)if(!iss.has(q.issue))problems.push(at+': witness question with unknown issue')}
-  if(!f.evidence&&!f.witness&&f.type!=='explain')problems.push(at+': nothing can come back');
-  if(f.have&&Object.values(f.have).includes(false)&&!f.none)problems.push(at+': material may not exist, so a "none" answer is needed')}
+  const checkQ=(qs,where)=>{for(const q of qs){if(!iss.has(q.issue))problems.push(at+': '+where+' question with unknown issue');if(!q.q||!q.a)problems.push(at+': '+where+' question incomplete');
+   if(typeof q.a==='object'){for(const k of ['did','didnt','reason'])if(!q.a[k])problems.push(at+': '+where+' '+q.id+' missing answer '+k)}else if(!['p','d','n'].includes(q.side))problems.push(at+': '+where+' '+q.id+' needs side')}};
+  if(f.witness){const qs=f.witness.q||[];if(qs.length<3)problems.push(at+': witness needs 3 questions');if(!f.witness.role||!f.witness.story||!f.witness.lead)problems.push(at+': witness needs role, story, lead');checkQ(qs,'witness')}
+  if(f.type==='recall'){if(!f.recall||!c.witnesses[f.recall.w])problems.push(at+': recall needs one of the written witnesses');else{const qs=f.recall.q||[];if(qs.length<2)problems.push(at+': recall needs 2+ new questions');checkQ(qs,'recall');if(!qs.some(q=>typeof q.a==='object'))problems.push(at+': recall needs a truth-dependent answer')}}
+  if(f.type==='explain'&&!(f.answer?.p&&f.answer?.d))problems.push(at+': explanation needs what both sides say');
+  if(!f.evidence&&!f.witness&&f.type!=='explain'&&f.type!=='recall')problems.push(at+': nothing can come back');
+  const canBeEmpty=(f.have&&Object.values(f.have).includes(false))||(f.to==='d'&&crim&&(f.evidence||f.type==='records'||f.type==='alibi'));
+  if(f.have&&Object.values(f.have).includes(false)&&!f.none)problems.push(at+': material may not exist, so a "none" answer is needed');
+  if(canBeEmpty&&!FU.some(g=>refs(g.after).some(r=>r.miss===f.id)))problems.push(at+': when this comes back empty or refused, another node must offer a way forward (after:{miss})')}
+ if(dec){if(FU.length<2)problems.push(id+': a decision case needs 2+ on-the-spot questions')}
+ else{const need=/homicide|sexual|murder/.test(id)?6:5;if(FU.length<need)problems.push(`${id}: needs ${need}+ follow-up nodes (has ${FU.length})`);
+  if(!FU.some(f=>(f.day||1)>=3||refs(f.after).some(r=>r.got||r.miss||r.done)))problems.push(id+': needs a node for the third hearing or later');
+  if(!FU.some(f=>f.type==='recall'))problems.push(id+': needs new questions for a written witness (recall)');
+  if(!FU.some(f=>f.type==='explain'))problems.push(id+': needs a case-specific clarification (explain)')}
  if(!c.rebut||!c.closing)problems.push(id+': needs rebuttal and closing');
  for(const names of NAME_SETS)walk(c,'',c,names);
 }

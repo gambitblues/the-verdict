@@ -84,7 +84,19 @@ for(const s of seeds(300)){
  assert.ok(['done','late'].includes(T.orderOutcome({type:'recall',skill:10},s)),'recalling a witness never fails');
  assert.equal(T.orderOutcome({type:'expert',to:'n',skill:50},s),T.orderOutcome({type:'expert',to:'n',skill:50},s),'orders replay');
 }
+const dec=share(seeds(3000),s=>T.orderOutcome({type:'records',to:'d',crim:true,skill:60},s)==='declined');
+assert.ok(dec>0.1&&dec<0.3,'a criminal defence declines now and then, whatever the lawyer skill ('+dec.toFixed(2)+')');
 const full=k=>share(seeds(3000),s=>T.orderOutcome({type:'records',to:'p',skill:k},s)==='done');
 assert.ok(full(90)>full(20)+0.2,'a more capable party answers an order in full more often');
 
-console.log('v6 behaviour tests passed · attitude, lawyer skill, confrontation, face-off, judge orders, 180 written witnesses');
+// ---- follow-up nodes open only when what came before calls for them ----
+const st=(o={})=>({day:1,heard:[],orders:{},...o});
+assert.ok(T.nodeOpen({},st()),'a node without a trigger is open from the first hearing');
+assert.ok(!T.nodeOpen({day:3},st({day:2}))&&T.nodeOpen({day:3},st({day:3})),'day sets the earliest hearing');
+assert.ok(!T.nodeOpen({after:{heard:'1:q2'}},st())&&T.nodeOpen({after:{heard:'1:q2'}},st({heard:[{w:1,q:'q2'}]})),'heard opens after that answer');
+assert.ok(!T.nodeOpen({after:{got:'n1'}},st({orders:{n1:'pending'}}))&&T.nodeOpen({after:{got:'n1'}},st({orders:{n1:'partial'}})),'got waits for material');
+assert.ok(T.nodeOpen({after:{miss:'n1'}},st({orders:{n1:'none'}}))&&T.nodeOpen({after:{miss:'n1'}},st({orders:{n1:'declined'}}))&&!T.nodeOpen({after:{miss:'n1'}},st({orders:{n1:'done'}})),'miss offers a way forward when nothing came');
+assert.ok(T.nodeOpen({after:{contra:'i1'}},st({heard:[{issue:'i1',side:'p'},{issue:'i1',side:'d'}]}))&&!T.nodeOpen({after:{contra:'i1'}},st({heard:[{issue:'i1',side:'p'}]})),'contra needs testimony pointing both ways');
+assert.ok(T.nodeOpen({after:{any:[{got:'n1'},{heard:'0:q1'}]}},st({heard:[{w:0,q:'q1'}]}))&&!T.nodeOpen({after:{all:[{got:'n1'},{heard:'0:q1'}]}},st({heard:[{w:0,q:'q1'}]})),'any / all');
+
+console.log('v6 behaviour tests passed · attitude, lawyer skill, confrontation, face-off, judge orders, follow-up triggers, 180 written witnesses');
