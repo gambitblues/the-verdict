@@ -666,7 +666,7 @@ function conclude(id){
  const st=S.cases[c.id];if(st.verdict||st.phase!==3||actionsLeft()<1)return;
  const v=c.verdicts.find(x=>x.id===id);if(!v)return;
  const evaluated=StoryEngine.evaluate(c,st.actions,v.id);st.verdict=v.id;st.closedWeek=S.week;st.grade=evaluated?.score??Math.min(100,Math.max(10,v.score+(st.flags.length>=3?3:0)));st.judgementAnalysis=evaluated?.why||null;
- S.actions++;window.VerdictCareerBalance.award(S,c.id,st.grade,c.importance,Number(String(day()).slice(0,4))||2026);
+ S.actions++;window.VerdictCareerBalance.award(S,c.id,st.grade,c.importance,year());
  modifyRel(c.side[0],st.grade>=70?3:-2);modifyRel(c.side[1],st.grade>=70?2:-3);
  const messageText=`${c.name}에서 ${v.label} 판결이 선고됐다. 재판부 판단 요지: ${v.note}.`;
  news(`${c.name} · 최종 선고`,messageText);
