@@ -22,7 +22,7 @@ function fill(text,names){
 for(const d of window.VERDICT_CURATED_DETAIL||[]){const c=cases[d.id];if(!c)continue;
  c.evidence=c.evidence.map((e,i)=>({...e,...(d.evidence?.[i]||{})}));
  c.witnesses=c.witnesses.map((w,i)=>({...w,...(d.witnesses?.[i]||{})}));
- for(const k of ['charge','demand','claim','issues','late','rebut','closing'])if(d[k]!=null)c[k]=d[k];
+ for(const k of ['charge','demand','claim','decision','issues','late','rebut','closing'])if(d[k]!=null)c[k]=d[k];
 }
 /* Gender facts a story depends on. A/B: fixed gender; AB: same or opposite to each other;
  * W: witness index → sameA / sameB / diffA / diffB. Everything else stays random. */
@@ -33,7 +33,8 @@ const SEX={
  'beta-sexual-009':{AB:'diff'},                              // former couple
  'stalking-repeat-contact':{AB:'diff'},                      // met on a blind date
  'beta-reputation-004':{A:'여'},                             // a mom-cafe regular
- 'beta-violence-003':{W:{1:'diffB'}}                         // the victim's spouse
+ 'beta-violence-003':{W:{1:'diffB'}},                        // the victim's spouse
+ 'v6-family-two-journals':{AB:'diff'}                        // separated parents
 };
 for(const [id,s] of Object.entries(SEX))if(cases[id])cases[id].sex=s;
 /* Sex crimes, stalking, marriage, divorce, custody and affairs: the two parties are always of opposite sex.
@@ -73,7 +74,38 @@ const PROFILE={
  'beta-violence-003':{A:{job:'택시 기사',age:[40,64]},B:{job:'회사원 (재택근무)',age:[31,42],mar:'기혼',kids:2}},
  'bribe-consulting-contract':{A:{job:'시청 도시개발과장',age:[58,59],deg:'학사',mar:'기혼'},B:{job:'건설 컨설팅 업체 대표',age:[42,60]}},
  'beta-public-005':{A:{job:'구청 환경과 9급 공무원',age:[24,32],deg:'학사'},B:{job:'은퇴한 교사',age:[63,76],deg:'학사'}},
- 'rent-unpaid-deposit':{A:{job:'회사원',age:[28,36],mar:'미혼'},B:{job:'임대업',age:[63,78]}}
+ 'rent-unpaid-deposit':{A:{job:'회사원',age:[28,36],mar:'미혼'},B:{job:'임대업',age:[63,78]}},
+ /* v6 · cases 31~60 */
+ 'v6-homicide-cold-storage':{A:{job:'물류센터 야간 현장 관리자',age:[38,52],deg:'전문학사'},B:{job:'냉동창고 하청 작업자',age:[34,48],mar:'기혼',kids:2}},
+ 'v6-homicide-sea-rescue':{A:{job:'해양경찰 구조대 현장 지휘관',age:[44,55],deg:'학사',mar:'기혼'},B:{job:'해양경찰 구조대원',age:[29,38]}},
+ 'v6-homicide-parking-14':{A:{job:'수제 맥주 양조장 공동 대표',age:[34,46],deg:'학사'},B:{job:'수제 맥주 양조장 공동 대표',age:[34,46],deg:'학사'}},
+ 'v6-homicide-ridge-fire':{A:{job:'표고버섯 농부',age:[55,68],deg:'고졸',mar:'기혼'},B:{job:'농부',age:[66,80],deg:'고졸'}},
+ 'v6-homicide-care-corridor':{A:{job:'장애인 공동생활시설 시설장',age:[48,62],deg:'학사'},B:{job:'시설 입소자',age:[30,55],mar:'미혼',kids:0}},
+ 'v6-sexual-taxi-gap':{A:{job:'개인택시 기사',age:[48,62],deg:'고졸'},B:{job:'광고회사 직원',age:[26,34],deg:'학사',mar:'미혼'}},
+ 'v6-sexual-consent-form':{A:{job:'독립 영상 제작사 대표',age:[38,52],deg:'학사'},B:{job:'배우',age:[25,33],deg:'학사',mar:'미혼'}},
+ 'v6-sexual-lecture-memo':{A:{job:'음대 교수',age:[50,62],deg:'박사',mar:'기혼'},B:{job:'성악 전공 4학년',age:[22,25],deg:'대학 재학',mar:'미혼'}},
+ 'v6-sexual-hotel-record':{A:{job:'해외영업팀 팀장',age:[40,48],deg:'학사',mar:'기혼'},B:{job:'해외영업팀 대리',age:[28,33],deg:'학사'}},
+ 'v6-sexual-closed-gym':{A:{job:'실업팀 지도자',age:[45,58],deg:'학사',mar:'기혼'},B:{job:'실업팀 선수',age:[24,29],deg:'학사',mar:'미혼'}},
+ 'v6-family-guardian-signature':{A:{job:'회사원',age:[50,60],deg:'학사',mar:'기혼'},B:{job:'무직 (부모 돌봄)',age:[48,58]}},
+ 'v6-family-adoption-record':{A:{job:'번역가',age:[32,40],deg:'학사'},B:{job:'입양 기관 기록관리 책임자',age:[50,62],deg:'석사'}},
+ 'v6-family-two-journals':{A:{job:'회사원 (단축 근무)',age:[34,44],deg:'학사',mar:'별거 중',kids:1},B:{job:'회사원',age:[35,46],deg:'학사',mar:'별거 중',kids:1}},
+ 'v6-financial-ghost-payroll':{A:{job:'제조업체 재무 담당 상무',age:[50,58],deg:'학사',mar:'기혼'},B:{job:'제조업체 대표',age:[55,64],deg:'학사'}},
+ 'v6-financial-2359-trade':{A:{job:'상장사 경영지원 전무',age:[50,60],deg:'석사',mar:'기혼'},B:{job:'퇴직 회사원 (소액주주 모임 대표)',age:[60,70]}},
+ 'v6-financial-fake-receipts':{A:{job:'병원 구매팀 직원',age:[38,50],deg:'전문학사'},B:{job:'병원장',age:[56,70],deg:'박사'}},
+ 'v6-property-flood-gate':{A:{job:'한복집 사장 (상인회장)',age:[56,68]},B:{job:'시설 관리업체 대표',age:[45,60],deg:'학사'}},
+ 'v6-property-returned-painting':{A:{job:'출판사 편집자 (화가의 유족)',age:[48,62],deg:'학사'},B:{job:'미술품 수집가',age:[55,72],deg:'석사'}},
+ 'v6-property-greenhouse':{A:{job:'딸기 농부',age:[42,56],deg:'학사',mar:'기혼'},B:{job:'물류 창고 개발 사업가',age:[45,60],deg:'학사'}},
+ 'v6-reputation-whistleblower':{A:{job:'폐수처리 설비 기사',age:[36,48],deg:'전문학사',mar:'기혼',kids:2},B:{job:'환경 시민단체 대표',age:[45,60],deg:'석사'}},
+ 'v6-reputation-48-hours':{A:{job:'중학교 과학 교사',age:[38,48],deg:'석사'},B:{job:'지역 신문 사회부 기자',age:[29,38],deg:'학사'}},
+ 'v6-reputation-meeting-tape':{A:{job:'철물점 사장 (재개발 추진위 총무)',age:[58,70]},B:{job:'편의점 점원 (세입자 모임 대표)',age:[34,48]}},
+ 'v6-professional-robot':{A:{job:'물류센터 피킹 작업자',age:[29,45]},B:{job:'물류센터 운영사 대표',age:[45,58],deg:'석사'}},
+ 'v6-professional-late-brief':{A:{job:'자영업자',age:[48,60]},B:{job:'변호사',age:[40,50],deg:'학사'}},
+ 'v6-professional-shift-minutes':{A:{job:'부품 공장 근로자 (근로자 대표)',age:[42,54],deg:'고졸'},B:{job:'부품 회사 대표',age:[45,60],deg:'학사'}},
+ 'v6-violence-rescue-push':{A:{job:'자전거 가게 사장',age:[42,58]},B:{job:'회사원',age:[30,45]}},
+ 'v6-violence-final-bout':{A:{job:'회사원 (아마추어 격투기 선수)',age:[24,32],mar:'미혼'},B:{job:'헬스 트레이너 (아마추어 격투기 선수)',age:[24,32],mar:'미혼'}},
+ 'v6-public-landslide-alert':{A:{job:'과수원 농부',age:[52,68]},B:{job:'군청 재난안전과장',age:[48,58],deg:'학사'}},
+ 'v6-public-lottery-rank':{A:{job:'식당 주방 직원',age:[34,44],kids:2},B:{job:'주택공사 선정 담당 부장',age:[48,58],deg:'학사'}},
+ 'v6-civil-shaded-roof':{A:{job:'은퇴한 회사원',age:[62,76],mar:'기혼'},B:{job:'상가 건물주',age:[48,65]}}
 };
 for(const [id,p] of Object.entries(PROFILE))if(cases[id])cases[id].profile=p;
 window.VerdictCurated={cases,ids:Object.keys(cases),fill,particle,active:list.length>0};

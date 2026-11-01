@@ -21,6 +21,9 @@ function circles(){
  const add=(key,id,role,caseName)=>{if(!id||!NPC[id]||seen.has(id))return;seen.add(id);
   g[key].push({id,name:NPC[id].name,role,caseName,trust:trust(id),act:`data-action="npc" data-id="${esc(id)}"`})};
  for(const id of ['hyun','senior'])add('court',id,NPC[id]?.role||'법원');
+ const b=window.VerdictV6?.bench?.();
+ if(b){add('court',b.assoc?.id,'배석판사 · 우리 재판부');add('court',b.clerk?.id,'재판연구원 · 우리 재판부');add('court',b.officer?.id,'참여관 · 우리 재판부');
+  for(const x of (b.alumni||[]).slice().reverse())add('court',x.id,`${x.now} · 전 ${x.was}`)}
  /* lawyers: one entry per person, with how many of my cases they appeared in */
  const met={};
  for(const c of myCases()){const t=S.cases[c.id].trial4,crim=isCrim(c);
@@ -40,8 +43,8 @@ const lineColor=v=>v>=55?'#3f8f5a':v>=20?'#a8a399':'#c8442f';
 function radial(g){
  const C=180,out=[],nodes=[],labels=[];
  for(const [key,label,color,angle] of GROUPS){
-  const items=g[key].slice().sort((a,b)=>b.trust-a.trust).slice(0,{court:4,bar:6,press:5}[key]),n=items.length;
-  const pos={court:[180,14,'middle'],bar:[356,286,'end'],press:[4,286,'start']}[key];
+  const items=g[key].slice().sort((a,b)=>b.trust-a.trust).slice(0,{court:6,bar:6,press:5}[key]),n=items.length;
+  const pos={court:[180,14,'middle'],bar:[356,352,'end'],press:[4,352,'start']}[key];
   labels.push(`<text x="${pos[0]}" y="${pos[1]}" class="pm-sector" text-anchor="${pos[2]}" fill="${color}">● ${esc(label)}</text>`);
   const spread=Math.min(key==='court'?80:100,(n-1)*22);
   items.forEach((p,k)=>{
