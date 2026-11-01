@@ -13,7 +13,7 @@ const manifest={devices:{cam:{offsetMinutes:-7}},records:[
 ]};
 assert.equal(T.inspect(state,manifest).length,2);
 assert.equal(T.contrast(manifest.records[0],manifest.records[1],manifest.devices).type,'time_compatible');
-assert.equal(T.contrast(manifest.records[0],manifest.records[1],{}).type,'time_disjoint');
+assert.equal(T.contrast({...manifest.records[0],deviceId:null},manifest.records[1],{}).type,'time_disjoint');
 const next=T.submit(state,manifest,'cctv');assert.equal(next.proceedings[0].evidenceId,'cctv');
 assert.equal(T.submit(next,manifest,'cctv').proceedings.length,1);
 assert.equal(next.lock,state.lock);
