@@ -236,6 +236,10 @@ const TPL={
   choices:[['accept','짧게 인터뷰에 응한다','감사합니다. 판사님 말씀은 왜곡 없이 그대로 싣겠습니다.',{rel:10,news:(c,r)=>[`[인터뷰] "${shortName(c)}, 기록이 말한 만큼만 판단했다"`,`${r.outlet} ${r.name} 기자가 재판장을 만나 판결 이유를 물었다. 재판장은 "증거로 확인된 것과 확인되지 않은 것을 나눠 판단했다"고 말했다.`]}],
    ['decline','정중히 거절한다','알겠습니다. 그래도 다음 판결도 계속 지켜보겠습니다.',{rel:-3}],
    ['office','공보판사를 통해 달라고 한다','공보 창구로 다시 요청드리겠습니다.',{rel:1,press:2}]]},
+ truth:{text:()=>'',
+  choices:[['thanks','말해 줘서 고맙다고 답한다','들어 주셔서 감사합니다. 이제야 조금 마음이 놓여요.',{rel:6}],
+   ['final','판결은 이미 확정됐다고 답한다','네, 압니다. 그래도 판사님은 아셔야 할 것 같았어요.',{rel:0}],
+   ['where','필요하면 알려야 할 곳을 안내한다','알려 주신 곳에 정식으로 말해 보겠습니다. 용기를 내 볼게요.',{rel:3}]]},
  review:{from:'senior',text:c=>`${shortName(c)} 리뷰 봤다. 너무 신경 쓰지 마. 다음엔 뭘 다르게 해 볼 생각이야?`,
   choices:[['proc','증거 절차를 더 꼼꼼히 보겠습니다','그게 제일 중요하지. 절차가 무너지면 결론도 같이 무너져.',{rel:3}],
    ['crowd','여론은 신경 쓰지 않겠습니다','그래야지. 대신 판결 이유는 누구나 읽을 수 있게 써.',{rel:1}],
@@ -247,6 +251,11 @@ function addThread(kind,c,from){
  threads().unshift({id:kind+':'+c.id+(from?':'+from:''),kind,caseId:c.id,from:who,week:S.week,at:Date.now(),lines:[{me:false,text:tp.text(c,r)}],picked:null});
  threads().splice(40);
  if(typeof toast==='function')toast(`💬 ${NPC[who].name}${r?' 기자':''}에게서 문자가 왔어요`);
+}
+function addTruth(c,from,text){
+ if(!NPC[from]||threads().some(x=>x.id==='truth:'+c.id))return;
+ threads().unshift({id:'truth:'+c.id,kind:'truth',caseId:c.id,from,week:S.week,at:Date.now(),lines:[{me:false,text}],picked:null});threads().splice(40);
+ if(typeof toast==='function')toast(`💬 ${NPC[from].name}에게서 오래 미뤄 둔 연락이 왔어요`);
 }
 function scan(){
  if(!S?.name)return false;let added=false;
@@ -312,5 +321,5 @@ clicker=function(e){
 };
 setInterval(()=>{if(scan()&&!ui.modal&&(ui.tab==='home'||ui.tab==='tablet'))render()},30000);
 setTimeout(()=>{if(scan()&&!ui.modal)render()},2500);
-window.VerdictWorld={scan,thread,opinionFeed,newsFeed,answer,reporters:()=>REPORTERS,reporterNPC};
+window.VerdictWorld={addTruth,scan,thread,opinionFeed,newsFeed,answer,reporters:()=>REPORTERS,reporterNPC};
 })();

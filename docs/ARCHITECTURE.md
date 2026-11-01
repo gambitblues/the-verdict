@@ -7,9 +7,10 @@
 | `index.html` | 진입점. 플레이어 슬롯 부트스트랩 후 아래 스크립트를 순서대로 로드 |
 | `game.css` | 전체 스타일 (기존 스타일시트 7개를 원래 적용 순서대로 합침) |
 | `deep_case_engine.js`, `story_engine.js`, `case_pack_engine.js`, `continuity_engine.js`, `npc_life_justice.js`, `family_engine.js` | 사건 생성, 숨겨진 진실, 사건팩 검증, 인물 생애 |
-| `curated/part1~3.js`, `curated/registry.js` → `curated_cases.js` | **집필 사건 30건.** `curated/detail*.js`에 법정 상세(쟁점, 증거 원문·확보 경위, 증인 질문 트리, 새 증거, 반박, 최종 논고, 법정형·구형/청구액)가 따로 있고 registry가 합친다. 사건마다 4막 서사, 양측 주장, 증거 3개(보여주는 것·한계), 사연 있는 증인 3명, 판결별 '그 후', 숨겨진 진실. 원본은 `curated/`, 게임이 읽는 묶음은 `node tests/build-curated.cjs`로 만듦 |
+| `curated/part1~8.js`, `curated/detail1~5.js`, `curated/registry.js` → `curated_cases.js` | **집필 사건 60건.** part4~8(v6)은 이야기와 법정 상세를 한 파일에 둔다. `decision` 필드가 있는 사건은 결정형(심리 1회 뒤 금액 없는 결정). `curated/detail*.js`에 법정 상세(쟁점, 증거 원문·확보 경위, 증인 질문 트리, 새 증거, 반박, 최종 논고, 법정형·구형/청구액)가 따로 있고 registry가 합친다. 사건마다 4막 서사, 양측 주장, 증거 3개(보여주는 것·한계), 사연 있는 증인 3명, 판결별 '그 후', 숨겨진 진실. 원본은 `curated/`, 게임이 읽는 묶음은 `node tests/build-curated.cjs`로 만듦 |
 | `names.js` | 한국 이름 생성. 성 빈도, 성별·출생 연도별 이름, 덜 쓰인 이름 우선, 가족은 시드로 고정 |
 | `world_feed.js` | 기자 20명과 사건당 기사 2편, 기사 댓글·답글, 사건별 여론 변화, 답장을 고르는 문자(기자 인터뷰 요청 포함) |
+| `v6_world.js` | v6 세계: 신규 사건팩 설치, 법조인 풀 단계적 확대(~210명), 전문가 증인 명부, 재판부(배석판사·재판연구원·참여관)와 증거 의견, 몇 년 뒤 진실을 털어놓는 인물 |
 | `people_map.js` | 인맥 화면. 실제로 만난 사람만 모은 관계도(SVG)와 사건별 인물관계도 |
 | `save_store.js` | 세이브 읽기·쓰기. 큰 세이브는 압축(fflate 내장)해 저장 |
 | `game_runtime.js` | 세계·NPC·사건·세이브·홈·태블릿 기본 런타임 |
@@ -99,3 +100,10 @@
   - `VerdictCalendar`: 게임 달력. `today()`, `advanceTo(day)`, `label(day)`. 공판이 열릴 때(`openSession`)만 앞으로 간다.
 - 사건 원형(`content-packs`)과 집필 데이터(`curated/`)는 코드와 분리돼 있어 서버에서 내려받는 데이터로 바꾸기 쉽다.
 - 인물(`S.npcDB`), 기억(`S.memories`), 문자(`S.threads`), 여론 기록(`trial4.mediaLog`)은 모두 직렬화 가능한 평범한 객체라 나중에 서버 동기화나 AI 생성 NPC 대화의 입력으로 쓸 수 있다.
+
+## v6: 사람이 판세를 바꾸는 부분 (`trial_play.js`)
+
+- `behaviour(c,i,w,seed)`: 증인의 태도·믿을 만한 정도·기억력을 인물 성향(traits)·나이·사건 속 이해관계(stake 문장)에서 정한다. 시드는 작은 흔들림만 더한다.
+- `skilled(...)`: 상대 변호사의 이의가 정당할 확률을 `legalCareer`의 실력으로 정한다.
+- `confront()` / `faceOff()`: 증거 들이밀기(신문 1)와 대질(신문 2). 결과는 `t.heard`에 `text`·`label`을 가진 항목으로 남고, 거둬들인 말은 `struck`. 털어놓는 말의 방향은 항상 `t.truth`를 따른다.
+- 결정형: `isDecision(c)` → 최소 기일 1, 추가 기일 없음, 금액 없음, 주문은 `decision.yesOrder/noOrder`.

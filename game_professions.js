@@ -44,6 +44,7 @@ function generate(role){
  return id;
 }
 function pool(role){const w=world();return w.people.filter(id=>NPC[id]?.legalCareer?.role===role&&NPC[id]?.alive!==false)}
+window.VerdictProfessions={generate:role=>generate(role),pool:role=>pool(role),skill:id=>NPC[id]?.legalCareer};
 function ensurePopulation(n){
  const active=Math.max(1,n||1),targets={judge:Math.max(0,Math.ceil(active*.6)-1),prosecutor:active,lawyer:active*2};
  for(const [role,target]of Object.entries(targets)){let list=pool(role);for(let i=list.length;i<target;i++)generate(role)}
@@ -254,6 +255,7 @@ function isNew(){
  return true;
 }
 async function ensurePack(){
+ await window.VerdictV6?.ensurePack?.();
  if(CasePackEngine.pool(S).length>=80)return;
  try{
  const res=await fetch(new URL('./content-packs/beta-weekend-100-v1.json',location.href),{cache:'no-cache'});

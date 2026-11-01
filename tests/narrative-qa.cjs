@@ -13,7 +13,8 @@ global.window={};
 eval(fs.readFileSync(path.join(__dirname,'..','curated_cases.js'),'utf8'));
 const C=window.VerdictCurated;
 const pack=JSON.parse(fs.readFileSync(path.join(__dirname,'..','content-packs','beta-weekend-100-v1.json'),'utf8'));
-const kindOf=Object.fromEntries(pack.archetypes.map(a=>[a.id,a.kind]));
+const pack6=JSON.parse(fs.readFileSync(path.join(__dirname,'..','content-packs','v6-new-30-v1.json'),'utf8'));
+const kindOf=Object.fromEntries([...pack.archetypes,...pack6.archetypes].map(a=>[a.id,a.kind]));
 
 const NAME_SETS=[
  {A:'박준',B:'김하늘',L:'정민석',W1:'오수빈',W2:'이강',W3:'최유리'},
@@ -69,6 +70,7 @@ for(const id of C.ids){
   const dy=typeof c.demand==='number'?c.demand:null;if(dy==null&&!c.demand?.fine)problems.push(id+': needs a demand');
   if(dy!=null&&(dy<Math.max(c.charge.min,0.5)||dy>c.charge.max))problems.push(id+': demand outside the legal range');
   if(c.demand?.fine&&!(c.charge.fine>=c.demand.fine))problems.push(id+': fine demand but no fine in law');}
+ else if(c.decision){for(const k of ['yes','no','yesNote','noNote','yesOrder','noOrder','what'])if(!c.decision[k])problems.push(id+': decision needs '+k);if(c.claim)problems.push(id+': decision case should not have a claim')}
  else if(!c.claim||!(c.claim.fair[1]<=c.claim.amount))problems.push(id+': civil case needs a claim');
  c.evidence.forEach((e,i)=>{for(const k of ['kind','by','when','excerpt','how','issue','side','check'])if(!e[k])problems.push(`${id} evidence[${i}]: missing ${k}`);if(e.issue&&!iss.has(e.issue))problems.push(`${id} evidence[${i}]: unknown issue`)});
  let variants=0;
@@ -89,7 +91,9 @@ const dup=Object.values(counts).filter(n=>n>1).reduce((a,n)=>a+n,0)/Math.max(1,t
 const unique=[...new Set(problems)];
 if(unique.length){console.log(unique.join('\n'));}
 console.log(`curated cases ${C.ids.length} · sentences ${texts.length} · duplicated ${(dup*100).toFixed(1)}% · problems ${unique.length}`);
-assert.equal(C.ids.length,30,'expected 30 curated cases');
+assert.equal(C.ids.length,60,'expected 60 curated cases');
+for(const a of pack6.archetypes)assert.ok(C.cases[a.id],'archetype without a curated case: '+a.id);
+for(const id of C.ids)assert.ok(C.cases[id].profile,'no PROFILE for '+id);
 assert.ok(dup<0.03,'too many repeated sentences');
 assert.equal(unique.length,0,'narrative problems found');
 console.log('narrative QA passed');
