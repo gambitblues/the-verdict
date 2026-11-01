@@ -2,7 +2,7 @@
  * Usage: node dev/match-engine/bundle.cjs <out.html> */
 const fs=require('fs'),path=require('path'),root=path.join(__dirname,'../..');
 const html=fs.readFileSync(path.join(__dirname,'index.html'),'utf8'),app=fs.readFileSync(path.join(__dirname,'app.js'),'utf8'),eng=fs.readFileSync(path.join(root,'match_engine.js'),'utf8');
-const sheets=Object.fromEntries(['clinic-001','gym-001'].map(id=>[id,JSON.parse(fs.readFileSync(path.join(root,'world-sheets/cases',id+'.json'),'utf8'))]));
+const sheets=Object.fromEntries([...html.matchAll(/<option value="([a-z0-9-]+)"/g)].map(m=>m[1]).map(id=>[id,JSON.parse(fs.readFileSync(path.join(root,'world-sheets/cases',id+'.json'),'utf8'))]));
 const style=html.match(/<style>([\s\S]*?)<\/style>/)[1]
  .replace(':root{--bg','body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}\n:root{--bg')
  .replace(/@media \(prefers-color-scheme:dark\)\{:root:not\(\[data-theme="light"\]\)\{([^}]*)\}\}/,(m,v)=>`@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${v};color-scheme:dark}}\n:root[data-theme="dark"]{${v};color-scheme:dark}`)

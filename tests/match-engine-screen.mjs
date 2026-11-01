@@ -5,7 +5,7 @@ const base=process.cwd(),mime={'.html':'text/html','.js':'text/javascript','.jso
 const server=http.createServer(async(q,r)=>{const f=path.resolve(base,'.'+decodeURI(q.url.split('?')[0]));if(!f.startsWith(base)){r.writeHead(403);return r.end()}try{const c=await readFile(f);r.writeHead(200,{'content-type':mime[path.extname(f)]||'application/octet-stream'});r.end(c)}catch{r.writeHead(404);r.end()}});
 await new Promise(o=>server.listen(0,'127.0.0.1',o));await mkdir('qa-visuals',{recursive:true});
 const browser=await chromium.launch();
-try{for(const id of ['clinic-001','gym-001']){
+try{for(const id of ['clinic-001','gym-001','beta-homicide-017']){
  const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});const errs=[];page.on('pageerror',e=>errs.push(e.message));
  await page.goto(`http://127.0.0.1:${server.address().port}/dev/match-engine/index.html`);await page.selectOption('#case',id);await page.click('#new');await page.waitForSelector('[data-a]');
  for(let d=0;d<3;d++){for(let k=0;k<4;k++){const b=page.locator('[data-a]').first();if(!(await b.count()))break;await b.click()}await page.click('#end')}

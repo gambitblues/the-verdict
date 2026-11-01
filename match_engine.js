@@ -36,10 +36,11 @@ const word=n=>n>=16?'뛰어남':n>=12?'좋음':n>=9?'보통':'약함';
 
 /* ---------- speech: turn sheet sentences (개조식) into spoken Korean ---------- */
 const ENDS=[[/했다는 것$/,'했습니다'],[/다는 것$/,'습니다'],[/본 것$/,'봤습니다'],[/한 것$/,'했습니다'],[/않은 것$/,'않았습니다'],[/놓친 것$/,'놓쳤습니다'],[/준 것$/,'줬습니다'],[/만진 것$/,'만졌습니다'],[/모습$/,'모습을 기억합니다'],
- [/전부$/,'전부입니다'],[/통화$/,'통화했습니다'],[/(도착|확인|발송|신고|이동|퇴실|입실|출근|퇴근)$/,'$1했습니다'],[/있음$/,'있습니다'],[/없었음$/,'없었습니다'],[/었음$/,'었습니다'],[/았음$/,'았습니다'],[/였음$/,'였습니다'],[/봄$/,'봤습니다'],[/들음$/,'들었습니다'],[/줌$/,'줬습니다'],[/앎$/,'압니다'],[/느낌$/,'느꼈습니다'],
- [/없음$/,'없습니다'],[/않음$/,'않습니다'],[/못함$/,'못합니다'],[/믿음$/,'믿습니다'],[/생각함$/,'생각했습니다'],[/확인함$/,'확인했습니다'],[/진술함$/,'진술했습니다'],[/함$/,'합니다'],[/됨$/,'됩니다'],[/임$/,'입니다'],[/것$/,'것입니다']];
+ [/전부$/,'전부입니다'],[/통화$/,'통화했습니다'],[/(도착|확인|발송|신고|이동|퇴실|입실|출근|퇴근)$/,'$1했습니다'],[/있음$/,'있습니다'],[/없었음$/,'없었습니다'],[/었음$/,'었습니다'],[/았음$/,'았습니다'],[/였음$/,'였습니다'],[/봄$/,'봤습니다'],[/들음$/,'들었습니다'],[/들어옴$/,'들어왔습니다'],[/나옴$/,'나왔습니다'],[/내려옴$/,'내려왔습니다'],[/올라옴$/,'올라왔습니다'],[/옴$/,'왔습니다'],[/잠$/,'잤습니다'],[/탐$/,'탔습니다'],[/감$/,'갔습니다'],[/엶$/,'열었습니다'],[/놓음$/,'놓았습니다'],[/때렸음$/,'때렸습니다'],[/줌$/,'줬습니다'],[/앎$/,'압니다'],[/느낌$/,'느꼈습니다'],
+ [/없음$/,'없습니다'],[/않음$/,'않습니다'],[/못함$/,'못합니다'],[/믿음$/,'믿습니다'],[/생각함$/,'생각했습니다'],[/확인함$/,'확인했습니다'],[/진술함$/,'진술했습니다'],[/함$/,'했습니다'],[/됨$/,'됩니다'],[/임$/,'입니다'],[/것$/,'것입니다']];
 function speak(text){
- return String(text||'').replace(/^자기가 /,'제가 ').replace(/([ ,])자기가 /g,'$1제가 ').split(/(?<=[.。])\s+|(?<=것),\s+/).map(s=>s.trim().replace(/[.。]$/,'')).filter(Boolean).map(s=>{for(const [re,to] of ENDS)if(re.test(s))return s.replace(re,to)+'.';return /[다요]$/.test(s)?s+'.':s+'입니다.'});
+ return String(text||'').replace(/^자기가 /,'제가 ').replace(/([ ,])자기가 /g,'$1제가 ').split(/(?<=[.。])\s+|(?<=것),\s+/).map(s=>s.trim().replace(/[.。]$/,'')).filter(Boolean).map(s=>{const m=/([가-힣])음$/.exec(s);if(m&&(m[1].charCodeAt(0)-0xAC00)%28===20)return s.slice(0,-1)+'습니다.';   // past tense ~었음/~했음/~갔음 → ~습니다
+  for(const [re,to] of ENDS)if(re.test(s))return s.replace(re,to)+'.';return /[다요]$/.test(s)?s+'.':s+'입니다.'});
 }
 const blur=s=>s.replace(/\b\d{1,2}:\d{2}(:\d{2})?\b/g,'그 무렵').replace(/(\d+)초쯤/g,'잠깐').replace(/(\d+)분/g,'몇 분');
 
@@ -52,7 +53,7 @@ function start(sheet,opt={}){
  const witnesses={};
  for(const p of sheet.people.filter(p=>/^W\d+$/.test(p.key))){
   const h=num(p.traits?.honesty),r=num(p.traits?.pressure),m=num(p.traits?.memoryAccuracy);
-  const stake=String(p.stake||'');const leans=/없음/.test(stake)||!stake?null:/고소인|피해자|원고/.test(stake)?co:ac;
+  const stake=String(p.stake||'');const leans=p.leans!==undefined?(p.leans==='A'?ac:p.leans==='B'?co:null):/없음/.test(stake)||!stake?null:/고소인|피해자|원고/.test(stake)?co:ac;   // sheet may say whom a witness leans to ("A", "B", null)
   const sc={honest:h+unit(seed+p.key+'h')*6,protect:leans?(20-h)+unit(seed+p.key+'p')*6:-1,fear:leans?(20-r)*0.8+unit(seed+p.key+'f')*6:-1};
   const stance=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0][0];
   witnesses[p.key]={key:p.key,h,r,m,leans,stance,broken:false,said:{},cred:0};

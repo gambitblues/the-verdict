@@ -1,7 +1,12 @@
 /* Dev screen for the match engine: play one trial as the judge, or run 30 trials of the same case. */
 (()=>{
-const M=window.VerdictMatch,$=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const M=window.VerdictMatch,$=s=>document.querySelector(s),esc=s=>fill(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const sheets={};let sheet=null,st=null;
+/* Sheets made from the game's cases use name tokens ({A}, {B|이}, {A>B}); the game fills real names. Here: sample names. */
+const SAMPLE={A:'한지후',B:'서도윤',W1:'문서진',W2:'강하린',W3:'이태오',W4:'박유나',L:'윤재경'};
+const jong=w=>{const c=String(w).slice(-1).charCodeAt(0);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28!==0};
+const PAIR={'이':['이','가'],'가':['이','가'],'은':['은','는'],'는':['은','는'],'을':['을','를'],'를':['을','를'],'과':['과','와'],'와':['과','와']};
+const fill=t=>String(t??'').replace(/\{([A-Z][0-9]?)(?:>([A-Z][0-9]?))?(?:\|([가-힣]+))?\}/g,(m,k,by,p)=>{const n=by?'형':(SAMPLE[k]||k);if(!p)return n;if(p==='으로'||p==='로')return n+(jong(n)?'으로':'로');const q=PAIR[p];return n+(q?(jong(n)?q[0]:q[1]):p)});
 async function load(id){if(!sheets[id])sheets[id]=await (await fetch(`../../world-sheets/cases/${id}.json`)).json();return sheets[id]}
 async function newGame(){sheet=await load($('#case').value);st=M.start(sheet,{seed:$('#case').value+':'+$('#seed').value,truth:$('#force').value||undefined});render()}
 const lawRow=L=>`<td><b>${esc(L.name)}</b> ${L.side==='p'?(sheet.card.kind==='criminal'?'검사':'원고 대리인'):'변호사'}<br><small class="sub">${esc(M.TACTICS[L.tactic].label)} — ${esc(M.TACTICS[L.tactic].desc)}</small></td><td>신문 ${M.word(L.exam)} · 논리 ${M.word(L.logic)}<br>준비 ${M.word(L.prep)} · 침착 ${M.word(L.calm)}</td>`;

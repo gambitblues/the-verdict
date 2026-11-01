@@ -47,7 +47,7 @@ for(const file of files){
  if(R.size<3)err('records는 3개 이상');
  // common timeline
  if(!/^\d{4}-\d\d-\d\d$/.test(s.common?.date||''))err('common.date는 YYYY-MM-DD');
- const ordered=(list,at)=>{let last=-1;for(const e of list||[]){const t=sec(e.at);if(t==null){err(`${at}: 시각 "${e.at}" 형식은 HH:MM 또는 HH:MM:SS`);continue}if(t<last)err(`${at}: ${e.at}가 앞 항목보다 이름`);last=t;
+ const ordered=(list,at)=>{let last=-1,day=0;for(const e of list||[]){let t=sec(e.at);if(t!=null&&t+day<last&&last-(t+day)>43200)day+=86400;if(t!=null)t+=day;if(t==null){err(`${at}: 시각 "${e.at}" 형식은 HH:MM 또는 HH:MM:SS`);continue}if(t<last)err(`${at}: ${e.at}가 앞 항목보다 이름`);last=t;
   if(e.place&&!PL.has(e.place))err(`${at} ${e.at}: 장소 ${e.place} 없음`);for(const w of e.who||[])if(!P.has(w))err(`${at} ${e.at}: 인물 ${w} 없음`)}};
  if(!(s.common?.timeline||[]).length)err('common.timeline 비어 있음');ordered(s.common?.timeline,'common.timeline');
  // worlds
