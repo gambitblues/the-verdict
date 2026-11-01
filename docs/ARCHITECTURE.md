@@ -107,3 +107,15 @@
 - `skilled(...)`: 상대 변호사의 이의가 정당할 확률을 `legalCareer`의 실력으로 정한다.
 - `confront()` / `faceOff()`: 증거 들이밀기(신문 1)와 대질(신문 2). 결과는 `t.heard`에 `text`·`label`을 가진 항목으로 남고, 거둬들인 말은 `struck`. 털어놓는 말의 방향은 항상 `t.truth`를 따른다.
 - 결정형: `isDecision(c)` → 최소 기일 1, 추가 기일 없음, 금액 없음, 주문은 `decision.yesOrder/noOrder`.
+
+## 재판장 주문과 후속 노드 (v6.2~v6.5)
+
+- 집필 사건마다 `curated/follow*.js`의 노드를 `registry.js`가 `followUps`로 합친다. 노드는 `after` 조건(들은 답 `heard`, 받은 자료 `got`, 오지 않은 자료 `miss`, 끝난 주문 `done`, 엇갈린 증언 `contra`, `any`/`all`)이 맞을 때만 열린다. 판정은 순수 함수 `T.nodeOpen`.
+- `trial_play.js`: `availableOrders`(사건 노드 → 늦은 자료·숨은 질문 → 선택지가 모자랄 때만 범용 서면), `issueOrder`(하루 2건·사건 6건), `resolveOrders`(다음 기일을 열 때. 결과는 `T.orderOutcome` — 없음·일부·지연(1회)·거절(형사 피고인 쪽만)). 결정형 사건의 노드는 `now:true`라 그 자리에서 답한다. 5기일부터는 재신문·석명만.
+- 결과는 세이브의 `trial4.courtOrders`·`changes`·`writs`, 새 증거(`follow`·`detail`), 새 증인(`follow`·`detail`), 기존 증인의 `extra`(다시 부른 질문, id는 `노드.질문`)에 남는다. 같은 시드·같은 선택이면 같은 결과이고, 다시 불러와도 겹치지 않는다.
+- 검사: `narrative-qa`(노드 구조·참조·진실 분기·거절 뒤 대체 경로), `v6-behaviour`(열림 규칙·결과 확률), `court-orders.mjs`(60건 × 30시드 끝까지 진행, 20건 화면 진행, 새 게임 전체 삭제).
+
+## 그래픽 층 (`court_visuals.js/css`)
+
+- 표시만 담당한다. 진실·결함·성향·점수를 읽지 않고, 세이브에 아무것도 쓰지 않는다. 초상화는 NPC id로 정해진다.
+- 법정 전경(접기/펼치기), 증인석, 증거 문서 모양(문서·대화·영상·녹음·감정), 짧은 법정 알림. `trial_play.js`는 `window.VerdictVisuals`가 있으면 쓰고 없으면 글로만 보여 준다. 검사는 `tests/visuals.mjs`.
