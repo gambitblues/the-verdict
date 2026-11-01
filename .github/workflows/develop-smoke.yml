@@ -44,7 +44,7 @@ jobs:
         run: node tests/browser-smoke.mjs
       - name: v6 features end to end (decision cases, witnesses, confrontation, face-off, bench, truth, experts, pressure, personnel season)
         run: node tests/v6-flow.mjs
-      - name: Judge's orders between hearings (written follow-ups, 60 cases × 20 seeds, new-game wipe)
+      - name: Judge's orders and follow-up nodes (60 cases × 30 seeds through every hearing, 20 cases on screen, new-game wipe)
         run: node tests/court-orders.mjs
       - name: v5.7 save migration (real fixture, plain and compressed)
         run: node tests/v5-migration.mjs
