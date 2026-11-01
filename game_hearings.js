@@ -172,7 +172,7 @@ function offerPair(slot){
  const taken=busy(),pool=candidates().filter(x=>!taken.has(x.a.id));const list=pool.length?pool:candidates();
  if(!list.length)return [{title:'사실관계 조사 사건',tag:'일반 사건',archetypeId:null}];
  const scores=Array.isArray(S.specialties)?S.specialties:[];
- const weighted=list.map(item=>({item,w:1+Math.min(2,Math.floor((scores.find(x=>x.key===item.a.category)?.count||0)/3))}));
+ const weighted=list.map(item=>({item,w:(1+Math.min(2,Math.floor((scores.find(x=>x.key===item.a.category)?.count||0)/3)))*(window.VerdictV6?.deptWeight?.(item.a)||1)}));
  const sum=weighted.reduce((v,x)=>v+x.w,0);let pick=hashOf(slot)%sum,a=weighted[0].item;
  for(const x of weighted){if(pick<x.w){a=x.item;break}pick-=x.w}
  const rest=list.filter(x=>x.a.id!==a.a.id);if(!rest.length)return [preview(a)];

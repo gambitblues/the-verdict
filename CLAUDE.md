@@ -30,7 +30,9 @@ node tests/media-desk.test.cjs
 node tests/save-store.test.cjs
 node tests/narrative-qa.cjs        # 집필 사건 문장·조사·구조 검사
 node tests/version.test.cjs        # index.html 버전 = sw.js CACHE = CHANGELOG 첫 항목
-ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/long-career.mjs; rm node_modules
+node tests/v6-case-matrix.test.cjs  # 60건 × 80시드 증거·결정성 (개발자 추가)
+node tests/v6-behaviour.test.cjs    # 증인 태도·이의·증거 반박·대질 순수 함수
+ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/long-career.mjs 40; rm node_modules
 ```
 - `curated/*.js`를 고치면 `node tests/build-curated.cjs`로 `curated_cases.js`를 다시 만든다.
 - 화면을 바꾸면 Playwright로 390px 모바일 스크린샷을 찍어 직접 확인한다.
@@ -49,4 +51,6 @@ git push origin "$M:refs/heads/main"
 
 ## 현재 상태
 - 최신 버전은 `docs/CHANGELOG.md` 맨 위를 본다.
+- v6.1 반영 끝: 청탁 문자(`v6_world.js` pressure), 인사철·희망 재판부(×3 가중, 독점 아님), 순수 함수 분리, 검수 테스트 셋, 야간 QA.
+  - 청탁 기획 기본값(사용자 미확정, 추천안으로 진행): 보고 시 변호사는 징계 회부·그 밖은 경고 서한, 무시는 판결 반년 뒤 기사 위험(유리한 판결·누적 시 증가), 희망 부서는 '더 자주'.
 - 다음 후보 아이디어: 기자와의 관계를 문자·인터뷰 외 이벤트로 확장, 서버·AI 연동 준비.

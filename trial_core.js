@@ -236,7 +236,49 @@ function evaluate(skillScore,match,t,dir,seed){
  return {scores,review:Math.round(clamp(0.6*skillScore+0.2*match+0.2*disposition))};
 }
 
-const api=Object.freeze({LABEL,REASONS,EVALUATORS,STYLES,clamp,hash,unit,pick,between,
+
+/* ---------- v6: people shape the trial (pure; trial_play passes in NPC traits, age and stake text) ---------- */
+const CLOSE=/친구|지기|가족|동생|형제|자녀|배우자|어머니|아버지|딸|아들|부모|동료|동기|후배|선배|사수|부하|직원|제자|감싸|아끼|연인/;
+const SCARED=/두려|무서|보복|해고|직장|계약|불이익|인사|생계|징계|책임을 질|소송을 당|처벌받|잃을/;
+/* Witness attitude from character and stake. The seed adds a little noise only; the same person stays recognisable. */
+function attitudeOf({traits={},age=40,stake=''},seed){
+ const v=k=>Number(traits[k]??50),n=k=>between(0,22,seed+':bh:'+k);
+ const close=CLOSE.test(stake),scared=SCARED.test(stake);
+ const score={
+  honest:v('honesty')*0.75+v('conscientiousness')*0.25+n('h'),
+  protect:close?(100-v('honesty'))*0.55+v('empathy')*0.45+n('p'):n('p')*0.6,
+  fear:scared?(100-v('stressControl'))*0.8+12+n('f'):(100-v('stressControl'))*0.35+n('f'),
+  flip:v('impulsivity')*0.55+(100-v('honesty'))*0.3-v('conscientiousness')*0.15+n('x')};
+ const attitude=Object.entries(score).sort((a,b)=>b[1]-a[1])[0][0];
+ return {attitude,score,because:close?'close':scared?'scared':'none',
+  reliability:Math.round(clamp(34+v('honesty')*0.34+v('conscientiousness')*0.2+n('r')*0.6,35,92)),
+  memory:Math.round(clamp(92-Math.max(0,age-45)*0.7+v('conscientiousness')*0.08-n('m'),30,92))};
+}
+/* The other side's objection is sound more often when the lawyer is better. */
+function objectionValid(skill,style,seed){return unit(seed)<clamp(0.18+skill/150+(style==='meticulous'?0.08:0),0.15,0.85)}
+const truthSide=truth=>truth==='did'?'p':truth==='didnt'?'d':'m';
+/* A witness shown evidence that contradicts them. kind: hold | correct (honest witness retracts) | revert (flipped
+ * witness returns to the first story) | admit (protecting or scared witness tells what really happened).
+ * Whatever is admitted points the way the hidden truth points. */
+function confrontOutcome({attitude,flipped,traits={}},truth,seed){
+ const odds={flip:flipped?85:40,protect:30+(100-Number(traits.stressControl??50))*0.35,fear:45+Number(traits.honesty??50)*0.3,honest:70}[attitude]??50;
+ if(between(0,99,seed)>=odds)return {kind:'hold',side:'n',strike:false};
+ if(attitude==='honest')return {kind:'correct',side:'n',strike:true};
+ if(attitude==='flip'&&flipped)return {kind:'revert',side:truthSide(truth),strike:false};
+ return {kind:'admit',side:truthSide(truth),strike:true};
+}
+/* Two witnesses face to face. Honesty, composure and reliability hold a witness steady; telling the truth helps;
+ * shielding someone or changing one's story hurts. Close scores end in a draw. */
+function faceOffScore({traits={},reliability=60,attitude},side,truth,seed){
+ const ts=truthSide(truth);
+ return Number(traits.honesty??50)*0.35+Number(traits.stressControl??50)*0.35+reliability*0.2+(side===ts?12:ts==='m'?6:0)-(attitude==='protect'?10:attitude==='flip'?14:0)+between(0,30,seed);
+}
+function faceOffOutcome(pw,dw,truth,seed){
+ const sp=faceOffScore(pw,'p',truth,seed+':p'),sd=faceOffScore(dw,'d',truth,seed+':d');
+ return Math.abs(sp-sd)<7?{result:'draw',sp,sd}:{result:sp<sd?'p-yields':'d-yields',sp,sd};
+}
+
+const api=Object.freeze({attitudeOf,objectionValid,truthSide,confrontOutcome,faceOffScore,faceOffOutcome,LABEL,REASONS,EVALUATORS,STYLES,clamp,hash,unit,pick,between,
  truthFromStory,minDays,twistChance,direction,sideOf,roll,reveal,rangeOf,testimony,gauge,skill,reasonFits,cards,
  pressStart,pressDay,opinionMatch,evaluate});
 if(typeof module!=='undefined'&&module.exports)module.exports=api;

@@ -117,6 +117,9 @@ function fixProfile(c){const pr=curOf(c)?.profile;if(!pr||c.profileFixed||!c.who
   if(x.same==='A'&&a0!=null)setAge(c,id,a0,a0);else if(x.younger==='A'&&a0!=null)setAge(c,id,Math.max(x.age[0],a0-10),a0-1);else setAge(c,id,x.age[0],x.age[1]);
   setJob(p,x.job);if(x.deg)p.degree=x.deg;if(x.mar)p.maritalStatus=x.mar;if(x.kids!=null)p.children=x.kids;sanityDegree(p,x.job)})}
 /* Witness ages: relatives and friends follow the parties, careers follow "N년째", titles set a floor. */
+const WITNESS_FLOOR=[[/퇴직금|은퇴|정년|노부부/,58],[/교수/,40],[/주치의|전문의|의사|부검의|원장/,34],[/부장|회장|대표|시설장|이장|편집국/,42],[/과장|팀장|차장|반장|감정인|감식관|조사관|예보관|지휘관|책임자/,35]];
+function witnessFloor(role,txt){let f=0;for(const [re,n] of WITNESS_FLOOR)if(re.test(re===WITNESS_FLOOR[0][0]?txt:role))f=Math.max(f,n);return f}
+window.VerdictWitnessFloor=witnessFloor;
 function witnessProfile(c,i,id){const cur=curOf(c),w=cur?.witnesses?.[i],p=NPC[id];if(!w||!p||c.who==null)return;
  const role=String(w.role||''),story=String(w.story||'')+' '+String(w.stake||''),txt=role+' '+story;
  const A=ageOf(NPC[c.who[0]]),B=ageOf(NPC[c.who[1]]),crim=isCriminal(c);
@@ -137,6 +140,9 @@ function witnessProfile(c,i,id){const cur=curOf(c),w=cur?.witnesses?.[i],p=NPC[i
  if(!r){if(/은퇴|노부부/.test(txt))r=[63,82];else if(/교수/.test(role))r=[42,64];else if(/대학원|연구실 동료/.test(txt))r=[25,33];else if(/조교/.test(role))r=[24,32];
   else if(/대학생|학생|부원/.test(txt))r=[19,26];else if(/주치의|원장|대표|사장|회장|팀장|과장|부장|책임자|관리자|감독관|감식관|매니저/.test(role))r=[36,62]}
  if(!r){const a=ageOf(p);if(a<21)r=[22,55];else if(a>66&&!/은퇴|노/.test(txt))r=[30,62]}
+ /* job floors: a doctor, professor, manager or retiree cannot be in their twenties, whatever else applied */
+ const floor=witnessFloor(role,txt);
+ if(floor){r=r?[Math.max(r[0],floor),Math.max(r[1],floor+12)]:[floor,floor+22]}
  if(r&&r.every(Number.isFinite))setAge(c,id,r[0],r[1]);
  if(!/의 |배우자|동생|자녀|둘째|할머니|할아버지|친구/.test(role))setJob(p,role);
  sanityDegree(p,role)}
@@ -149,26 +155,15 @@ window.VerdictSex={fix:c=>{fixSex(c);fixProfile(c);decisionVerdicts(c)}};
  * across cases and the same seed always gives the same result. The hidden truth is never changed. */
 function stakeText(c,i){const w=wDetail(c,i);return [w?.stake,w?.story,w?.role].join(' ')}
 function behaviour(c,i,w,seed){
- const p=NPC[w.id];if(!p)return;const tr=p.traits||{},v=k=>Number(tr[k]??50),n=k=>T.between(0,22,seed+':bh:'+i+':'+k);
- const st=stakeText(c,i),age=ageOf(p)||40;
- const close=/친구|지기|가족|동생|형제|자녀|배우자|어머니|아버지|딸|아들|부모|동료|동기|후배|선배|사수|부하|직원|제자|감싸|아끼|연인/.test(st);
- const scared=/두려|무서|보복|해고|직장|계약|불이익|인사|생계|징계|책임을 질|소송을 당|처벌받|잃을/.test(st);
- const score={
-  honest:v('honesty')*0.75+v('conscientiousness')*0.25+n('h'),
-  protect:close?(100-v('honesty'))*0.55+v('empathy')*0.45+n('p'):n('p')*0.6,
-  fear:scared?(100-v('stressControl'))*0.8+12+n('f'):(100-v('stressControl'))*0.35+n('f'),
-  flip:v('impulsivity')*0.55+(100-v('honesty'))*0.3-v('conscientiousness')*0.15+n('x')};
- w.attitude=Object.entries(score).sort((a,b)=>b[1]-a[1])[0][0];
- w.reliability=Math.round(T.clamp(34+v('honesty')*0.34+v('conscientiousness')*0.2+n('r')*0.6,35,92));
- w.memory=Math.round(T.clamp(92-Math.max(0,age-45)*0.7+v('conscientiousness')*0.08-n('m'),30,92));
- w.because=close?'close':scared?'scared':'none';
+ const p=NPC[w.id];if(!p)return;
+ const r=T.attitudeOf({traits:p.traits||{},age:ageOf(p)||40,stake:stakeText(c,i)},seed+':'+i);
+ w.attitude=r.attitude;w.reliability=r.reliability;w.memory=r.memory;w.because=r.because;
 }
 /* The other side's lawyer: how often their objections are sound depends on skill, not just style. */
 function lawyerSkill(id){const lc=NPC[id]?.legalCareer;return lc?Math.round((lc.trialSkill+lc.evidenceSkill)/2):55}
 function skilled(c,t,cards,day){
  const sk=lawyerSkill(t.opponent);
- for(const cd of cards){if(cd.skillSet||cd.type!=='objection')continue;cd.skillSet=true;
-  cd.valid=T.unit(t.seed+':ov:'+day+':'+cd.id)<T.clamp(0.18+sk/150+(t.style==='meticulous'?0.08:0),0.15,0.85)}
+ for(const cd of cards){if(cd.skillSet||cd.type!=='objection')continue;cd.skillSet=true;cd.valid=T.objectionValid(sk,t.style,t.seed+':ov:'+day+':'+cd.id)}
  return cards;
 }
 const prepWord=id=>{const s=lawyerSkill(id);return s>=78?'준비가 철저함':s>=60?'준비가 꼼꼼한 편':s>=45?'준비가 보통':'준비가 허술한 편'};
@@ -335,7 +330,6 @@ function cardText(card,t,c){
 /* ---------- v6: showing evidence to a witness, and bringing two witnesses face to face ----------
  * Both cost questions. Outcomes come from the witness's attitude and character plus the case seed;
  * what a witness admits always follows the hidden truth, so pressure uncovers facts rather than inventing them. */
-const truthSide=t=>t.truth==='did'?'p':t.truth==='didnt'?'d':'m';
 const ADMIT={
  did:['그 기록 앞에서는 더 감출 수가 없네요. 처음에 말을 줄였습니다. 실제로 본 건 더 분명했어요','솔직히 말씀드리면 그날 일은 제가 말한 것보다 더 심각했습니다'],
  didnt:['솔직히 제가 들은 건 짐작이었어요. 확실하게 본 건 없습니다','제가 의심을 키우는 쪽으로 말을 보탰습니다. 직접 본 건 아니에요'],
@@ -350,13 +344,12 @@ function confront(c,t,i,eid){
  const w=t.witnesses[i],e=t.evidence.find(x=>x.id===eid),d=e&&evDetail(c,e);if(!w||!d)return '';
  if(t.qLeft<1){toast('오늘 신문 시간이 끝났어요.');return ''}
  t.qLeft--;(w.shown??=[]).push(eid);
- const p=NPC[w.id],tr=p?.traits||{},roll=T.between(0,99,t.seed+':cf:'+i+':'+eid),name=wName(t,i),ts=truthSide(t);
- const odds={flip:w.flipped?85:40,protect:30+(100-(tr.stressControl??50))*0.35,fear:45+(tr.honesty??50)*0.3,honest:70}[w.attitude]||50;
- let text,side='n',label='증거를 보고 한 말',strike=false;
- if(roll>=odds){text=`그 ${P(e.title,'이')} 뭘 말하든 제가 기억하는 건 그대로입니다`;side='n';label='증거를 보고도 바꾸지 않은 말'}
- else if(w.attitude==='honest'){text=`제 기억이 틀렸을 수 있겠네요. 그 기록이 더 정확할 겁니다`;strike=true;label='증거를 보고 정정한 말'}
- else if(w.attitude==='flip'&&w.flipped){w.flipped=false;text='기록을 보니 처음에 말씀드린 게 맞습니다. 중간에 말이 흔들렸어요';side=ts;label='처음 진술로 돌아온 말'}
- else{const pool=ADMIT[t.truth]||ADMIT.reason;text=pool[T.hash(t.seed+i+eid)%pool.length];side=ts;label=w.attitude==='fear'?'두려움을 털어놓으며 한 말':'감싸던 것을 털어놓은 말';w.revealed=2;strike=true}
+ const name=wName(t,i),o=T.confrontOutcome({attitude:w.attitude,flipped:w.flipped,traits:NPC[w.id]?.traits||{}},t.truth,t.seed+':cf:'+i+':'+eid);
+ let text,side=o.side,label,strike=o.strike;
+ if(o.kind==='hold'){text=`그 ${P(e.title,'이')} 뭘 말하든 제가 기억하는 건 그대로입니다`;label='증거를 보고도 바꾸지 않은 말'}
+ else if(o.kind==='correct'){text='제 기억이 틀렸을 수 있겠네요. 그 기록이 더 정확할 겁니다';label='증거를 보고 정정한 말'}
+ else if(o.kind==='revert'){w.flipped=false;text='기록을 보니 처음에 말씀드린 게 맞습니다. 중간에 말이 흔들렸어요';label='처음 진술로 돌아온 말'}
+ else{const pool=ADMIT[t.truth]||ADMIT.reason;text=pool[T.hash(t.seed+i+eid)%pool.length];label=w.attitude==='fear'?'두려움을 털어놓으며 한 말':'감싸던 것을 털어놓은 말';w.revealed=2}
  if(strike)t.heard.forEach(h=>{if(h.w===i&&h.issue===d.issue&&!h.text&&(h.side==='p'||h.side==='d')&&h.side!==d.side)h.struck=true});
  t.heard.push({w:i,q:'cf:'+eid,side,issue:d.issue,day:t.day,text,label});
  addLog(t,'증거 대조',`${name}에게 ${P(e.title,'을')} 보여 줌 — "${text}"`);
@@ -370,13 +363,12 @@ function faceOff(c,t,issue){
  const pair=clashPair(t,issue);if(!pair)return '';
  if(t.qLeft<2){toast('대질 신문에는 남은 신문이 2번 필요해요.');return ''}
  t.qLeft-=2;(t.faced??=[]).push(issue);
- const ts=truthSide(t),score=(i,side)=>{const w=t.witnesses[i],tr=NPC[w.id]?.traits||{};
-  return (tr.honesty??50)*0.35+(tr.stressControl??50)*0.35+w.reliability*0.2+(side===ts?20:ts==='m'?8:0)-(w.attitude==='protect'?10:w.attitude==='flip'?14:0)+T.between(0,18,t.seed+':face:'+issue+':'+i)};
- const [pi,di]=pair,sp=score(pi,'p'),sd=score(di,'d'),iss=issuesOf(c).find(x=>x.id===issue);
+ const wv=i=>({traits:NPC[t.witnesses[i].id]?.traits||{},reliability:t.witnesses[i].reliability,attitude:t.witnesses[i].attitude});
+ const [pi,di]=pair,o=T.faceOffOutcome(wv(pi),wv(di),t.truth,t.seed+':face:'+issue),iss=issuesOf(c).find(x=>x.id===issue);
  let text;
- if(Math.abs(sp-sd)<7){text=`${P(wName(t,pi),'과')} ${wName(t,di)} 모두 물러서지 않았다. 누구 말이 맞는지는 다른 근거로 가려야 한다`;
+ if(o.result==='draw'){text=`${P(wName(t,pi),'과')} ${wName(t,di)} 모두 물러서지 않았다. 누구 말이 맞는지는 다른 근거로 가려야 한다`;
   t.heard.push({w:pi,q:'face:'+issue,side:'n',issue,day:t.day,text:'저는 제가 본 대로 말했습니다. 바꿀 게 없습니다',label:'대질에서 한 말'})}
- else{const lose=sp<sd?pi:di,win=lose===pi?di:pi,ls=lose===pi?'p':'d';
+ else{const lose=o.result==='p-yields'?pi:di,win=lose===pi?di:pi,ls=lose===pi?'p':'d';
   t.heard.forEach(h=>{if(h.w===lose&&h.issue===issue&&h.side===ls&&!h.text)h.struck=true});
   t.heard.push({w:lose,q:'face:'+issue,side:'n',issue,day:t.day,text:`${wName(t,win)}의 말을 들으니 제가 잘못 기억했을 수도 있겠습니다`,label:'대질에서 물러선 말'});
   text=`대질 끝에 ${P(wName(t,lose),'이')} 한발 물러섰다. ${P(wName(t,win),'은')} 처음 말을 그대로 지켰다`}
@@ -387,7 +379,7 @@ function faceOff(c,t,issue){
 function act(kind,id,choice){
  const x=current();if(!x||x.st.verdict)return;
  const {c,st}=x,t=ensure(c,st);
- if(kind==='open'){if(waiting(t)||sessionOpen(t))return;openSession(c,st);addLog(t,'개정',`${session(c,t.day)} 개정 · ${dlabel(t.dates[t.day])}`);save();ui.t4tab='day';render();window.scrollTo({top:0,behavior:'instant'});
+ if(kind==='open'){if(waiting(t)||sessionOpen(t))return;openSession(c,st);window.VerdictV6?.onSessionOpen?.(c,t);addLog(t,'개정',`${session(c,t.day)} 개정 · ${dlabel(t.dates[t.day])}`);save();ui.t4tab='day';render();window.scrollTo({top:0,behavior:'instant'});
   if(!askRequests(true))askNotices(false);return}
  if(kind==='handoff')return handoff(c,st);
  if(!sessionOpen(t)&&!waiting(t)){toast(`먼저 ${session(c,t.day)}을 여세요.`);return}

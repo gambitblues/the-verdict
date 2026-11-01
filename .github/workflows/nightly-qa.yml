@@ -1,0 +1,28 @@
+name: Nightly long-career and narrative QA
+on:
+  schedule:
+    - cron: '0 18 * * *'   # 03:00 KST
+  workflow_dispatch:
+jobs:
+  long-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test tooling
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: 20-year career (ages, deaths, families, legal careers, v6 bench / bar / seasons)
+        run: node tests/long-career.mjs 20
+      - name: 40-year career
+        run: node tests/long-career.mjs 40
+      - name: 60 cases × 100 casts narrative checks
+        run: COMBOS=100 node tests/v6-narrative-combos.mjs
+      - name: v5.7 save migration
+        run: node tests/v5-migration.mjs

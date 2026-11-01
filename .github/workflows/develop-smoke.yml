@@ -6,7 +6,7 @@ on:
 jobs:
   browser-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,11 +21,18 @@ jobs:
           node --check trial_core.js
           node --check media_desk.js
           node --check trial_play.js
+          node --check world_feed.js
+          node --check people_map.js
+          node --check v6_world.js
+          node --check save_store.js
           node tests/media-desk.test.cjs
           node tests/save-store.test.cjs
           node --check curated_cases.js
           node tests/narrative-qa.cjs
           node tests/trial-core.test.cjs
+          node tests/v6-case-matrix.test.cjs
+          node tests/v6-behaviour.test.cjs
+          node tests/version.test.cjs
           node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('content-packs/court-editorial-100-v1.json'));if(p.cases.length!==100)process.exit(1)"
       - name: Install browser test tooling
         run: |
@@ -33,3 +40,9 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run mobile viewport browser test
         run: node tests/browser-smoke.mjs
+      - name: v6 features end to end (decision cases, witnesses, confrontation, face-off, bench, truth, experts, pressure, personnel season)
+        run: node tests/v6-flow.mjs
+      - name: v5.7 save migration (real fixture, plain and compressed)
+        run: node tests/v5-migration.mjs
+      - name: 60 cases × 30 casts narrative checks
+        run: node tests/v6-narrative-combos.mjs
