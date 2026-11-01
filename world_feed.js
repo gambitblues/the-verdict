@@ -61,36 +61,119 @@ function threadView(list){
  ${open.has(x.id)?`<div class="wf-replies">${x.replies.map(r=>`<p>↳ <b>${esc(r.nick)}</b> ${esc(r.text)} <small>공감 ${r.likes}</small></p>`).join('')}</div>`:''}</div>`).join('');
 }
 
-/* ---------- reporters: two articles per case, one from each side ---------- */
-/* Each reporter has a beat, a habit and a past that shows in how they write. side p = leans to the prosecution or
- * claimant, d = leans to the defence or respondent. */
+/* ---------- reporters: 20 people, two articles per case, one from each side ---------- */
+/* side p = writes from the prosecution or claimant's side, d = from the defence or respondent's side.
+ * style decides how they build a headline and which facts they reach for first. */
 const REPORTERS=[
- {name:'서은채',outlet:'중앙사회신문',side:'p',bio:'피해자 지원센터 취재로 이름을 알린 사회부 12년 차',voice:'피해자의 하루가 어떻게 무너졌는지부터 쓴다'},
- {name:'이재석',outlet:'서울법정일보',side:'p',bio:'경찰서 출입만 9년, 수사 기록을 가장 먼저 읽는 기자',voice:'수사팀이 쌓은 증거의 무게를 믿는 편이다'},
- {name:'구태오',outlet:'데일리이슈',side:'p',bio:'조회수 1위를 놓친 적 없는 화제성 담당',voice:'방청석의 분노를 그대로 옮겨 적는다'},
- {name:'정하린',outlet:'오늘의법',side:'p',bio:'소비자·노동 분쟁을 오래 쫓아온 경제사회부 기자',voice:'힘이 약한 쪽의 손해가 얼마나 되는지를 묻는다'},
- {name:'윤도경',outlet:'탐사저널K',side:'d',bio:'강압 수사 보도로 상을 받은 탐사 기자',voice:'증거를 어떻게 얻었는지부터 의심한다'},
- {name:'박서윤',outlet:'코리아재판뉴스',side:'d',bio:'국선 변호인 출신으로 피고인 인권을 다뤄 온 법조 기자',voice:'"아직 증명되지 않았다"는 문장을 아끼지 않는다'},
- {name:'마지훈',outlet:'리걸포커스',side:'d',bio:'판결문을 숫자와 구조로 읽는 칼럼니스트',voice:'빈칸이 남은 증거를 하나씩 짚는다'},
- {name:'한민지',outlet:'법조일보',side:'d',bio:'법원 출입 10년 차, 양쪽 말을 다 들어야 쓰는 기자',voice:'여론보다 절차를 먼저 본다'}
+ {name:'서은채',outlet:'중앙사회신문',side:'p',style:'victim',bio:'피해자 지원센터 취재로 이름을 알린 사회부 12년 차',voice:'피해자의 하루가 어떻게 무너졌는지부터 쓴다'},
+ {name:'이재석',outlet:'서울법정일보',side:'p',style:'police',bio:'경찰서 출입 9년, 수사 기록을 가장 먼저 읽는 기자',voice:'수사팀이 쌓은 증거의 무게를 믿는다'},
+ {name:'구태오',outlet:'민생24',side:'p',style:'hot',bio:'조회수 1위를 놓친 적 없는 화제성 담당',voice:'방청석의 분노를 그대로 옮긴다'},
+ {name:'정하린',outlet:'한빛경제',side:'p',style:'money',bio:'소비자·노동 분쟁을 오래 쫓은 경제사회부 기자',voice:'힘이 약한 쪽의 손해가 얼마인지 묻는다'},
+ {name:'오세진',outlet:'사회안전통신',side:'p',style:'safety',bio:'산업재해와 안전사고만 8년째 쓰는 기자',voice:'같은 일이 또 일어날 수 있는지를 따진다'},
+ {name:'남궁윤',outlet:'라디오정의',side:'p',style:'voice',bio:'라디오 시사 프로그램 출신, 당사자 인터뷰를 즐겨 싣는다',voice:'당사자의 목소리를 문장 그대로 옮긴다'},
+ {name:'김다온',outlet:'청년프레스',side:'p',style:'young',bio:'2년 차 막내 기자, 같은 또래 피해자 사건에 마음이 쓰인다',voice:'청년들이 이 사건을 어떻게 보는지 묻는다'},
+ {name:'류태민',outlet:'현장타임즈',side:'p',style:'scene',bio:'사건 현장부터 가 보는 발로 뛰는 기자',voice:'현장의 모습으로 기사를 연다'},
+ {name:'홍지아',outlet:'동부종합일보',side:'p',style:'local',bio:'지역 사회를 20년째 지킨 지역 데스크',voice:'동네가 이 사건을 어떻게 겪고 있는지 쓴다'},
+ {name:'황보람',outlet:'오늘의쟁점',side:'p',style:'opinion',bio:'논설위원 출신, 단호한 문장으로 유명하다',voice:'책임을 분명히 하라고 쓴다'},
+ {name:'윤도경',outlet:'시사돋보기',side:'d',style:'probe',bio:'강압 수사 보도로 상을 받은 탐사 기자',voice:'증거를 어떻게 얻었는지부터 의심한다'},
+ {name:'박서윤',outlet:'코리아재판뉴스',side:'d',style:'rights',bio:'국선 변호인 출신으로 피고인 인권을 다뤄 온 법조 기자',voice:'"아직 증명되지 않았다"는 문장을 아끼지 않는다'},
+ {name:'마지훈',outlet:'데이터사회',side:'d',style:'data',bio:'판결문을 숫자와 구조로 읽는 데이터 기자',voice:'빈칸이 남은 증거를 하나씩 센다'},
+ {name:'한민지',outlet:'재판브리핑',side:'d',style:'court',bio:'법원 출입 10년 차, 양쪽 말을 다 들어야 쓰는 기자',voice:'여론보다 절차를 먼저 본다'},
+ {name:'차은호',outlet:'팩트노트',side:'d',style:'fact',bio:'팩트체크 전담, 기사에 출처를 다 다는 기자',voice:'확인된 것과 소문을 칸을 나눠 적는다'},
+ {name:'선우진',outlet:'산업과법',side:'d',style:'company',bio:'기업법무 담당, 계약서를 끝까지 읽는 기자',voice:'계약과 규정에 무엇이 적혀 있는지 본다'},
+ {name:'제갈현',outlet:'대한저널',side:'d',style:'history',bio:'오판 사례를 연재해 온 사법 전문기자',voice:'과거의 오판과 겹치는 지점을 찾는다'},
+ {name:'민예린',outlet:'시민포커스',side:'d',style:'family',bio:'가족과 돌봄 문제를 다루는 생활부 기자',voice:'피고인의 가족과 삶도 함께 보라고 쓴다'},
+ {name:'곽도윤',outlet:'로컬이슈',side:'d',style:'online',bio:'온라인 여론과 가짜뉴스를 추적하는 기자',voice:'인터넷의 확신이 법정의 증거보다 앞서 있지 않은지 묻는다'},
+ {name:'설하준',outlet:'오늘의법',side:'d',style:'scholar',bio:'법학 박사 출신 객원 기자',voice:'법 조문이 실제로 무엇을 요구하는지 풀어 쓴다'}
 ];
-function reporterPair(c){const P=REPORTERS.filter(r=>r.side==='p'),D=REPORTERS.filter(r=>r.side==='d');return [P[hash(c.id+'rp')%P.length],D[hash(c.id+'rd')%D.length]]}
+function reporterPair(c){const Pr=REPORTERS.filter(r=>r.side==='p'),Dr=REPORTERS.filter(r=>r.side==='d');return [Pr[hash(c.id+'rp')%Pr.length],Dr[hash(c.id+'rd')%Dr.length]]}
+const Pj=(w,p)=>window.VerdictCurated?VerdictCurated.particle(w,p):w+p;
+const cut=(x,n=38)=>{x=String(x||'').replace(/[.。]$/,'');return x.length>n?x.slice(0,n-1)+'…':x};
+/* Everything a reporter may use: only what has been said or shown in court, plus the public case summary. */
+function material(c,t){
+ const cur=TP.curOf(c),tell=x=>TP.tell(c,t,x||'');
+ const evs=(cur?.evidence||[]).map((e,i)=>{const live=t?.evidence?.[i];return {title:tell(e.title),shows:tell(e.shows),caveat:tell(e.caveat),side:e.side,decision:live?.decision||null,illegal:live?.flawType==='illegal'}});
+ const said=(t?.heard||[]).filter(h=>!h.tainted&&!h.struck).map(h=>{const q=(cur?.witnesses?.[h.w]?.q||[]).find(x=>x.id===h.q);if(!q)return null;
+  let a=q.a;if(typeof a==='object'){let k=t.truth in a?t.truth:'reason';if(t.witnesses[h.w]?.flipped&&k!=='reason')k=k==='did'?'didnt':'did';a=a[k]}
+  return {who:NPC[t.witnesses[h.w]?.id]?.name||'증인',role:cur.witnesses[h.w]?.role||'증인',text:tell(a),side:h.side}}).filter(Boolean);
+ const issues=(cur?.issues||[]).map(i=>({title:i.title,open:tell(i.open)}));
+ const late=t?.evidence?.find(e=>e.late);
+ const crim=c.kind==='criminal',f=t?.final;
+ const nA=NPC[c.who?.[0]]?.name||'피고인',nB=NPC[c.who?.[1]]?.name||'피해자';
+ return {cur,tell,evs,said,issues,late,crim,f,A:nA,B:nB,hurt:crim?nB:nA,accused:crim?nA:nB,
+  name:shortName(c),days:t?.daysDone||0,logline:tell(cur?.logline),claimP:tell(cur?.claims?.[0]),claimD:tell(cur?.claims?.[1]),
+  demand:crim&&cur?.demand!=null?(typeof cur.demand==='object'?`벌금 ${cur.demand.fine}만 원`:(()=>{const mo=Math.round(cur.demand*12),y=Math.floor(mo/12),r=mo%12;return `징역 ${y?y+'년':''}${y&&r?' ':''}${r?r+'개월':''}`})()):'',claim:cur?.claim?`${cur.claim.amount.toLocaleString('ko-KR')}만 원`:''};
+}
+const HEAD={
+ victim:(m,x)=>m.f?`${m.name}, ${Pj(m.hurt,'의')} 남은 시간은 누가 책임지나`:`"${cut(x.quote||m.logline,26)}" — ${m.name}`,
+ police:(m,x)=>`${m.name}, 수사 기록 속 ${Pj(x.ev.title,'이')} 가리키는 것`,
+ hot:(m,x)=>x.quote?`[법정 직캠] ${m.name}, "${cut(x.quote,24)}"`:`[이슈] ${m.name}, 방청석이 술렁인 이유`,
+ money:(m,x)=>`${m.name}, 피해 ${m.claim||'규모'}… 숫자 뒤의 생활`,
+ safety:(m,x)=>`${m.name}, 막을 수 있었던 일인가`,
+ voice:(m,x)=>x.quote?`"${cut(x.quote,30)}" ${m.name} 증언대의 목소리`:`${m.name}, 당사자들이 말하지 못한 것`,
+ young:(m,x)=>`${m.name}, 또래들은 이 재판을 이렇게 본다`,
+ scene:(m,x)=>`${m.name}, 그날의 현장을 다시 걸어 보니`,
+ local:(m,x)=>`${m.name} 이후, 동네는 아직 그날에 멈춰 있다`,
+ opinion:(m,x)=>m.f?`[사설] ${m.name}, 판결이 남긴 숙제`:`[사설] ${m.name}, 책임을 흐리지 말라`,
+ probe:(m,x)=>x.gap?`${m.name}, ${cut(x.gap,30)}`:`${m.name}, 수사는 어디서부터 어긋났나`,
+ rights:(m,x)=>`${m.name}, "${cut(x.issue?.title||'아직 증명되지 않았다',24)}"에 답은 나왔나`,
+ data:(m,x)=>`${m.name}, 쟁점 ${m.issues.length}개 중 법정에서 확인된 것은`,
+ court:(m,x)=>m.days?`${m.name} ${m.days}차 공판, 양측이 맞선 지점`:`${m.name}, 첫 공판을 앞두고 정리한 쟁점`,
+ fact:(m,x)=>`[팩트체크] ${m.name}, 확인된 것과 확인되지 않은 것`,
+ company:(m,x)=>`${m.name}, 계약서와 규정이 말하는 것`,
+ history:(m,x)=>`${m.name}, 과거 오판 사례와 닮은 세 가지`,
+ family:(m,x)=>`${m.name}, ${Pj(m.accused,'의')} 가족도 재판을 받고 있다`,
+ online:(m,x)=>`${m.name}, 인터넷은 이미 판결을 내렸다?`,
+ scholar:(m,x)=>`${m.name}, 법은 무엇을 증명하라고 하나`
+};
+function writeArticle(c,t,r){
+ const m=material(c,t),mine=r.side;
+ const evPick=m.evs.filter(e=>e.side===mine&&e.decision!=='exclude');const ev=evPick[hash(c.id+r.name)%Math.max(1,evPick.length)]||m.evs[hash(c.id+r.name)%Math.max(1,m.evs.length)]||{title:'핵심 증거',shows:'',caveat:''};
+ const quoteFrom=m.said.filter(x=>x.side===mine||(x.side==='m'));const q=quoteFrom[hash(r.name+c.id)%Math.max(1,quoteFrom.length)];
+ const other=m.evs.find(e=>e.side!==mine&&e.decision&&e.decision!=='exclude');
+ const issue=m.issues[hash(r.name)%Math.max(1,m.issues.length)];
+ const gap=mine==='d'?(ev.caveat||issue?.open):'';
+ const x={ev,quote:q?.text,issue,gap};
+ const lines=[];
+ // 1. lead
+ if(m.f)lines.push(`${m.name} 사건에 "${m.f.label}"${m.f.sentence?`(${m.f.sentence})`:''} 판결이 선고됐다.`);
+ else if(m.days)lines.push(`${m.name} 재판이 ${m.days}차 공판까지 진행됐다. ${m.logline}`);
+ else lines.push(m.logline);
+ // 2. the side's claim, in one line
+ lines.push(mine==='p'?m.claimP:m.claimD);
+ // 3. a fact from the record
+ if(mine==='p')lines.push(`${Pj(ev.title,'은')} ${ev.shows.replace(/[.。]$/,'')}는 점을 보여 준다.${ev.decision==='use'?' 재판부도 이 증거를 판단 자료로 받아들였다.':''}`);
+ else lines.push(`다만 ${ev.title}에는 한계가 있다. ${ev.caveat.replace(/[.。]$/,'')}.${ev.illegal&&ev.decision==='exclude'?' 결국 재판부는 이 증거를 판단에서 뺐다.':''}`);
+ // 4. testimony heard in court
+ if(q)lines.push(`${q.role} ${Pj(q.who,'은')} 법정에서 "${q.text}"라고 말했다.`);
+ else if(m.days)lines.push(mine==='p'?'증언대에 선 사람들의 말은 아직 한쪽으로 모이지 않았다.':'아직 법정에서 결정적인 증언은 나오지 않았다.');
+ // 5. something that changed
+ if(m.late)lines.push(`공판 사이에 ${Pj(m.late.title,'이')} 새로 제출돼 ${mine==='p'?'흐름이 바뀌었다는 평가가 나온다':'반박할 시간이 충분했는지 의문이 남는다'}.`);
+ // 6. critique in the reporter's voice
+ const crit={
+  victim:`판결문 몇 줄로는 정리할 수 없는 시간이 ${m.hurt}에게 남았다.`,police:`수사팀이 쌓은 기록을 가볍게 넘겨서는 안 된다.`,hot:`재판정 밖에서는 벌써 결론을 둘러싼 말들이 오간다.`,
+  money:`잃은 돈은 숫자지만, 그 돈으로 버티던 생활은 숫자가 아니다.`,safety:`같은 구조가 그대로라면 같은 일은 또 일어난다.`,voice:`당사자의 말을 한 번 더 들어야 하는 이유다.`,
+  young:`이 재판을 지켜보는 또래들이 묻는 것은 결국 "나라면 어땠을까"다.`,scene:`현장의 거리와 시간은 기록보다 많은 것을 말한다.`,local:`사건은 법정에서 끝나도 동네의 기억은 오래 남는다.`,
+  opinion:m.f?`판결이 내려졌다고 질문까지 끝난 것은 아니다.`:`책임의 소재를 흐리는 재판이 되어서는 안 된다.`,
+  probe:`증거가 어떻게 손에 들어왔는지부터 다시 물어야 한다.`,rights:`"${issue?.title||'핵심 쟁점'}"에 대한 답이 없다면 유죄의 문은 열리지 않는다.`,
+  data:`${m.issues.length}개의 쟁점 가운데 증언과 증거로 메워진 칸이 몇 개인지 세어 보면 결론이 달리 보인다.`,court:`양측의 말이 가장 크게 엇갈린 곳은 "${issue?.title||'핵심 쟁점'}"이다.`,
+  fact:`확인된 사실: ${cut(ev.shows,40)}. 확인되지 않은 사실: ${cut(issue?.open||ev.caveat,40)}.`,company:`계약서와 내부 규정에 적힌 문장이 이 사건의 무게를 정한다.`,
+  history:`비슷한 정황만으로 유죄가 났다가 뒤집힌 사건이 적지 않았다.`,family:`${Pj(m.accused,'의')} 가족도 판결을 기다리며 같은 시간을 견디고 있다.`,
+  online:`인터넷의 확신이 법정의 증거를 앞서 가고 있는 것은 아닌가.`,scholar:`법이 요구하는 것은 짐작이 아니라 증명이다. ${issue?`특히 "${issue.title}"가 그렇다.`:''}`
+ }[r.style];
+ lines.push(crit);
+ if(!m.f&&m.demand&&mine==='p'&&m.days)lines.push(`검찰은 결심에서 ${m.demand} 안팎을 구형할 것으로 보인다.`);
+ return {title:(HEAD[r.style]||HEAD.court)(m,x),body:lines.filter(Boolean).join(' ')};
+}
 function articles(){
  const cs=[...openCases(),...completed().slice(-10)].filter(c=>c.generated||c.contentPack);
  const out=[];
  for(const c of cs){
-  const st=S.cases[c.id],t=st?.trial4,cur=TP.curOf(c),f=facts(c,t),crim=c.kind==='criminal',name=shortName(c);
-  const claims=cur?.claims||[],tell=x=>TP.tell(c,t,x||'');
-  const pro=(t?.heard||[]).filter(x=>x.side==='p').length,con=(t?.heard||[]).filter(x=>x.side==='d').length;
+  const st=S.cases[c.id],t=st?.trial4,crim=c.kind==='criminal';
+  if(!TP.curOf(c))continue;
   const [rp,rd]=reporterPair(c);
-  const progress=t?.final?`선고 결과는 "${f.verdict}"${f.sentence?`, ${f.sentence}`:''}였다.`:t?.daysDone?`${TP.session(c,t.daysDone)}까지 진행됐다.`:'첫 공판을 앞두고 있다.';
-  const P=(w,p)=>window.VerdictCurated?VerdictCurated.particle(w,p):w+p;
-  const pBody=[tell(claims[0]),f.ev&&t?.daysDone?`법정에 나온 ${P(f.ev,'이')} 이를 뒷받침한다는 평가다.`:'',pro?`증언 ${pro}건이 같은 방향을 가리켰다.`:'',progress].filter(Boolean).join(' ');
-  const dBody=[tell(claims[1]),f.illegal?`${P(f.illegal,'은')} 위법하게 얻은 증거로 판단에서 빠졌다.`:'',con?`의문을 남긴 증언도 ${con}건 나왔다.`:'',f.late?`막판에 제출된 ${P(f.late,'을')} 두고도 해석이 갈린다.`:'',progress].filter(Boolean).join(' ');
-  const pTitle=t?.final?(T.sideOf(t.final.dir)>0?`${name}, "늦었지만 책임을 물었다"`:`${name}, ${crim?'피해자 측':'원고 측'} "납득할 수 없다"`):`${name}, ${crim?'"증거가 가리키는 곳은 한 곳"':'"손해는 분명히 있었다"'}`;
-  const dTitle=t?.final?(T.sideOf(t.final.dir)<0?`${name}, 증명되지 않은 것은 처벌하지 않았다`:`${name} 판결, 남은 빈칸들`):`${name}, ${crim?'아직 증명되지 않은 것들':'청구액의 근거는 충분한가'}`;
-  out.push({caseId:c.id,outlet:rp.outlet,title:pTitle,body:pBody,day:st?.closedWeek||c.week,index:0,frame:crim?'검찰 측 시각':'원고 측 시각',reporter:rp,lean:'p'});
-  out.push({caseId:c.id,outlet:rd.outlet,title:dTitle,body:dBody,day:st?.closedWeek||c.week,index:1,frame:crim?'변호인 측 시각':'피고 측 시각',reporter:rd,lean:'d'});
+  for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r);
+   out.push({caseId:c.id,outlet:r.outlet,title:a.title,body:a.body,day:st?.closedWeek||c.week,index:idx,frame:lean==='p'?(crim?'검찰 측 시각':'원고 측 시각'):(crim?'변호인 측 시각':'피고 측 시각'),reporter:r,lean})}
  }
  return out;
 }
