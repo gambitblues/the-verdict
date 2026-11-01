@@ -348,7 +348,7 @@ else if(isNew())firstFour().catch(err=>console.warn(err));
   if(r.prosecutor)award(r.prosecutor,c,st.grade,'검사',winPro);
   if(r.claimant)award(r.claimant,c,st.grade,'원고 대리인',winPro);
   if(r.defendant)award(r.defendant,c,st.grade,'피고 측 변호사',winDef);
-  S.legalWorld??={};S.legalWorld.playerFame=cap((S.legalWorld.playerFame||0)+Math.max(1,c.importance*2)+(st.grade>=80?2:0));
+  S.legalWorld??={};window.VerdictCareerBalance.fame(S,c.id,st.grade,c.importance);
   S.legalWorld.playerNotableCases??=[];
   S.legalWorld.playerNotableCases.unshift({id:c.id,title:c.name,year:year(),grade:st.grade});
   S.legalWorld.playerNotableCases=S.legalWorld.playerNotableCases.slice(0,60);
