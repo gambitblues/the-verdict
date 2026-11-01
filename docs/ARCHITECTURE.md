@@ -90,3 +90,11 @@
 3. 증인: 기일당 신문 4번(`QPD`). 들은 답은 `t.heard`에 쌓이고 쟁점별 재판 현황과 게이지 계산(`gauge`)에 들어간다.
 4. 최소 기일을 채우면 판결: 결론 → 형/배상액(`sentenceSpec`) → 판결 이유 선택 → `writeJudgment`가 판결문 작성, `skill`이 근거·형량을 채점.
 5. 선고 뒤 미디어 데스크, 여론, 문자가 이어진다.
+
+## 두 개의 시계와 서버 확장
+
+- `game_hearings.js`
+  - `VerdictDocket`: 현실 시간 배당. `offerPair(slot)`가 시간대(slot)마다 사건 두 건을 고른다. 서버가 생기면 같은 모양(`{slot, options:[{title, tag, kind, archetypeId, importance, logline}]}`)을 돌려주면 되고, AI가 쓴 사건도 이 자리로 들어온다.
+  - `VerdictCalendar`: 게임 달력. `today()`, `advanceTo(day)`, `label(day)`. 공판이 열릴 때(`openSession`)만 앞으로 간다.
+- 사건 원형(`content-packs`)과 집필 데이터(`curated/`)는 코드와 분리돼 있어 서버에서 내려받는 데이터로 바꾸기 쉽다.
+- 인물(`S.npcDB`), 기억(`S.memories`), 문자(`S.threads`), 여론 기록(`trial4.mediaLog`)은 모두 직렬화 가능한 평범한 객체라 나중에 서버 동기화나 AI 생성 NPC 대화의 입력으로 쓸 수 있다.
