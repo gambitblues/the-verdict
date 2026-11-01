@@ -41,13 +41,13 @@ try{
  // ---- A ----
  const id=await page.evaluate(()=>{for(const c of S.generatedCases)S.cases[c.id].referred=true;const cand=CasePackEngine.pool(S).find(x=>x.a.id==='v6-homicide-cold-storage');const c=createGeneratedCase(cand);S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};c.week=S.week;ui.tab='court';ui.caseId=c.id;save();render();return c.id});
  await page.locator('.t4-tabs').waitFor();await tab('day');
- assert.equal(await page.locator('.t4-orders').count(),0,'no orders before the hearing opens');
+ assert.equal(await page.locator('.t4-orders-panel').count(),0,'no orders before the hearing opens');
  await page.locator('.t4-dock [data-kind="open"]').click();await answer();
- await page.locator('.t4-orders summary').click();
- const offered=await page.locator('.t4-q.order').allInnerTexts();
+ assert.ok(await page.locator('.t4-orders-panel.is-open').count(),'orders panel is open and visible on the hearing page');
+ const offered=await page.locator('.t4-q.order').allTextContents();
  assert.ok(offered.length>=3,'orders are offered');assert.ok(offered.some(t=>t.includes('검찰 · 자료 제출')),'records order to the prosecution');
  assert.ok(offered.every(t=>/쟁점 ·/.test(t)),'every order names its issue');
- const click=async key=>{await page.locator(`.t4-q.order[data-id="${key}"]`).click();await answer()};
+ const click=async key=>{await page.locator(`.t4-q.order[data-id="${key}"]`).dispatchEvent('click');await answer()};
  await click('f:f2');await click('f:f3');
  assert.equal(await page.evaluate(i=>S.cases[i].trial4.courtOrders.length,id),2);
  assert.equal(await page.locator('.t4-q.order').count(),0,'two orders per hearing');
@@ -155,8 +155,8 @@ try{
    if(d>0&&await page.locator('.t4-changes').count())changesSeen++;
    await tab('witness');
    for(let k=0;k<2;k++){const q=page.locator('.t4 .t4-q:not([disabled]):not(.cf):not(.face):not(.order)').first();if(await q.count()){await q.dispatchEvent('click');await answer()}}
-   await tab('day');const sm=page.locator('.t4-orders summary');
-   if(await sm.count()){await page.evaluate(()=>{const d=document.querySelector('.t4-orders');if(d)d.open=true});const o=page.locator('.t4-q.order').first();if(await o.count()){await o.dispatchEvent('click');await answer()}}
+   await tab('day');const sm=page.locator('.t4-orders-panel');
+   if(await sm.count()){const o=page.locator('.t4-q.order').first();if(await o.count()){await o.dispatchEvent('click');await answer()}}
    const end=page.locator('.t4-dock [data-action="t4end"]');if(!(await end.count()))break;await end.click();await answer();
    await page.evaluate(i=>{S.cases[i].trial4.nextAt=0;render()},id);maxHearing=Math.max(maxHearing,d+1);
   }
