@@ -1249,6 +1249,13 @@ court=function(){
  else if(ui.t4tab==='evidence'){const done=t.evidence.filter(e=>e.decision).length;page=`<section class="panel t4"><div class="t4-head"><h3>증거</h3><span class="t4-tag">결정 ${done}/${t.evidence.length}</span></div>${pager('evidence',t.evidence,e=>evidenceCard(e,t,wait,c),'증거')}</section>`}
  else if(ui.t4tab==='witness')page=`<section class="panel t4"><div class="t4-head"><h3>증인</h3><span class="t4-tag">오늘 남은 신문 ${t.qLeft}/${t.qpd||QPD}</span></div>${partyCard(c,t,wait||!sessionOpen(t))}${faceList(c,t,wait||!sessionOpen(t))}${pager('witness',t.witnesses,w=>witnessCard(w,t,wait,c),'증인')}</section>`;
  else if(ui.t4tab==='verdict')page=verdictPage(c,st);
+ if(ui.t4tab==='day'&&isCriminal(c)&&t&&!st.verdict){
+  const evApi=window.VerdictHearingEvents;
+  const opts=evApi?.available(c,st,sessionOpen(t)&&!wait)||[];
+  const records=(st.hearingEvents||[]).map(v=>'<div class="t4-order-hist"><p><b>'+esc(v.id==='defendant_question'?'피고인 질문':v.id==='reflection'?'반성문':'합의·피해 회복')+'</b></p><p>'+esc(v.text)+'</p></div>').join('');
+  page+='<section class="panel t4"><h3>⚖ 공판 중 당사자 이벤트</h3><p class="muted small">기록에 남는 절차적 이벤트입니다. 제출만으로 유무죄나 양형을 자동 변경하지 않습니다.</p>'+opts.map(o=>'<button class="btn outline" style="margin:4px" data-action="t4hearing" data-id="'+esc(o.id)+'">'+esc(o.label)+'</button>').join('')+(records||'<p class="muted small">아직 진행한 이벤트가 없습니다.</p>')+'</section>';
+ }
+
  const nav=`<nav class="t4-tabs" aria-label="재판 화면">${tabs.map(([id,label,badge])=>`<button class="t4-tab ${ui.t4tab===id?'on':''}" data-action="t4tab" data-tab="${id}">${label}${badge?`<i>${badge}</i>`:''}</button>`).join('')}</nav>`;
  return `<div class="court-play t4app">${header?header.outerHTML:''}${window.VerdictVisuals?.scene(c,t,ui.t4tab,st.verdict?'선고 완료':stage(c,st).short)||''}${nav}<div class="t4-page">${window.VerdictVisuals?.event(c.id)||''}${page}</div>${t?dock(c,st):''}</div>`;
 };
@@ -1286,6 +1293,7 @@ const priorClick=clicker;
 clicker=function(e){
  const el=e.target.closest('[data-action]');
  const a=el?.dataset.action;
+ if(a==='t4hearing'){e.preventDefault();const x=current();if(!x)return;try{const item=window.VerdictHearingEvents.apply(x.c,x.st,el.dataset.id,sessionOpen(x.st.trial4)&&!waiting(x.st.trial4),x.st.trial4?.seed||String(S.rng||0));save();render();toast('공판 기록에 반영했습니다.')}catch(err){toast(err.message)}return}
  if(a==='t4'){e.preventDefault();act(el.dataset.kind,el.dataset.id,el.dataset.choice);return}
  if(a==='t4end'){e.preventDefault();endDay();return}
  if(a==='tab'&&el.dataset.tab==='court'&&el.closest('.bottom-nav,.nav-stack')){e.preventDefault();changeTab('courtList');return}
