@@ -31,6 +31,7 @@
   - 개발용 화면·시범 사건은 `dev/`(예: `dev/advanced-pilot/advanced_pilot.html`), 초안 사건 데이터는 `advanced-content/`에 둔다. 둘 다 main에 올라가지 않는다.
   - Advanced 초안 99건은 아직 틀에서 찍어낸 초안이다. `tests/advanced-content-qa.cjs`가 사건 사이 반복 문장·시각 불일치·주제형 증인 역할을 세고, 문제가 남은 사건은 플레이 가능 표시를 못 한다.
   - 기존 60건 → Advanced 변환은 `advanced_legacy_adapter.js`(집필 문장만 사용, 이름 토큰 유지, 없는 시각·장소는 'needs_authoring'으로 표시).
+- **세계 시트(2026-11 확정):** 사건의 고정 사실을 세 세계로 쓰는 양식 `world-sheets/template.json`, 사건은 `world-sheets/cases/<id>.json`(견본 clinic-001). 기획자는 실제 판례를 바탕으로 새 사건을 여기에 올리고, 기존 60건은 요청이 오면 Claude가 같은 수준으로 써서 커밋한다. 법정 진술·전략은 쓰지 않는다(엔진 몫). 폴더는 main에 안 올라간다. 시트를 읽는 매치 엔진(변호사 전술·능력치 판정·대사 조립)은 아직 없음 — 천천히 진행.
 - 정리 원칙(사용자 요청): 프로그램에 영향 없는 옛 코드·안 쓰는 파일·중복 코드는 검수 때 지운다. 이미 올라간 커밋 기록은 고쳐 쓰지 않는다(공유 브랜치 강제 푸시 금지).
 
 ## 확정된 설계 결정
@@ -55,6 +56,7 @@ node tests/version.test.cjs        # index.html 버전 = sw.js CACHE = CHANGELOG
 node tests/v6-case-matrix.test.cjs  # 60건 × 80시드 증거·결정성 (개발자 추가)
 node tests/v6-behaviour.test.cjs    # 증인 태도·이의·증거 반박·대질·주문 결과 순수 함수
 node tests/career-hearing-events.test.cjs  # 40년 경력 성장 속도·공판 중 당사자 자료
+node tests/world-sheets.test.cjs   # 세계 시트(world-sheets/cases) 구조·세 세계 구별
 ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/visuals.mjs; node tests/responsive.mjs; node tests/hearing-events.mjs; node tests/evidence-moments.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/long-career.mjs 40; rm node_modules
 ```
 - `curated/*.js`를 고치면 `node tests/build-curated.cjs`로 `curated_cases.js`를 다시 만든다.

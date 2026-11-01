@@ -1,0 +1,220 @@
+{
+ "format": "verdict-world-sheet/v1",
+ "id": "파일 이름과 같게 (예: theft-2027-001)",
+ "status": "draft",
+ "source": {
+  "type": "real_case",
+  "court": "선고 법원",
+  "caseNumber": "사건번호",
+  "decidedAt": "YYYY-MM-DD",
+  "url": "https://… (공식 판결 원문·요지 주소)",
+  "retrievedAt": "YYYY-MM-DD",
+  "usedFacts": [
+   "판례에서 가져온 사실 1",
+   "…"
+  ],
+  "fictionalized": true,
+  "note": "바꾼 것: 인물 이름·장소·금액 등"
+ },
+ "card": {
+  "kind": "criminal | civil | decision",
+  "category": "homicide | sexual | violence | financial | property | reputation | civil | family | professional | public",
+  "title": "게임에 보일 사건 이름",
+  "summary": "플레이어가 보는 사건 요지 2~3문장 (숨은 진실을 누설하지 않게)",
+  "accused": "A",
+  "complainant": "B",
+  "charge": {
+   "name": "죄명 (형사)",
+   "law": "형법 제000조",
+   "min": 0,
+   "max": 0,
+   "life": false,
+   "fine": 0
+  },
+  "claim": {
+   "amount": 0,
+   "fair": [
+    0,
+    0
+   ],
+   "what": "청구 내용 (민사, 금액은 만 원)"
+  },
+  "decision": {
+   "what": "신청 내용 (결정형)",
+   "yes": "인용",
+   "no": "기각"
+  }
+ },
+ "people": [
+  {
+   "key": "A",
+   "name": "가명",
+   "role": "피고인",
+   "sex": "남 | 여 (이야기가 성별에 기댈 때만)",
+   "age": 0,
+   "job": "",
+   "edu": "",
+   "family": "",
+   "state": "경제력·평판·인간관계 등 판결 뒤에도 이어지는 상태",
+   "traits": {
+    "composure": "높음 | 보통 | 낮음",
+    "honesty": "",
+    "legalStance": "부인 | 일부 인정 | 자백"
+   }
+  },
+  {
+   "key": "B",
+   "name": "가명",
+   "role": "고소인 | 피해자 | 원고",
+   "age": 0,
+   "job": "",
+   "traits": {
+    "memoryAccuracy": "",
+    "confidence": "",
+    "honesty": ""
+   }
+  },
+  {
+   "key": "W1",
+   "name": "가명",
+   "role": "증인 역할 (사람)",
+   "age": 0,
+   "job": "",
+   "stake": "이해관계",
+   "traits": {
+    "honesty": "",
+    "pressure": "강함 | 보통 | 약함",
+    "memoryAccuracy": ""
+   }
+  }
+ ],
+ "places": [
+  {
+   "id": "p-…",
+   "name": "가상 장소 이름"
+  }
+ ],
+ "devices": [
+  {
+   "id": "d-…",
+   "kind": "CCTV | 출입 기록기 | 블랙박스 | 휴대폰 …",
+   "covers": "무엇을 찍거나 남기는지",
+   "clockOffsetSec": 0,
+   "note": "실제보다 빠르면 +초, 느리면 −초"
+  }
+ ],
+ "common": {
+  "date": "YYYY-MM-DD",
+  "timeline": [
+   {
+    "at": "HH:MM",
+    "place": "p-…",
+    "who": [
+     "A"
+    ],
+    "what": "세 세계 모두에서 참인 일"
+   }
+  ],
+  "facts": [
+   "세 세계 모두 참인 배경 사실"
+  ]
+ },
+ "records": [
+  {
+   "id": "r-…",
+   "title": "자료 이름",
+   "kind": "자료 종류",
+   "device": "d-… (기기에서 나온 자료면)",
+   "by": "검찰 | 변호인 | 원고 | 피고",
+   "how": "누가 언제 어떻게 확보했나, 훼손·누락",
+   "first": true,
+   "unlock": "처음엔 없는 자료면: 어떤 주문으로 나오는지"
+  }
+ ],
+ "worlds": {
+  "did": {
+   "label": "실제로 했다",
+   "legal": "이 세계의 법적 평가",
+   "act": "누가 언제 무엇을 했나 (분 단위)",
+   "motive": "왜",
+   "cause": "결과가 생긴 실제 원인",
+   "victimState": "피해자 상태 (해당될 때)",
+   "timeline": [
+    {
+     "at": "HH:MM",
+     "what": "이 세계에서만 일어난 일"
+    }
+   ],
+   "records": {
+    "r-…": "이 세계에서 그 자료에 실제로 담긴 내용 (원문 말투)"
+   },
+   "saw": {
+    "W1": "이 세계에서 증인이 실제로 보고 들은 것과 못 본 범위"
+   },
+   "knows": {
+    "A": "이 세계에서 피고인이 아는 것",
+    "B": "고소인이 아는 것"
+   }
+  },
+  "didnt": {
+   "label": "실제로 하지 않았다",
+   "legal": "이 세계의 법적 평가",
+   "act": "누가 언제 무엇을 했나 (분 단위)",
+   "motive": "왜",
+   "cause": "결과가 생긴 실제 원인",
+   "victimState": "피해자 상태 (해당될 때)",
+   "timeline": [
+    {
+     "at": "HH:MM",
+     "what": "이 세계에서만 일어난 일"
+    }
+   ],
+   "records": {
+    "r-…": "이 세계에서 그 자료에 실제로 담긴 내용 (원문 말투)"
+   },
+   "saw": {
+    "W1": "이 세계에서 증인이 실제로 보고 들은 것과 못 본 범위"
+   },
+   "knows": {
+    "A": "이 세계에서 피고인이 아는 것",
+    "B": "고소인이 아는 것"
+   }
+  },
+  "reason": {
+   "label": "행위는 있었지만 사정이 다르다",
+   "legal": "이 세계의 법적 평가",
+   "act": "누가 언제 무엇을 했나 (분 단위)",
+   "motive": "왜",
+   "cause": "결과가 생긴 실제 원인",
+   "victimState": "피해자 상태 (해당될 때)",
+   "timeline": [
+    {
+     "at": "HH:MM",
+     "what": "이 세계에서만 일어난 일"
+    }
+   ],
+   "records": {
+    "r-…": "이 세계에서 그 자료에 실제로 담긴 내용 (원문 말투)"
+   },
+   "saw": {
+    "W1": "이 세계에서 증인이 실제로 보고 들은 것과 못 본 범위"
+   },
+   "knows": {
+    "A": "이 세계에서 피고인이 아는 것",
+    "B": "고소인이 아는 것"
+   }
+  }
+ },
+ "traps": [
+  "오판을 부르는 함정 (세 세계 모두 참인데 한쪽을 가리키는 것처럼 보이는 자료 등)"
+ ],
+ "screen": {
+  "allow": [
+   "화면에 써도 되는 말"
+  ],
+  "avoid": "화면에 쓰지 않을 묘사"
+ },
+ "open": [
+  "기획에서 아직 정하지 못한 것"
+ ]
+}
