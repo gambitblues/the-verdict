@@ -72,4 +72,39 @@ assert.ok(sk({cites:[{label:'a',side:'p',illegal:true}]})<sk({cites:[{label:'a',
 assert.ok(sk({sentence:{what:'형량',value:30,lo:24,hi:36,mitig:0,aggr:0}})>sk({sentence:{what:'형량',value:80,lo:24,hi:36,mitig:0,aggr:0}}));
 assert.ok(sk({sentence:{what:'형량',value:80,lo:24,hi:36,mitig:0,aggr:2}})>sk({sentence:{what:'형량',value:80,lo:24,hi:36,mitig:0,aggr:0}}),'reasons justify leaving the range');
 
+// ---- Written (curated) cases: what the player reads about a piece of evidence and what the engine scores must match ----
+// Reproduces the conflict: the same archetype returns with the same truth and the same first flaw. For generated cases the
+// engine rotates the first evidence's flaw to vary the replay; for written cases that would contradict the printed text
+// (e.g. an evidence card that explains a missing warrant would be scored as a timing problem).
+{
+ const written={id:'w',archetypeId:'written-1',strict:true,truth:'did',
+  evidence:[{id:'e0',title:'영장 없이 빼낸 메모리카드',hintFlaw:'illegal'},{id:'e1',title:'통화 기록',hintFlaw:'timing'},{id:'e2',title:'계약서',hintFlaw:'none'}],witnesses:[]};
+ const first=T.roll(written,'S1',[]);
+ assert.deepEqual(first.evidence.map(e=>e.flawType),['illegal','timing','none'],'written case: hidden flaws follow the text');
+ // exact trigger: earlier roll of the same archetype with the same truth and the same first flaw
+ const history=[{archetypeId:'written-1',truth:'did',firstFlaw:'illegal'}];
+ const again=T.roll(written,'S2',history);
+ assert.deepEqual(again.evidence.map(e=>e.flawType),['illegal','timing','none'],'returning written case must not rotate a flaw away from its text');
+ assert.equal(again.evidence[2].flaw,0,'evidence described as sound carries no hidden flaw');
+ // a generated (non-written) case still varies on return
+ const gen={id:'g',archetypeId:'gen-1',truth:'did',evidence:[{id:'e0',title:'CCTV',hintFlaw:'source'}],witnesses:[]};
+ const g1=T.roll(gen,'G1',[]),g2=T.roll(gen,'G2',[{archetypeId:'gen-1',truth:'did',firstFlaw:g1.evidence[0].flawType}]);
+ assert.notEqual(g2.evidence[0].flawType,g1.evidence[0].flawType,'generated case: returning archetype still varies its first flaw');
+}
+// Every written case, rolled fresh and rolled again as a returning archetype under every truth, keeps text and score aligned.
+{
+ const fs=require('fs'),path=require('path');global.window={};
+ eval(fs.readFileSync(path.join(__dirname,'..','curated_cases.js'),'utf8'));
+ const C=window.VerdictCurated;let checked=0;
+ for(const id of C.ids){const cur=C.cases[id];
+  const evs=[...cur.evidence.map((e,i)=>({id:'e'+i,title:e.title,hintFlaw:e.flaw})),...(cur.late?[{id:'late',title:cur.late.title,hintFlaw:cur.late.flaw||'none'}]:[])];
+  for(const truth of ['did','didnt','reason'])for(const seed of ['a','b','c']){
+   const def={id,archetypeId:id,strict:true,truth,evidence:evs,witnesses:[]};
+   const one=T.roll(def,seed,[]),two=T.roll(def,seed+'2',[{archetypeId:id,truth,firstFlaw:one.evidence[0].flawType}]);
+   for(const r of [one,two])r.evidence.forEach((e,i)=>{assert.equal(e.flawType,evs[i].hintFlaw,`${id} ${evs[i].id}: scored as ${e.flawType} but the text describes ${evs[i].hintFlaw}`);
+    assert.equal(e.flaw===0,e.flawType==='none',`${id} ${evs[i].id}: flaw size does not match its type`);checked++});
+  }}
+ assert.ok(checked>1000,'expected to check every written evidence many times');
+}
+
 console.log('trial core regression tests passed');

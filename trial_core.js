@@ -62,14 +62,17 @@ function roll(c,seed,history=[]){
   const s=seed+':ev:'+i,odds=e.hintFlaw==='none'?flawOdds*0.4:flawOdds,flawed=unit(s+':f')<odds;
   let flawType=flawed?pick(['source','timing','illegal'],s+':t'):'none';
   if(flawed&&e.hintFlaw&&e.hintFlaw!=='none')flawType=e.hintFlaw;
-  // written cases: the evidence text already describes its weakness, so the hidden layer follows the text
-  if(c.strict&&e.hintFlaw)flawType=e.hintFlaw;
   if(e.hintIllegal&&flawed)flawType='illegal';
+  // written cases: the evidence text already describes its weakness, so the hidden layer follows the text. Applied last
+  // so nothing above (or the replay variation below) can contradict what the player reads.
+  if(c.strict&&FLAWS.includes(e.hintFlaw))flawType=e.hintFlaw;
   const strength=between(40,82,s+':s'),flaw=flawType==='none'?0:between(25,85,s+':size');
   const surface=flawType==='none'?strength:clamp(strength+between(12,28,s+':shine'),0,96);
   return {id:e.id,title:e.title,note:e.note||'',scope:e.scope||'',strength,flawType,flaw,surface,revealed:c.strict?2:0,decision:null,publicFlaw:false};
  });
- if(previous&&previous.truth===truth&&evidence[0]&&previous.firstFlaw===evidence[0].flawType){
+ // A returning generated archetype varies its first flaw so the replay feels different. Written cases never do this:
+ // their flaws are fixed by the text, and replay variety comes from the truth, the people and their behaviour instead.
+ if(!c.strict&&previous&&previous.truth===truth&&evidence[0]&&previous.firstFlaw===evidence[0].flawType){
   const e=evidence[0];e.flawType=FLAWS[(FLAWS.indexOf(e.flawType)+1)%FLAWS.length];e.flaw=e.flawType==='none'?0:Math.max(e.flaw,40);
   e.surface=e.flawType==='none'?e.strength:clamp(e.strength+20,0,96);
  }
