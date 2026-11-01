@@ -217,6 +217,7 @@ function articles(){
  const out=[];
  for(const c of cs){
   const st=S.cases[c.id],t=st?.trial4,crim=c.kind==='criminal';
+  for(const iv of t?.final?.interviews||[])out.push({caseId:c.id,outlet:iv.outlet,title:iv.title,body:iv.body,day:st?.closedWeek||c.week,index:'iv'+out.length,phase:'after',tone:iv.tone==='논란'?'blame':'praise',frame:'인터뷰 · ',lean:''});
   if(!TP.curOf(c))continue;
   const [rp,rd]=reporterPair(c);
   for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r);
@@ -255,20 +256,37 @@ function opinionFeed(){
  }).join('')+'<p class="muted small">여론은 사회의 반응일 뿐, 판결의 정답이 아닙니다.</p>';
 }
 
-/* ---------- messages you can answer ---------- */
+/* ---------- messages you can answer ----------
+ * Each kind has several openings and replies; which one a thread uses is fixed by the thread id, so the same case reads
+ * the same after a reload while different cases read differently. `{c}` = case short name, `{v}` = verdict label. */
+const V=(arr,seed)=>arr[hash(seed)%arr.length];
+const fillT=(x,c)=>String(x).replace(/\{c\}/g,shortName(c)).replace(/\{v\}/g,S.cases[c.id]?.trial4?.final?.label||'판결');
 const TPL={
- press:{from:'hyun',text:c=>`이번 ${shortName(c)} 때문에 언론에서 계속 연락이 오는데, 어떻게 할 생각이야?`,
-  choices:[['silent','일절 대응하지 않는다','그래, 판결문으로 말하는 게 맞지. 다만 기자들이 더 캐고 들 수도 있어.',{rel:2,press:-3}],
-   ['official','공식 입장만 전달한다','공보판사 통해서 짧게 내는 게 깔끔하겠다. 내가 담당자 연결해 줄게.',{rel:1,press:3,news:c=>[`재판부, 공보판사 통해 "${shortName(c)} 판결 이유는 판결문에 담았다"`,'재판부는 개별 인터뷰 없이 판결문 공개로 입장을 대신했다.']}],
-   ['wait','상황을 더 지켜본다','너무 오래 끌면 말이 더 커질 수 있어. 필요하면 언제든 연락해.',{rel:0,press:-1,heat:5}]]},
- late:{from:'senior',text:c=>`${shortName(c)}에 막판 증거가 들어왔다며? 상대방한테 반박할 시간은 충분히 줬어?`,
-  choices:[['time','반박 기회를 충분히 주겠다','좋아. 늦게 나온 증거일수록 양쪽 말을 다 들어야 탈이 없어.',{rel:3}],
-   ['enough','지금으로 충분하다','네가 판단했다면 됐다. 판결문에 그 이유만 분명히 남겨.',{rel:0}],
-   ['thanks','조언 고맙습니다, 더 생각해 보겠습니다','그래, 혼자 끙끙대지 말고.',{rel:2}]]},
- interview:{text:(c,r)=>`${r.outlet} ${r.name} 기자입니다. 저희는 ${shortName(c)} 판결을 비판적으로 보도했습니다. 그래도 판사님이 왜 그렇게 판단하셨는지 직접 듣고 싶습니다. 짧게 인터뷰 가능하실까요?`,
-  choices:[['accept','짧게 인터뷰에 응한다','감사합니다. 판사님 말씀은 왜곡 없이 그대로 싣겠습니다.',{rel:10,news:(c,r)=>[`[인터뷰] "${shortName(c)}, 기록이 말한 만큼만 판단했다"`,`${r.outlet} ${r.name} 기자가 재판장을 만나 판결 이유를 물었다. 재판장은 "증거로 확인된 것과 확인되지 않은 것을 나눠 판단했다"고 말했다.`]}],
-   ['decline','정중히 거절한다','알겠습니다. 그래도 다음 판결도 계속 지켜보겠습니다.',{rel:-3}],
-   ['office','공보판사를 통해 달라고 한다','공보 창구로 다시 요청드리겠습니다.',{rel:1,press:2}]]},
+ press:{from:'hyun',text:[
+   '이번 {c} 때문에 언론에서 계속 연락이 오는데, 어떻게 할 생각이야?',
+   '야, {c} 기사 봤어? 우리 법원 기자실이 난리야. 너한테도 연락 갔지?',
+   '{c} 선고 뒤로 기자들이 내 방까지 찾아오더라. 너는 괜찮아?',
+   '{c} 얘기가 단톡방에도 돌아. 한마디 해야 하나 고민돼서 연락했어.',
+   '동기들끼리 {c} 얘기 많이 했어. "{v}" 두고 의견이 갈리더라. 언론 대응은 어떻게 할 거야?'],
+  choices:[['silent','일절 대응하지 않는다',['그래, 판결문으로 말하는 게 맞지. 다만 기자들이 더 캐고 들 수도 있어.','너답다. 대신 판결문은 한 번 더 읽어 둬. 질문은 결국 거기로 오니까.','알겠어. 나도 누가 물으면 모른다고 할게.'],{rel:2,press:-3}],
+   ['official','공식 입장만 전달한다',['공보판사 통해서 짧게 내는 게 깔끔하겠다. 내가 담당자 연결해 줄게.','좋은 생각이야. 짧고 건조하게. 형용사는 빼고.','그게 제일 덜 시끄러워. 공보실 번호 보낼게.'],{rel:1,press:3,news:c=>[`재판부, 공보판사 통해 "${shortName(c)} 판결 이유는 판결문에 담았다"`,'재판부는 개별 인터뷰 없이 판결문 공개로 입장을 대신했다.']}],
+   ['wait','상황을 더 지켜본다',['너무 오래 끌면 말이 더 커질 수 있어. 필요하면 언제든 연락해.','그래, 며칠 지나면 잦아들 거야. 그래도 밤에 기사 검색은 하지 마.','그러다 일 커지면 나한테 바로 말해.'],{rel:0,press:-1,heat:5}]]},
+ late:{from:'senior',text:[
+   '{c}에 막판 증거가 들어왔다며? 상대방한테 반박할 시간은 충분히 줬어?',
+   '{c}, 늦게 들어온 자료 하나로 판이 흔들린다는 얘기 들었다. 그 자료 어디서 나왔는지는 확인했어?',
+   '요즘 {c} 기록 보느라 늦게 퇴근한다며. 새로 들어온 자료는 원본까지 봤고?',
+   '{c} 새 증거 얘기가 복도까지 들려. 내가 초임 때 늦게 낸 증거만 믿었다가 혼난 적이 있어서 하는 말이야.',
+   '{c} 기일 사이에 자료가 하나 더 들어왔다고? 그럴 땐 그 자료보다 왜 이제 나왔는지를 먼저 묻는 게 내 버릇이야.'],
+  choices:[['time','반박 기회를 충분히 주겠다',['좋아. 늦게 나온 증거일수록 양쪽 말을 다 들어야 탈이 없어.','그래, 한 기일 더 쓰는 게 나중에 판결문 한 장 덜 쓰는 길이다.','그렇게 해. 서두른 판결은 꼭 티가 나.'],{rel:3}],
+   ['enough','지금으로 충분하다',['네가 판단했다면 됐다. 판결문에 그 이유만 분명히 남겨.','그래, 기록은 네가 제일 많이 봤겠지.','알았다. 대신 판결문에 왜 충분했는지 한 줄은 써 둬.'],{rel:0}],
+   ['thanks','조언 고맙습니다, 더 생각해 보겠습니다',['그래, 혼자 끙끙대지 말고.','언제든 물어봐. 나도 그렇게 배웠다.','밥은 챙겨 먹고 해라.'],{rel:2}]]},
+ interview:{text:[
+   '{o} {r} 기자입니다. 저희는 {c} 재판을 처음부터 보도해 왔습니다. 판사님이 왜 그렇게 판단하셨는지 직접 듣고 싶습니다. 짧게 인터뷰 가능하실까요?',
+   '안녕하세요, {o} {r} 기자입니다. {c} 선고를 두고 독자 문의가 많습니다. 판결 이유를 판사님 말로 듣고 싶어 연락드렸습니다.',
+   '{o}의 {r}입니다. {c} 판결이 지역에서 큰 화제입니다. 질문 두 개만 드려도 될까요? 답변은 그대로 싣겠습니다.'],
+  choices:[['accept','짧게 인터뷰에 응한다',['감사합니다. 판사님 말씀은 왜곡 없이 그대로 싣겠습니다.'],{rel:6}],
+   ['decline','정중히 거절한다',['알겠습니다. 그래도 다음 판결도 계속 지켜보겠습니다.','아쉽지만 이해합니다. 판결문을 다시 읽어 보겠습니다.'],{rel:-3}],
+   ['office','공보판사를 통해 달라고 한다',['공보 창구로 다시 요청드리겠습니다.','알겠습니다. 공식 절차로 다시 연락드리겠습니다.'],{rel:1,press:2}]]},
  pressure:{text:()=>'',
   choices:[['refuse','정중히 거절한다','… 알겠습니다. 제가 괜한 말씀을 드렸네요.',{}],
    ['report','법원 감사 담당에 보고한다','(답장이 오지 않는다)',{}],
@@ -277,15 +295,55 @@ const TPL={
   choices:[['thanks','말해 줘서 고맙다고 답한다','들어 주셔서 감사합니다. 이제야 조금 마음이 놓여요.',{rel:6}],
    ['final','판결은 이미 확정됐다고 답한다','네, 압니다. 그래도 판사님은 아셔야 할 것 같았어요.',{rel:0}],
    ['where','필요하면 알려야 할 곳을 안내한다','알려 주신 곳에 정식으로 말해 보겠습니다. 용기를 내 볼게요.',{rel:3}]]},
- review:{from:'senior',text:c=>`${shortName(c)} 리뷰 봤다. 너무 신경 쓰지 마. 다음엔 뭘 다르게 해 볼 생각이야?`,
-  choices:[['proc','증거 절차를 더 꼼꼼히 보겠습니다','그게 제일 중요하지. 절차가 무너지면 결론도 같이 무너져.',{rel:3}],
-   ['crowd','여론은 신경 쓰지 않겠습니다','그래야지. 대신 판결 이유는 누구나 읽을 수 있게 써.',{rel:1}],
-   ['unfair','솔직히 억울합니다','그럴 수 있어. 리뷰가 늘 맞는 것도 아니고. 술 한잔하자.',{rel:4}]]}
+ review:{from:'senior',text:[
+   '{c} 리뷰 봤다. 너무 신경 쓰지 마. 다음엔 뭘 다르게 해 볼 생각이야?',
+   '{c} 평가가 박하게 나왔더라. 나도 그런 해가 있었다. 뭐가 제일 아쉬웠어?',
+   '{c} 리뷰, 점수보다 지적한 내용을 봐. 거기 다음 판결이 있어. 어떻게 받아들이고 있어?',
+   '퇴근 전에 {c} 리뷰 읽었다. 할 말이 많을 텐데, 하나만 꼽으면 뭐야?'],
+  choices:[['proc','증거 절차를 더 꼼꼼히 보겠습니다',['그게 제일 중요하지. 절차가 무너지면 결론도 같이 무너져.','좋아. 증거 목록 옆에 확보 경위를 한 줄씩 써 보는 습관을 들여 봐.'],{rel:3}],
+   ['crowd','여론은 신경 쓰지 않겠습니다',['그래야지. 대신 판결 이유는 누구나 읽을 수 있게 써.','맞아. 그래도 사람들이 왜 화났는지는 한 번 읽어 봐. 거기서 배울 게 있어.'],{rel:1}],
+   ['unfair','솔직히 억울합니다',['그럴 수 있어. 리뷰가 늘 맞는 것도 아니고. 술 한잔하자.','억울한 건 억울한 거지. 다음 주에 점심 먹자, 내가 살게.'],{rel:4}]]}
 };
+const textOf=(tp,c,r,seed)=>{const x=typeof tp.text==='function'?tp.text(c,r):V(tp.text,seed);return fillT(x,c).replace(/\{o\}/g,r?.outlet||'').replace(/\{r\}/g,r?.name||'')};
+const replyOf=(x,seed)=>Array.isArray(x)?V(x,seed):x;
+/* the interview: two questions, three ways to answer each; the answers become an article and move public opinion */
+const IQ=[
+ {q:['판결에서 가장 무게를 둔 것은 무엇이었습니까?','판결 이유를 한 문장으로 말씀해 주신다면요?','이번 판결의 출발점은 어디였나요?'],
+  a:[['record','기록과 증거가 말한 만큼만 판단했다',{trust:6,rel:2}],['law','법이 요구하는 증명의 기준을 지켰다',{trust:4,rel:1}],['people','당사자들의 사정을 끝까지 들었다',{trust:3,rel:3}]]},
+ {q:['판결을 두고 비판이 큽니다. 어떻게 받아들이십니까?','"상식과 다르다"는 반응도 있습니다. 하실 말씀이 있나요?','판결에 동의하지 않는 독자들에게 하실 말씀이 있습니까?'],
+  a:[['humble','비판도 판결의 일부로 받아들인다',{trust:5,rel:3}],['firm','여론과 판결은 다를 수 있다',{trust:1,rel:0}],['blame','보도가 사실을 왜곡한 면이 있다',{trust:-8,rel:-8}]]}];
+const SAY={record:c=>`증거 기록이 말한 만큼만 판단했습니다. 그 이상도 그 이하도 아닙니다.`,law:()=>'형사든 민사든 법이 요구하는 증명의 기준이 있습니다. 저는 그 선을 지켰습니다.',people:()=>'양쪽 당사자의 사정을 끝까지 들었습니다. 판결문에 다 담지 못한 이야기도 있습니다.',
+ humble:()=>'비판도 판결의 일부라고 생각합니다. 판결문을 다시 읽어 봐 주셨으면 합니다.',firm:()=>'여론과 판결이 늘 같을 수는 없습니다. 판결은 법정에 나온 것으로만 합니다.',blame:()=>'일부 보도는 법정에서 확인된 사실과 다릅니다. 그 점은 바로잡고 싶습니다.'};
+function interviewStep(th,choiceId,c){
+ const r=NPC[th.from]?.reporter!=null?REPORTERS[NPC[th.from].reporter]:null,t=c&&S.cases[c.id]?.trial4;
+ th.answers??=[];
+ if(th.stage==null){ // the first reply: accept or not
+  if(choiceId!=='accept')return false;
+  th.stage=0;th.lines.push({me:false,text:V(IQ[0].q,th.id+':q0')});return true}
+ const step=IQ[th.stage],a=step.a.find(x=>x[0]===choiceId);if(!a)return true;
+ th.answers.push(choiceId);th.lines.push({me:true,text:SAY[choiceId](c)});
+ S.relations[th.from]=Math.max(0,Math.min(100,(S.relations[th.from]??30)+(a[2].rel||0)));
+ if(th.stage+1<IQ.length){th.stage++;th.lines.push({me:false,text:V(IQ[th.stage].q,th.id+':q'+th.stage)});return true}
+ // finished: the article, its effect on opinion and on the press
+ th.stage='done';th.picked='accept';
+ const trust=th.answers.reduce((n,k)=>n+(IQ.flatMap(x=>x.a).find(x=>x[0]===k)?.[2].trust||0),0);
+ const f=t?.final,side=f?T.sideOf(f.dir):0;
+ if(t?.media&&side)t.media.O=Math.max(-100,Math.min(100,t.media.O+Math.sign(side)*trust*2));
+ if(S.press4?.reporters)for(const x of Object.values(S.press4.reporters))x.mood=Math.max(0,Math.min(100,(x.mood??50)+Math.round(trust/2)));
+ const tone=trust>=8?'공감':trust>=3?'담담':'논란';
+ const title=tone==='공감'?`[인터뷰] ${S.name||'재판장'} 판사 "${cutQ(SAY[th.answers[0]](c))}"`:tone==='담담'?`[인터뷰] ${shortName(c)} 재판장이 말한 판결의 이유`:`[인터뷰] ${shortName(c)} 재판장 "보도가 왜곡" 발언… 법조계 "부적절"`;
+ const body=`${r?.outlet||'법조일보'} ${r?.name||''} 기자가 ${shortName(c)} 사건을 맡은 ${S.name||'재판장'} 판사를 만났다. 판결의 무게를 어디에 뒀느냐는 질문에 "${SAY[th.answers[0]](c)}"라고 답했다. 판결을 둘러싼 비판에 대해서는 "${SAY[th.answers[1]](c)}"라고 말했다. ${tone==='공감'?'인터뷰가 실린 뒤 판결을 다시 읽어 보겠다는 반응이 이어졌다.':tone==='담담'?'짧은 인터뷰였지만 판결의 이유를 직접 들었다는 점에서 의미가 있다는 평가다.':'판사가 언론을 직접 비판한 것을 두고 적절하지 않았다는 목소리가 나온다.'}`;
+ if(f){f.interviews??=[];f.interviews.push({outlet:r?.outlet||'법조일보',reporter:r?.name||'',title,body,tone,trust})}
+ news(title,body,r?.outlet||'법조일보');
+ th.lines.push({me:false,text:tone==='논란'?'말씀 그대로 싣겠습니다. 반응이 클 것 같습니다.':'감사합니다. 내일 아침 기사로 나갑니다.'});
+ if(typeof remember==='function')remember(th.from,'인터뷰',`${shortName(c)} 판결 인터뷰 · ${tone}`,c.id);
+ return true;
+}
+const cutQ=(x,n=24)=>{x=String(x).replace(/[.。]$/,'');return x.length>n?x.slice(0,n-1)+'…':x};
 function threads(){S.threads??=[];return S.threads}
 function addThread(kind,c,from){
  const tp=TPL[kind],who=from||tp?.from;if(!tp||!NPC[who])return;const r=NPC[who].reporter!=null?REPORTERS[NPC[who].reporter]:null;
- threads().unshift({id:kind+':'+c.id+(from?':'+from:''),kind,caseId:c.id,from:who,week:S.week,at:Date.now(),lines:[{me:false,text:tp.text(c,r)}],picked:null});
+ const tid=kind+':'+c.id+(from?':'+from:'');threads().unshift({id:tid,kind,caseId:c.id,from:who,week:S.week,at:Date.now(),lines:[{me:false,text:textOf(tp,c,r,tid)}],picked:null});
  threads().splice(40);
  if(typeof toast==='function')toast(`💬 ${NPC[who].name}${r?' 기자':''}에게서 문자가 왔어요`);
 }
@@ -307,15 +365,21 @@ function scan(){
     const up=(side===1)===(r.side==='p');S.relations[id]=Math.max(0,Math.min(100,(S.relations[id]??30)+(up?6:-6)));
     S.pressBook??={};const b=S.pressBook[i]??={up:0,down:0,asked:false};up?b.up++:b.down++;
     remember(id,'기사',`${shortName(c)} 판결을 ${up?'호의적으로':'비판적으로'} 보도`,c.id);
-    if(!up&&!b.asked&&(b.down>=2||c.importance>=4)){b.asked=true;addThread('interview',c,id)}}}
+    if(!up&&!b.asked&&(b.down>=2||c.importance>=4)){b.asked=true;addThread('interview',c,id)}}
+   // any verdict in a case people care about draws one interview request (v6.9), the critical outlet first
+   if(c.importance>=3&&!threads().some(x=>x.kind==='interview'&&x.caseId===c.id)){const pr=reporterPair(c),crit=side===1?pr[1]:side===-1?pr[0]:pr[hash(c.id+'iv')%2],i=REPORTERS.indexOf(crit),id=reporterNPC(i);if(id)addThread('interview',c,id)}}
  }
  if(added)save();return added;
 }
 function answer(id,choiceId){
  const th=threads().find(x=>x.id===id);if(!th||th.picked)return;
+ const c=CASES.find(x=>x.id===th.caseId);
+ if(th.kind==='interview'&&(th.stage!=null||choiceId==='accept')){
+  if(th.stage==null){th.lines.push({me:true,text:'짧게 인터뷰에 응한다'},{me:false,text:'감사합니다. 판사님 말씀은 왜곡 없이 그대로 싣겠습니다.'})}
+  if(interviewStep(th,choiceId,c)){save();render();return}}
  const tp=TPL[th.kind],ch=tp?.choices.find(x=>x[0]===choiceId);if(!ch)return;
- const c=CASES.find(x=>x.id===th.caseId),eff=ch[3]||{};
- th.picked=choiceId;th.lines.push({me:true,text:ch[1]},{me:false,text:ch[2]});
+ const eff=ch[3]||{};
+ th.picked=choiceId;th.lines.push({me:true,text:ch[1]},{me:false,text:replyOf(ch[2],th.id+':'+choiceId)});
  S.relations[th.from]=Math.max(0,Math.min(100,(S.relations[th.from]??30)+(eff.rel||0)));
  if(eff.press&&S.press4?.reporters)for(const r of Object.values(S.press4.reporters))r.mood=Math.max(0,Math.min(100,(r.mood??50)+eff.press));
  const t=c&&S.cases[c.id]?.trial4;if(eff.heat&&t)t.media.H=Math.min(100,t.media.H+eff.heat);
@@ -329,7 +393,7 @@ function messagesView(){
  const box=list.map(th=>{const p=NPC[th.from],tp=TPL[th.kind];
   return `<article class="wf-msg ${th.picked?'':'new'}"><div class="row">${avatar(th.from)}<div><b>${esc(p?.name||'알림')}</b><div class="xs muted">${esc(p?.role||'')}</div></div></div>
   ${th.lines.map(l=>`<p class="wf-bubble ${l.me?'me':''}">${esc(l.text)}</p>`).join('')}
-  ${th.picked?'':`<div class="wf-choices">${tp.choices.map(([k,l])=>`<button class="btn outline mini" data-action="wfreply" data-id="${esc(th.id)}" data-choice="${k}">${esc(l)}</button>`).join('')}</div>`}</article>`}).join('');
+  ${th.picked?'':`<div class="wf-choices">${(th.kind==='interview'&&typeof th.stage==='number'?IQ[th.stage].a.map(x=>[x[0],x[1]]):tp.choices).map(([k,l])=>`<button class="btn outline mini" data-action="wfreply" data-id="${esc(th.id)}" data-choice="${k}">${esc(l)}</button>`).join('')}</div>`}</article>`}).join('');
  return `<h2>💬 문자</h2><p class="muted small">답장에 따라 관계와 언론 반응, 다음 대화가 달라져요.</p>${box||'<p class="muted">아직 답장할 문자가 없어요.</p>'}
  ${old.length?`<details class="mt"><summary>알림 ${old.length}건</summary>${old.slice(0,30).map(m=>`<div class="feed"><b>${esc(NPC[m.from]?.name||'알림')}</b><p>${esc(m.body)}</p></div>`).join('')}</details>`:''}`;
 }

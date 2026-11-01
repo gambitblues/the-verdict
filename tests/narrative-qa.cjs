@@ -115,6 +115,14 @@ for(const id of C.ids){
   if(!FU.some(f=>(f.day||1)>=3||refs(f.after).some(r=>r.got||r.miss||r.done)))problems.push(id+': needs a node for the third hearing or later');
   if(!FU.some(f=>f.type==='recall'))problems.push(id+': needs new questions for a written witness (recall)');
   if(!FU.some(f=>f.type==='explain'))problems.push(id+': needs a case-specific clarification (explain)')}
+ // questioning a party (v6.9): who, role, three questions with an answer for each truth
+ {const P=c.party;if(!P)problems.push(id+': needs party questions');else{
+  if(!['A','B'].includes(P.who)||!P.role)problems.push(id+': party needs who (A/B) and role');
+  if(crim&&P.role!=='피고인')problems.push(id+': in a criminal case the accused is questioned');
+  if((P.q||[]).length<3)problems.push(id+': party needs 3 questions');
+  for(const q of P.q||[]){if(!iss.has(q.issue))problems.push(id+' party '+q.id+': unknown issue');if(!q.q)problems.push(id+' party '+q.id+': no question');
+   for(const k of ['did','didnt','reason'])if(!q.a?.[k])problems.push(id+' party '+q.id+': missing answer '+k);
+   if(q.side)for(const k of ['did','didnt','reason'])if(!['p','d','m','n'].includes(q.side[k]))problems.push(id+' party '+q.id+': bad side '+k)}}}
  if(!c.rebut||!c.closing)problems.push(id+': needs rebuttal and closing');
  for(const names of NAME_SETS)walk(c,'',c,names);
 }

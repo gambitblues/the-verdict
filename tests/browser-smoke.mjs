@@ -48,7 +48,7 @@ try{
  const answer=async()=>{let n=0;for(let k=0;k<8;k++){await page.waitForTimeout(150);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');
   if(await b.count()){await b.first().click();n++;continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}return n};
  // each page should be close to one phone screen
- for(const id of ['evidence','witness','log']){await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer();
+ for(const id of ['evidence','witness','orders']){await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer();
   await mkdir('qa-visuals',{recursive:true});await page.screenshot({path:'qa-visuals/smoke-'+id+'.png',fullPage:true});const height=await page.evaluate(()=>document.documentElement.scrollHeight);assert.ok(height<1400,'page '+id+' scrolls too far: '+height)}
  // v4 trial loop: legacy hearing panels must be gone.
  assert.equal(await page.locator('.action-panel, .live-hearing-panel, [data-action="courtStep"]').count(),0,'legacy hearing UI still visible');
@@ -72,7 +72,7 @@ try{
   const use=page.locator('.t4 [data-kind="decide"][data-choice="conditional"]:not([disabled])').first();if(await use.count())await use.click();
   const next=page.locator('.t4-pagenav [data-action="t4page"]:not([disabled])').last();if(await next.count())await next.click();
   await tab('witness');
-  const ask=page.locator('.t4 .t4-q:not([disabled])').first();if(await ask.count())await ask.click();
+  const ask=page.locator('.t4-pager .t4-q:not([disabled])').first();if(await ask.count())await ask.click();
   assert.ok(await page.locator('.t4-qa').count()>=1,'asked question and answer are shown');
   await page.locator('.t4-dock [data-action="t4end"]').click();
   await page.locator('#modal-root [data-action="dismiss"]').first().click();

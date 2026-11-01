@@ -43,7 +43,8 @@ try{
  await page.locator('.t4-tabs').waitFor();await tab('day');
  assert.equal(await page.locator('.t4-orders-panel').count(),0,'no orders before the hearing opens');
  await page.locator('.t4-dock [data-kind="open"]').click();await answer();
- assert.ok(await page.locator('.t4-orders-panel.is-open').count(),'orders panel is open and visible on the hearing page');
+ assert.ok(await page.locator('.t4-orders-hint.is-open').count(),'the hearing page points to the orders');
+ await tab('orders');assert.ok(await page.locator('.t4-orders-panel.is-open').count(),'orders tab shows the open orders panel');
  const offered=await page.locator('.t4-q.order').allTextContents();
  assert.ok(offered.length>=3,'orders are offered');assert.ok(offered.some(t=>t.includes('검찰 · 자료 제출')),'records order to the prosecution');
  assert.ok(offered.every(t=>/쟁점 ·/.test(t)),'every order names its issue');
@@ -67,15 +68,21 @@ try{
  const f2=res.orders.find(o=>o.k==='f:f2');if(f2.o==='done'||f2.o==='partial'){assert.equal(res.w,before.w+1,'ordered witness appears');assert.equal(res.newW[0].q,3)}
  console.log('  ✓ A orders: '+res.orders.map(o=>`${o.k}=${o.o||o.s}`).join(', ')+` (truth ${res.truth})`);
  // ordered witness can be questioned
- if(res.newW.length){await tab('witness');await page.evaluate(()=>{ui.t4w=3;render()});const q=page.locator('.t4 .t4-q:not([disabled]):not(.cf):not(.face)').first();await q.click();await answer();
+ if(res.newW.length){await tab('witness');await page.evaluate(()=>{ui.t4w=3;render()});const q=page.locator('.t4-pager .t4-q:not([disabled]):not(.cf):not(.face)').first();await q.click();await answer();
   assert.ok(await page.evaluate(i=>S.cases[i].trial4.heard.some(h=>h.w===3),id),'answers from the ordered witness are heard');
   assert.ok((await page.locator('.t4-qa').count())>=1);console.log('  ✓ A ordered witness questioned')}
+ // questioning the accused (v6.9): a written question, an answer or a refusal that never becomes a reason
+ await tab('witness');await page.evaluate(i=>{ui.partyOpen=i;render()},id);
+ await page.locator('.t4-party .t4-q:not([disabled])').first().dispatchEvent('click');await answer();
+ const pq=await page.evaluate(i=>{const t=S.cases[i].trial4,h=t.heard.filter(x=>x.w==='party');return {n:h.length,silent:h.some(x=>x.silent),text:h[0]?.text||''}},id);
+ assert.equal(pq.n,1,'one question to the accused is recorded');assert.ok(pq.text.length>4);
+ console.log('  ✓ A accused questioned'+(pq.silent?' (declined to answer)':''));
  // reload and reopen: no duplicates
  await page.evaluate(()=>{save();VerdictStore.flush()});await page.reload({waitUntil:'networkidle'});await boot();
  await page.evaluate(i=>{ui.tab='court';ui.caseId=i;render();const t=S.cases[i].trial4;VerdictTrialPlay.orders.resolve(CASES.find(c=>c.id===i),t)},id);
  const again=await page.evaluate(i=>{const t=S.cases[i].trial4;return {ev:t.evidence.length,w:t.witnesses.length}},id);
  assert.deepEqual(again,{ev:res.ev,w:res.w},'reload or a second resolve must not duplicate results');
- await tab('log');assert.ok((await page.locator('.t4-rec-orders li').count())===2,'orders appear in the record');
+ await tab('orders');assert.ok((await page.locator('.t4-order-hist li').count())===2,'orders and their results appear in the orders tab');
  console.log('  ✓ A reload: no duplicates, orders in the record');
  // ---- B: 60 cases × 30 seeds, played through every hearing the case allows ----
  const B=await page.evaluate(SEEDS=>{window.save=()=>true;window.age=()=>40; /* thousands of trials move the calendar decades: keep the judge below retirement */
@@ -154,8 +161,8 @@ try{
    await tab('day');const ob=page.locator('.t4-dock [data-kind="open"]');if(!(await ob.count()))break;await ob.click();await answer();
    if(d>0&&await page.locator('.t4-changes').count())changesSeen++;
    await tab('witness');
-   for(let k=0;k<2;k++){const q=page.locator('.t4 .t4-q:not([disabled]):not(.cf):not(.face):not(.order)').first();if(await q.count()){await q.dispatchEvent('click');await answer()}}
-   await tab('day');const sm=page.locator('.t4-orders-panel');
+   for(let k=0;k<2;k++){const q=page.locator('.t4-pager .t4-q:not([disabled]):not(.cf):not(.face):not(.order)').first();if(await q.count()){await q.dispatchEvent('click');await answer()}}
+   await tab('orders');const sm=page.locator('.t4-orders-panel');
    if(await sm.count()){const o=page.locator('.t4-q.order').first();if(await o.count()){await o.dispatchEvent('click');await answer()}}
    const end=page.locator('.t4-dock [data-action="t4end"]');if(!(await end.count()))break;await end.click();await answer();
    await page.evaluate(i=>{S.cases[i].trial4.nextAt=0;render()},id);maxHearing=Math.max(maxHearing,d+1);
