@@ -56,6 +56,7 @@ for(const file of files){
   for(const id of R.keys())if(!w.records?.[id])err(`worlds.${t}.records에 ${id} 내용이 없음`);
   for(const id of Object.keys(w.records||{}))if(!R.has(id))err(`worlds.${t}.records: 정의되지 않은 자료 ${id}`);
   for(const k of witnesses)if(!w.saw?.[k])err(`worlds.${t}.saw: 증인 ${k}가 실제로 본 것`);
+  if(c.kind==='criminal'){if(!w.sentencing)warn(`worlds.${t}.sentencing(양형 인자)이 없음`);else for(const f of ['means','degree','count','setting','harm','victim','planning','after'])if(!w.sentencing[f])err(`worlds.${t}.sentencing.${f} 없음`)}
   for(const k of [c.accused,c.complainant])if(k&&!w.knows?.[k])err(`worlds.${t}.knows: ${k}가 아는 것`);
   }
  // the worlds must be told apart
