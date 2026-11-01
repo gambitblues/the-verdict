@@ -746,3 +746,16 @@ body.t4-court #toast{bottom:168px}
 /* unfolded Fold / small tablets: the case list uses two columns */
 @media (min-width:820px) and (max-width:1100px){.case-list{display:grid;grid-template-columns:1fr 1fr;gap:12px}.case-list>*{margin:0!important}}
 
+
+/* Folded Galaxy Fold readability experiment — develop only, no release/version bump.
+   Applies to narrow touch phones, not the unfolded/tablet layout. */
+@media (max-width:390px) and (pointer:coarse){
+ body{font-size:15px;line-height:1.6}
+ .small,.t4-sheet-lead,.t4-order-hist li p,.t4-orders-issued,.t4-rec-orders{font-size:14px}
+ .xs,.t4-orders-why,.t4-orders-hint span,.t4-order-hist li small,.t4-newflag,.t4-newjump{font-size:13px}
+ .t4-q.order,.t4-orders-panel .t4-q.order{font-size:14px;line-height:1.55;min-height:44px}
+ .t4-q.order small,.t4-orders-panel .t4-q.order small,.t4-order-hist li div{font-size:12px}
+ .t4-sheet-body,.t4-sheet-sum p{font-size:14px;line-height:1.6}
+ .t4-steps button{font-size:12px}
+ .t4-sheet-foot .btn,.bottom-nav button{min-height:44px}
+}
