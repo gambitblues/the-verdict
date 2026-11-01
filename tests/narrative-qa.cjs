@@ -30,7 +30,8 @@ function walk(c,key,value,names){
  if(typeof value==='object'){for(const [k,v] of Object.entries(value))walk(c,key+'.'+k,v,names);return}
  if(typeof value!=='string'||key.endsWith('.flaw'))return;
  for(const m of value.matchAll(/\{([^}]*)\}/g)){
-  const [k,p]=m[1].split('|');
+  const [kk,p]=m[1].split('|'),[k,by]=kk.split('>');
+  if(by!=null&&!/^(A|B|L|W[123])$/.test(by))problems.push(`${c.id} ${key}: unknown speaker in {${m[1]}}`);
   if(!/^(A|B|L|W[123])$/.test(k))problems.push(`${c.id} ${key}: unknown placeholder {${m[1]}}`);
   if(p&&!/^[가-힣]+$/.test(p))problems.push(`${c.id} ${key}: bad particle {${m[1]}}`);
  }

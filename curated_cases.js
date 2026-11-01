@@ -128,7 +128,7 @@ window.VERDICT_CURATED_PARTS=(window.VERDICT_CURATED_PARTS||[]).concat([
  },
  claims:['검찰은 차량 블랙박스가 사건 직전 수동으로 꺼졌고, {A}의 휴대전화가 사건 장소 근처 기지국에 잡혔다고 주장한다.','변호인은 {A|이} 중간 지점에서 택시를 탔다는 택시 기사 진술이 있고, 기지국 범위가 넓어 정확한 위치를 특정할 수 없다고 반박한다.'],
  acts:[
-  {title:'발단',text:'두 사람이 주고받은 메시지가 공개된다. 처음엔 형, 동생 하던 말투가 몇 달 사이 차갑게 바뀐다.'},
+  {title:'발단',text:'두 사람이 주고받은 메시지가 공개된다. 처음엔 {A>B}, 동생 하던 말투가 몇 달 사이 차갑게 바뀐다.'},
   {title:'전개',text:'택시 기사가 증언대에 선다. 새벽에 태운 손님이 {A|이} 맞는지 확신하지 못한다.'},
   {title:'위기',text:'{B|이} 다른 사람에게도 큰돈을 빌렸다는 사실이 드러난다. 돈을 받으려던 사람은 {A}만이 아니었다.'},
   {title:'절정',text:'꺼진 블랙박스의 마지막 1분 영상이 복원된다. 화면 속 목소리가 누구인지가 남는다.'}
@@ -962,7 +962,7 @@ window.VERDICT_CURATED_DETAIL=(window.VERDICT_CURATED_DETAIL||[]).concat([
   ]},
   {lead:'두 사람이 싸우다 비명이 들렸죠?',q:[
    {id:'q1',q:'들린 목소리는 몇 명이었습니까?',issue:'i1',side:'n',a:'둘이었던 것 같아요. 하나는 분명히 {B} 목소리였어요',next:['q2']},
-   {id:'q2',hidden:true,q:'나머지 목소리가 {A}였다고 확신합니까?',issue:'i1',a:{did:'네, 그 말투는 {A} 형이 맞아요',didnt:'솔직히 아니에요. {A} 형보다 목소리가 높았어요',reason:'{A} 형 목소리였어요. 하지 마, 내려와! 하는 소리였어요'}},
+   {id:'q2',hidden:true,q:'나머지 목소리가 {A}였다고 확신합니까?',issue:'i1',a:{did:'네, 그 말투는 {A} {A>W2|이} 맞아요',didnt:'솔직히 아니에요. {A} {A>W2}보다 목소리가 높았어요',reason:'{A} {A>W2} 목소리였어요. 하지 마, 내려와! 하는 소리였어요'}},
    {id:'q3',q:'그날 당신도 옥상에 가려고 했습니까?',issue:'i1',side:'n',a:'통화하러 가려다 문 앞에서 소리를 듣고 돌아섰어요. 겁이 났거든요'},
    {id:'q4',q:'{B|는} 최근 어떤 상태였습니까?',issue:'i3',side:'d',a:'밤에 잠을 못 자고 복도를 계속 걸었어요. 징계 얘기만 나오면 울었습니다'}
   ]},
@@ -1021,9 +1021,9 @@ window.VERDICT_CURATED_DETAIL=(window.VERDICT_CURATED_DETAIL||[]).concat([
   {id:'i3',title:'다른 채권자가 있었나',open:'피해자에게 돈을 받을 사람이 피고인만이 아니었습니다.'}
  ],
  evidence:[
-  {kind:'영상·음성 기록',by:'검찰',when:'사건 당일 02:31~02:47',excerpt:'02:46 {A}: 내일까지 안 가져오면 끝이야 / {B}: 형도 같이 잃었잖아요 / 02:47 녹화 종료(전원 수동 차단)',how:'경찰이 견인된 차량에서 영장 없이 메모리카드를 빼냈다. 차주 동의서는 다음 날에야 받았다.',issue:'i2',side:'p',check:'메모리카드를 어떤 절차로 확보했는지 따져 보세요.'},
+  {kind:'영상·음성 기록',by:'검찰',when:'사건 당일 02:31~02:47',excerpt:'02:46 {A}: 내일까지 안 가져오면 끝이야 / {B}: {A>B}도 같이 잃었잖아요 / 02:47 녹화 종료(전원 수동 차단)',how:'경찰이 견인된 차량에서 영장 없이 메모리카드를 빼냈다. 차주 동의서는 다음 날에야 받았다.',issue:'i2',side:'p',check:'메모리카드를 어떤 절차로 확보했는지 따져 보세요.'},
   {kind:'통신 기록',by:'검찰',when:'02:50~03:30',excerpt:'03:05 ○○읍 기지국(반경 약 3km)에서 {A} 휴대전화 신호',how:'통신사 회신 자료다. 같은 기지국 범위 안에 택시를 탔다는 국도변도 들어간다.',issue:'i1',side:'p',check:'택시 기사가 말한 승차 장소와 시각과 맞춰 보세요.'},
-  {kind:'메신저 기록',by:'검찰',when:'사건 전 3주',excerpt:'{A}: 이번 주까지는 줘야 돼 / {B}: 형 조금만요. 애들 학원비 내야 해요',how:'유족의 동의를 받아 피해자 휴대전화에서 뽑았다.',issue:'i2',side:'p',check:'독촉 말고 위협하는 말이 있는지 보세요.'}
+  {kind:'메신저 기록',by:'검찰',when:'사건 전 3주',excerpt:'{A}: 이번 주까지는 줘야 돼 / {B}: {A>B} 조금만요. 애들 학원비 내야 해요',how:'유족의 동의를 받아 피해자 휴대전화에서 뽑았다.',issue:'i2',side:'p',check:'독촉 말고 위협하는 말이 있는지 보세요.'}
  ],
  witnesses:[
   {lead:'그 손님이 피고인이 맞죠?',q:[
@@ -1034,7 +1034,7 @@ window.VERDICT_CURATED_DETAIL=(window.VERDICT_CURATED_DETAIL||[]).concat([
   {lead:'피해자가 그날 피고인을 무서워했죠?',q:[
    {id:'q1',q:'그날 콜 처리에 이상한 점이 있었습니까?',issue:'i2',side:'p',a:'도착 보고가 안 들어왔어요. 원래 꼭 하는 친구였거든요'},
    {id:'q2',q:'피해자가 돈 문제로 힘들어했습니까?',issue:'i3',side:'d',a:'빚이 많았어요. {A} 씨 말고도 돈 받을 사람이 몇 있었습니다',next:['q3']},
-   {id:'q3',hidden:true,q:'그 사람들 중 사건 무렵 피해자를 찾아온 사람이 있습니까?',issue:'i3',a:{did:'모르겠어요. 사무실로 찾아온 사람은 없었습니다',didnt:'{W3} 씨가 그 주에 사무실까지 와서 소리를 지르고 갔어요',reason:'찾아온 사람은 없었어요. 다만 그날 밤 {B|가} 형한테 할 말이 있다고 했어요'}}
+   {id:'q3',hidden:true,q:'그 사람들 중 사건 무렵 피해자를 찾아온 사람이 있습니까?',issue:'i3',a:{did:'모르겠어요. 사무실로 찾아온 사람은 없었습니다',didnt:'{W3} 씨가 그 주에 사무실까지 와서 소리를 지르고 갔어요',reason:'찾아온 사람은 없었어요. 다만 그날 밤 {B|가} {A>B}한테 할 말이 있다고 했어요'}}
   ]},
   {lead:'사건 날 밤 피해자를 만나지 않았다는 거죠?',q:[
    {id:'q1',q:'사건 날 밤 어디에 있었습니까?',issue:'i3',a:{did:'집에 있었어요. 가족이 증언해 줄 수 있습니다',didnt:'집에… 아니, 잠깐 나갔다 왔어요. 술 마시러요',reason:'집에 있었어요. 새벽에 {B}한테서 전화가 왔는데 받지 않았습니다'}},
@@ -1945,9 +1945,13 @@ function particle(name,p){
  if(p==='으로'||p==='로')return name+(batchim(name)&&!rieul(name)?'으로':'로');
  const pair=PAIRS[p];return name+(pair?(batchim(name)?pair[0]:pair[1]):p);
 }
-/* {A} → name, {A|이} → name + 이/가. Unknown keys stay readable as a role word. */
+/* {A} → name, {A|이} → name + 이/가. Unknown keys stay readable as a role word.
+ * {A>B} → what B calls A as an older sibling-like person, by both sexes: 형·오빠·누나·언니 (names._sex). */
+const KIN={'남남':'형','남여':'오빠','여남':'누나','여여':'언니'};
+function kin(names,who,by){const sx=names._sex||{},a=sx[who],b=sx[by];return KIN[(a||'남')+(b||'남')]||'형'}
 function fill(text,names){
- return String(text||'').replace(/\{([A-Z][0-9]?)(?:\|([가-힣]+))?\}/g,(m,key,p)=>{const n=names[key]||({A:'피고인',B:'상대방',L:'변호사'}[key]||'증인');return p?particle(n,p):n});
+ return String(text||'').replace(/\{([A-Z][0-9]?)(?:>([A-Z][0-9]?))?(?:\|([가-힣]+))?\}/g,(m,key,by,p)=>{
+  const n=by?kin(names,key,by):(names[key]||({A:'피고인',B:'상대방',L:'변호사'}[key]||'증인'));return p?particle(n,p):n});
 }
 /* Courtroom detail (curated/detail*.js) is merged into each case: evidence and witnesses line up by index. */
 for(const d of window.VERDICT_CURATED_DETAIL||[]){const c=cases[d.id];if(!c)continue;
@@ -1979,7 +1983,7 @@ const PROFILE={
  'beta-homicide-005':{A:{job:'요양시설 간호조무사',age:[34,58],deg:'전문학사'},B:{job:'은퇴한 초등학교 교사',age:[83,83],deg:'학사',mar:'사별'}},
  'beta-homicide-009':{A:{job:'공대 3학년',age:[21,24],deg:'대학 재학',mar:'미혼'},B:{job:'대학생',age:[21,24],deg:'대학 재학',mar:'미혼',same:'A'}},
  'beta-homicide-010':{A:{job:'무직 (부모 간병)',age:[38,52]},B:{job:'무직 (투병)',age:[70,84],mar:'사별',kids:3}},
- 'beta-homicide-017':{A:{job:'전 스타트업 대표',age:[33,48],deg:'학사'},B:{job:'배달·대리운전 기사',age:[33,48],kids:2}},
+ 'beta-homicide-017':{A:{job:'전 스타트업 대표',age:[36,48],deg:'학사'},B:{job:'배달·대리운전 기사',age:[33,47],kids:2,younger:'A'}},
  'sexual-party-allegation':{A:{job:'회사 팀장',age:[40,50],deg:'학사'},B:{job:'회사원 (신입)',age:[23,29],deg:'학사',mar:'미혼'}},
  'beta-sexual-005':{A:{job:'회사원',age:[36,50],deg:'학사',mar:'기혼',kids:2},B:{job:'대학원생',age:[24,32],deg:'학사',mar:'미혼'}},
  'beta-sexual-007':{A:{job:'대학교수',age:[46,62],deg:'박사',mar:'기혼'},B:{job:'박사과정 대학원생',age:[28,38],deg:'석사'}},

@@ -576,3 +576,41 @@ body.t4-court #toast{bottom:168px}
 .ver-badge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#efe4c8;color:#7a5c22;font-size:10px;font-weight:700;letter-spacing:.02em;vertical-align:middle}
 .tv-welcome .ver-badge{background:rgba(217,181,106,.22);color:#e8cf95}
 .entry-ver{margin-top:6px;font-size:12px;color:#9a8a66;letter-spacing:.02em}
+
+/* v5.7 · 3차 테스트: 기일 화면 정리, 쟁점별 정리, 기록 타임라인 */
+.t4-timeline{list-style:none;margin:6px 0 12px;padding:0 0 0 14px;border-left:2px solid #e3d6bb;display:flex;flex-direction:column;gap:8px}
+.t4-timeline li{position:relative;margin:0;padding:8px 10px;border:1px solid #ebe6dc;border-radius:10px;background:#fbf9f4;font-size:13.5px;line-height:1.55;overflow-wrap:anywhere;min-width:0}
+.t4-timeline li::before{content:'';position:absolute;left:-21px;top:13px;width:10px;height:10px;border-radius:50%;background:#b08a3e;border:2px solid #fffdf7}
+.t4-rech{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}.t4-rech span{font-size:12px;color:#7b715f}
+.t4-subhead{display:flex;align-items:center;justify-content:space-between;margin-top:14px}.t4-subhead h4{margin:0}
+.t4-link{border:0;background:none;color:#8a6d3b;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0}
+.t4-iss-brief{display:flex;flex-direction:column;gap:6px;margin:6px 0 10px}
+.t4-ib{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;border:1px solid #e5ddcf;border-left:4px solid #d6cfc2;border-radius:10px;background:#fff;padding:8px 10px;font:inherit;cursor:pointer}
+.t4-ib b{font-size:13.5px;color:#1d2b3a;overflow-wrap:anywhere}
+.t4-ib span{display:flex;gap:6px;flex-wrap:wrap}.t4-ib i{font-style:normal;font-size:11.5px;font-weight:700;border-radius:999px;padding:1px 8px;background:#f1efe9;color:#6b6458}
+.t4-ib i.p{background:#fbe9e5;color:#a33a2a}.t4-ib i.d{background:#e6eef9;color:#2e5a86}.t4-ib i.x{background:#fff1d6;color:#8a5a00}
+.t4-ib.p{border-left-color:#c8442f}.t4-ib.d{border-left-color:#2f62a8}.t4-ib.clash{border-left-color:#d9a13a}
+.t4-issue{padding:10px 12px}
+.t4-ih{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin-bottom:6px}
+.t4-ih .n{font-size:11px;font-weight:800;color:#8a6d3b;letter-spacing:.02em}
+.t4-ih b{flex:1 1 100%;margin:0!important;overflow-wrap:anywhere}
+.t4-ih em{font-style:normal;font-size:11.5px;color:#6b6458}
+.t4-issue.p .t4-ih em{color:#a33a2a}.t4-issue.d .t4-ih em{color:#2e5a86}.t4-issue.clash .t4-ih em{color:#8a5a00}
+.t4-side{margin:6px 0;padding:6px 9px;border-radius:9px;background:#f7f5f0}
+.t4-side>p{margin:0 0 3px!important;font-size:12px;font-weight:800;color:#5f5a52}
+.t4-side.p{background:#fdf1ee}.t4-side.p>p{color:#a33a2a}
+.t4-side.d{background:#eef3fa}.t4-side.d>p{color:#2e5a86}
+.t4-side.m{background:#fbf4e4}.t4-side.m>p{color:#8a5a00}
+.t4-side ul{list-style:none;margin:0;padding:0!important;display:flex;flex-direction:column;gap:5px}
+.t4-side li{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.t4-side li .k{display:inline-block;font-size:10.5px;font-weight:800;border-radius:5px;padding:0 5px;margin-right:5px;vertical-align:1px}
+.t4-side li .k.ev{background:#efe4cc;color:#6b5320}.t4-side li .k.wt{background:#e3e7ee;color:#3d4b60}
+.t4-side li b{display:inline!important;font-size:13px;margin-right:2px}
+.t4-side li small{display:block;color:#7b715f;font-size:11.5px;margin-top:1px}
+.t4-open{color:#6b6458;font-size:13px}
+.t4-gap{margin-top:6px!important;font-size:12px;color:#7b715f}
+.t4-oppcard{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:12px 0 4px;padding:9px 11px;border:1px solid #e5ddcf;border-radius:10px;background:#fff;font-size:13px}
+.t4-oppcard>span{font-size:11.5px;color:#7b715f;font-weight:700}.t4-oppcard small{flex:1 1 100%;color:#6b6458}
+.t4-help{margin:6px 0 12px}
+.pm-select{display:block;width:100%;margin:0 0 10px;padding:10px 12px;border:1px solid #d9cdb8;border-radius:10px;background:#fffdf8;font:inherit;font-size:14px;color:#1d2b3a}
+.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

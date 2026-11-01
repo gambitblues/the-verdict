@@ -10,9 +10,13 @@ function particle(name,p){
  if(p==='으로'||p==='로')return name+(batchim(name)&&!rieul(name)?'으로':'로');
  const pair=PAIRS[p];return name+(pair?(batchim(name)?pair[0]:pair[1]):p);
 }
-/* {A} → name, {A|이} → name + 이/가. Unknown keys stay readable as a role word. */
+/* {A} → name, {A|이} → name + 이/가. Unknown keys stay readable as a role word.
+ * {A>B} → what B calls A as an older sibling-like person, by both sexes: 형·오빠·누나·언니 (names._sex). */
+const KIN={'남남':'형','남여':'오빠','여남':'누나','여여':'언니'};
+function kin(names,who,by){const sx=names._sex||{},a=sx[who],b=sx[by];return KIN[(a||'남')+(b||'남')]||'형'}
 function fill(text,names){
- return String(text||'').replace(/\{([A-Z][0-9]?)(?:\|([가-힣]+))?\}/g,(m,key,p)=>{const n=names[key]||({A:'피고인',B:'상대방',L:'변호사'}[key]||'증인');return p?particle(n,p):n});
+ return String(text||'').replace(/\{([A-Z][0-9]?)(?:>([A-Z][0-9]?))?(?:\|([가-힣]+))?\}/g,(m,key,by,p)=>{
+  const n=by?kin(names,key,by):(names[key]||({A:'피고인',B:'상대방',L:'변호사'}[key]||'증인'));return p?particle(n,p):n});
 }
 /* Courtroom detail (curated/detail*.js) is merged into each case: evidence and witnesses line up by index. */
 for(const d of window.VERDICT_CURATED_DETAIL||[]){const c=cases[d.id];if(!c)continue;
@@ -44,7 +48,7 @@ const PROFILE={
  'beta-homicide-005':{A:{job:'요양시설 간호조무사',age:[34,58],deg:'전문학사'},B:{job:'은퇴한 초등학교 교사',age:[83,83],deg:'학사',mar:'사별'}},
  'beta-homicide-009':{A:{job:'공대 3학년',age:[21,24],deg:'대학 재학',mar:'미혼'},B:{job:'대학생',age:[21,24],deg:'대학 재학',mar:'미혼',same:'A'}},
  'beta-homicide-010':{A:{job:'무직 (부모 간병)',age:[38,52]},B:{job:'무직 (투병)',age:[70,84],mar:'사별',kids:3}},
- 'beta-homicide-017':{A:{job:'전 스타트업 대표',age:[33,48],deg:'학사'},B:{job:'배달·대리운전 기사',age:[33,48],kids:2}},
+ 'beta-homicide-017':{A:{job:'전 스타트업 대표',age:[36,48],deg:'학사'},B:{job:'배달·대리운전 기사',age:[33,47],kids:2,younger:'A'}},
  'sexual-party-allegation':{A:{job:'회사 팀장',age:[40,50],deg:'학사'},B:{job:'회사원 (신입)',age:[23,29],deg:'학사',mar:'미혼'}},
  'beta-sexual-005':{A:{job:'회사원',age:[36,50],deg:'학사',mar:'기혼',kids:2},B:{job:'대학원생',age:[24,32],deg:'학사',mar:'미혼'}},
  'beta-sexual-007':{A:{job:'대학교수',age:[46,62],deg:'박사',mar:'기혼'},B:{job:'박사과정 대학원생',age:[28,38],deg:'석사'}},
