@@ -843,7 +843,7 @@ function evidenceCard(e,t,locked,c){
  const opt=(v,l)=>`<button class="t4-chip ${e.decision===v?'on':''}" data-action="t4" data-kind="decide" data-id="${esc(e.id)}" data-choice="${v}" ${dis||e.decision===v?'disabled':''}>${l}</button>`;
  const iss=issuesOf(c).find(i=>i.id===d?.issue);
  return `<article class="t4-card t4-ev"><header><b>${esc(e.title)}</b>${e.late?'<span class="t4-tag new">새로 제출됨</span>':''}</header>
- ${d&&!window.VerdictVisuals?`<p class="t4-meta">${esc(d.kind||'')} · ${esc(byWord[d.by]||d.by||'')} · ${esc(tell(c,t,d.when||''))}</p>`:''}
+ ${d&&(!window.VerdictVisuals||!d.excerpt)?`<p class="t4-meta">${esc(d.kind||'')} · ${esc(byWord[d.by]||d.by||'')} · ${esc(tell(c,t,d.when||''))}</p>`:''}
  ${e.scope?`<p class="t4-shows">${esc(e.scope)}</p>`:''}
  ${d?.excerpt?(window.VerdictVisuals?.evidence(e,d,tell(c,t,d.excerpt),tell(c,t,d.when||''))||`<blockquote class="t4-excerpt">${esc(tell(c,t,d.excerpt))}</blockquote>`):''}
  ${d?.how?`<p class="small"><b>확보 경위</b> ${esc(tell(c,t,d.how))}</p>`:''}
