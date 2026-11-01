@@ -705,3 +705,23 @@ body.t4-court #toast{bottom:168px}
  .app-mode .t4-dock{bottom:calc(84px + var(--vv-gap,0px) + env(safe-area-inset-bottom))!important}
 }
 
+/* v7.0.1 first screen grows with the screen (Galaxy Fold unfolded, tablets) instead of staying phone-sized */
+@media (min-width:600px){
+ #verdict-entry .entry-card{width:min(680px,76vw)!important;padding:clamp(30px,4.5vw,48px) clamp(26px,4.5vw,52px)!important;border-radius:24px!important}
+ #verdict-entry .entry-card>div:first-child{font-size:clamp(28px,4.2vw,44px)!important}
+ #verdict-entry .entry-title{font-size:clamp(36px,6vw,58px)!important;letter-spacing:4px!important}
+ #verdict-entry .entry-sub{font-size:clamp(13px,1.9vw,17px)!important;margin-bottom:clamp(18px,2.5vw,26px)!important}
+ #verdict-entry .verdict-brand-scene{height:clamp(200px,30dvh,330px)!important}
+ #verdict-entry .verdict-brand-scene .scene-judge{font-size:clamp(70px,11vw,110px)}
+ #verdict-entry .verdict-brand-scene .scene-seal{width:clamp(56px,8vw,78px);height:clamp(56px,8vw,78px);font-size:clamp(25px,3.6vw,36px)}
+ #verdict-entry .verdict-brand-scene .scene-flag{font-size:clamp(40px,6vw,60px)}
+ #verdict-entry .verdict-brand-scene .scene-caption{font-size:clamp(10px,1.4vw,13px)}
+ #verdict-entry .entry-ver{font-size:clamp(11px,1.5vw,14px)!important}
+ #verdict-entry .entry-btn{font-size:clamp(16px,2.2vw,20px)!important;min-height:clamp(48px,7vw,64px)!important;border-radius:14px!important}
+ #verdict-entry .entry-btn small{font-size:clamp(11px,1.5vw,13px)!important}
+ #verdict-entry .entry-info{font-size:clamp(12px,1.6vw,15px)!important}
+}
+@media (min-width:600px){
+ #modal-root .modal:has(.onboard-head){width:min(640px,82vw)!important;max-height:min(94dvh,1000px)!important}
+ #modal-root .modal{max-width:min(680px,88vw)}
+}
