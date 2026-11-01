@@ -278,7 +278,20 @@ function faceOffOutcome(pw,dw,truth,seed){
  return Math.abs(sp-sd)<7?{result:'draw',sp,sd}:{result:sp<sd?'p-yields':'d-yields',sp,sd};
 }
 
-const api=Object.freeze({attitudeOf,objectionValid,truthSide,confrontOutcome,faceOffScore,faceOffOutcome,LABEL,REASONS,EVALUATORS,STYLES,clamp,hash,unit,pick,between,
+/* ---------- v6.2: what comes back from a judge's order (pure) ----------
+ * none: there is no such material (a proper answer, never a penalty) · late: asks for one more hearing (once)
+ * done / partial: material arrives · declined: the defence in a criminal case chooses not to submit (its right). */
+function orderOutcome({type,to,crim,has=true,skill=55,delayed=false},seed){
+ if(!has)return 'none';
+ const u=unit(seed);
+ if(type==='recall'||type==='explain')return !delayed&&u>0.9?'late':'done';
+ const full=clamp(0.5+skill/200,0.5,0.95);
+ if(u<full)return 'done';
+ if(!delayed&&u<full+0.08)return 'late';
+ return crim&&to==='d'?'declined':'partial';
+}
+
+const api=Object.freeze({orderOutcome,attitudeOf,objectionValid,truthSide,confrontOutcome,faceOffScore,faceOffOutcome,LABEL,REASONS,EVALUATORS,STYLES,clamp,hash,unit,pick,between,
  truthFromStory,minDays,twistChance,direction,sideOf,roll,reveal,rangeOf,testimony,gauge,skill,reasonFits,cards,
  pressStart,pressDay,opinionMatch,evaluate});
 if(typeof module!=='undefined'&&module.exports)module.exports=api;

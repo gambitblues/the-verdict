@@ -82,8 +82,8 @@ function evidenceSeeds(c){
  return (c.evidence||['핵심 자료','상대방 제출 자료','현장 기록']).slice(0,3).map((x,i)=>({id:'e'+i,title:String(x).split(' · ')[0],note:String(x).split(' · ')[1]||'',scope:''}));
 }
 /* Written detail for one piece of evidence: e0..e2 from the case, e3 = evidence added between trial days. */
-function evDetail(c,e){const cur=curOf(c);if(!cur)return null;const i=Number(String(e.id).slice(1));return e.late?cur.late:cur.evidence?.[i]||null}
-function wDetail(c,i){return curOf(c)?.witnesses?.[i]||null}
+function evDetail(c,e){if(e?.detail)return e.detail;const cur=curOf(c);if(!cur)return null;const i=Number(String(e.id).slice(1));return e.late?cur.late:cur.evidence?.[i]||null}
+function wDetail(c,i){const tw=S.cases[c.id]?.trial4?.witnesses?.[i];if(tw?.detail)return tw.detail;return curOf(c)?.witnesses?.[i]||null}
 const claimOf=c=>curOf(c)?.claim||null,chargeOf=c=>curOf(c)?.charge||null,issuesOf=c=>curOf(c)?.issues||[];
 const prosName=c=>NPC[c.side?.[0]]?.name||'검사';
 const sideWord=(c,which)=>isCriminal(c)?(which==='p'?'검사':'변호인'):(which==='p'?'원고 대리인':'피고 대리인');
@@ -375,11 +375,97 @@ function faceOff(c,t,issue){
  addLog(t,'대질',`'${iss?.title||'쟁점'}' · ${text}`);
  return `⚖ 대질 · ${short(text,60)}`;
 }
+/* ---------- v6.2: the judge's orders between hearings ----------
+ * At a hearing the judge can ask a side to explain a point, look for records, propose a witness or bring a witness back.
+ * Results arrive when the next hearing opens. What can come back is written in advance (curated `followUps`, the
+ * case's late evidence, witnesses' unopened questions); nothing is invented, and "there is no such record" is a
+ * proper answer. In a criminal case the defence may decline: the accused never has to prove anything.
+ * Every order is keyed, so the same order cannot be given twice and a reload never duplicates a result. */
+const ORDER_MAX_DAY=2,ORDER_MAX_CASE=5;
+const ORDER_LABEL={records:'자료 제출',witness:'증인 신청',explain:'주장 정리',expert:'보충 의견',compare:'비교표 제출',alibi:'동선 자료 확인',recall:'증인 재신문'};
+const toWord=(c,to)=>to==='both'?'양측':isCriminal(c)?(to==='p'?'검찰':'변호인'):(to==='p'?'원고 측':'피고 측');
+const pick=(x,truth)=>x&&typeof x==='object'&&!Array.isArray(x)&&('did' in x||'didnt' in x||'reason' in x)?(x[truth]??x.reason??x.did):x;
+const canOrder=(c,t)=>!isDecision(c)&&sessionOpen(t)&&!waiting(t)&&t.daysDone+1<t.minDays+EXTRA_DAYS;
+function availableOrders(c,t){
+ const cur=curOf(c);if(!cur||!canOrder(c,t))return [];
+ const used=new Set((t.courtOrders||[]).map(o=>o.key)),out=[],iss=id=>issuesOf(c).find(x=>x.id===id);
+ for(const f of cur.followUps||[])out.push({key:'f:'+f.id,follow:f.id,issue:f.issue,type:f.type,to:f.to,text:tell(c,t,f.ask)});
+ if(cur.late&&!t.lateDone&&!t.lateDue){const to=/검찰|원고/.test(cur.late.by)?'p':'d',is=iss(cur.late.issue);
+  out.push({key:'late',issue:cur.late.issue,type:'records',to,text:`${P(toWord(c,to),'은')} '${is?.title||'쟁점'}'와 관련해 아직 내지 않은 자료가 있는지 확인해 다음 기일까지 제출해 주세요.`})}
+ t.witnesses.forEach((w,i)=>{if(w.detail)return;const d=wDetail(c,i);for(const is of issuesOf(c)){
+  const hid=(d?.q||[]).filter(q=>q.hidden&&q.issue===is.id&&!(w.opened||[]).includes(q.id)&&!(w.askedIds||[]).includes(q.id));
+  if(hid.length)out.push({key:`r:${i}:${is.id}`,issue:is.id,type:'recall',to:'both',w:i,text:`증인 ${P(wName(t,i),'을')} 다음 기일에 다시 불러 '${is.title}'에 대해 더 묻겠습니다. 양측은 증인이 출석하도록 협조해 주세요.`})}});
+ for(const is of issuesOf(c))out.push({key:'x:'+is.id,issue:is.id,type:'explain',to:'both',text:`양측은 '${is.title}'에 대한 주장과 근거를 다음 기일까지 서면으로 정리해 주세요.`});
+ return out.filter(o=>!used.has(o.key));
+}
+function issueOrder(c,t,key){
+ if(!canOrder(c,t))return '';
+ const today_=(t.courtOrders||[]).filter(o=>o.day===t.day).length;
+ if(today_>=ORDER_MAX_DAY){toast(`한 기일에 주문은 ${ORDER_MAX_DAY}건까지예요.`);return ''}
+ if((t.courtOrders||[]).length>=ORDER_MAX_CASE){toast(`이 사건에서 낼 수 있는 주문은 ${ORDER_MAX_CASE}건까지예요.`);return ''}
+ const o=availableOrders(c,t).find(x=>x.key===key);if(!o)return '';
+ (t.courtOrders??=[]).push({...o,day:t.day,due:t.day+1,status:'pending',outcome:null});
+ addLog(t,'주문',`${toWord(c,o.to)}에게 ${ORDER_LABEL[o.type]} 요청 — ${o.text}`);
+ return `📜 주문 · ${toWord(c,o.to)}: ${short(o.text,40)} (다음 기일에 결과)`;
+}
+function orderSkill(c,t,to){const s=to==='p'?lawyerSkill(c.side?.[0]):to==='d'?lawyerSkill(t.opponent):(lawyerSkill(c.side?.[0])+lawyerSkill(t.opponent))/2;return s}
+function followEvidence(c,t,f,partial){
+ const E=f.evidence,R=x=>pick(x,t.truth),tl=x=>tell(c,t,x||'');
+ const detail={kind:E.kind,by:E.by,when:tl(E.when),excerpt:tl(R(E.excerpt)),how:tl(E.how)+(partial?' 요청한 자료 가운데 일부만 제출됐다.':''),issue:f.issue,side:R(E.side)||'n',check:tl(E.check),flaw:E.flaw||'none',title:tl(E.title),shows:tl(R(E.shows)),caveat:tl(E.caveat)};
+ const id='e'+t.evidence.length;
+ const ns=T.roll({id:c.id+'-f-'+f.id,strict:true,evidence:[{id,title:detail.title,note:detail.caveat,scope:detail.shows,hintFlaw:detail.flaw}],witnesses:[],truth:t.truth},t.seed+':follow:'+f.id,[]).evidence[0];
+ ns.detail=detail;ns.follow=f.id;ns.arrivedDay=t.day;ns.ordered=true;t.evidence.push(ns);return ns;
+}
+function followWitness(c,t,f){
+ const W=f.witness,i=t.witnesses.length;
+ const id=freshNPC(W.role,S.caseSerial||1,c.story?.deep?.key||c.contentPack?.category||'contract');NPC[id].role=W.role;NPC[id].caseWitnessRole=W.role;NPC[id].backstory=tell(c,t,W.story);
+ const w={id,role:W.role,knowledge:'',interest:W.stake||'',attitude:'honest',reliability:60,memory:70,revealed:0,asked:0,flipped:false,askedIds:[],opened:[],story:tell(c,t,W.story),ordered:true,
+  detail:{role:W.role,story:W.story,stake:W.stake||'',lead:W.lead||'',q:W.q}};
+ t.witnesses.push(w);witnessProfile(c,i,id);behaviour(c,i,w,t.seed+':follow');
+ remember(id,'관련 사건',c.name+'의 증인으로 출석 (재판장 주문)',c.id);return w;
+}
+function resolveOrders(c,t){
+ const due=(t.courtOrders||[]).filter(o=>o.status==='pending'&&o.due<=t.day);if(!due.length)return;
+ const cur=curOf(c),items=[];
+ for(const o of due){
+  const f=o.follow?(cur?.followUps||[]).find(x=>x.id===o.follow):null;
+  const has=f?pick(f.have,t.truth)!==false:true;
+  const outcome=T.orderOutcome({type:o.type,to:o.to,crim:isCriminal(c),has,skill:orderSkill(c,t,o.to),delayed:!!o.delayed},t.seed+':order:'+o.key+':'+o.due);
+  const who=toWord(c,o.to);let text='',kind=outcome;
+  if(outcome==='late'){o.delayed=true;o.due=t.day+1;text=`${P(who,'이')} 준비할 시간이 더 필요하다며 다음 기일로 미뤄 달라고 했어요.`;items.push({key:o.key,kind,text});addLog(t,'주문 결과',text);continue}
+  o.status='done';o.outcome=outcome;o.doneDay=t.day;
+  if(outcome==='none')text=f?.none?tell(c,t,f.none):`${who}: 확인해 봤지만 낼 수 있는 자료가 없습니다.`;
+  else if(outcome==='declined')text=`변호인: 피고인 쪽은 이 자료를 내지 않겠습니다. 피고인에게 증명 책임은 없다는 점을 말씀드립니다.`;
+  else if(o.key==='late'){addLate(c,t);text=`${P(who,'이')} 요청한 자료를 냈어요. 증거 탭에서 확인하세요.`}
+  else if(o.type==='recall'){const w=t.witnesses[o.w],d=wDetail(c,o.w);const ids=(d?.q||[]).filter(q=>q.hidden&&q.issue===o.issue).map(q=>q.id);w.opened=[...new Set([...(w.opened||[]),...ids])];
+   text=`증인 ${P(wName(t,o.w),'이')} 다시 나왔어요. 새로 물을 수 있는 질문 ${ids.length}개.`}
+  else if(o.type==='explain'){const is=issuesOf(c).find(x=>x.id===o.issue);text=`양측이 '${is?.title||'쟁점'}'에 대한 서면을 냈어요. ${sideWord(c,'p')}: "${short(tell(c,t,cur?.claims?.[0]||''),60)}" / ${sideWord(c,'d')}: "${short(tell(c,t,cur?.claims?.[1]||''),60)}"`}
+  else if(f?.witness){const w=followWitness(c,t,f);text=`새 증인 ${P(NPC[w.id]?.name||'증인','이')} 채택돼 출석했어요(${f.witness.role}). 증인 탭에서 물어보세요.`}
+  else if(f?.evidence){const e=followEvidence(c,t,f,outcome==='partial');text=`${P(who,'이')} ${P(e.title,'을')} ${outcome==='partial'?'일부만 ':''}냈어요. 증거 탭에서 쓸지 정하세요.`;
+   if(f.rebut)text+=` 상대방 의견: "${tell(c,t,f.rebut)}"`}
+  items.push({key:o.key,kind,text});addLog(t,'주문 결과',text);
+ }
+ t.changes={day:t.day,items:[...((t.changes?.day===t.day&&t.changes.items)||[]),...items]};
+}
+function ordersBlock(c,t){
+ if(isDecision(c))return '';
+ const mine=(t.courtOrders||[]).filter(o=>o.day===t.day);
+ const list=availableOrders(c,t),left=Math.min(ORDER_MAX_DAY-mine.length,ORDER_MAX_CASE-(t.courtOrders||[]).length);
+ const issued=mine.length?`<ul class="t4-orders-issued">${mine.map(o=>`<li>📜 <b>${esc(toWord(c,o.to))}</b> · ${esc(ORDER_LABEL[o.type])} — ${esc(short(o.text,70))}</li>`).join('')}</ul>`:'';
+ if(!canOrder(c,t))return issued?`<h4>재판장 주문</h4>${issued}`:'';
+ return `<details class="t4-orders" ${mine.length?'open':''}><summary>📜 재판장 주문 <small>· 다음 기일에 결과가 와요 · 이번 기일 ${mine.length}/${ORDER_MAX_DAY}</small></summary>${issued}
+ ${left>0&&list.length?list.slice(0,6).map(o=>{const is=issuesOf(c).find(x=>x.id===o.issue);return `<button class="t4-q order" data-action="t4" data-kind="order" data-id="${esc(o.key)}"><span class="t4-tag">${esc(toWord(c,o.to))} · ${esc(ORDER_LABEL[o.type])}</span>${esc(o.text)}${is?`<small>쟁점 · ${esc(is.title)}</small>`:''}</button>`}).join(''):`<p class="muted small">${list.length?'이번 기일에 낼 수 있는 주문을 다 냈어요.':'지금 낼 수 있는 주문이 없어요.'}</p>`}</details>`;
+}
+function changesBlock(c,t){
+ const ch=t.changes;if(!ch||ch.day!==t.day||!ch.items.length)return '';
+ const icon={done:'✅',partial:'◐',none:'∅',declined:'—',late:'⏳'};
+ return `<div class="t4-changes"><b>📬 지난 기일 이후 변화</b><ul>${ch.items.map(x=>`<li><span>${icon[x.kind]||'•'}</span>${esc(x.text)}</li>`).join('')}</ul></div>`;
+}
 /* ---------- actions ---------- */
 function act(kind,id,choice){
  const x=current();if(!x||x.st.verdict)return;
  const {c,st}=x,t=ensure(c,st);
- if(kind==='open'){if(waiting(t)||sessionOpen(t))return;openSession(c,st);window.VerdictV6?.onSessionOpen?.(c,t);addLog(t,'개정',`${session(c,t.day)} 개정 · ${dlabel(t.dates[t.day])}`);save();ui.t4tab='day';render();window.scrollTo({top:0,behavior:'instant'});
+ if(kind==='open'){if(waiting(t)||sessionOpen(t))return;openSession(c,st);resolveOrders(c,t);window.VerdictV6?.onSessionOpen?.(c,t);addLog(t,'개정',`${session(c,t.day)} 개정 · ${dlabel(t.dates[t.day])}`);save();ui.t4tab='day';render();window.scrollTo({top:0,behavior:'instant'});
   if(!askRequests(true))askNotices(false);return}
  if(kind==='handoff')return handoff(c,st);
  if(!sessionOpen(t)&&!waiting(t)){toast(`먼저 ${session(c,t.day)}을 여세요.`);return}
@@ -406,6 +492,7 @@ function act(kind,id,choice){
   say=`🗣 ${wName(t,i)}: "${short(a.text,40)}"${iss?` → '${iss.title}'에 기록`:''}${(q.next||[]).length?' · 이어서 물을 질문이 생겼어요':''}`;
  }else if(kind==='confront'){say=confront(c,t,Number(id),choice);if(!say)return;
  }else if(kind==='face'){say=faceOff(c,t,id);if(!say)return;
+ }else if(kind==='order'){say=issueOrder(c,t,id);if(!say)return;
  }else if(kind==='card'){
   const card=t.cards.find(v=>v.id===id);if(!card||card.choice||!['accept','reject'].includes(choice))return;
   card.choice=choice;
@@ -453,7 +540,8 @@ function recordSummary(c,t){
   const marks=L.filter(l=>key.includes(l.kind)).map(l=>l.kind==='이의'||l.kind==='연기'?l.text.replace(/^.*?·\s*/,''):l.text);
   return `<li><div class="t4-rech"><b>${esc(session(c,d))}</b>${t.dates?.[d]!=null?`<span>${esc(dlabel(t.dates[d]))}</span>`:''}</div><span class="small">증언 ${q}건 · 증거 결정 ${ev}건${marks.length?' · '+esc(marks.join(' / ')):''}</span></li>`}).join('');
  const v=t.final?`<p class="t4-order"><b>선고</b> ${esc(t.final.judgment?.order||t.final.label)}</p>`:'';
- return `${rows?`<ul class="t4-timeline">${rows}</ul>`:'<p class="muted small">아직 열린 공판이 없습니다.</p>'}${v}<h4>쟁점별 정리</h4><p class="muted small">법정에 나온 증거와 증언을 쟁점마다 어느 쪽 주장을 뒷받침하는지로 나눠 적었어요. 쓰기로 정한 증거와 들은 증언만 들어가요.</p>${issueView(c,t)}`;
+ const ords=(t.courtOrders||[]).map(o=>`<li><b>${esc(session(c,o.day))}</b> ${esc(toWord(c,o.to))} · ${esc(ORDER_LABEL[o.type])} → ${o.status==='pending'?(o.delayed?'기한 연장, 다음 기일':'다음 기일 결과 대기'):{done:'제출·출석',partial:'일부 제출',none:'자료 없음',declined:'제출하지 않음'}[o.outcome]||o.outcome}</li>`).join('');
+ return `${rows?`<ul class="t4-timeline">${rows}</ul>`:'<p class="muted small">아직 열린 공판이 없습니다.</p>'}${ords?`<h4>재판장 주문</h4><ul class="t4-rec-orders">${ords}</ul>`:''}${v}<h4>쟁점별 정리</h4><p class="muted small">법정에 나온 증거와 증언을 쟁점마다 어느 쪽 주장을 뒷받침하는지로 나눠 적었어요. 쓰기로 정한 증거와 들은 증언만 들어가요.</p>${issueView(c,t)}`;
 }
 /* Pop-ups when a trial day opens: the other side's requests first, then what the parties filed. */
 function askRequests(force){
@@ -876,7 +964,9 @@ function dayPage(c,st){
  const opponentLine=`<div class="t4-oppcard"><span>상대 ${esc(sideWord(c,'d'))}</span>${nameBtn(t.opponent,opp?.name||'변호인')}<small>${esc(T.LABEL.style[t.style])} · ${prepWord(t.opponent)}${rec&&(rec.win+rec.lose)?` · 내 법정 ${rec.win}승 ${rec.lose}패`:''}</small></div>`;
  return `<section class="panel t4 t4-day"><div class="t4-head"><h3>${esc(session(c,t.day))}</h3><span class="t4-tag">${esc(dlabel(dateOf(t)))} · ${t.daysDone+1}/${t.minDays}회</span></div>
  ${act}
+ ${changesBlock(c,t)}
  <h4>오늘 할 일</h4>${todo(c,t)}
+ ${ordersBlock(c,t)}
  ${t.cards.filter(v=>v.type==='media').map(x=>cardBlock(x,t,c)).join('')}
  ${said}
  <div class="t4-subhead"><h4>쟁점 한눈에</h4><button class="t4-link" data-action="t4tab" data-tab="log">자세히 ›</button></div>${issueView(c,t,true)}
@@ -913,6 +1003,7 @@ function verdictPage(c,st){
   ${items.length?items.map(i=>`<button class="t4-cite ${v.cites.includes(i.key)?'on':''}" data-action="t4v" data-k="cite" data-v="${esc(i.key)}"><b>${v.cites.includes(i.key)?'☑':'☐'} ${esc(i.label)}</b>${i.text?`<small>${esc(short(i.text,70))}</small>`:''}</button>`).join(''):'<p class="notice">쓰기로 정한 증거나 들은 증언이 없습니다. 증거 탭과 증인 탭을 먼저 확인하세요.</p>'}
   <button class="btn primary full mt" data-action="t4confirm" ${v.cites.length&&canVerdict?'':'disabled'}>선고하기</button>`:'';
  return `<section class="panel t4 t4-verdict"><h3>⚖ 판결</h3>${canVerdict?'':`<p class="notice">기일이 ${t.minDays-t.daysDone}번 더 필요해요.${waiting(t)?` ${esc(session(c,t.day))}은 ${esc(dlabel(Math.max(t.nextDate||0,today())))}에 열려요.`:''}</p>`}
+ ${(()=>{const n=(t.courtOrders||[]).filter(o=>o.status==='pending').length;return n?`<p class="notice">아직 결과가 오지 않은 재판장 주문이 ${n}건 있어요. 지금 선고해도 되지만, 그 결과는 판단에 들어가지 않아요.</p>`:''})()}
  ${closing}<h4>재판 현황</h4>${issueView(c,t)}
  <h4>1. 결론</h4>${optBtns}${sentence}${cites}</section>`;
 }
@@ -1018,8 +1109,12 @@ if(typeof courtList==='function'){
  courtList=function(){
   let html=priorList();
   if(window.VerdictDockPanel){const k=html.indexOf('</h1>');if(k>0){const e=html.indexOf('</div></div>',k);const at=e>0?e+12:k+5;html=html.slice(0,at)+'<div class="mt">'+window.VerdictDockPanel()+'</div>'+html.slice(at)}}
+  const r=desk().reviews,avg=r.length?Math.round(r.reduce((n,x)=>n+x.review,0)/r.length)+'점':'-';
+  const line=`<p class="t4-sumline"><span>미완료 <b>${openCases().length}</b></span><span>완료 <b>${completed().length}</b></span><span>평점 <b>${avg}</b></span></p>`;
+  html=line+html;
   html=html.replace('접수된 사건을 확인하고 이번 주 심리할 사건을 선택하세요.','맡은 사건을 골라 재판을 이어가세요.')
    .replace(/<div class="stat-card"><label>금주 심리 여력<\/label><strong>[^<]*<\/strong><\/div>/,`<div class="stat-card"><label>판결 리뷰 평균</label><strong>${(()=>{const r=desk().reviews;return r.length?Math.round(r.reduce((a,x)=>a+x.review,0)/r.length)+'점':'-'})()}</strong></div>`)
+   .replace(/<div class="grid three mt2"><div class="stat-card">[\s\S]*?<\/div><\/div><\/div>\s*/,'')
    .replace(/시간을 진행해 보세요\./,'새 사건은 매일 10시~22시에 들어옵니다.')
    .replace(/가상 시간이 진행되면/,'시간이 흐르면');
   return html.replace(/data-id="([^"]+)"([\s\S]*?)심리 \d\/3/g,(m,id,mid)=>{const c=CASES.find(x=>x.id===id),st=S.cases[id],t=st?.trial4,g=c&&stage(c,st);return `data-id="${id}"${mid}<span class="t4-st ${g?.k||''}">${esc(g?.text||'재판 전')}</span>${t?` · 기일 ${t.daysDone}/${t.minDays}`:''}`});
@@ -1091,5 +1186,5 @@ setInterval(()=>{
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&tick()&&!ui.modal)render()});
 setTimeout(()=>{if(tick()&&!ui.modal)render()},1500);
 
-window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel,addToModal};
+window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel,addToModal,orders:{available:availableOrders,issue:issueOrder,resolve:resolveOrders}};
 })();
