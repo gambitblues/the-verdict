@@ -132,11 +132,11 @@ try{
  assert.ok(own>=0.5,'at least half of the orders given should come from the case\'s own nodes');
  // ---- B2: a defence that will not hand material over in a criminal trial — what it says and what it changes ----
  const B2=await page.evaluate(()=>{const TP=VerdictTrialPlay,O=TP.orders,C=VerdictCurated,bad=[];let declined=0,partial=0,tried=0;
-  for(const aid of C.ids.filter(id=>C.cases[id].charge)){const cand=CasePackEngine.pool(S).find(x=>x.a.id===aid);
-   for(let n=0;n<60&&declined<40;n++){const c=createGeneratedCase(cand);if(!c)continue;S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};const st=S.cases[c.id],t=TP.ensure(c,st);
+  for(const aid of C.ids.filter(id=>!C.cases[id].decision)){const cand=CasePackEngine.pool(S).find(x=>x.a.id===aid);
+   for(let n=0;n<40&&(declined<40||partial<40);n++){const c=createGeneratedCase(cand);if(!c)continue;S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};const st=S.cases[c.id],t=TP.ensure(c,st);
     for(let d=1;d<=3;d++){if(!TP.openSession(c,st))break;O.resolve(c,t);
      for(let k=0;k<12&&t.qLeft>0;k++){const i=k%t.witnesses.length,q=TP.questions(c,t,i).find(v=>!t.witnesses[i].askedIds.includes(v.id));if(q)TP.ask(c,t,i,q.id)}
-     const o=O.available(c,t).find(x=>x.to==='d'&&x.key.startsWith('f:')&&x.type!=='explain'&&x.type!=='recall');if(o&&O.issue(c,t,o.key))tried++;
+     for(const o of O.available(c,t).filter(x=>x.key.startsWith('f:')&&!['explain','recall','witness'].includes(x.type)).slice(0,2))if(O.issue(c,t,o.key))tried++;
      t.daysDone++;t.day++;t.qLeft=t.qpd;t.nextAt=0}
     TP.openSession(c,st);O.resolve(c,t);
     for(const o of t.courtOrders||[]){
@@ -147,8 +147,8 @@ try{
     st.referred=true}}
   return {declined,partial,tried,bad:[...new Set(bad)]}});
  assert.equal(B2.bad.length,0,B2.bad.join('; '));
- console.log(`  ✓ B2 defence orders in criminal trials ${B2.tried} · refused ${B2.declined} (no evidence, no penalty, said so) · partial ${B2.partial}`);
- B.kinds.declined=(B.kinds.declined||0)+B2.declined;
+ console.log(`  ✓ B2 material orders ${B2.tried} · refused ${B2.declined} (no evidence, no penalty, said so) · partial ${B2.partial}`);
+ B.kinds.declined=(B.kinds.declined||0)+B2.declined;B.kinds.partial=(B.kinds.partial||0)+B2.partial;
  for(const k of ['none','partial','late','declined'])assert.ok((B.kinds[k]||0)>=20,`outcome "${k}" seen only ${B.kinds[k]||0} times (need 20+)`);
  // ---- D: 20 representative cases through the real screen, 3~5 hearings each ----
  const D=await page.evaluate(()=>{const C=VerdictCurated;const imp=id=>CasePackEngine.pool(S).find(x=>x.a.id===id)?.a?.importance||3;

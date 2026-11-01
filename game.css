@@ -696,3 +696,12 @@ body.t4-court #toast{bottom:168px}
  .t4-tabs{top:env(safe-area-inset-top)}
  .t4-sheet-veil{padding-bottom:76px}
 }
+/* v7.0 bottom bar always on top of the content and inside the visible screen (Android home-screen launches) */
+.bottom-nav{z-index:90!important;bottom:var(--vv-gap,0px)!important;padding-bottom:max(8px,env(safe-area-inset-bottom))!important}
+.app-mode .bottom-nav{padding-bottom:max(16px,env(safe-area-inset-bottom))!important}
+.app-mode .main{padding-bottom:calc(122px + var(--vv-gap,0px) + env(safe-area-inset-bottom))!important}
+@media (max-width:1100px){
+ .t4-dock{bottom:calc(76px + var(--vv-gap,0px) + env(safe-area-inset-bottom))!important}
+ .app-mode .t4-dock{bottom:calc(84px + var(--vv-gap,0px) + env(safe-area-inset-bottom))!important}
+}
+
