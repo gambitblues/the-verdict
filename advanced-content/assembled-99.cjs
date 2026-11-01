@@ -2,10 +2,13 @@ const current=require('./individualized-overrides.cjs');
 const pending=require('./editorial-remaining-94.cjs');
 const clone=x=>JSON.parse(JSON.stringify(x));
 const map=new Map(pending.records.map(x=>[x.id,x]));
+const unique=new Map(require('./editorial-facts-94.json').cases.map(x=>[x.id,x]));
 const out=current.cases.map(original=>{
  if(!map.has(original.id))return original;
- const r=map.get(original.id),c=clone(original);
- c.title=r.title;c.fictionalLocation=r.place;c.pleading.allegations=[r.pleading];
+ const r=map.get(original.id),c=clone(original),fact=unique.get(original.id);
+ if(!fact)throw Error('Missing case-specific authored fact '+original.id);
+ c.caseSpecificFact=fact;
+ c.title=r.title;c.fictionalLocation=r.place;c.pleading.allegations=[r.pleading+' '+fact.detail];c.pleading.issue=fact.issue;
  c.caseSpecificEditorial=r;
  for(const [index,truth] of ['did','didnt','reason'].entries()){
   const v=c.definition.variants[truth];
@@ -19,10 +22,18 @@ const out=current.cases.map(original=>{
   }
  }
  c.manifest.records.forEach((v,i)=>v.kind=r.evidence[i].title);
+ for(const truth of ['did','didnt','reason']){
+  const v=c.definition.variants[truth];
+  v.events[1].action+=' '+fact.detail;
+  v.evidence[0].excerpt+=' '+fact.detail;
+  v.evidence[1].excerpt+=' '+fact.issue;
+  v.witnesses[0].script.specifics.prompt=fact.question;
+  v.witnesses[1].script.specifics.responses.initial.text='제가 확인한 기록에서 중요한 것은 다음 부분입니다. '+fact.issue;
+ }
  const a=c.dialogue.lines;
  a[0].text=r.questions[0][0];a[1].text=r.questions[0][1];a[2].text=r.fight[0];
- a[3].text=r.questions[0][2];a[4].text=r.fight[1];a[5].text=r.fight[2];
- c.qa.caseSpecificEditorial=true;c.qa.individualizedAuthorship=false;c.qa.fullPlaythrough=false;
+ a[3].text=r.questions[0][2];a[4].text=r.fight[1]+' '+fact.issue;a[5].text=r.fight[2]+' '+fact.detail;
+ c.qa.caseSpecificEditorial=true;c.qa.uniqueFactualControversy=true;c.qa.individualizedAuthorship=false;c.qa.fullPlaythrough=false;
  return c;
 });
 const data={format:'advanced-99-v1-editorial-layer',status:'94 category-specific generated editorial drafts plus five individually authored drafts. Neither equals fully editorially verified playable cases.',cases:out};
