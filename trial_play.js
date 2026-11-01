@@ -512,6 +512,23 @@ function askQuestion(c,t,i,qid){
  const iss=issuesOf(c).find(v=>v.id===q.issue);
  return `🗣 ${wName(t,i)}: "${short(a.text,40)}"${iss?` → '${iss.title}'에 기록`:''}${(q.next||[]).length?' · 이어서 물을 질문이 생겼어요':''}`;
 }
+/* What just happened at the witness stand, so the screen can tell an ordinary answer from a changed story, a clash
+ * between witnesses, a witness giving way to evidence or a face-off. Saved per witness as a short list (`moments`). */
+function momentOf(c,t,kind,id,pre){
+ const fresh=t.heard.slice(pre.n),h=fresh[fresh.length-1];let moment=null,wi=null;
+ if(kind==='ask'&&h){wi=h.w;const w=t.witnesses[wi];
+  const earlier=t.heard.slice(0,pre.n).filter(x=>x.issue===h.issue&&!x.struck&&!x.tainted&&(x.side==='p'||x.side==='d'));
+  if(w?.flipped&&!pre.flip[wi])moment='flip';
+  else if((h.side==='p'||h.side==='d')&&earlier.some(x=>x.w===wi&&x.side!==h.side))moment='shift';
+  else if((h.side==='p'||h.side==='d')&&earlier.some(x=>x.w!==wi&&x.side!==h.side))moment='clash';
+  else moment=String(h.q).includes('.')?'recall':'answer'}
+ else if(kind==='confront'&&h){wi=h.w;moment=/바꾸지 않은/.test(h.label)?'hold':/정정/.test(h.label)?'correct':/처음 진술/.test(h.label)?'revert':'admit'}
+ else if(kind==='face'&&h){wi=h.w;moment=/물러선/.test(h.label)?'yield':'standoff'}
+ else if(kind==='card')moment='objection';
+ const w=wi!=null?t.witnesses[wi]:null;
+ if(w&&moment&&!['answer','recall','objection'].includes(moment)){w.moments=[...new Set([...(w.moments||[]),moment])].slice(-6);save()}
+ return {moment,actor:w?.id||(['ask','confront'].includes(kind)?t.witnesses[Number(id)]?.id:null)};
+}
 /* ---------- actions ---------- */
 function act(kind,id,choice){
  const x=current();if(!x||x.st.verdict)return;
@@ -521,7 +538,7 @@ function act(kind,id,choice){
  if(kind==='handoff')return handoff(c,st);
  if(!sessionOpen(t)&&!waiting(t)){toast(`먼저 ${session(c,t.day)}을 여세요.`);return}
  if(waiting(t)){toast(`${session(c,t.day)}(${dlabel(Math.max(t.nextDate||0,today()))})은 ${minsLeft(t)}분 뒤에 열려요.`);return}
- let say='';
+ let say='';const pre={n:t.heard.length,flip:t.witnesses.map(w=>!!w.flipped)};
  if(kind==='decide'){
   const e=t.evidence.find(v=>v.id===id);if(!e||!T.LABEL.decision[choice]||e.decision===choice)return;
   e.decision=choice;
@@ -558,7 +575,7 @@ function act(kind,id,choice){
   addLog(t,card.type==='objection'?'이의':'연기',`${cardText(card,t,c).title}: ${choice==='accept'?'받아들임':'기각'}`);
  }
  save();
- if(say){window.VerdictVisuals?.record(c.id,kind,say,['ask','confront'].includes(kind)?t.witnesses[Number(id)]?.id:null);toast(say)}
+ if(say){const m=momentOf(c,t,kind,id,pre);window.VerdictVisuals?.record(c.id,kind,say,m.actor,m.moment);toast(say)}
  if(kind==='card'){if(t.cards.some(v=>!v.choice))return askRequests(true);ui.modal=null;render();return askNotices(false)}
  render();
 }
@@ -1228,5 +1245,5 @@ setInterval(()=>{
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&tick()&&!ui.modal)render()});
 setTimeout(()=>{if(tick()&&!ui.modal)render()},1500);
 
-window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel,addToModal,orders:{available:availableOrders,issue:issueOrder,resolve:resolveOrders,state:nodeState},qById,questions:(c,t,i)=>questionsOf(c,t,i),ask:askQuestion};
+window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel,addToModal,orders:{available:availableOrders,issue:issueOrder,resolve:resolveOrders,state:nodeState},qById,questions:(c,t,i)=>questionsOf(c,t,i),ask:askQuestion,moment:momentOf};
 })();

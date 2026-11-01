@@ -24,25 +24,65 @@ function scene(c,t,tab,status){
  <svg class="cv-room" viewBox="0 0 700 240" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="cvwall" x2="0" y2="1"><stop stop-color="#1f3138"/><stop offset="1" stop-color="#34454a"/></linearGradient><linearGradient id="cvwood" x2="0" y2="1"><stop stop-color="#8a6b4d"/><stop offset="1" stop-color="#463d35"/></linearGradient></defs><path d="M0 0h700v240H0z" fill="url(#cvwall)"/><path d="M0 148h700v92H0z" fill="#68645a"/><path d="m0 240 150-92h400l150 92M350 148v92M0 206h700" fill="none" stroke="#ddd4bf" opacity=".15"/><path d="M160 0v148m380-148v148M175 0v148m350-148v148" stroke="#ba9c6d" opacity=".35"/><path d="M198 15h304v91H198z" fill="#172b32" stroke="#ae946a" stroke-opacity=".3"/><path d="M215 27h270v67H215z" fill="none" stroke="#ae946a" stroke-opacity=".12"/><circle cx="350" cy="53" r="22" fill="none" stroke="#c0a477"/><path d="M350 38v29m-13-20h26m-26 0-7 14h14zm26 0-7 14h14zM339 70h22" stroke="#c0a477" stroke-width="1.4" fill="none"/><path d="M20 20h90v88H20zM590 20h90v88h-90z" fill="#c9c4ac" opacity=".09"/><path d="M65 20v88m-45-44h90m525-44v88m-45-44h90" stroke="#b5bcb3" opacity=".12"/><path d="M35 145h185v38H35zm445 0h185v38H480z" fill="url(#cvwood)"/><path d="M32 141h191v7H32zm445 0h191v7H477z" fill="#ac8b61"/><path d="M290 146h120v49H290z" fill="url(#cvwood)"/><path d="M286 142h128v8H286z" fill="#b79970"/><path d="M0 216h700v24H0z" fill="#302e2a"/><path d="M0 216h700" stroke="#b89a70" stroke-width="4"/><path d="m299 224 7-10h89l7 10z" fill="#e5ded0" opacity=".6"/></svg>
  <div class="cv-seat cv-left">${person(c.side?.[0],left)}</div><div class="cv-seat cv-center ${live?'is-speaking':''}">${person(w?.id,live?'증인 · '+(NPC[w?.id]?.name||'증인'):'증인석')}</div><div class="cv-seat cv-right">${person(t.opponent,'변호인')}</div><span class="cv-perspective">재판장석에서 바라본 법정</span></div></section>`;
 }
+const CHIP={flip:['말이 바뀜','flip'],shift:['자기 말과 어긋남','clash'],clash:['다른 증인과 엇갈림','clash'],admit:['증거 앞에서 털어놓음','turn'],correct:['정정함','turn'],revert:['처음 말로 돌아옴','turn'],hold:['증거에도 버팀','hold'],yield:['대질에서 물러섬','turn'],standoff:['대질에서 버팀','hold']};
 function witness(w,p,latest){
  const speaking=last?.actor===w.id&&portraitShown!==last.serial;if(speaking)portraitShown=last.serial;
- return `<div class="cv-witness ${speaking?'cv-speaking':''}"><button class="cv-witness-photo" data-action="npc" data-id="${esc(w.id)}" aria-label="${esc(p?.name||'증인')} 인물 기록">${window.verdictPhoto?.(w.id)||''}</button><div><span class="cv-kicker">WITNESS · 증인석</span><h4>${esc(p?.name||'증인')}</h4><p>${esc(w.role)}</p><span class="cv-witness-state">${latest?'진술 기록 있음':'신문을 기다리는 중'}</span></div><svg class="cv-mic" viewBox="0 0 40 70" aria-hidden="true"><path d="M20 65V37Q20 20 29 11" stroke="currentColor" fill="none" stroke-width="2"/><rect x="24" y="3" width="7" height="19" rx="3" transform="rotate(25 28 12)" fill="currentColor"/><ellipse cx="20" cy="65" rx="13" ry="3" fill="currentColor"/></svg></div>`;
+ const mood=speaking&&last.moment&&MOMENTS[last.moment]?.[2]?' cv-mood-'+MOMENTS[last.moment][2]:'';
+ const chips=(w.moments||[]).filter(m=>CHIP[m]).map(m=>`<span class="cv-chip cv-m-${CHIP[m][1]}">${CHIP[m][0]}</span>`).join('');
+ return `<div class="cv-witness ${speaking?'cv-speaking':''}${mood}"><button class="cv-witness-photo" data-action="npc" data-id="${esc(w.id)}" aria-label="${esc(p?.name||'증인')} 인물 기록">${window.verdictPhoto?.(w.id)||''}</button><div><span class="cv-kicker">WITNESS · 증인석</span><h4>${esc(p?.name||'증인')}</h4><p>${esc(w.role)}</p><span class="cv-witness-state">${latest?'진술 기록 있음':'신문을 기다리는 중'}</span>${chips?`<span class="cv-chips">${chips}</span>`:''}</div><svg class="cv-mic" viewBox="0 0 40 70" aria-hidden="true"><path d="M20 65V37Q20 20 29 11" stroke="currentColor" fill="none" stroke-width="2"/><rect x="24" y="3" width="7" height="19" rx="3" transform="rotate(25 28 12)" fill="currentColor"/><ellipse cx="20" cy="65" rx="13" ry="3" fill="currentColor"/></svg></div>`;
 }
+/* Evidence looks like the kind of record it is. Ten shapes, chosen from the record's kind (then its title).
+ * Order matters: a "통화 기록·교대 일지" is a call log, a "블랙박스 음성 복구본" is a recording. */
+const EV_TYPES=[
+ ['audio',/녹음|녹취|음성|교신/,'녹음 기록','원본 음성이 아닌 녹취 내용입니다.'],
+ ['call',/통화|통신|발신|수신|문자 발송/,'통화·통신 내역','통신사·기관 기록을 옮긴 내용입니다.'],
+ ['message',/메신저|메시지|문자|대화|카톡|카카오|메일|게시글|캡처|백업|채널/,'대화 기록','화면에 보인 대화를 옮긴 내용입니다.'],
+ ['video',/영상|CCTV|블랙박스|카메라|녹화|중계/,'영상 기록','원본 영상이 아닌 장면 기록입니다.'],
+ ['contract',/계약|위임장|차용|약정|공증|서명부|확인서|허가서|입사 서류|공고문/,'계약·서명 문서','서명과 조항을 옮긴 내용입니다.'],
+ ['photo',/사진|촬영|실물|증거물|압수물/,'사진·실물 기록','원본 사진이나 실물이 아닌 기재 내용입니다.'],
+ ['money',/금융|계좌|통장|결제|거래|영수증|송금|입금|자금|회계|견적|고지서|대조표|정산|장부|급여|내역/,'금융·거래 기록','장부와 거래 내역을 옮긴 내용입니다.'],
+ ['report',/감정|진단|소견|검사|부검|감식|의료|진료|분석|검진|측정|측량|평가|일조|의견|치료/,'감정·분석서','전문가가 작성한 의견입니다.'],
+ ['log',/출입|접속|로그|전산|시스템|서버|단말|위치|운행|주행|교통카드|플랫폼|설비|기기|기록지|대여|근무|계량기|항해|가입|수정 기록|편집 기록|업데이트|출동|접수 기록|차량|시설 관리|화면 기록|시청|클라우드|업체 기록|작업 파일|통계/,'시스템 기록','기계가 남긴 기록을 옮긴 내용입니다.'],
+ ['note',/메모|일지|수첩|편지|노트|관찰 기록/,'메모·일지','손으로 적은 기록을 옮긴 내용입니다.'],
+ ['official',/공문|결정서|보고|회신|신고|공지|판결|조서|진술|민원|통지|기준|기관|목록|문서|안내문|경고장|회의록|계획서|자료|기사|기록물|상담|학사|조사|검증/,'공문·보고서','기관이나 회사가 작성한 문서입니다.']
+];
+function evType(kind,title){const k=String(kind||'');return EV_TYPES.find(x=>x[1].test(k))||EV_TYPES.find(x=>x[1].test(String(title||'')))||['document',/./,'제출 문서','사건 기록에 기재된 원문입니다.']}
+const lines=x=>String(x).split(/\s+\/\s+/).filter(Boolean);
+const timeSplit=l=>{const m=l.match(/^((?:[^\s]+ )?\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?|\d+:\d{2}\.\d+|\d{1,2}\/\d{1,2}|\d+년 ?\d*월?|(?:전날|당일|다음 날) \d{1,2}:\d{2})\s*(.*)$/);return m?[m[1],m[2]]:['',l]};
+function evBody(type,excerpt){
+ const L=lines(excerpt),row=(cls,t,x)=>`<li class="${cls}">${t?`<time>${esc(t)}</time>`:''}<span>${esc(x)}</span></li>`;
+ if(type==='message')return `<div class="cv-chat">${L.map((l,i)=>{const m=l.match(/^([^:：]{1,24})[:：]\s*(.+)$/);const [t,rest]=timeSplit(m?m[1]:'');return `<div class="cv-bubble ${i%2?'me':''}">${m?`<small>${esc(rest||m[1])}${t?' · '+esc(t):''}</small>`:''}<span>${esc(m?m[2]:l)}</span></div>`}).join('')}</div>`;
+ if(type==='call'||type==='log'||type==='money'||type==='video')return `<ul class="cv-rows">${L.map(l=>{const [t,x]=timeSplit(l);return row(/거부|실패|없음|중단|안 됨|OFF|불일치/.test(l)?'warn':'',t,x)}).join('')}</ul>`;
+ if(type==='contract')return `<ol class="cv-clauses">${L.map(l=>`<li>${esc(l)}</li>`).join('')}</ol><div class="cv-sign" aria-hidden="true"><span>서명</span><i></i><b>印</b></div>`;
+ if(type==='report')return `<div class="cv-findings"><span class="cv-findings-h">소견</span>${L.map(l=>`<p>${esc(l)}</p>`).join('')}</div>`;
+ if(type==='audio')return `<div class="cv-transcript">${L.map(l=>{const [t,x]=timeSplit(l);return `<p>${t?`<time>${esc(t)}</time>`:''}${esc(x)}</p>`}).join('')}</div>`;
+ return '';
+}
+const EV_MARK={video:'<div class="cv-rec" aria-hidden="true"><span>● REC</span><span>CAM</span></div>',photo:'<div class="cv-photo-frame" aria-hidden="true"><i></i></div>',audio:'<div class="cv-audio-mark" aria-hidden="true"><i></i><span>녹음을 글로 옮긴 내용</span></div>',call:'<div class="cv-call-head" aria-hidden="true">☎ 시각 · 내용</div>',money:'<div class="cv-ledger-head" aria-hidden="true"><span>내역</span><span>₩</span></div>',log:'<div class="cv-log-head" aria-hidden="true">&gt;_ SYSTEM LOG</div>',official:'<div class="cv-letterhead" aria-hidden="true"><b>공 문</b><i></i></div>',report:'<div class="cv-report-head" aria-hidden="true"><b>감정 · 분석</b><span>소견서</span></div>',note:'',contract:'<div class="cv-contract-head" aria-hidden="true">계 약 · 서 명</div>'};
 function evidence(e,d,excerpt,when){
  if(!excerpt)return '';
- const k=String(d?.kind||'')+' '+e.title;
- const type=/녹음|음성|통화 내용|오디오/.test(k)?'audio':/메신저|문자|카카오|대화/.test(k)?'message':/영상|CCTV|사진|녹화|블랙박스|카메라/.test(k)?'media':/감정|진단|검사|소견/.test(k)?'report':'document';
- const label={audio:'녹음 기록',message:'대화 기록',media:'영상·사진 기록',report:'감정·검사 기록',document:'제출 문서'}[type];
+ const [type,,label,foot]=evType(d?.kind,e.title);
  const stamp={use:'채택',conditional:'조건부 채택',exclude:'배제'}[e.decision];
- return `<div class="cv-evidence cv-${type}"><div class="cv-evidence-top"><span>${esc(d?.kind||label)}${d?.by?' · '+esc(d.by):''}</span><span>${esc(when||'')}</span></div><div class="cv-paper"><span class="cv-kicker">EXHIBIT · ${esc(e.id)}</span>${type==='media'?'<div class="cv-media-mark" aria-hidden="true">◉ <span>영상·사진의 기재 내용</span></div>':''}${type==='audio'?'<div class="cv-audio-mark" aria-hidden="true"><i></i><span>녹음을 글로 옮긴 내용</span></div>':''}<blockquote class="t4-excerpt">${esc(excerpt)}</blockquote>${stamp?`<div class="cv-stamp ${e.decision}">${stamp}</div>`:''}</div><div class="cv-evidence-foot">${type==='media'?'원본 이미지가 아닌 기록 내용입니다.':type==='audio'?'원본 음성이 아닌 녹취 내용입니다.':'사건 기록에 기재된 원문'}<span aria-hidden="true">THE VERDICT</span></div></div>`;
+ return `<div class="cv-evidence cv-${type}" data-ev-type="${type}"><div class="cv-evidence-top"><span>${esc(d?.kind||label)}${d?.by?' · '+esc(d.by):''}</span><span>${esc(when||'')}</span></div><div class="cv-paper"><span class="cv-kicker">EXHIBIT · ${esc(e.id)} · ${esc(label)}</span>${EV_MARK[type]||''}${(b=>b?b+`<blockquote class="t4-excerpt cv-plain">${esc(excerpt)}</blockquote>`:`<blockquote class="t4-excerpt">${esc(excerpt)}</blockquote>`)(evBody(type,excerpt))}${stamp?`<div class="cv-stamp ${e.decision}">${stamp}</div>`:''}</div><div class="cv-evidence-foot">${esc(foot)}<span aria-hidden="true">THE VERDICT</span></div></div>`;
 }
-function record(caseId,kind,text,actor=null){if(!text)return;last={caseId,kind,text,actor,serial:++eventSerial};}
+/* Courtroom moments: what just happened at the witness stand, told apart at a glance.
+ * `moment` comes from trial_play (it already knows whether a story changed); this layer only shows it. */
+const MOMENTS={
+ answer:['증인의 답변','·',''],recall:['다시 부른 증인의 답변','↺','recall'],
+ flip:['진술이 흔들립니다','≋','flip'],shift:['앞선 자기 진술과 어긋납니다','⚠','clash'],clash:['다른 증인의 말과 엇갈립니다','⇄','clash'],
+ admit:['증거 앞에서 털어놓았습니다','◆','turn'],correct:['증거를 보고 정정했습니다','✎','turn'],revert:['처음 진술로 돌아왔습니다','↩','turn'],hold:['증거를 보고도 버팁니다','▮','hold'],
+ yield:['대질 끝에 한쪽이 물러섰습니다','⇆','turn'],standoff:['대질에서 둘 다 물러서지 않았습니다','⇹','hold'],
+ objection:['이의에 대한 결정','✋','']
+};
+function record(caseId,kind,text,actor=null,moment=null){if(!text)return;last={caseId,kind,text,actor,moment,serial:++eventSerial};}
 function event(caseId){
  if(!last||last.caseId!==caseId)return '';
  const fresh=shown!==last.serial;shown=last.serial;
- const title={ask:'증인의 답변',confront:'증거를 제시했습니다',face:'대질 신문',decide:'증거 판단',order:'재판장 주문',card:'상대 신청에 대한 결정',open:'개정'}[last.kind]||'법정 기록';
- return `<div class="cv-event ${fresh?'cv-arrive':''}" role="status"><span class="cv-event-icon" aria-hidden="true">${last.kind==='confront'?'▤':last.kind==='face'?'↔':'·'}</span><div><b>${title}</b><p>${esc(last.text)}</p></div><button type="button" data-cv-dismiss aria-label="법정 알림 닫기">×</button></div>`;
+ const m=last.moment&&MOMENTS[last.moment];
+ const title=m?m[0]:({ask:'증인의 답변',confront:'증거를 제시했습니다',face:'대질 신문',decide:'증거 판단',order:'재판장 주문',card:'상대 신청에 대한 결정',open:'개정'}[last.kind]||'법정 기록');
+ const icon=m?m[1]:(last.kind==='confront'?'▤':last.kind==='face'?'↔':'·');
+ return `<div class="cv-event ${fresh?'cv-arrive':''} ${m?.[2]?'cv-m-'+m[2]:''}" data-moment="${esc(last.moment||last.kind)}" role="status"><span class="cv-event-icon" aria-hidden="true">${icon}</span><div><b>${title}</b><p>${esc(last.text)}</p></div><button type="button" data-cv-dismiss aria-label="법정 알림 닫기">×</button></div>`;
 }
 document.addEventListener('click',e=>{if(e.target.closest('[data-cv-toggle]')){const box=e.target.closest('.cv-court'),stage=box.querySelector('.cv-stage'),btn=box.querySelector('button');collapsed=!stage.hidden;box.classList.toggle('is-collapsed',collapsed);stage.hidden=collapsed;btn.setAttribute('aria-expanded',String(!collapsed));btn.innerHTML=`법정 ${collapsed?'펼치기 ＋':'접기 −'}`;}if(e.target.closest('[data-cv-dismiss]')){last=null;e.target.closest('.cv-event')?.remove();}});
-window.VerdictVisuals={portrait,scene,witness,evidence,record,event};
+window.VerdictVisuals={portrait,scene,witness,evidence,record,event,evType:(k,t)=>evType(k,t)[0]};
 })();

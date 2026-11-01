@@ -32,7 +32,7 @@ node tests/narrative-qa.cjs        # 집필 사건 문장·조사·구조 검사
 node tests/version.test.cjs        # index.html 버전 = sw.js CACHE = CHANGELOG 첫 항목
 node tests/v6-case-matrix.test.cjs  # 60건 × 80시드 증거·결정성 (개발자 추가)
 node tests/v6-behaviour.test.cjs    # 증인 태도·이의·증거 반박·대질·주문 결과 순수 함수
-ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/long-career.mjs 40; rm node_modules
+ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/visuals.mjs; node tests/evidence-moments.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/long-career.mjs 40; rm node_modules
 ```
 - `curated/*.js`를 고치면 `node tests/build-curated.cjs`로 `curated_cases.js`를 다시 만든다.
 - 화면을 바꾸면 Playwright로 390px 모바일 스크린샷을 찍어 직접 확인한다.
@@ -55,4 +55,5 @@ git push origin "$M:refs/heads/main"
   - 청탁 기획 기본값(사용자 미확정, 추천안으로 진행): 보고 시 변호사는 징계 회부·그 밖은 경고 서한, 무시는 판결 반년 뒤 기사 위험(유리한 판결·누적 시 증가), 희망 부서는 '더 자주'.
 - v6.2 반영 끝: 재판장 주문(`trial_play.js` availableOrders/issueOrder/resolveOrders, 결과 규칙 `T.orderOutcome`). 사건 전용 주문은 집필 `detail.followUps`(issue·type·to·evidence/witness, 진실별 `have`·`none`)로 쓰고 지금은 대표 3건(냉동 창고·호텔·배수문)만 있다 — 다른 사건에 추가하면 `narrative-qa`가 구조를 검사. 기사·SNS는 재판 전 전망 / 선고 후 평가·비판. 새 게임은 두 슬롯·스냅숏까지 전부 삭제(계정 생기기 전까지).
 - v6.5 반영 끝: 60건 모두 후속 노드(`curated/follow1~11.js`, registry가 각 사건 `followUps`에 합침). 노드 필드: id·issue·type·to·day·after(heard 'w:q' / got·miss·done 노드 / contra 쟁점 / any·all)·ask·evidence(출처: by·when·how·caveat, 진실별 값)·witness·recall{w,q}·answer{p,d}·have/none. 결정형은 `now:true`(그 자리 질문). 5기일부터는 recall·explain만. 노드는 앞선 노드만 참조(QA 검사). 새 사건을 쓰면 노드 5개 이상 + recall·explain·3기일 이후 노드 + 거절/없음 뒤 miss 노드가 있어야 narrative-qa 통과.
+- v6.6 반영 끝: 증거 모양 11가지(`court_visuals.js` EV_TYPES, 순서가 중요), 증인 순간(`trial_play.js` momentOf → `VerdictVisuals.record(...,moment)`, 증인 `moments`). 갤러리 `qa-visuals/evidence-gallery.png`로 눈 검수.
 - 다음 후보 아이디어: 기자와의 관계를 문자·인터뷰 외 이벤트로 확장, 서버·AI 연동 준비.
