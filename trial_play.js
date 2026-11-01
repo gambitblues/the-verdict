@@ -693,7 +693,7 @@ function dayPage(c,st){
  <h4>오늘 할 일</h4>${todo(c,t)}
  <h4>재판 현황</h4>${issueView(c,t)}
  ${said}
- <p class="t4-opp">상대: ${esc(opp?.name||'변호인')} · ${esc(T.LABEL.style[t.style])}${rec&&(rec.win+rec.lose)?` · 내 법정 전적 ${rec.win}승 ${rec.lose}패`:''}</p>
+ <p class="t4-opp">상대: ${nameBtn(t.opponent,opp?.name||'변호인')} · ${esc(T.LABEL.style[t.style])}${rec&&(rec.win+rec.lose)?` · 내 법정 전적 ${rec.win}승 ${rec.lose}패`:''}</p>
  ${t.cards.filter(v=>v.type==='media').map(x=>cardBlock(x,t,c)).join('')}
  ${t.cards.some(v=>v.choice&&v.type!=='media')?`<details class="t4-more"><summary>오늘 답한 신청</summary>${t.cards.filter(v=>v.choice&&v.type!=='media').map(x=>cardBlock(x,t,c)).join('')}</details>`:''}
  ${outside}${recent}
@@ -794,9 +794,9 @@ court=function(){
  const facts=[[crim?'피고인':'원고',NPC[who[crim?0:0]]?.name],[crim?'피해자':'피고',NPC[who[1]]?.name],['분류',c.tag],['상대 변호사',t?NPC[t.opponent]?.name:null],[crim?'죄명':'청구',crim?(chargeOf(c)?`${chargeOf(c).name} (${chargeOf(c).law})`:null):(claimOf(c)?`${won(claimOf(c).amount)} · ${claimOf(c).what}`:null)],['최소 기일',t?t.minDays+'회':null],['증거·증인',t?`증거 ${t.evidence.length}건 · 증인 ${t.witnesses.length}명`:null]].filter(v=>v[1]);
  const cur=curOf(c),crimRole=isCriminal(c);
  const people=cur?`<h4>사람들</h4><div class="t4-people">
-  <div class="t4-person"><b>${esc(NPC[who[0]]?.name||'')}</b><span class="t4-tag">${crimRole?'피고인':'원고'}</span><p>${esc(tell(c,t,cur.people.A))}</p></div>
-  <div class="t4-person"><b>${esc(NPC[who[1]]?.name||'')}</b><span class="t4-tag">${crimRole?'피해자':'피고'}</span><p>${esc(tell(c,t,cur.people.B))}</p></div>
-  ${(t?.witnesses||[]).map(w=>`<div class="t4-person"><b>${esc(NPC[w.id]?.name||'')}</b><span class="t4-tag">증인 · ${esc(w.role)}</span>${w.story?`<p>${esc(w.story)}</p>`:''}</div>`).join('')}</div>`:'';
+  <div class="t4-person">${nameBtn(who[0])}<span class="t4-tag">${crimRole?'피고인':'원고'}</span><p>${esc(tell(c,t,cur.people.A))}</p></div>
+  <div class="t4-person">${nameBtn(who[1])}<span class="t4-tag">${crimRole?'피해자':'피고'}</span><p>${esc(tell(c,t,cur.people.B))}</p></div>
+  ${(t?.witnesses||[]).map(w=>`<div class="t4-person">${nameBtn(w.id)}<span class="t4-tag">증인 · ${esc(w.role)}</span>${w.story?`<p>${esc(w.story)}</p>`:''}</div>`).join('')}</div>`:'';
  const claims=cur?`<h4>양측의 주장</h4><div class="t4-claims"><p><b>${crimRole?'검찰':'원고'}</b> ${esc(tell(c,t,cur.claims[0]))}</p><p><b>${crimRole?'변호인':'피고'}</b> ${esc(tell(c,t,cur.claims[1]))}</p></div>`:'';
  const casePage=`<section class="panel t4 t4-case"><h3>무슨 사건인가?</h3>${cur?`<p class="t4-logline">${esc(tell(c,t,cur.logline))}</p><p>${esc(tell(c,t,cur.summary))}</p>`:(overviewHtml||`<p>${esc(c.sub||'')}</p>`)}
   <dl class="t4-facts">${facts.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
@@ -859,6 +859,34 @@ clicker=function(e){
  return priorClick(e);
 };
 
+/* ---------- person cards: anyone named in court opens their card ---------- */
+function nameBtn(id,fallback=''){const p=NPC[id];return p?`<button class="t4-name t4-who" data-action="npc" data-id="${esc(id)}">${esc(p.name)}<i>›</i></button>`:`<b>${esc(fallback)}</b>`}
+const STYLE_NOTE={aggressive:'몰아붙이는 신문과 잦은 이의 제기로 흐름을 가져가려 한다.',delay:'기일 연기와 추가 신청으로 시간을 끄는 편이다.',meticulous:'증거 하나하나의 수집 경위를 따지는 꼼꼼한 스타일이다.',media:'법정 밖 여론과 기사까지 계산해서 움직인다.',none:''};
+/* What this person has been and said in my courtroom, case by case. */
+function courtRecord(id){
+ const out=[];
+ for(const c of CASES){const st=S.cases[c.id],t=st?.trial4;if(!t)continue;
+  const crim=isCriminal(c),wi=(t.witnesses||[]).findIndex(w=>w.id===id);
+  let role=null;
+  if(c.who?.[0]===id)role=crim?'피고인':'원고';else if(c.who?.[1]===id)role=crim?'피해자':'피고';
+  else if(t.opponent===id)role=crim?'변호인':'피고 대리인';else if(c.side?.[0]===id)role=crim?'검사':'원고 대리인';
+  else if(wi>=0)role='증인 · '+(t.witnesses[wi].role||'');
+  if(!role)continue;
+  const cur=curOf(c),lines=[];
+  if(cur&&(c.who?.[0]===id||c.who?.[1]===id)){const k=c.who[0]===id?'A':'B';if(cur.people?.[k])lines.push(`<p>${esc(tell(c,t,cur.people[k]))}</p>`)}
+  if(wi>=0){const w=t.witnesses[wi];if(w.story)lines.push(`<p>${esc(w.story)}</p>`);
+   const qa=(w.askedIds||[]).map(qid=>{const q=(wDetail(c,wi)?.q||[]).find(v=>v.id===qid);return q?`<p class="t4-said">“${esc(answerOf(c,t,wi,q).text)}”</p>`:''}).filter(Boolean);
+   lines.push(qa.length?`<p class="muted small">법정에서 한 말</p>${qa.slice(-4).join('')}`:'<p class="muted small">아직 증언대에 서지 않았습니다.</p>')}
+  if(t.opponent===id){const r=NPC[id]?.vsJudge;lines.push(`<p>${esc(T.LABEL.style[t.style]||'')} — ${esc(STYLE_NOTE[t.style]||'')}</p>`);if(r&&(r.win+r.lose))lines.push(`<p class="muted small">내 법정 전적 ${r.win}승 ${r.lose}패</p>`)}
+  out.push(`<div class="t4-rec"><b>${esc(shortName(c))}</b> <span class="t4-tag">${esc(role)}</span>${st.verdict?' <span class="muted small">· 선고됨</span>':''}${lines.join('')}</div>`);
+ }
+ return out.slice(0,3).join('');
+}
+function addToModal(html){if(!html||!ui.modal)return;const k=ui.modal.lastIndexOf('<div class="modal-actions">');if(k<0)return;
+ const end=ui.modal.lastIndexOf('</div>',k);ui.modal=ui.modal.slice(0,end)+html+ui.modal.slice(end);render()}
+const priorPopup=popupNPC;
+popupNPC=function(id){priorPopup(id);const rec=courtRecord(id);if(rec)addToModal(`<h4>⚖ 내 법정에서</h4><div class="t4-recs">${rec}</div>`)};
+
 /* ---------- heartbeat ---------- */
 function opened(){
  let any=null;
@@ -878,5 +906,5 @@ setInterval(()=>{
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&tick()&&!ui.modal)render()});
 setTimeout(()=>{if(tick()&&!ui.modal)render()},1500);
 
-window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel};
+window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel,addToModal};
 })();
