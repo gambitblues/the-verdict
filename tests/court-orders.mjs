@@ -23,7 +23,9 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:390,height:844}});
 const errs=[];page.on('pageerror',e=>errs.push(e.message));
 const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(100);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().click();continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}};
-const tab=async id=>{await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer()};
+// anything else that pops up during a long simulated career (season choices, notices): close it the way a player would
+const clear=async()=>{await answer();if(await page.locator('#modal-root .modal-veil').count()){const b=page.locator('#modal-root .modal-actions button').last();if(await b.count())await b.dispatchEvent('click');await page.evaluate(()=>{if(ui.modal){ui.modal='';render()}})}};
+const tab=async id=>{await clear();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer()};
 const boot=async()=>{await page.locator('#verdict-entry').waitFor();await page.locator('#profile-continue').click();await page.waitForFunction(()=>typeof S!=='undefined'&&S.name,null,{timeout:30000})};
 try{
  await page.goto(url,{waitUntil:'networkidle'});

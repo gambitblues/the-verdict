@@ -58,7 +58,7 @@ try{
  assert.equal(await page.locator('.cv-arrive').evaluate(e=>getComputedStyle(e).animationName),'none');
  await page.locator('[data-cv-dismiss]').click();
  assert.equal(await page.locator('.cv-event').count(),0);
- assert.equal(await page.evaluate(()=>VERDICT_VERSION),'6.2.0');
+ assert.equal(await page.evaluate(()=>VERDICT_VERSION),(await readFile(path.join(base,'index.html'),'utf8')).match(/VERDICT_VERSION='([\d.]+)'/)[1],'visuals must not change the game version on their own');
  assert.deepEqual(errs,[]);
  console.log('PASS: visual layer · 320/390/768/1280px · portraits · evidence · no state mutation · reduced motion');
 }finally{await browser.close();server.close()}
