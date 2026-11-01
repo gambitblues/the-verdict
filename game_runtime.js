@@ -449,6 +449,8 @@ function modifyRel(id,delta){S.relations[id]=clamp((S.relations[id]||20)+delta,0
 function rand(){let x=S.rng>>>0;x^=x<<13;x^=x>>>17;x^=x<<5;S.rng=x>>>0;return(S.rng>>>0)/4294967296}
 function abbr(n){return n>=10000?`${(n/10000).toFixed(1)}억`:nice(n)}
 function avatar(id='self',customStyle=null){
+ if(window.VerdictAvatars){const person=NPC[id]||NPC.self;const currentAge=id==='self'?age():(person.bornYear?year()-person.bornYear:(person.age||45));const outfit=id==='self'?equippedItem('옷'):null;const coat=outfit?['#3a4e64','#293a53','#354858','#54465a','#5b5c65','#344556','#4d5668','#34383f','#403943','#313f55'][outfit.grade-1]:null;return window.VerdictAvatars.render(id,person,{age:currentAge,coat,hairIndex:customStyle==null?undefined:customStyle,role:/판사/.test(person.role)?'judge':/의사|간호/.test(person.role)?'doctor':'civilian'});}
+
  const p=NPC[id]||NPC.self;const hair=customStyle??(id==='self'?S.style:p.hair);
  const skins=['#efc5a7','#e7b993','#c58f6a'];const coats=['#314c70','#3b5569','#584656','#b08079','#a0706b','#557c81'];
  const outfit=id==='self'?equippedItem('옷'):null,shoes=id==='self'?equippedItem('구두'):null,watch=id==='self'?equippedItem('시계'):null,bag=id==='self'?equippedItem('가방'):null,acc=id==='self'?equippedItem('액세서리'):null;
