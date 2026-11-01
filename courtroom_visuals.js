@@ -37,7 +37,7 @@
 `;
  if(!document.getElementById(STYLE_ID)){const style=document.createElement('style');style.id=STYLE_ID;style.textContent=css;document.head.append(style)}
  const escapeText=v=>String(v||'').replace(/[&<>"]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x]));
- function portrait(seed){let h=0;for(const c of seed)h=(Math.imul(h,31)+c.charCodeAt(0))>>>0;const tones=['#b5a08e','#d4af93','#9b8576','#c3a18b','#a9968a'];const p=document.createElement('div');p.className='tv-portrait';p.setAttribute('role','img');p.setAttribute('aria-label','인물의 신원을 나타내는 익명 일러스트');p.style.setProperty('--tone',tones[h%tones.length]);p.innerHTML='<span class="tv-portrait-stamp">THE VERDICT</span>';return p}
+ function portrait(seed){let h=0;for(const c of seed)h=(Math.imul(h,31)+c.charCodeAt(0))>>>0;const tones=['#b5a08e','#d4af93','#9b8576','#c3a18b','#a9968a'];const p=document.createElement('div');p.className='tv-portrait';p.setAttribute('role','img');p.setAttribute('aria-label','인물의 신원을 나타내는 익명 일러스트');p.style.setProperty('--tone',tones[h%tones.length]);p.dataset.face=String(h%6);p.dataset.hair=String((h>>>4)%4);p.dataset.outfit=String((h>>>8)%3);p.innerHTML='<span class="tv-portrait-stamp">THE VERDICT</span>';return p}
  function scene(){const s=document.createElement('div');s.className='tv-scene';s.setAttribute('role','img');s.setAttribute('aria-label','중앙 재판장과 양측 좌석이 있는 법정 일러스트');s.innerHTML='<div class="tv-scene-label"><b>THE VERDICT · COURTROOM</b><span>법정에서 진실을 묻다</span></div><div class="tv-scene-stage"><div class="tv-figure"></div><div class="tv-figure judge"></div><div class="tv-figure"></div></div><div class="tv-bench"></div><div class="tv-scene-caption">증거와 증언으로 판단합니다</div>';return s}
  function enhance(){
   if(!document.body.classList.contains('t4-court'))return;
@@ -72,7 +72,21 @@ extended.textContent=`
 .tv-speaker{box-shadow:inset 4px 0 #c9a66b}
 @media(prefers-reduced-motion:reduce){.tv-court-toast{animation:none}}
 `;
-document.head.append(extended);
+extended.textContent+=`
+/* Fixed per-person variants: identical NPC names retain their appearance without save data. */
+.tv-portrait[data-face="0"]:before{border-radius:44% 44% 50% 50%;width:30px}
+.tv-portrait[data-face="1"]:before{border-radius:50% 50% 35% 35%;width:27px}
+.tv-portrait[data-face="2"]:before{border-radius:43% 43% 47% 47%;width:34px}
+.tv-portrait[data-face="3"]:before{border-radius:50% 50% 44% 44%;width:29px}
+.tv-portrait[data-face="4"]:before{border-radius:38% 38% 49% 49%;width:32px}
+.tv-portrait[data-face="5"]:before{border-radius:47% 47% 35% 35%;width:28px}
+.tv-portrait[data-hair="0"]:before{box-shadow:inset 0 6px #262d34}
+.tv-portrait[data-hair="1"]:before{box-shadow:inset 0 11px #473630}
+.tv-portrait[data-hair="2"]:before{box-shadow:inset 0 8px #5d5047}
+.tv-portrait[data-hair="3"]:before{box-shadow:inset 0 13px #272631}
+.tv-portrait[data-outfit="1"]:after{background:linear-gradient(95deg,#514943,#766558,#423d3a)}
+.tv-portrait[data-outfit="2"]:after{background:linear-gradient(95deg,#283e3e,#4b6865,#253d3c)}
+`;document.head.append(extended);
 const evidenceKinds=[
  {rx:/cctv|영상|블랙박스|녹화|카메라|사진|촬영|화면|이미지/i,key:'video',icon:'▣',label:'영상·사진 자료'},
  {rx:/문자|카톡|카카오|대화|메신저|채팅|메시지|sns/i,key:'chat',icon:'▤',label:'디지털 대화 기록'},
