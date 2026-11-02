@@ -71,6 +71,8 @@ jobs:
         run: node tests/match-engine-screen.mjs
       - name: World-sheet cases in the normal courtroom (six pages, verdict, every sheet case)
         run: node tests/match-play.mjs
+      - name: v8.2 objections during questioning and the verdict window
+        run: node tests/verdict-v82.mjs
       - name: Party materials on the hearing page (defendant questions, reflection, settlement)
         run: node tests/hearing-events.mjs
       - name: Evidence shapes and witness moments (visual review gallery)

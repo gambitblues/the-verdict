@@ -777,3 +777,8 @@ body.t4-court #toast{bottom:168px}
  .t4-sheet-foot .btn,.bottom-nav button{min-height:44px}
 }
 .t4-obj-line{display:block}.t4-obj-line+.t4-obj-line{margin-top:6px}
+/* v8.2 verdict window: direct number entry, weak testimony */
+.t4-direct{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 2px;font-size:13px}
+.t4-direct input{width:110px;padding:7px 9px;border:1px solid #c9b48a;border-radius:9px;font-size:16px;text-align:right;background:#fffdf8}
+.t4-cite .t4-weak{color:#9a6b1c}
+.t4-cite.weak{border-style:dashed}

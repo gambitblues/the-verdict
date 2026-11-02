@@ -72,7 +72,7 @@ try{
   const use=page.locator('.t4 [data-kind="decide"][data-choice="conditional"]:not([disabled])').first();if(await use.count())await use.click();
   const next=page.locator('.t4-pagenav [data-action="t4page"]:not([disabled])').last();if(await next.count())await next.click();
   await tab('witness');
-  const ask=page.locator('.t4-pager .t4-q:not([disabled])').first();if(await ask.count())await ask.click();
+  const ask=page.locator('.t4-pager .t4-q:not([disabled])').first();if(await ask.count()){await ask.click();await answer()}   // v8.2: an objection can come up right at the question
   assert.ok(await page.locator('.t4-qa').count()>=1,'asked question and answer are shown');
   await page.locator('.t4-dock [data-action="t4end"]').click();
   await page.locator('#modal-root [data-action="dismiss"]').first().click();

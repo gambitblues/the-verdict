@@ -113,7 +113,8 @@ function gauge(t){
  // v5: what each answered question said counts; the old per-witness signal stays as a smaller background
  const k=heard.length?0.5:1;
  for(const w of t.witnesses){const s=testimony(w,t.truth);p+=s.p*k;d+=s.d*k;discord+=s.discord}
- for(const h of heard){if(h.struck)continue;const rel=clamp(t.witnesses[h.w]?.reliability??60)/100;
+ // v8.2: struck (excluded or taken back) counts for nothing; tainted (kept over an objection) counts half
+ for(const h of heard){if(h.struck)continue;const rel=clamp(t.witnesses[h.w]?.reliability??60)/100*(h.tainted?0.5:1);
   if(h.side==='p')p+=6*rel;else if(h.side==='d')d+=7*rel;else if(h.side==='m'){p+=3*rel;d+=3.5*rel}}
  for(const i of new Set(heard.filter(h=>!h.struck).map(h=>h.issue))){const sides=new Set(heard.filter(h=>!h.struck&&h.issue===i).map(h=>h.side));if(sides.has('p')&&sides.has('d'))discord++}
  d+=discord*15;
@@ -158,6 +159,7 @@ function skill(t,verdict){
   (verdict.cites||[]).slice(0,3).forEach((c,i)=>{
    if(c.illegal){add('cite:'+i,-6,`불법으로 얻은 증거(${c.label})를 판결 근거로 삼았음`);return}
    if(c.struck){add('cite:'+i,-4,`이의가 받아들여진 진술(${c.label})을 근거로 삼았음`);return}
+   if(c.weak){const fit=side===0.5?true:side===1?c.side!=='d':c.side!=='p';add('cite:'+i,fit?1:-3,fit?`이의가 있었던 말(${c.label})을 다른 자료와 함께 근거로 삼았음`:`결론과 반대 방향의 자료를 근거로 들었음: ${c.label}`);return}
    const fit=side===0.5?true:side===1?c.side!=='d':c.side!=='p';
    add('cite:'+i,fit?3:-3,fit?`판결 근거가 결론과 맞음: ${c.label}`:`결론과 반대 방향의 자료를 근거로 들었음: ${c.label}`);
   });
