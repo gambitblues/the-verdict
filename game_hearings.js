@@ -255,7 +255,7 @@ window.VerdictCalendar={
  label(day){const d=new Date(CAL0+Math.floor(day)*DAY);return `${d.getUTCMonth()+1}월 ${d.getUTCDate()}일(${'일월화수목금토'[d.getUTCDay()]})`},
  full(day){const d=new Date(CAL0+Math.floor(day)*DAY);return `${d.getUTCFullYear()}.${String(d.getUTCMonth()+1).padStart(2,'0')}.${String(d.getUTCDate()).padStart(2,'0')}`}
 };
-window.VerdictDocket={offerPair,sync,MAX_ACTIVE,OFFER_LIFE,nextSlot(){const d=new Date();const h0=d.getHours();if(h0<START_H){d.setHours(START_H,0,0,0)}else if(h0>=END_H){d.setDate(d.getDate()+1);d.setHours(START_H,0,0,0)}else d.setHours(h0+1,0,0,0);return d.getTime()},missedToday(){const db=S.realtimeInbox;return db?.missedDay===dateKey(Date.now())?db.missed||0:0}};
+window.VerdictDocket={offerPair,freshPool,sync,MAX_ACTIVE,OFFER_LIFE,nextSlot(){const d=new Date();const h0=d.getHours();if(h0<START_H){d.setHours(START_H,0,0,0)}else if(h0>=END_H){d.setDate(d.getDate()+1);d.setHours(START_H,0,0,0)}else d.setHours(h0+1,0,0,0);return d.getTime()},missedToday(){const db=S.realtimeInbox;return db?.missedDay===dateKey(Date.now())?db.missed||0:0}};
 const baseHome=home;
 function inbox(){return ''} // the docket is shown by the home screen (game_ui.js priority())
 home=function(){return inbox()+baseHome()};
