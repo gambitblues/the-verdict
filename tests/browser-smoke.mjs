@@ -16,7 +16,6 @@ await new Promise(ok=>server.listen(0,'127.0.0.1',ok));
 const url='http://127.0.0.1:'+server.address().port+'/';
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:390,height:844}});
-await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
 const errs=[];page.on('pageerror',err=>errs.push(err.message));
 try{
  await page.goto(url,{waitUntil:'networkidle'});

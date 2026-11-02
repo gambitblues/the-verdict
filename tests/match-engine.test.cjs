@@ -17,9 +17,9 @@ for(const sheet of sheets){
   assert.equal(s.truth,truth);assert.equal(M.lockOf(sheet,truth),lock,'world unchanged');
   assert.deepEqual(play(sheet,seed,truth).log,s.log,'same seed, same trial');
   for(const l of s.log){const k=names.get(l.who);if(!k||!/^W/.test(k)||!l.text)continue;
-   const own=t=>M.speak(sheet.worlds[t].saw[k]).map(x=>x.replace(/\b\d{1,2}:\d{2}(:\d{2})?\b/g,'그 무렵'));
+   const own=t=>M.speak(sheet.worlds[t].saw[k]).map(x=>x.replace(/\b\d{1,2}:\d{2}(:\d{2})?\b/g,'그 무렵').replace(/(\d+)초쯤/g,'잠깐').replace(/(\d+)분/g,'몇 분'));   // a forgetful witness blurs times
    const pieces=l.text.split(/(?<=\.)\s+/);
-   if(l.tag==='거짓'){assert.ok(['did','didnt','reason'].filter(t=>t!==truth).some(t=>pieces.every(p=>M.speak(sheet.worlds[t].saw[k]).includes(p))),`${seed}: a lie must be another world's account — ${l.text}`)}
+   if(l.tag==='거짓'){assert.ok(['did','didnt','reason'].filter(t=>t!==truth).some(t=>pieces.every(p=>M.speak(sheet.worlds[t].saw[k]).includes(p)||own(t).includes(p))),`${seed}: a lie must be another world's account — ${l.text}`)}
    else if(!l.tag){const mine=new Set([...M.speak(sheet.worlds[truth].saw[k]),...own(truth)]);
     assert.ok(pieces.every(p=>mine.has(p)||/입니다\.$/.test(p)),`${seed}: a truthful answer must be the locked world's account — ${l.text}`)}
    if(l.tag==='번복')assert.ok(l.text.includes(M.speak(sheet.worlds[truth].saw[k])[0]),'a witness who breaks tells the locked account')}

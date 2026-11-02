@@ -23,7 +23,7 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:390,height:844}});
 await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
 const errs=[];page.on('pageerror',e=>errs.push(e.message));
-const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(100);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().click();continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}};
+const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(100);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().click();continue}const v=page.locator('#modal-root [data-action="v6dept"]');if(await v.count()){await v.first().dispatchEvent('click');continue} /* personnel season: pick a department */const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}};
 // anything else that pops up during a long simulated career (season choices, notices): close it the way a player would
 const clear=async()=>{await answer();if(await page.locator('#modal-root .modal-veil').count()){const b=page.locator('#modal-root .modal-actions button').last();if(await b.count())await b.dispatchEvent('click');await page.evaluate(()=>{if(ui.modal){ui.modal='';render()}})}};
 const tab=async id=>{await clear();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer()};
@@ -165,7 +165,7 @@ try{
    for(let k=0;k<2;k++){const q=page.locator('.t4-pager .t4-q:not([disabled]):not(.cf):not(.face):not(.order)').first();if(await q.count()){await q.dispatchEvent('click');await answer()}}
    await tab('orders');const sm=page.locator('.t4-orders-panel');
    if(await sm.count()){const o=page.locator('.t4-q.order').first();if(await o.count()){await o.dispatchEvent('click');await answer()}}
-   const end=page.locator('.t4-dock [data-action="t4end"]');if(!(await end.count()))break;await end.click();await answer();
+   const end=page.locator('.t4-dock [data-action="t4end"]');if(!(await end.count()))break;await clear();await end.click();await answer();
    await page.evaluate(i=>{S.cases[i].trial4.nextAt=0;render()},id);maxHearing=Math.max(maxHearing,d+1);
   }
   const r=await page.evaluate(i=>{const t=S.cases[i].trial4;return {days:t.daysDone,orders:(t.courtOrders||[]).length}},id);

@@ -37,7 +37,7 @@ try{
   await page.waitForTimeout(1600); // v6 boot: case pack install, bench
   const now=await page.evaluate(()=>({name:S.name,cases:S.generatedCases.map(c=>c.id),npc:Object.keys(S.npcDB||{}),relations:S.relations,
    family:Object.fromEntries(Object.entries(S.npcDB||{}).map(([k,v])=>[k,v.familyIds||[]])),news:S.news.map(n=>n.title),journal:S.journal.length,
-   packs:(S.casePacks||[]).map(p=>p.packId),pool:CasePackEngine.pool(S).length-(window.VerdictSheets?.pack?.archetypes?.length||0)}));
+   packs:(S.casePacks||[]).map(p=>p.packId),pool:CasePackEngine.pool(S).length}));
   assert.equal(now.name,old.name,mode+': judge name changed');
   assert.deepEqual(now.cases,old.generatedCases.map(c=>c.id),mode+': case list changed');
   for(const id of Object.keys(old.npcDB||{}))assert.ok(now.npc.includes(id),mode+': NPC '+id+' lost');

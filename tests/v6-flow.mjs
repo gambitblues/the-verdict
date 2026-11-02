@@ -36,7 +36,7 @@ try{
  await page.locator('[data-action="start"]').last().click();
  await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});
  await page.waitForFunction(()=>!!S.bench?.assoc&&(S.casePacks||[]).some(p=>p.packId==='v6-new-30'),null,{timeout:10000});
- assert.equal(await page.evaluate(()=>CasePackEngine.pool(S).length-(window.VerdictSheets?.pack?.archetypes?.length||0)),60);   // 60 curated + the world-sheet cases (v8)
+ assert.equal(await page.evaluate(()=>CasePackEngine.pool(S).length),60);
  // free up the docket so test cases can be created
  await page.evaluate(()=>{for(const c of S.generatedCases)S.cases[c.id].referred=true;save()});
 

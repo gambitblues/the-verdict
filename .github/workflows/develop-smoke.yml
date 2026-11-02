@@ -69,7 +69,7 @@ jobs:
         run: node tests/responsive.mjs
       - name: Match engine dev screen (play a trial, 30-trial run)
         run: node tests/match-engine-screen.mjs
-      - name: Match trials in the game (pool, real screen, verdict, every sheet case)
+      - name: World-sheet cases in the normal courtroom (six pages, verdict, every sheet case)
         run: node tests/match-play.mjs
       - name: Party materials on the hearing page (defendant questions, reflection, settlement)
         run: node tests/hearing-events.mjs
