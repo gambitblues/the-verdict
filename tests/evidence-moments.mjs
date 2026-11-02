@@ -24,7 +24,7 @@ try{
  await page.goto('http://127.0.0.1:'+server.address().port+'/',{waitUntil:'networkidle'});
  await page.locator('#profile-continue').click();await page.locator('#playerName').fill('시각 검수');
  await page.locator('[data-action="start"]').last().click();
- await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});
+ await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});await page.evaluate(()=>VerdictCurated.loadAll());   // engine-level checks read every case at once; the game itself fetches one case at a time
  // ---- 1. evidence shapes ----
  const G=await page.evaluate(()=>{const C=VerdictCurated,V=VerdictVisuals,by={},ex={};let n=0;
   const add=(k,t,x)=>{const ty=V.evType(k,t);by[ty]=(by[ty]||0)+1;n++;(ex[ty]??=[]).push({k,t,x})};

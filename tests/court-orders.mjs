@@ -26,13 +26,13 @@ await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}
 const errs=[];page.on('pageerror',e=>errs.push(e.message));
 // popups by kind and waits on game state (tests/lib/court-ui.mjs); nothing clears a popup by force
 const U=courtUI(page),answer=()=>U.settle(),tab=U.tab;
-const boot=async()=>{await page.locator('#verdict-entry').waitFor();await page.locator('#profile-continue').click();await page.waitForFunction(()=>typeof S!=='undefined'&&S.name,null,{timeout:30000})};
+const boot=async()=>{await page.locator('#verdict-entry').waitFor();await page.locator('#profile-continue').click();await page.waitForFunction(()=>typeof S!=='undefined'&&S.name,null,{timeout:30000});await page.evaluate(()=>VerdictCurated.loadAll())};
 try{
  await page.goto(url,{waitUntil:'networkidle'});
  await page.locator('#profile-continue').click();await page.locator('#playerName').fill('주문 검증');
  await page.locator('[data-action="start"]').last().click();
  await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});
- await page.waitForFunction(()=>(S.casePacks||[]).some(p=>p.packId==='v6-new-30'),null,{timeout:10000});
+ await page.waitForFunction(()=>(S.casePacks||[]).some(p=>p.packId==='v6-new-30'),null,{timeout:10000});await page.evaluate(()=>VerdictCurated.loadAll());   // engine-level checks read every case at once; the game itself fetches one case at a time
  // the court tab lists the trials in progress under the assignment box (v6.5.1: a summary-line change had hidden it)
  await page.evaluate(()=>{ui.tab='courtList';ui.caseId=null;render()});
  assert.equal(await page.locator('.case-list > *').count(),await page.evaluate(()=>openCases().length),'court tab must list every open trial');

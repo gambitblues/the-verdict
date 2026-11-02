@@ -2,6 +2,7 @@
  * The defendant question opens the case's own written questions (no stock dialogue); a reflection letter is recorded
  * once; civil cases see only the settlement material. Screenshots: qa-visuals/hearing-events-*.png */
 import { chromium } from 'playwright';
+import {courtUI} from './lib/court-ui.mjs';
 import http from 'node:http';
 import {readFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
@@ -18,7 +19,7 @@ try{
   const page=await browser.newPage({viewport:{width:w,height:h},isMobile:true,hasTouch:true});
   await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
   const errs=[];page.on('pageerror',e=>errs.push(e.message));
-  const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(80);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().dispatchEvent('click');continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().dispatchEvent('click');continue}break}await page.evaluate(()=>{if(ui.modal){ui.modal='';render()}})};
+  const answer=()=>courtUI(page).settle();   // popups by kind, waiting on state (tests/lib/court-ui.mjs)
   await page.goto(url,{waitUntil:'networkidle'});
   await page.locator('#profile-continue').click();await page.locator('#playerName').fill('공판 자료');
   await page.locator('[data-action="start"]').last().click();

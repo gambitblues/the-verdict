@@ -105,7 +105,7 @@ try{
  await page.locator('#profile-continue').click();
  await page.locator('#playerName').fill('장기 검증');
  await page.locator('[data-action="start"]').last().click();
- await page.waitForFunction(()=>typeof S!=='undefined'&&S.name,{timeout:30000});
+ await page.waitForFunction(()=>typeof S!=='undefined'&&S.name,{timeout:30000});await page.evaluate(()=>VerdictCurated.loadAll());   // engine-level checks read every case at once; the game itself fetches one case at a time
  let last=null;
  for(let y=0;y<YEARS;y++){
   const r=await page.evaluate(YEAR,y);

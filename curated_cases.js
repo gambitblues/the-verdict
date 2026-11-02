@@ -1,5 +1,5 @@
-/* THE VERDICT — 30 curated cases: story, people, trial-day acts, evidence, witnesses, endings.
- * Source parts live in curated/; this file is what the game loads. Edit the parts, then run: node tests/build-curated.cjs */
+/* THE VERDICT — written cases: story, people, trial-day acts, evidence, witnesses, endings.
+ * Source parts live in curated/; built by node tests/build-curated.cjs (do not edit). The game loads curated_index.js + case-data/. */
 /* Curated cases part 1: homicide (5), sexual offences (5).
  * Placeholders: {A} defendant/claimant, {B} victim/respondent, {W1}{W2}{W3} witnesses, {L} defence/respondent lawyer.
  * Particles: {A|이} {A|은} {A|을} {A|과} {A|으로} pick the right form for the name.
@@ -5852,8 +5852,23 @@ window.VERDICT_CURATED_PARTY=(window.VERDICT_CURATED_PARTY||[]).concat([
 
 /* ---- registry: lookup, name filling, and the 30-case draw ---- */
 (()=>{
-const list=window.VERDICT_CURATED_PARTS||[];
+/* Two ways in (v8.2.3):
+ *  - full: curated/*.js parts are loaded together (curated_cases.js — tests and tools);
+ *  - lazy: the game loads only an index (curated_index.js: who, what, charge or claim) and each case's courtroom detail
+ *    (evidence, witnesses, follow-ups, party questions, truth…) is fetched from case-data/<id>.json when the case is
+ *    assigned or opened. load(id) merges it into the same object, so code that already holds the case sees it. */
+const INDEX=!window.VERDICT_CURATED_PARTS&&window.VERDICT_CURATED_INDEX;
+const list=INDEX?Object.values(INDEX):window.VERDICT_CURATED_PARTS||[];
 const cases=Object.fromEntries(list.map(c=>[c.id,c]));
+const loaded=new Set(INDEX?[]:Object.keys(cases)),pending={},also=[],loaders={};
+function load(id){
+ if(!cases[id]||loaded.has(id))return Promise.resolve(cases[id]||null);
+ return pending[id]??=Promise.all([loaders[id]?loaders[id]():fetch(`./case-data/${id}.json`).then(r=>{if(!r.ok)throw new Error('case-data '+id+' '+r.status);return r.json()}),...also.map(f=>f(id))])
+  .then(([d])=>{Object.assign(cases[id],d);loaded.add(id);return cases[id]})
+  .finally(()=>{delete pending[id]});
+}
+const isLoaded=id=>loaded.has(id);
+const loadMany=ids=>Promise.all([...new Set(ids)].filter(id=>cases[id]).map(id=>load(id).catch(e=>{console.warn(e);return null})));
 function batchim(w){const s=String(w||'').trim(),last=s.slice(-1);if(/[0-9]/.test(last))return '013678'.includes(last);const c=last.charCodeAt(0);if(c<0xAC00||c>0xD7A3)return false;return (c-0xAC00)%28!==0}
 function rieul(w){const s=String(w||'').trim(),last=s.slice(-1),c=last.charCodeAt(0);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28===8}
 const PAIRS={'이':['이','가'],'가':['이','가'],'은':['은','는'],'는':['은','는'],'을':['을','를'],'를':['을','를'],'과':['과','와'],'와':['과','와'],'아':['아','야'],'야':['아','야']};
@@ -5981,7 +5996,7 @@ const PROFILE={
  'v6-civil-shaded-roof':{A:{job:'은퇴한 회사원',age:[62,76],mar:'기혼'},B:{job:'상가 건물주',age:[48,65]}}
 };
 for(const [id,p] of Object.entries(PROFILE))if(cases[id])cases[id].profile=p;
-window.VerdictCurated={cases,ids:Object.keys(cases),fill,particle,active:list.length>0};
+window.VerdictCurated={cases,ids:Object.keys(cases),fill,particle,active:list.length>0,load,isLoaded,loadMany,loadAll:()=>loadMany(Object.keys(cases)),also,loaders,lazy:!!INDEX};
 if(typeof CasePackEngine!=='undefined'&&list.length){
  const basePool=CasePackEngine.pool;
  CasePackEngine.pool=save=>{const all=basePool(save),cur=all.filter(x=>cases[x.a.id]);return cur.length?cur:all};

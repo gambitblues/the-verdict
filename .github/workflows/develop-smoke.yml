@@ -30,6 +30,8 @@ jobs:
           node --check match_play.js
           node --check world_sheets.js
           node tests/build-sheets.cjs --check
+          node tests/build-curated.cjs --check
+          node tests/case-data.test.cjs
           node tests/media-desk.test.cjs
           node tests/save-store.test.cjs
           node --check curated_cases.js

@@ -55,7 +55,20 @@ function opponentOf(c){return c.side?.[1]}
 function styleOf(id){const p=NPC[id];if(!p)return T.pick(T.STYLES,'none');p.trialStyle??=T.pick(T.STYLES,'style:'+id);return p.trialStyle}
 
 /* ---------- curated story ---------- */
-const curOf=c=>window.VerdictCurated?.cases[c.contentPack?.archetypeId||c.story?.packOrigin?.id];
+const archId=c=>c?.contentPack?.archetypeId||c?.story?.packOrigin?.id;
+/* v8.2.3: the courtroom detail of a case is fetched when the case is assigned or opened (case-data/). Until it has
+ * arrived the case reads as not-yet-ready: curOf gives null and the court screen shows a short loading line, so no
+ * trial is ever built from the index alone. Cases already in the save are fetched at start. */
+const VC_=()=>window.VerdictCurated;
+const caseReady=c=>{const id=archId(c),V=VC_();return !V?.cases[id]||!V.isLoaded||V.isLoaded(id)};
+const curOf=c=>{const id=archId(c),V=VC_(),x=V?.cases[id];return x&&(!V.isLoaded||V.isLoaded(id))?x:null};
+let preloading=false;
+function preloadSave(){
+ const V=VC_();if(!V?.lazy||typeof S==='undefined'||!S.cases||preloading)return;
+ const ids=(typeof CASES!=='undefined'?CASES:[]).filter(c=>S.cases[c.id]).map(archId).filter(id=>id&&V.cases[id]&&!V.isLoaded(id));
+ if(!ids.length)return;preloading=true;
+ V.loadMany(ids).finally(()=>{preloading=false;if(!ui.modal)render()});
+}
 function namesOf(c,t){
  const n={A:NPC[c.who?.[0]]?.name,B:NPC[c.who?.[1]]?.name,L:t?NPC[t.opponent]?.name:null,_seed:c.id};   // _seed: made-up place names stay fixed per case
  (t?.witnesses||[]).forEach((w,i)=>{n['W'+(i+1)]=NPC[w.id]?.name});
@@ -1311,6 +1324,8 @@ let lastCaseId=null;
 court=function(){
  const html=priorCourt(),x=current();
  if(!x||!html.includes('court-screen-hearing'))return html;
+ if(!caseReady(x.c)){preloadSave();VC_().load(archId(x.c)).then(()=>render(),e=>{console.warn(e);toast('사건 기록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.')});
+  return `<section class="panel t4"><h3>사건 기록을 펼치는 중…</h3><p class="muted small">이 사건의 증거와 증인 기록을 불러오고 있어요.</p></section>`}
  const {c,st}=x,tpl=document.createElement('template');tpl.innerHTML=html;
  for(const sel of ['.compact-case-witness','.witness-exams','.trial-v32','.live-hearing-panel','.action-panel'])tpl.content.querySelectorAll(sel).forEach(n=>n.remove());
  tpl.content.querySelectorAll('section.panel').forEach(s=>{if(s.querySelector('[data-action="activateWitnesses"],[data-action="dramaAsk"],[data-action="witnessQuestion"]'))s.remove()});
@@ -1371,7 +1386,7 @@ function swipeInit(){
 }
 swipeInit();
 const priorRender=render;
-render=function(){priorRender();document.body.classList.toggle('t4-court',ui.tab==='court');if(ui.tab==='courtList')document.querySelectorAll('.bottom-nav [data-tab="court"],.nav-stack [data-tab="court"]').forEach(b=>b.classList.add('active'));if(ui.tab==='court'&&ui.t4tab&&ui.t4tab!=='case'&&!ui.modal)setTimeout(()=>{if(!ui.modal&&ui.tab==='court'&&!askRequests(false))askNotices(false)},0)};
+render=function(){priorRender();preloadSave();document.body.classList.toggle('t4-court',ui.tab==='court');if(ui.tab==='courtList')document.querySelectorAll('.bottom-nav [data-tab="court"],.nav-stack [data-tab="court"]').forEach(b=>b.classList.add('active'));if(ui.tab==='court'&&ui.t4tab&&ui.t4tab!=='case'&&!ui.modal)setTimeout(()=>{if(!ui.modal&&ui.tab==='court'&&!askRequests(false))askNotices(false)},0)};
 
 /* Case list: plain words and the v4 trial-day counter. */
 if(typeof courtList==='function'){

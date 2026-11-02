@@ -1,4 +1,5 @@
 import { chromium } from 'playwright';
+import {courtUI} from './lib/court-ui.mjs';
 import http from 'node:http';
 import {readFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
@@ -45,8 +46,7 @@ try{
  assert.ok(await page.locator('.t4-case').isVisible(),'case page not visible');
  // the other side's requests arrive as a pop-up; answer them whenever one is open
  // requests and notices (rebuttal, new evidence) arrive as pop-ups; answer or close them
- const answer=async()=>{let n=0;for(let k=0;k<8;k++){await page.waitForTimeout(150);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');
-  if(await b.count()){await b.first().click();n++;continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}return n};
+ const answer=async()=>(await courtUI(page).settle()).filter(k=>k==='request').length;   // popups by kind (tests/lib/court-ui.mjs); returns requests ruled
  // each page should be close to one phone screen
  for(const id of ['evidence','witness','orders']){await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer();
   await mkdir('qa-visuals',{recursive:true});await page.screenshot({path:'qa-visuals/smoke-'+id+'.png',fullPage:true});const height=await page.evaluate(()=>document.documentElement.scrollHeight);assert.ok(height<1400,'page '+id+' scrolls too far: '+height)}
@@ -55,7 +55,7 @@ try{
  await page.locator('.t4-tabs').first().waitFor();
  const cid=await page.evaluate(()=>ui.caseId);
  const min=await page.evaluate(id=>S.cases[id].trial4.minDays,cid);
- const tab=async id=>{await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer()};
+ const tab=async id=>{await courtUI(page).tab(id);await answer()};
  // the case summary must be readable in full (no line clamp)
  await tab('case');
  assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('.t4-case p')).webkitLineClamp),'none','case summary is clipped');

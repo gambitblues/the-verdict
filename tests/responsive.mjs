@@ -5,6 +5,7 @@
  * keeps the game; the gap rule for Android home-screen launches lifts the bar and the dock by exactly the gap and
  * ignores the keyboard; pure rules of viewport_fix.js. Screenshots go to qa-visuals/responsive-*.png. */
 import { chromium } from 'playwright';
+import {courtUI} from './lib/court-ui.mjs';
 import http from 'node:http';
 import {readFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
@@ -32,7 +33,7 @@ try{
   const page=await browser.newPage({viewport:{width:w,height:h},isMobile:w<=1100,hasTouch:w<=1100});
   await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
   const errs=[];page.on('pageerror',e=>errs.push(e.message));
-  const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(60);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().dispatchEvent('click');continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().dispatchEvent('click');continue}break}};
+  const answer=()=>courtUI(page).settle();   // popups by kind, waiting on state (tests/lib/court-ui.mjs)
   const noSideways=async where=>{const o=await page.evaluate(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth}));assert.ok(o.sw<=o.cw+1,`${name}/${where}: sideways scroll ${o.sw}>${o.cw}`)};
   await page.goto(url,{waitUntil:'networkidle'});
   // first screen
@@ -42,8 +43,8 @@ try{
   await page.screenshot({path:`qa-visuals/responsive-${name}-0-entry.png`});await noSideways('entry');
   await page.locator('#profile-continue').click();await page.locator('#playerName').fill('반응형');
   await page.locator('[data-action="start"]').last().click();
-  await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});await page.waitForTimeout(800);await answer();
-  await page.evaluate(()=>{ui.modal='';ui.tab='home';render()});await noSideways('home');
+  await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});await page.waitForFunction(()=>(S.generatedCases||[]).length>0,null,{timeout:30000});await answer();
+  await page.evaluate(()=>{ui.tab='home';render()});await noSideways('home');
   const navShown=await page.locator('.bottom-nav').isVisible();
   if(w<=1100){
    assert.ok(navShown,`${name}: bottom bar shown`);

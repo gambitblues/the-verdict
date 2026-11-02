@@ -15,7 +15,10 @@ if(!M||!SH)return;
 let I=null;                                     // trial_play.js internals (bind)
 const T=()=>window.VerdictTrialCore;
 const esc=x=>h(String(x??''));
-const sheetById=id=>SH.cases[id]||null;
+const sheetById=id=>{const s=SH.cases[id];return s&&!s.stub?s:null};   // an index stub (v8.2.3) is not a sheet until loaded
+/* v8.2.3: with the index build, each full sheet is fetched from case-data/ when its case is assigned or opened */
+const sheetLoads={};
+const fetchSheet=id=>sheetLoads[id]??=fetch(`./case-data/sheet-${id}.json`).then(r=>{if(!r.ok)throw new Error('sheet '+id+' '+r.status);return r.json()}).then(g=>{SH.cases[id]=g;return g}).finally(()=>{delete sheetLoads[id]});
 const archOf=c=>c?.contentPack?.archetypeId||c?.story?.packOrigin?.id;
 /* scripted-trial regression tests switch the sheet cases off for themselves (localStorage verdict_match_off=1) */
 const off=(()=>{try{return localStorage.getItem('verdict_match_off')==='1'}catch{return false}})();
@@ -93,7 +96,16 @@ function toCurated(s){
  return cur;
 }
 /* register the sheet-only cases next to the 60 written ones */
-if(!off&&window.VerdictCurated){const VC=window.VerdictCurated;for(const [id,s] of Object.entries(SH.cases))if(!VC.cases[id]){VC.cases[id]=toCurated(s);VC.ids.push(id)}}
+if(!off&&window.VerdictCurated){const VC=window.VerdictCurated;
+ for(const [id,s] of Object.entries(SH.cases))if(!VC.cases[id]){
+  if(s.stub&&VC.loaders){const c=s.card;   // index entry now, the written-case shape once the sheet arrives
+   VC.cases[id]={id,logline:c.title,summary:c.summary,...(c.charge?{charge:{life:false,fine:0,...c.charge}}:{}),...(c.claim&&!c.decision?{claim:c.claim}:{}),...(c.decision?{decision:c.decision}:{})};
+   VC.loaders[id]=()=>fetchSheet(id).then(toCurated);
+  }else VC.cases[id]=toCurated(s);
+  VC.ids.push(id)}
+ /* a written case's own sheet (다툼 없는 사실, 공소사실) comes with its courtroom detail */
+ VC.also?.push(id=>SH.cases[id]?.stub&&!VC.loaders[id]?fetchSheet(id):null);
+}
 /* 다툼 없는 사실: the sheet's fixed timeline for the case page (written cases with a sheet get it too) */
 function factsOf(c){const s=sheetOf(c);if(!s)return null;return {timeline:s.common.timeline||[],facts:s.common.facts||[],alleged:s.alleged||s.worlds?.did?.act||''}}
 /* a v8.0 trial that ran on the match screen and has no verdict yet restarts in the normal courtroom */
@@ -109,7 +121,7 @@ if(!off&&typeof CasePackEngine!=='undefined'&&SH.pack?.archetypes?.length){
   return all.concat(extra.filter(x=>!ids.has(x.a.id)&&SH.cases[x.a.id]))};
 }
 /* one-line teaser for the offer card (names are not known yet: role words) */
-function logline(id){const s=sheetById(id);if(!s)return '';const role={A:crim(s)?'피고인':'원고',B:crim(s)?'피해자':'피고'};
+function logline(id){const s=SH.cases[id];if(!s?.card)return '';const role={A:crim(s)?'피고인':'원고',B:crim(s)?'피해자':'피고'};
  return window.VerdictCurated?VerdictCurated.fill(s.card.summary.split(/(?<=[.다])\s/)[0],role):s.card.summary}
 
 /* ---------- people: parties fit the sheet, witnesses are made from the sheet ---------- */

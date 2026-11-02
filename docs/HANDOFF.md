@@ -87,7 +87,8 @@
    ```
    node tests/world-sheets.test.cjs        # 구조·세 세계 구별 (review부터는 실패로 막음)
    node tests/match-engine.test.cjs        # 세계 불변·판마다 다른 재판·판결 평가
-   node tests/build-sheets.cjs             # world_sheets.js 다시 만들기 (시트를 고치면 반드시)
+   node tests/build-sheets.cjs             # world_sheets.js·world_sheets_index.js·case-data/sheet-*.json 다시 만들기 (시트를 고치면 반드시)
+   node tests/case-data.test.cjs           # 색인 + case-data = 전체, 오프라인 목록
    ln -sfn "$(npm root -g)" node_modules && node tests/match-play.mjs && node tests/browser-smoke.mjs; rm node_modules
    ```
 11. **표시:** 끝낸 씨앗은 `seeds.md` 제목 줄 끝에 `→ <id> (v8.x)`를 붙인다. develop에 커밋하고, 배포는 요청이 오면 한다.
@@ -102,7 +103,7 @@
 
 ## 4. 지금 어디까지 (2026-11-02)
 
-- **main:** v8.2.3(지명·상호 채우기, 공소사실, 피해자 없는 사건, 기일 연기 줄임). 이의는 신문 중에, 판결 창 5단계(사형·병과·6개월 단위·배상액 직접 입력), 판결이 인물의 재산·사는 곳·직업에 남는다. 모든 사건이 6개 메뉴로 진행된다.
+- **main:** v8.2.3(지명·상호 채우기, 공소사실, 피해자 없는 사건, 기일 연기 줄임, 사건 데이터를 필요할 때 불러오기). 이의는 신문 중에, 판결 창 5단계(사형·병과·6개월 단위·배상액 직접 입력), 판결이 인물의 재산·사는 곳·직업에 남는다. 모든 사건이 6개 메뉴로 진행된다.
 - **배당 풀:** 집필 60건 + 시트 전용 12건(기획자 10건 adv-cr-001~010, 견본 clinic-001·gym-001).
 - **씨앗:**
   - 100~109번: 완성도가 충분해 바로 시트로 만들 수 있다.

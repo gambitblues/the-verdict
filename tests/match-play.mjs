@@ -9,6 +9,7 @@
  *    name tokens or [object Object] in what the screen would show.
  * D. A v8.0 save with a match-screen trial in progress restarts in the normal courtroom; a finished one stays readable. */
 import { chromium } from 'playwright';
+import {courtUI} from './lib/court-ui.mjs';
 import http from 'node:http';
 import {readFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
@@ -22,14 +23,14 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:390,height:844}});
 const errs=[];page.on('pageerror',e=>errs.push(e.message));
 const shot=async n=>{if(process.env.SHOTS){await mkdir('qa-visuals',{recursive:true});await page.screenshot({path:`qa-visuals/sheet-${n}.png`})}};
-const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(120);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().click();continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}};
+const answer=()=>courtUI(page).settle();   // popups by kind, waiting on state (tests/lib/court-ui.mjs)
 const tab=async id=>{await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer()};
 const RAW=/\{[A-Z]\d?(?:[>|][^}]*)?\}|\[object Object\]|undefined/;
 try{
  await page.goto(url,{waitUntil:'networkidle'});
  await page.locator('#profile-continue').click();await page.locator('#playerName').fill('시트 검증');
  await page.locator('[data-action="start"]').last().click();
- await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});
+ await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});await page.evaluate(()=>VerdictCurated.loadAll());   // engine-level checks read every case at once; the game itself fetches one case at a time
  // ---- A ----
  const reg=await page.evaluate(()=>{const ids=Object.keys(VerdictSheets.cases),pool=new Set(CasePackEngine.pool(S).map(x=>x.a.id));
   return {all:ids.length,inPool:ids.filter(id=>pool.has(id)).length,shaped:ids.filter(id=>VerdictCurated.cases[id]?.evidence?.length>=3&&VerdictCurated.cases[id]?.witnesses?.length>=2).length,

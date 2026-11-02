@@ -8,6 +8,7 @@
  * 7 pressure messages: refuse / report / ignore, and an ignored request surfacing months after the verdict
  * 8 personnel season: February yearbook + department choice that makes those cases come more often */
 import { chromium } from 'playwright';
+import {courtUI} from './lib/court-ui.mjs';
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -20,7 +21,7 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:390,height:844}});
 await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
 const errs=[];page.on('pageerror',e=>errs.push(e.message));
-const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(100);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().click();continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}};
+const answer=()=>courtUI(page).settle();   // popups by kind, waiting on state (tests/lib/court-ui.mjs)
 const tab=async id=>{await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer()};
 const open=async id=>{await page.evaluate(i=>{ui.tab='court';ui.caseId=i;render()},id);await page.locator('.t4-tabs').waitFor()};
 const startSession=async()=>{await tab('day');const ob=page.locator('.t4-dock [data-kind="open"]');if(await ob.count())await ob.click();await answer()};
@@ -137,7 +138,7 @@ try{
  ok('청탁 문자: 전관 변호사 보고→징계 회부, 동기 거절→관계 하락, 지역 유력자 무시→판결 뒤 기사 여부 판정('+kinds.local.surfaced+')');
 
  // 8 personnel season
- await page.evaluate(()=>{ui.modal=null;S.week=Math.max(S.week,Math.ceil((Date.UTC(2028,1,3)-Date.UTC(2027,2,1))/604800000));S.realtimeInbox.dayProgress=0;render();VerdictV6.seasonTick()});
+ await answer();await page.evaluate(()=>{S.week=Math.max(S.week,Math.ceil((Date.UTC(2028,1,3)-Date.UTC(2027,2,1))/604800000));S.realtimeInbox.dayProgress=0;render();VerdictV6.seasonTick()});
  await page.locator('#modal-root [data-action="v6dept"][data-dept="family"]').waitFor();
  assert.ok(await page.locator('#modal-root .v6-book').count(),'yearbook shown in the season');
  await page.locator('#modal-root [data-action="v6dept"][data-dept="family"]').click();
