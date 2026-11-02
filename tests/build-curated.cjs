@@ -6,7 +6,7 @@
 const fs=require('fs'),path=require('path'),vm=require('vm');
 const root=path.join(__dirname,'..'),dir=path.join(root,'curated'),out=path.join(root,'case-data');
 const pick=re=>fs.readdirSync(dir).filter(f=>re.test(f)).sort();
-const parts=[...pick(/^part\d+\.js$/),...pick(/^detail\d+\.js$/),...pick(/^follow\d+\.js$/),...pick(/^party\d+\.js$/)];
+const parts=[...pick(/^part\d+\.js$/),...pick(/^detail\d+\.js$/),...pick(/^follow\d+\.js$/),...pick(/^party\d+\.js$/),...pick(/^extras\.js$/)];
 const head='/* THE VERDICT — written cases: story, people, trial-day acts, evidence, witnesses, endings.\n * Source parts live in curated/; built by node tests/build-curated.cjs (do not edit). The game loads curated_index.js + case-data/. */\n';
 const registry=fs.readFileSync(path.join(dir,'registry.js'),'utf8');
 const full=head+parts.map(f=>fs.readFileSync(path.join(dir,f),'utf8')).join('\n')+'\n'+registry;

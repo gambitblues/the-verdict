@@ -66,6 +66,22 @@ function toCurated(s){
   return {id:'s'+(k+1),issue:k%2?'i2':'i1',type:'records',to:sd,day:1,ask:`${who}은 다음 기일까지 「${r.title}」을(를) 내 주세요.`.replace(/「([^」]+)」을\(를\)/,(m,x)=>`「${x}」${/[가-힣]/.test(x.slice(-1))&&(x.slice(-1).charCodeAt(0)-0xAC00)%28?'을':'를'}`),
    evidence:{title:r.title,kind:r.kind,by:r.by,when:'',excerpt:content(r),shows:`${r.kind} — 주문으로 받은 자료`,side:lean(r),caveat:devOf(r)?.note||trapFor(r)||'다른 기록과 함께 봐야 한다',how:r.how,check:'앞서 나온 자료·증언과 맞춰 보세요.',flaw:flawOf(r)},
    rebut:sd==='p'?'이 자료 하나로 모든 것을 단정할 수는 없습니다.':'이 자료는 사건의 일부만 보여 줍니다.'}});
+ /* v8.3: the sheet's own orders (what each is meant to check, what comes back in each world) take over the
+  * automatic order of the same record; records without one keep the automatic order */
+ const nodeOf={};more.forEach((r,k)=>{nodeOf[r.id]='s'+(k+1)});
+ const sideOfWho=w=>/^(A|피고|변호)/.test(w||'')?(cr?'d':(ac==='A'?'p':'d')):/^(B|검찰|원고)/.test(w||'')?'p':sideOfBy(w);
+ for(const o of s.orders||[]){const f=followUps.find(x=>x.id===nodeOf[o.record]);if(!f)continue;
+  if(o.ask)f.ask=o.ask;if(o.issue)f.issue=o.issue;if(o.to)f.to=sideOfWho(o.to);if(o.day)f.day=o.day;
+  if(o.result){f.result=o.result;f.have=per(t=>o.result[t]!=='none')}
+  if(o.none)f.none=o.none;f.own=true}
+ /* v8.3: the sheet's own witness questions come first; the automatic ones stay as backup. `after` opens a question
+  * only once a record has arrived (r-…) or another question has been answered (W2:<id>) */
+ const wIdx=Object.fromEntries(W.map((p,i)=>[p.key,i]));
+ (s.questions||[]).forEach((x,n)=>{const i=wIdx[x.w];if(i==null)return;const id='x-'+(x.id||n+1);
+  let needs=null;if(x.after){const m=String(x.after).match(/^(W\d+):(.+)$/);needs=m?{heard:[wIdx[m[1]],'x-'+m[2]]}:nodeOf[x.after]?{follow:nodeOf[x.after]}:null}
+  witnesses[i].q.unshift({id,q:x.q,issue:x.issue||'i1',a:x.a,...(needs?{needs}:{}),own:true})});
+ /* a question unshifted later must stay in the order written */
+ for(const w of witnesses){const own=w.q.filter(q=>q.own),rest=w.q.filter(q=>!q.own);own.reverse();w.q=[...own,...rest]}
  const A=person(s,ac),kn=t=>s.worlds[t].knows?.[ac];
  const partyQ=A&&kn('didnt')&&kn('didnt')!=='—'?{who:ac,role:cr?'피고인':(ac==='A'?'원고':'피고'),q:[
   {id:'p1',issue:'i1',q:'그날 무슨 일이 있었는지 직접 말해 주세요.',a:{did:'… '+said(kn('didnt'))[0],didnt:said(kn('didnt')).join(' '),reason:said(kn('reason')||kn('didnt')).join(' ')},side:{did:'d',didnt:'d',reason:'m'}},
@@ -92,7 +108,9 @@ function toCurated(s){
  if(cr){const ch=s.card.charge||{},min=ch.min||0,max=ch.max||5;
   cur.demand=s.card.demand??(ch.fine&&max<=3&&!min?{fine:Math.max(100,Math.round(ch.fine*0.3/50)*50)}:Math.max(1,Math.round((min+Math.min(max,min*2+3))/2*2)/2))}
  const sx={};for(const k of ['A','B'])if(person(s,k)?.sex)sx[k]=person(s,k).sex;if(Object.keys(sx).length)cur.sex=sx;
- if(cr)cur.charge={life:false,fine:0,...s.card.charge};else if(!dec)cur.claim=s.card.claim;
+ if(cr){const {orders,...ch}=s.card.charge||{};cur.charge={life:false,fine:0,...ch};if(orders)cur.addons=orders}
+ else if(!dec){const {remedies,...cl}=s.card.claim||{};cur.claim=cl;if(remedies)cur.remedies=remedies}
+ if(s.after)cur.after=s.after;   // v8.3: ancillary orders, remedies, the parties' lives after the judgment
  return cur;
 }
 /* register the sheet-only cases next to the 60 written ones */
