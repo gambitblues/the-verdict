@@ -77,6 +77,8 @@ jobs:
         run: node tests/verdict-v82.mjs
       - name: v8.3 own questions and orders, ancillary orders, remedies, life after
         run: node tests/verdict-v83.mjs
+      - name: Docket offers never repeat a case
+        run: node tests/docket-offers.mjs
       - name: Party materials on the hearing page (defendant questions, reflection, settlement)
         run: node tests/hearing-events.mjs
       - name: Evidence shapes and witness moments (visual review gallery)
