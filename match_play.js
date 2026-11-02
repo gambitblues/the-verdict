@@ -62,7 +62,7 @@ function attach(c,st,t){
  const truth=['did','didnt','reason'].includes(t.truth)?t.truth:'did';
  const m=M.start(s,{seed:t.seed,truth});
  const pn=NPC[c.side?.[0]]?.name,dn=NPC[c.side?.[1]]?.name;if(pn)m.law.p.name=pn;if(dn)m.law.d.name=dn;
- t.match=m;t.minDays=2;t.cards=[];t.qLeft=0;t.matchVersion=SH.pack?.version||'1';
+ t.match=m;t.minDays=s.card.decision?1:2;t.cards=[];t.qLeft=0;t.matchVersion=SH.pack?.version||'1';
 }
 /* the sheet may be revised between releases: keep the truth, re-seal against the new text */
 function sheetFor(c,t){const s=sheetOf(c);if(!s||!t?.match)return null;const lock=M.lockOf(s,t.match.truth);if(lock!==t.match.lock){t.match.lock=lock;
@@ -88,7 +88,7 @@ function casePage(c,st,t,s){
  const facts=(s.common.timeline||[]).map(e=>`<li><b>${esc(e.at)}</b> ${esc(fill(c,t,e.what))}</li>`).join('')+(s.common.facts||[]).map(f=>`<li>${esc(fill(c,t,f))}</li>`).join('');
  const open=!st.verdict&&(I.waiting(t)?`<button class="btn primary full mt" data-action="t4tab" data-tab="day">재판으로 돌아가기 →</button>`:!I.sessionOpen(t)?`<button class="btn primary full mt" data-action="t4" data-kind="open">▶ ${esc(I.session(c,t.day))} 열기</button>${!t.daysDone?`<button class="btn outline full mt" data-action="t4" data-kind="handoff">다른 재판부로 넘기기 <small>(하루 1건)</small></button>`:''}`:`<button class="btn primary full mt" data-action="t4tab" data-tab="day">재판으로 돌아가기 →</button>`);
  return `<section class="panel t4 t4-case"><h3>무슨 사건인가?</h3><p class="t4-logline">${esc(s.card.title)}</p><p>${esc(fill(c,t,s.card.summary))}</p>
- <dl class="t4-facts">${ch?`<dt>죄명</dt><dd>${esc(ch.name)} (${esc(ch.law)})</dd>`:''}${cl?`<dt>청구</dt><dd>${esc(cl.what||cl.name||'')}</dd>`:''}<dt>판결까지</dt><dd>공판 2회 이상</dd></dl>
+ <dl class="t4-facts">${ch?`<dt>죄명</dt><dd>${esc(ch.name)} (${esc(ch.law)})</dd>`:''}${cl?`<dt>청구</dt><dd>${esc(cl.what||cl.name||'')}</dd>`:''}<dt>판결까지</dt><dd>${s.card.decision?'심리 1회 이상':'공판 2회 이상'}</dd></dl>
  <h4>다툼 없는 사실</h4><ul class="small mp-facts">${facts}</ul>
  <h4>양쪽 법률가</h4><div class="t4-claims">${law}</div>
  <h4>사람들</h4><div class="t4-people">${ppl}</div>${open||''}</section>`;
@@ -132,8 +132,8 @@ function truthBlock(c,t,s){const d=t.match.done;if(!d)return '';const W=s.worlds
 
 /* ---------- verdict ---------- */
 /* the 'reason' world either still convicts of something (part of the charge, a lesser crime) or acquits of the charge */
-const reasonAcquits=s=>crim(s)&&/불성립|살해하지 않았음|고의 없음|고의가 아닌/.test(s.worlds.reason.legal)&&!/해당|일부|준강제추행\)/.test(s.worlds.reason.legal);
-const choiceWord=(s,w)=>!crim(s)?{did:'청구 인용',didnt:'청구 기각',reason:'일부 인용'}[w]:w==='did'?'유죄 — 공소사실대로':w==='didnt'?'무죄':reasonAcquits(s)?'무죄 — 다만 다른 사정이 있음':'일부만 유죄';
+const reasonAcquits=s=>s.card.decision?s.worlds.reason.decide!=='yes':crim(s)&&/불성립|살해하지 않았음|고의 없음|고의가 아닌/.test(s.worlds.reason.legal)&&!/해당|일부|준강제추행\)/.test(s.worlds.reason.legal);
+const choiceWord=(s,w)=>s.card.decision?(w==='did'?'받아들임 — '+s.card.decision.yes:w==='didnt'?'기각 — '+s.card.decision.no:reasonAcquits(s)?'기각하되 사정을 살핌 — '+s.card.decision.no:'받아들이되 사정을 살핌 — '+s.card.decision.yes):!crim(s)?{did:'청구 인용',didnt:'청구 기각',reason:'일부 인용'}[w]:w==='did'?'유죄 — 공소사실대로':w==='didnt'?'무죄':reasonAcquits(s)?'무죄 — 다만 다른 사정이 있음':'일부만 유죄';
 /* a world's legal line without the 'what is in dispute' note (that part is for the writer, not the bench) */
 const plainLegal=x=>{const parts=String(x).split(/(?<=\.)\s+| — /).filter(p=>!/쟁점|징계 사안/.test(p));return parts.join(' — ').replace(/[.。]$/,'')};
 const V=c=>{ui.mpv??={};return ui.mpv[c.id]??={choice:null,sent:null}};
@@ -168,7 +168,7 @@ function decide(c,st,t){
  if(t.daysDone<t.minDays){toast(`공판이 ${t.minDays-t.daysDone}번 더 필요해요.`);return}
  const ss=sentences(s,v.choice),sent=ss.find(x=>x.id===v.sent)||null;if(ss.length&&!sent){toast('형을 고르세요.');return}
  const acq=v.choice==='didnt'||(v.choice==='reason'&&reasonAcquits(s));
- const want=acq?-1:v.choice==='reason'&&!crim(s)?0.5:1;
+ const want=acq?-1:s.card.decision?1:v.choice==='reason'&&!crim(s)?0.5:1;
  const opts=c.verdicts.map(o=>({o,side:T().sideOf(T().direction(o,c.kind))}));
  const opt=(opts.find(x=>x.side===want)||opts.find(x=>(x.side>0)===(want>0))||opts[0]).o,dir=T().direction(opt,c.kind);
  const done=M.verdict(s,t.match,v.choice);
@@ -177,7 +177,8 @@ function decide(c,st,t){
  const facts=s.records.filter(r=>m.records[r.id].status==='in'&&!m.records[r.id].disputed).slice(0,6).map(r=>`${r.title}: ${fill(c,t,W.records[r.id])}`);
  const changed=Object.values(m.witnesses).filter(w=>w.broken).map(w=>`${fill(c,t,person(s,w.key).name)} 증인은 법정에서 앞선 말을 바꾸었다.`);
  const disputed=s.records.filter(r=>m.records[r.id].disputed).map(r=>`${r.title} — 시각이나 출처가 다투어져 판단에서 뺐다`);
- const judgment={order:sent?.order||(acq?(crim(s)?'피고인은 무죄.':'원고의 청구를 기각한다.'):crim(s)?'피고인을 유죄로 인정한다.':v.choice==='reason'?'원고의 청구를 일부 받아들인다.':'원고의 청구를 받아들인다.'),
+ const dec=window.VerdictCurated?.cases[archOf(c)]?.decision;
+ const judgment={order:sent?.order||(dec?fill(c,t,acq?dec.noOrder:dec.yesOrder):acq?(crim(s)?'피고인은 무죄.':'원고의 청구를 기각한다.'):crim(s)?'피고인을 유죄로 인정한다.':v.choice==='reason'?'원고의 청구를 일부 받아들인다.':'원고의 청구를 받아들인다.'),
   facts:[acq?`재판부는 다음 자료를 살폈으나 ${crim(s)?'공소사실':'청구 원인'}이 증명되었다고 보지 않는다.`:'재판부는 다음 자료에 따라 사실을 인정한다.',...facts,...changed],
   excluded:disputed,issues:[{title:'재판부의 판단',text:fill(c,t,plainLegal(s.worlds[v.choice].legal))+'.'}],
   conclusion:acq?'합리적인 의심 없이 증명되지 않았다. 그러므로 주문과 같이 판결한다.':`그러므로 주문과 같이 판결한다.${sent?' 형은 법정에 나온 사정을 모두 고려해 정했다.':''}`};
