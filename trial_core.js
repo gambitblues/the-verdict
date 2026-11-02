@@ -197,7 +197,7 @@ function cards(t,day,seed){
  const s=seed+':day:'+day;
  const objectionOdds=style==='aggressive'?0.9:style==='meticulous'?0.5:0.35;
  if(unit(s+':obj')<objectionOdds)out.push({id:'d'+day+'-obj',type:'objection',valid:unit(s+':objv')<(style==='meticulous'?0.75:0.45),choice:null});
- const delayOdds=style==='delay'?0.8:day>=2?0.2:0.1;
+ const delayOdds=style==='delay'?0.35:day>=2?0.08:0.04;   // v8.2.3: delays were too frequent (user feedback)
  if(unit(s+':del')<delayOdds)out.push({id:'d'+day+'-del',type:'delay',valid:unit(s+':delv')<(style==='delay'?0.25:0.7),choice:null});
  if(style==='media'&&unit(s+':med')<0.7)out.push({id:'d'+day+'-med',type:'media',valid:true,choice:'seen'});
  return out;

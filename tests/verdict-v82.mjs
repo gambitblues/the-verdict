@@ -124,6 +124,13 @@ try{
  await page.locator('.t4-dock [data-action="t4end"]').click();await page.locator('#modal-root [data-action="t4end"][data-ok]').click();await page.waitForTimeout(200);
  assert.equal(await page.evaluate(()=>S.cases[ui.caseId].trial4.daysDone),day0+1,'마치기 ends it');
  console.log('  ✓ ending a session asks first');
+ // ---- F. sheet cases: the accuser's version, closing and sentencing request; no victim where there is none (v8.2.3)
+ id=await newCase('adv-cr-001');await page.locator('.t4-tabs').waitFor();await page.evaluate(()=>{ui.t4tab='case';ui.vsheet=null;render()});
+ const casePage=await page.locator('.t4-case').innerText();
+ assert.match(casePage,/공소사실/,'the prosecution\'s version is on the case page');assert.match(casePage,/피해자\s*따로 없음/,'a victimless case says so');
+ await page.evaluate(()=>{const t=S.cases[ui.caseId].trial4;t.daysDone=t.minDays;ui.t4tab='verdict';render()});
+ const close=await page.locator('.t4-closing').first().innerText();assert.match(close,/"[^"]{10,}"/,'closing argument is there');assert.match(close,/구형: \S+/,'sentencing request is there');
+ console.log('  ✓ sheet case: 공소사실, closing, 구형, no made-up victim');
  assert.deepEqual(errs,[]);
  console.log('PASS: v8.2 courtroom and verdict');
 }catch(e){console.error(e);console.error('page errors',errs);process.exitCode=1}

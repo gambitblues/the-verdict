@@ -2,6 +2,7 @@
  * - only sheets marked review or ready go into the game (drafts stay in the folder);
  * - people written with real-looking names (clinic-001, gym-001) are turned into name tokens ({A}, {W1}…) so the game
  *   gives them its own people, like every other case;
+ * - a written case keeps its own text; from its sheet the game takes the undisputed facts and the accuser's version (alleged);
  * - sheets that are not one of the 60 curated cases get a case-pack archetype, so they join the offer pool. */
 const fs=require('fs'),path=require('path');
 const root=path.join(__dirname,'..'),dir=path.join(root,'world-sheets','cases');
@@ -47,7 +48,7 @@ for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.json')).sort()){
  if(!['review','ready'].includes(s.status))continue;
  const g=tokenize(s);delete g.source;delete g.traps;delete g.screen;delete g.open;
  /* a written case keeps its own text in the game; only its undisputed facts come from the sheet */
- sheets[g.id]=curatedIds.has(g.id)?{format:g.format,id:g.id,status:g.status,written:true,card:{kind:g.card.kind,title:g.card.title},common:g.common}:g;
+ sheets[g.id]=curatedIds.has(g.id)?{format:g.format,id:g.id,status:g.status,written:true,card:{kind:g.card.kind,title:g.card.title},common:g.common,alleged:g.worlds?.did?.act}:g;
  if(!curatedIds.has(g.id))pack.archetypes.push(archetype(g));
 }
 const n=pack.archetypes.length;pack.version=`1.${n}.${Object.keys(sheets).length}`;

@@ -77,6 +77,17 @@ function toCurated(s){
   profile:Object.fromEntries(['A','B'].map(k=>{const p=person(s,k);return [k,p&&isToken(p.name)?{job:String(p.job||'').replace(/\s*\(.*\)$/,''),age:p.age?[p.age-3,p.age+3]:[30,55]}:undefined]}).filter(([,v])=>v)),
   facts:{timeline:s.common.timeline||[],facts:s.common.facts||[]}};
  if(partyQ)cur.party=partyQ;
+ /* v8.2.3: the accuser's closing and sentencing request (the verdict page and the reference range need them), whether
+  * there is a victim at all (drug use, bribery: the prosecution stands alone), and the facts as the accuser alleges them */
+ const B=person(s,'B'),victimless=cr&&(s.card.complainant==null||!B||/공소|검찰|국가|없음/.test(B.role||''));
+ if(victimless)cur.victimless=true;
+ else if(cr&&B?.role)cur.bRole=String(B.role).replace(/\s*\(.*\)$/,'');   // 피해자 / 고소인 / 고발인
+ cur.alleged=s.worlds.did.act;
+ cur.closing=cr?`피고인의 행위는 기록으로 충분히 증명됐습니다. ${plainLegal(s.worlds.did.legal).replace(/^[^—]*—\s*/,'')}. 엄히 처벌해 주십시오.`
+  :dec?`신청한 사정은 기록으로 확인됩니다. ${plainLegal(s.worlds.did.legal).replace(/^[^—]*—\s*/,'')}. 신청을 받아들여 주십시오.`
+  :`원고의 청구는 기록으로 충분히 뒷받침됩니다. ${plainLegal(s.worlds.did.legal).replace(/^[^—]*—\s*/,'')}. 청구를 받아들여 주십시오.`;
+ if(cr){const ch=s.card.charge||{},min=ch.min||0,max=ch.max||5;
+  cur.demand=s.card.demand??(ch.fine&&max<=3&&!min?{fine:Math.max(100,Math.round(ch.fine*0.3/50)*50)}:Math.max(1,Math.round((min+Math.min(max,min*2+3))/2*2)/2))}
  const sx={};for(const k of ['A','B'])if(person(s,k)?.sex)sx[k]=person(s,k).sex;if(Object.keys(sx).length)cur.sex=sx;
  if(cr)cur.charge={life:false,fine:0,...s.card.charge};else if(!dec)cur.claim=s.card.claim;
  return cur;
@@ -84,7 +95,7 @@ function toCurated(s){
 /* register the sheet-only cases next to the 60 written ones */
 if(!off&&window.VerdictCurated){const VC=window.VerdictCurated;for(const [id,s] of Object.entries(SH.cases))if(!VC.cases[id]){VC.cases[id]=toCurated(s);VC.ids.push(id)}}
 /* 다툼 없는 사실: the sheet's fixed timeline for the case page (written cases with a sheet get it too) */
-function factsOf(c){const s=sheetOf(c);if(!s)return null;return {timeline:s.common.timeline||[],facts:s.common.facts||[]}}
+function factsOf(c){const s=sheetOf(c);if(!s)return null;return {timeline:s.common.timeline||[],facts:s.common.facts||[],alleged:s.alleged||s.worlds?.did?.act||''}}
 /* a v8.0 trial that ran on the match screen and has no verdict yet restarts in the normal courtroom */
 function reset(st){if(st?.trial4?.match&&!st.verdict){delete st.trial4;return true}return false}
 
