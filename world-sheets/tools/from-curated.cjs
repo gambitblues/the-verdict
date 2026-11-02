@@ -19,7 +19,7 @@ const CAT=[[/homicide/,'homicide'],[/sexual/,'sexual'],[/family|inherit/,'family
 const cat=hand.category||arch.category||CAT.find(([re])=>re.test(id))?.[1]||'civil';
 const card={kind:crim?'criminal':'civil',category:cat,title:hand.title||c.title||arch.title,summary:hand.summary||clean(c.summary),accused:crim?'A':'B',complainant:crim?'B':'A'};
 if(crim)card.charge={life:false,fine:0,...c.charge};else card.claim=c.claim||{amount:0,fair:[0,0],what:c.decision?.what||''};
-if(c.decision)card.decision={what:c.decision.what,yes:c.decision.yes,no:c.decision.no};
+if(c.decision)card.decision={what:c.decision.what,yes:c.decision.yes,no:c.decision.no,...(hand.decision||{})};
 if(card.claim&&!card.claim.fair)card.claim.fair=[0,card.claim.amount||0];
 const pr=c.profile||{};
 const party=k=>({key:k,name:`{${k}}`,role:k==='A'?(crim?'피고인':'원고'):(crim?'피해자':'피고'),age:pr[k]?.age?Math.round((pr[k].age[0]+pr[k].age[1])/2):40,job:pr[k]?.job||'—',edu:pr[k]?.deg||undefined,family:pr[k]?.mar||undefined,state:clean(c.people?.[k]),traits:k===card.accused?{composure:'보통',honesty:'보통',legalStance:'부인'}:{memoryAccuracy:'보통',confidence:'보통',honesty:'높음'}});
