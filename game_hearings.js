@@ -164,21 +164,61 @@ function initClock(){
 function candidates(){return CasePackEngine.pool(S)}
 function hashOf(s){let x=2166136261;for(const ch of String(s))x=Math.imul(x^ch.charCodeAt(0),16777619)>>>0;return x>>>0}
 const busy=()=>new Set(openCases().map(c=>c.contentPack?.archetypeId).filter(Boolean));
+/* v8.5.1 offer checks: a case already on the bench (in progress, decided or passed on) or already waiting in another
+ * hour's offer is never offered again while fresh cases remain. Titles count too (two packs could share a story).
+ * When every case has been seen (late in a long career) the oldest decided ones come back first; a case in progress
+ * or in another open offer never does. */
+const normTitle=s=>String(s||'').replace(/\s+/g,'');
+const titleOf=id=>{const x=candidates().find(y=>y.a.id===id);return normTitle(x?.a.title||'')};
+function seen(){const ids=new Map(),titles=new Set();CASES.forEach((c,i)=>{const id=c.contentPack?.archetypeId;if(!id)return;ids.set(id,i);const tt=titleOf(id);if(tt)titles.add(tt)});return {ids,titles}}
+function offered(exceptSlot){const ids=new Set(),titles=new Set();for(const o of S.realtimeInbox?.offers||[])if(o.status==='available'&&o.slot!==exceptSlot)for(const x of o.options||[]){if(x.archetypeId)ids.add(x.archetypeId);titles.add(normTitle(x.title))}return {ids,titles}}
+function freshPool(exceptSlot){
+ const all=candidates(),taken=busy(),on=offered(exceptSlot),past=seen();
+ const blocked=x=>taken.has(x.a.id)||on.ids.has(x.a.id)||on.titles.has(normTitle(x.a.title));
+ /* cases that recently went to another bench are not offered again soon either */
+ const gone=new Map();(S.realtimeInbox?.otherCourt||[]).slice(-60).forEach((x,i)=>gone.set(normTitle(x.title),CASES.length+i));
+ const fresh=all.filter(x=>!blocked(x)&&!past.ids.has(x.a.id)&&!past.titles.has(normTitle(x.a.title))&&!gone.has(normTitle(x.a.title)));
+ if(fresh.length>=2)return fresh;
+ /* everything has been seen: reuse the cases heard (or passed on) longest ago — the oldest third */
+ const rank=x=>Math.max(past.ids.get(x.a.id)??-1,gone.get(normTitle(x.a.title))??-1);
+ const old=all.filter(x=>!blocked(x)).sort((a,b)=>rank(a)-rank(b));
+ return [...fresh,...old.filter(x=>!fresh.includes(x)).slice(0,Math.max(2,Math.ceil(old.length/3)))];
+}
 function preview(item){const a=item.a,cur=window.VerdictCurated?.cases[a.id];
  return {title:a.title,tag:a.tag,category:a.category,kind:a.kind,archetypeId:a.id,packId:item.pack.packId,importance:a.importance||3,
   logline:cur?window.VerdictCurated.fill(cur.logline,{}):(window.VerdictMatchPlay?.logline(a.id)||''),legal:a.legal||''}}
 /* Two contrasting cases for one hour: different archetypes, and when possible a different kind or weight. */
 function offerPair(slot){
- const taken=busy(),pool=candidates().filter(x=>!taken.has(x.a.id));const list=pool.length?pool:candidates();
+ const list=freshPool(slot);
  if(!list.length)return [{title:'사실관계 조사 사건',tag:'일반 사건',archetypeId:null}];
  const scores=Array.isArray(S.specialties)?S.specialties:[];
  const weighted=list.map(item=>({item,w:(1+Math.min(2,Math.floor((scores.find(x=>x.key===item.a.category)?.count||0)/3)))*(window.VerdictV6?.deptWeight?.(item.a)||1)}));
  const sum=weighted.reduce((v,x)=>v+x.w,0);let pick=hashOf(slot)%sum,a=weighted[0].item;
  for(const x of weighted){if(pick<x.w){a=x.item;break}pick-=x.w}
- const rest=list.filter(x=>x.a.id!==a.a.id);if(!rest.length)return [preview(a)];
+ const rest=list.filter(x=>x.a.id!==a.a.id&&normTitle(x.a.title)!==normTitle(a.a.title));if(!rest.length)return [preview(a)];
  const contrast=rest.filter(x=>x.a.kind!==a.a.kind||Math.abs((x.a.importance||3)-(a.a.importance||3))>=2);
  const pool2=contrast.length?contrast:rest,b=pool2[hashOf(slot+'b')%pool2.length];
  return [preview(a),preview(b)];
+}
+/* the case generator's own random pick (used when no offer is given) follows the same checks */
+if(window.CasePackEngine){const choose0=CasePackEngine.choose;CasePackEngine.choose=(save,random)=>{if(save!==S)return choose0(save,random);const L=freshPool();return L.length?L[Math.floor(random()*L.length)]:null}}
+/* a save from before v8.5.1 can hold the same case twice in progress: the later copy that was never opened goes to
+ * another bench (once), so the docket shows each case only once */
+function dedupeOpen(){let n=0;const first=new Map();
+ for(const c of openCases()){const id=c.contentPack?.archetypeId;if(!id)continue;
+  if(!first.has(id)){first.set(id,c);continue}
+  const st=S.cases[c.id],started=st?.trial4?.daysDone>0||(st?.actions||[]).length>0;if(started)continue;
+  st.referred=true;n++}
+ return n}
+/* an open offer made before a case was taken (or by an older version) is re-drawn when it would repeat a case */
+function revalidate(db){
+ const past=seen(),taken=busy();
+ for(const o of db.offers){if(o.status!=='available')continue;
+  const bad=(o.options||[]).some((x,i,arr)=>!x.archetypeId||taken.has(x.archetypeId)||past.ids.has(x.archetypeId)||arr.findIndex(y=>normTitle(y.title)===normTitle(x.title))!==i||
+   db.offers.some(p=>p!==o&&p.status==='available'&&db.offers.indexOf(p)<db.offers.indexOf(o)&&(p.options||[]).some(y=>y.archetypeId===x.archetypeId||normTitle(y.title)===normTitle(x.title))));
+  if(!bad)continue;
+  const fresh=freshPool(o.slot).filter(x=>!past.ids.has(x.a.id));if(fresh.length<1)continue;   // late career: keep what was offered
+  o.options=offerPair(o.slot)}
 }
 function transfer(db,o,which){const opts=which==null?o.options||[]:[o.options[which]];opts.forEach((x,i)=>{if(x)db.otherCourt.push({slot:o.slot+(which==null?'-'+i:'-x'),title:x.title,day:o.day,kind:x.kind,category:x.category,at:Date.now()})})}
 function sync(){
@@ -192,11 +232,13 @@ function sync(){
    const d=new Date(t),hour=d.getHours();if(hour<START_H||hour>END_H)continue;
    const slot=dateKey(t)+'T'+String(hour).padStart(2,'0'),day=dateKey(t);
    if(db.processedSlots[slot])continue;db.processedSlots[slot]=true;
-   const entry={slot,day,created:t,expires:t+OFFER_LIFE,status:'available',options:offerPair(slot)};
-   if(entry.expires<=now){entry.status='transferred';transferred+=entry.options.length;transfer(db,entry)}else db.offers.push(entry);
+   const entry={slot,day,created:t,expires:t+OFFER_LIFE,status:'available',options:null};
+   if(t+OFFER_LIFE<=now){entry.options=offerPair(slot);entry.status='transferred';transferred+=entry.options.length;transfer(db,entry)}else{db.offers.push(entry);entry.options=offerPair(slot)}
  }
  for(const o of db.offers){if(o.status==='available'&&now>=o.expires){o.status='transferred';transferred+=(o.options||[]).length;transfer(db,o)}}
  db.offers=db.offers.filter(o=>o.status==='available'||o.status==='accepted').slice(-180);
+ revalidate(db);
+ if(dedupeOpen())news('같은 사건이 겹쳐 배당돼 한 건을 다른 재판부로 넘겼어요','같은 사건이 두 번 배당된 것을 법원 사무국이 확인했습니다.');
  db.otherCourt=db.otherCourt.slice(-300);
  const slots=Object.keys(db.processedSlots);if(slots.length>400){const keep=new Set(slots.slice(-250));for(const k of slots)if(!keep.has(k))delete db.processedSlots[k];}
  if(transferred){db.missed=(db.missed||0)+transferred;db.missedDay=dateKey(now)===db.missedDay?db.missedDay:dateKey(now);
@@ -213,7 +255,7 @@ window.VerdictCalendar={
  label(day){const d=new Date(CAL0+Math.floor(day)*DAY);return `${d.getUTCMonth()+1}월 ${d.getUTCDate()}일(${'일월화수목금토'[d.getUTCDay()]})`},
  full(day){const d=new Date(CAL0+Math.floor(day)*DAY);return `${d.getUTCFullYear()}.${String(d.getUTCMonth()+1).padStart(2,'0')}.${String(d.getUTCDate()).padStart(2,'0')}`}
 };
-window.VerdictDocket={offerPair,sync,MAX_ACTIVE,OFFER_LIFE,nextSlot(){const d=new Date();const h0=d.getHours();if(h0<START_H){d.setHours(START_H,0,0,0)}else if(h0>=END_H){d.setDate(d.getDate()+1);d.setHours(START_H,0,0,0)}else d.setHours(h0+1,0,0,0);return d.getTime()},missedToday(){const db=S.realtimeInbox;return db?.missedDay===dateKey(Date.now())?db.missed||0:0}};
+window.VerdictDocket={offerPair,freshPool,sync,MAX_ACTIVE,OFFER_LIFE,nextSlot(){const d=new Date();const h0=d.getHours();if(h0<START_H){d.setHours(START_H,0,0,0)}else if(h0>=END_H){d.setDate(d.getDate()+1);d.setHours(START_H,0,0,0)}else d.setHours(h0+1,0,0,0);return d.getTime()},missedToday(){const db=S.realtimeInbox;return db?.missedDay===dateKey(Date.now())?db.missed||0:0}};
 const baseHome=home;
 function inbox(){return ''} // the docket is shown by the home screen (game_ui.js priority())
 home=function(){return inbox()+baseHome()};
@@ -224,7 +266,9 @@ clicker=function(e){const b=e.target.closest('[data-action]');if(!b)return;
    if(!o||o.status!=='available'||Date.now()>=o.expires)return toast('다른 재판부로 넘어갔거나 고를 수 없는 사건입니다.');
    if(openCases().length>=MAX_ACTIVE)return toast(`맡을 수 있는 사건은 ${MAX_ACTIVE}건까지예요. 진행 중인 사건을 먼저 선고하세요.`);
    const pickd=(o.options||[])[which];if(!pickd)return;
+   if(openCases().some(c=>c.contentPack?.archetypeId===pickd.archetypeId||titleOf(c.contentPack?.archetypeId)===normTitle(pickd.title))){revalidate(db);save();render();return toast('이미 맡고 있는 사건이에요. 다른 사건으로 바꿔 드렸어요.')}
    const candidate=candidates().find(x=>x.a.id===pickd.archetypeId&&x.pack.packId===pickd.packId);
+   if(!candidate){revalidate(db);save();render();return toast('지금은 이 사건을 배당할 수 없어요. 다른 사건으로 바꿔 드렸어요.')}
    let c;try{c=createGeneratedCase(candidate||null)}catch(err){console.error(err);toast('사건 구성 오류로 배당하지 못했습니다.');return;}
    if(!c)return toast('현재 사건을 배당할 수 없습니다.');
    o.status='accepted';o.caseId=c.id;o.picked=which;(o.options||[]).forEach((x,i)=>{if(i!==which)transfer(db,{...o,options:o.options},i)});

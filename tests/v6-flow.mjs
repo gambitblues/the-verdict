@@ -144,8 +144,10 @@ try{
  await page.locator('#modal-root [data-action="v6dept"][data-dept="family"]').click();
  const dept=await page.evaluate(()=>({dept:S.season.dept,asked:S.season.asked,label:VerdictV6.deptLabel()}));
  assert.equal(dept.dept,'family');assert.equal(dept.label,'가사부');
- const share=await page.evaluate(()=>{let fam=0,all=0;for(let k=0;k<400;k++){for(const o of VerdictDocket.offerPair('2029-01-01T'+k)){all++;if(o.category==='family')fam++}}return fam/all});
- assert.ok(share>0.12,'family cases come more often after choosing 가사부 ('+share.toFixed(2)+')');
+ // v8.5.1: offers only draw from cases not yet seen/offered, so compare with the family share of that same pool
+ const {share,base}=await page.evaluate(()=>{const P=VerdictDocket.freshPool('2029-01-01');const base=P.filter(x=>x.a.category==='family').length/P.length;
+  let fam=0,all=0;for(let k=0;k<400;k++){for(const o of VerdictDocket.offerPair('2029-01-01T'+k)){all++;if(o.category==='family')fam++}}return {share:fam/all,base}});
+ assert.ok(base>0&&share>base*1.5,'family cases come more often after choosing 가사부 ('+share.toFixed(2)+' vs '+base.toFixed(2)+' without the wish)');
  assert.ok(share<0.8,'other cases still come');
  ok('인사철: 2월 연감 + 희망 부서 선택, 가사 사건 배당 비율 '+(share*100).toFixed(0)+'% (기본 약 10%)');
 
