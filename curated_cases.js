@@ -5865,8 +5865,27 @@ function particle(name,p){
  * {A>B} → what B calls A as an older sibling-like person, by both sexes: 형·오빠·누나·언니 (names._sex). */
 const KIN={'남남':'형','남여':'오빠','여남':'누나','여여':'언니'};
 function kin(names,who,by){const sx=names._sex||{},a=sx[who],b=sx[by];return KIN[(a||'남')+(b||'남')]||'형'}
+/* ○○ place words → made-up names (v8.2.3): "○○미용실" → "가람미용실", "○○동" → "솔밭동", "○○구청" → "마진구청".
+ * Fixed per case (names._seed) so the same shop keeps its name everywhere in that trial; different shops differ.
+ * "○○의", "○○ 숄더백", "수사팀 ○○" (a hidden person or brand) stay as they are; "○○○" in numbers becomes digits. */
+const PLACE={brand:['가람','초점','새빛','한결','솔뫼','다온','늘봄','해솔','바른','온누리','청담','미소','은하','도담','푸른숲','라온','하늘빛','소담','고운','보람','한아름','새벽','맑은','열매','두레','소나무','별빛','너울','이음','단비'],
+ dong:['가람','소담','월계','은행','솔밭','해오름','청림','도화','반석','새말','매화','갈매','물빛','양지'],gu:['마진','청운','한별','동림','서하','남솔','은계','북향'],
+ si:['수정','한내','청하','도원','금릉','새봄','가평','온양'],eup:['솔내','가산','청계','하늘'],ri:['상림','도곡','새터','안골'],station:['솔밭','가람','청림','도화','월계','새말'],school:['한빛','새솔','가온','청림','해담','솔뫼']};
+function phash(s){let h=2166136261;for(const ch of String(s))h=Math.imul(h^ch.charCodeAt(0),16777619)>>>0;return h}
+function places(text,seed){
+ const pick=(arr,k)=>arr[phash(seed+':'+k)%arr.length];
+ return text.replace(/○○○/g,(m,i)=>String(100+phash(seed+':n'+i)%900))
+  .replace(/○○(구청|구역|사거리|중학교|중|동물병원|동|구|시청|시|읍|리|역|호)(?=$|[^가-힣]|(?:의|은|는|이|가|을|를|에|에서|으로|로|와|과|도)(?![가-힣]))|○○(구청|구역|동물병원|사거리|중학교)/g,(m,a,b)=>{const k=a||b;
+   if(k==='구청')return pick(PLACE.gu,'gu')+'구청';if(k==='구')return pick(PLACE.gu,'gu')+'구';if(k==='구역')return pick(PLACE.brand,'zone')+(1+phash(seed+'z')%5)+'구역';
+   if(k==='시'||k==='시청')return pick(PLACE.si,'si')+k;if(k==='읍')return pick(PLACE.eup,'eup')+'읍';if(k==='리')return pick(PLACE.ri,'ri')+'리';
+   if(k==='동')return pick(PLACE.dong,'dong')+'동';if(k==='역')return pick(PLACE.station,'st')+'역';if(k==='중'||k==='중학교')return pick(PLACE.school,'sc')+k;
+   if(k==='호')return (2+phash(seed+'h')%8)+'0'+(1+phash(seed+'hh')%6)+'호';return pick(PLACE.brand,k)+k})
+  .replace(/○○ (숄더백|가방|시계|지갑|구두|운동화|코트)/g,(m,k)=>['루엘','마레','벨로','오르세','시엘'][phash(seed+':goods')%5]+' '+k)
+  .replace(/○○(?=[가-힣])(?!(?:의|은|는|이|가|을|를|에|와|과|도|년)(?![가-힣]))([가-힣]+)/g,(m,k)=>pick(PLACE.brand,k)+k);
+}
 function fill(text,names){
- return String(text||'').replace(/\{([A-Z][0-9]?)(?:>([A-Z][0-9]?))?(?:\|([가-힣]+))?\}/g,(m,key,by,p)=>{
+ const out=String(text||'');
+ return (out.includes('○○')?places(out,names?._seed||Object.values(names||{}).filter(v=>typeof v==='string').join('|')||'case'):out).replace(/\{([A-Z][0-9]?)(?:>([A-Z][0-9]?))?(?:\|([가-힣]+))?\}/g,(m,key,by,p)=>{
   const n=by?kin(names,key,by):(names[key]||({A:'피고인',B:'상대방',L:'변호사'}[key]||'증인'));return p?particle(n,p):n});
 }
 /* Courtroom detail (curated/detail*.js) is merged into each case: evidence and witnesses line up by index. */

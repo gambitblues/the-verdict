@@ -26,7 +26,7 @@ const errs=[];page.on('pageerror',e=>errs.push(e.message));
 const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(100);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().click();continue}const v=page.locator('#modal-root [data-action="v6dept"]');if(await v.count()){await v.first().dispatchEvent('click');continue} /* personnel season: pick a department */const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}};
 // anything else that pops up during a long simulated career (season choices, notices): close it the way a player would
 const clear=async()=>{await answer();if(await page.locator('#modal-root .modal-veil').count()){const b=page.locator('#modal-root .modal-actions button').last();if(await b.count())await b.dispatchEvent('click');await page.evaluate(()=>{if(ui.modal){ui.modal='';render()}})}};
-const tab=async id=>{await clear();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer()};
+const tab=async id=>{for(let k=0;k<6;k++){await clear();try{await page.locator(`.t4-tab[data-tab="${id}"]`).click({timeout:4000});break}catch(e){if(k===5){console.error('modal still open:',await page.locator('#modal-root').innerText().catch(()=>''));throw e}}}await answer()};   // a request can pop up right after a question (v8.2): clear and retry
 const boot=async()=>{await page.locator('#verdict-entry').waitFor();await page.locator('#profile-continue').click();await page.waitForFunction(()=>typeof S!=='undefined'&&S.name,null,{timeout:30000})};
 try{
  await page.goto(url,{waitUntil:'networkidle'});

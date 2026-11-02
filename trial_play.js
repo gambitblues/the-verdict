@@ -57,7 +57,7 @@ function styleOf(id){const p=NPC[id];if(!p)return T.pick(T.STYLES,'none');p.tria
 /* ---------- curated story ---------- */
 const curOf=c=>window.VerdictCurated?.cases[c.contentPack?.archetypeId||c.story?.packOrigin?.id];
 function namesOf(c,t){
- const n={A:NPC[c.who?.[0]]?.name,B:NPC[c.who?.[1]]?.name,L:t?NPC[t.opponent]?.name:null};
+ const n={A:NPC[c.who?.[0]]?.name,B:NPC[c.who?.[1]]?.name,L:t?NPC[t.opponent]?.name:null,_seed:c.id};   // _seed: made-up place names stay fixed per case
  (t?.witnesses||[]).forEach((w,i)=>{n['W'+(i+1)]=NPC[w.id]?.name});
  const sx=id=>NPC[id]?.gender?(/여/.test(NPC[id].gender)?'여':'남'):null;
  n._sex={A:sx(c.who?.[0]),B:sx(c.who?.[1]),L:t?sx(t.opponent):null};(t?.witnesses||[]).forEach((w,i)=>{n._sex['W'+(i+1)]=sx(w.id)});

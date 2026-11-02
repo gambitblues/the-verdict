@@ -115,7 +115,7 @@ try{
  // ---- E. ending a session asks first; 계속 진행하기 keeps the session open (v8.2.1)
  id=await newCase('v6-violence-final-bout');await page.locator('.t4-tabs').waitFor();
  await page.evaluate(()=>{ui.t4tab='day';ui.vsheet=null;render()});await page.locator('.t4-dock [data-kind="open"]').click();await page.waitForTimeout(300);
- await page.evaluate(()=>{ui.modal='';render()});
+ await page.evaluate(()=>{const t=S.cases[ui.caseId].trial4;t.cards=[];save();ui.modal='';render()});   // no delay requests in the way of the end button
  const day0=await page.evaluate(()=>S.cases[ui.caseId].trial4.daysDone);
  await page.locator('.t4-dock [data-action="t4end"]').click();await page.waitForTimeout(200);
  assert.match(await page.locator('#modal-root').innerText(),/마칠까요/,'asks before ending');await shot('end-confirm');
