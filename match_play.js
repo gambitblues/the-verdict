@@ -81,7 +81,7 @@ function line(c,t,l){const tag=TAG[l.tag];return `<div class="mp-line ${l.who===
 function casePage(c,st,t,s){
  const ch=s.card.charge,cl=s.card.claim,m=t.match;
  const ppl=s.people.filter(p=>p.key!=='B'||isToken(p.name)||p.name).map(p=>{
-  const nm=fill(c,t,p.name),role=p.key==='A'?(crim(s)?'피고인':'원고'):p.key==='B'?(crim(s)?'피해자':'피고'):'증인 · '+p.role;
+  const nm=fill(c,t,p.name),role=p.key==='A'?(crim(s)?'피고인':'원고'):p.key==='B'?(crim(s)?(p.role&&p.role!=='피해자'?p.role:'피해자'):'피고'):'증인 · '+p.role;
   const info=[p.job&&p.job!=='—'?p.job:null,p.age?p.age+'세':null].filter(Boolean).join(' · ');
   return `<div class="t4-person"><b>${esc(nm)}</b><span class="t4-tag">${esc(role)}</span>${info?`<p class="small">${esc(info)}</p>`:''}${p.key!=='A'&&p.key!=='B'&&p.stake&&!/없음/.test(p.stake)?`<p class="small muted">${esc(fill(c,t,p.stake))}</p>`:''}</div>`}).join('');
  const law=['p','d'].map(k=>`<p><b>${esc(lawWord(s,k))} ${esc(m.law[k].name)}</b> — ${esc(M.TACTICS[m.law[k].tactic].desc)}</p>`).join('');
