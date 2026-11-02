@@ -322,12 +322,17 @@ function cardText(card,t,c){
  if(card.type==='objection'){
   const wn=wName(t,card.w),d=wDetail(c,card.w);
   let target,reason;
-  if(card.otype==='lead'&&card.valid){target=tell(c,t,d?.lead||'그렇게 하신 거죠?');reason=`질문에 이미 답이 들어 있습니다. 증인이 직접 겪은 일을 스스로 말하게 해야 합니다.`}
-  else if(card.otype==='hearsay'){target=`${wn}: "제가 직접 본 건 아니고, 그렇게 됐다고 다른 사람한테서 들었습니다"`;reason='증인은 직접 보거나 들은 것이 아니라 남에게 전해 들은 말을 옮기고 있습니다. 원래 말한 사람을 법정에 불러야 합니다.'}
-  else{const q=(d?.q||[]).find(x=>x.id===card.q);target=tell(c,t,q?.q||'그날 무엇을 보셨습니까?');
+  /* show what was asked and, where there was one, what the witness answered, so the judge can rule on the exchange */
+  let ask,answer=null;
+  if(card.otype==='lead'&&card.valid){ask=tell(c,t,d?.lead||'그렇게 하신 거죠?');reason=`질문에 이미 답이 들어 있습니다. 증인이 직접 겪은 일을 스스로 말하게 해야 합니다.`}
+  else if(card.otype==='hearsay'){const open=(d?.q||[]).filter(q=>!q.hidden&&q.side!=='n'),q=open.length?open[(T.hash(t.seed+':'+card.id)>>>5)%open.length]:null;
+   ask=tell(c,t,q?.q||'그날 무슨 일이 있었는지 말해 주세요.');answer='그 부분은 제가 직접 본 건 아니고, 그렇게 됐다고 다른 사람한테서 들었습니다.';
+   reason='증인은 직접 보거나 들은 것이 아니라 남에게 전해 들은 말을 옮기고 있습니다. 원래 말한 사람을 법정에 불러야 합니다.'}
+  else{const q=(d?.q||[]).find(x=>x.id===card.q);ask=tell(c,t,q?.q||'그날 무엇을 보셨습니까?');
    reason=card.otype==='lead'?'질문이 답을 정해 놓고 있습니다.':'이 질문은 사건과 관계가 없습니다.'}
+  target=`${asker}: "${ask}"`+(answer?`\n${wn}: "${answer}"`:'');
   return {title:`이의 제기 · ${OBJ[card.otype]}`,who:objector,
-   body:`${objector}가 ${asker}의 신문에 이의를 제기했습니다.`,target:`${asker} → 증인 ${wn}`,quote:target,reason,
+   body:`${objector}가 ${asker}의 신문에 이의를 제기했습니다.`,target:`${asker} → 증인 ${wn}`,quote:target,ask,answer,askBy:asker,wn,reason,
    choices:['이의 인용 — 질문을 거두고 답변은 기록에서 뺌','이의 기각 — 신문 계속']};
  }
  // delay
@@ -1003,7 +1008,7 @@ function cardBlock(card,t,c){
  if(card.type==='media')return `<div class="t4-event media"><b>📣 ${esc(x.title)}</b><p>${esc(x.body)}</p></div>`;
  const done=card.choice;
  return `<div class="t4-event ${done?'done':''}"><b>${card.type==='objection'?'✋':'⏳'} ${esc(x.title)}</b><p>${esc(x.body)}</p>
- ${x.target?`<p class="small"><b>대상</b> ${esc(x.target)}</p><blockquote class="t4-excerpt">${esc(x.quote)}</blockquote>`:''}
+ ${x.target?`<p class="small"><b>대상</b> ${esc(x.target)}</p><blockquote class="t4-excerpt">${x.ask?`<span class="t4-obj-line"><b>질문</b> ${esc(x.askBy)}: "${esc(x.ask)}"</span>${x.answer?`<span class="t4-obj-line"><b>답변</b> ${esc(x.wn)}: "${esc(x.answer)}"</span>`:'<span class="t4-obj-line muted small">증인이 답하기 전에 이의가 나왔습니다.</span>'}`:esc(x.quote)}</blockquote>`:''}
  <p class="small"><b>신청 이유</b> ${esc(x.reason)}</p>${x.opinion?`<p class="small"><b>상대방 의견</b> ${esc(x.opinion)}</p>`:''}
  ${done?`<p class="small">→ ${esc(done==='accept'?x.choices[0]:x.choices[1])}</p>`:`<div class="t4-stack"><button class="btn mini primary" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="accept">${esc(x.choices[0])}</button><button class="btn mini outline" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="reject">${esc(x.choices[1])}</button></div>`}</div>`;
 }
