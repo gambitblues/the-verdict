@@ -53,7 +53,7 @@ try{
  await click('f:f2');await click('f:f3');
  assert.equal(await page.evaluate(i=>S.cases[i].trial4.courtOrders.length,id),2);
  assert.equal(await page.locator('.t4-q.order').count(),0,'two orders per hearing');
- await page.locator('.t4-dock [data-action="t4end"]').click();await answer();
+ await page.locator('.t4-dock [data-action="t4end"]').click();await page.locator('#modal-root [data-action="t4end"][data-ok]').click();   /* v8.2.1: ending a session asks first */await answer();
  await page.evaluate(i=>{S.cases[i].trial4.nextAt=0;save();VerdictStore.flush()},id);
  await page.reload({waitUntil:'networkidle'});await boot();
  await page.evaluate(i=>{ui.tab='court';ui.caseId=i;render()},id);await page.locator('.t4-tabs').waitFor();await tab('day');
@@ -165,7 +165,7 @@ try{
    for(let k=0;k<2;k++){const q=page.locator('.t4-pager .t4-q:not([disabled]):not(.cf):not(.face):not(.order)').first();if(await q.count()){await q.dispatchEvent('click');await answer()}}
    await tab('orders');const sm=page.locator('.t4-orders-panel');
    if(await sm.count()){const o=page.locator('.t4-q.order').first();if(await o.count()){await o.dispatchEvent('click');await answer()}}
-   const end=page.locator('.t4-dock [data-action="t4end"]');if(!(await end.count()))break;await clear();await end.click();await answer();
+   const end=page.locator('.t4-dock [data-action="t4end"]');if(!(await end.count()))break;await clear();await end.click();await page.locator('#modal-root [data-action="t4end"][data-ok]').click();await answer();
    await page.evaluate(i=>{S.cases[i].trial4.nextAt=0;render()},id);maxHearing=Math.max(maxHearing,d+1);
   }
   const r=await page.evaluate(i=>{const t=S.cases[i].trial4;return {days:t.daysDone,orders:(t.courtOrders||[]).length}},id);

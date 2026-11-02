@@ -55,7 +55,7 @@ try{
   assert.ok(await page.locator('.t4-qa').count()>=1,'a witness answered');
   await tab('orders');if(d===0){await shot('orders');const ord=await page.locator('.t4-q.order').allTextContents();assert.ok(ord.some(t=>t.includes('로그')||t.includes('자료')||t.includes('기록')),'orders offer the sheet records');
    const o=page.locator('.t4-q.order').first();if(await o.count()){await o.dispatchEvent('click');await answer()}}
-  await page.locator('.t4-dock [data-action="t4end"]').click();await answer();
+  await page.locator('.t4-dock [data-action="t4end"]').click();await page.locator('#modal-root [data-action="t4end"][data-ok]').click();   /* v8.2.1: ending a session asks first */await answer();
   await page.evaluate(i=>{S.cases[i].trial4.nextAt=0;render()},id);
  }
  const txt=await page.evaluate(i=>JSON.stringify(S.cases[i].trial4.heard||[])+JSON.stringify(S.cases[i].trial4.evidence.map(e=>e.title)),id);assert.ok(!/\[object Object\]/.test(txt),'nothing unresolved in the trial record');

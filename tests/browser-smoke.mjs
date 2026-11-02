@@ -74,7 +74,7 @@ try{
   await tab('witness');
   const ask=page.locator('.t4-pager .t4-q:not([disabled])').first();if(await ask.count()){await ask.click();await answer()}   // v8.2: an objection can come up right at the question
   assert.ok(await page.locator('.t4-qa').count()>=1,'asked question and answer are shown');
-  await page.locator('.t4-dock [data-action="t4end"]').click();
+  await page.locator('.t4-dock [data-action="t4end"]').click();await page.locator('#modal-root [data-action="t4end"][data-ok]').click();   /* v8.2.1: ending a session asks first */
   await page.locator('#modal-root [data-action="dismiss"]').first().click();
   if(d<min-1)assert.match(await page.locator('.t4-wait.big b').textContent(),/제\d+회 (공판|변론기일) · \d+월 \d+일/,'waiting state should show the next session date');
   await page.evaluate(id=>{S.cases[id].trial4.nextAt=0;render()},cid);
