@@ -35,6 +35,11 @@ for(const file of files){
  if(c.kind==='criminal'){need(c.charge,['name','law','min','max'],'card.charge');if(c.charge&&!(c.charge.max>=c.charge.min))err('card.charge 형량 범위가 거꾸로')}
  if(c.kind==='civil'){need(c.claim,['amount','what'],'card.claim');if(!Array.isArray(c.claim?.fair)||c.claim.fair.length!==2||c.claim.fair[1]>c.claim.amount)err('card.claim.fair는 [최소, 최대]이고 최대 ≤ 청구액')}
  if(c.kind==='decision')need(c.decision,['what','yes','no'],'card.decision');
+ /* v8.2 optional fields (prepared; the game reads charge.death/both now, the rest later) */
+ if(c.charge&&c.charge.both!=null&&!['must','may'].includes(c.charge.both))err("card.charge.both는 'must' 또는 'may'");
+ for(const r of c.claim?.remedies||[])need(r,['kind','what'],'card.claim.remedies');
+ for(const q of s.questions||[]){need(q,['w','q','a'],'questions');if(q.a&&typeof q.a==='object')for(const t of ['did','didnt','reason'])if(!q.a[t])err(`questions ${q.q}: 세 세계 답(${t})이 없음`)}
+ for(const o of s.orders||[]){need(o,['id','issue','to','ask'],'orders');if(o.record&&!(s.records||[]).some(r=>r.id===o.record))err(`orders ${o.id}: 없는 자료 ${o.record}`)}
  // people, places, devices, records
  const P=new Map();for(const p of s.people||[]){need(p,['key','name','role','age'],'people');if(P.has(p.key))err('people 중복 key '+p.key);P.set(p.key,p)}
  for(const k of [c.accused,c.complainant])if(k&&!P.has(k))err(`card가 가리키는 인물 ${k} 없음`);

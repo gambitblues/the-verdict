@@ -1,7 +1,7 @@
 # THE VERDICT — 작업 인수인계 (새 세션은 이 파일부터 읽기)
 
 풋볼매니저식 법정 시뮬레이션 PWA. 바닐라 JS, 빌드 도구 없음. GitHub Pages(main)에서 서비스.
-**다음으로 `docs/HANDOFF.md`를 읽는다** — 게임 방향, 사건(세계 시트) 쓰는 법, 지금 어디까지 왔는지.
+**다음으로 `docs/HANDOFF.md`를 읽는다** — 게임 방향, 사건(세계 시트) 쓰는 법, 지금 어디까지 왔는지. 다음 업데이트 할 일은 `docs/BACKLOG.md`.
 구조는 `docs/ARCHITECTURE.md`, 버전별 변경은 `docs/CHANGELOG.md`, 배포 정책은 `docs/RELEASE_WORKFLOW.md`.
 
 ## 사용자(기획자)와 일하는 방식
@@ -60,7 +60,7 @@ node tests/career-hearing-events.test.cjs  # 40년 경력 성장 속도·공판 
 node tests/world-sheets.test.cjs   # 세계 시트(world-sheets/cases) 구조·세 세계 구별
 node tests/match-engine.test.cjs   # 매치 엔진: 세계 불변·거짓은 다른 세계 사실에서만·판마다 다른 재판
 node tests/build-sheets.cjs --check  # world_sheets.js가 시트와 같은지 (시트 고치면 node tests/build-sheets.cjs)
-ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/visuals.mjs; node tests/responsive.mjs; node tests/hearing-events.mjs; node tests/evidence-moments.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/match-play.mjs; node tests/long-career.mjs 40; rm node_modules
+ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/visuals.mjs; node tests/responsive.mjs; node tests/hearing-events.mjs; node tests/evidence-moments.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/match-play.mjs; node tests/verdict-v82.mjs; node tests/long-career.mjs 40; rm node_modules
 ```
 - `curated/*.js`를 고치면 `node tests/build-curated.cjs`로 `curated_cases.js`를 다시 만든다.
 - 화면을 바꾸면 Playwright로 390px 모바일 스크린샷을 찍어 직접 확인한다.
@@ -79,6 +79,7 @@ ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node test
 - v6.2 반영 끝: 재판장 주문(`trial_play.js` availableOrders/issueOrder/resolveOrders, 결과 규칙 `T.orderOutcome`). 사건 전용 주문은 집필 `detail.followUps`(issue·type·to·evidence/witness, 진실별 `have`·`none`)로 쓰고 지금은 대표 3건(냉동 창고·호텔·배수문)만 있다 — 다른 사건에 추가하면 `narrative-qa`가 구조를 검사. 기사·SNS는 재판 전 전망 / 선고 후 평가·비판. 새 게임은 두 슬롯·스냅숏까지 전부 삭제(계정 생기기 전까지).
 - v6.5 반영 끝: 60건 모두 후속 노드(`curated/follow1~11.js`, registry가 각 사건 `followUps`에 합침). 노드 필드: id·issue·type·to·day·after(heard 'w:q' / got·miss·done 노드 / contra 쟁점 / any·all)·ask·evidence(출처: by·when·how·caveat, 진실별 값)·witness·recall{w,q}·answer{p,d}·have/none. 결정형은 `now:true`(그 자리 질문). 5기일부터는 recall·explain만. 노드는 앞선 노드만 참조(QA 검사). 새 사건을 쓰면 노드 5개 이상 + recall·explain·3기일 이후 노드 + 거절/없음 뒤 miss 노드가 있어야 narrative-qa 통과.
 - v6.6 반영 끝: 증거 모양 11가지(`court_visuals.js` EV_TYPES, 순서가 중요), 증인 순간(`trial_play.js` momentOf → `VerdictVisuals.record(...,moment)`, 증인 `moments`). 갤러리 `qa-visuals/evidence-gallery.png`로 눈 검수.
-- v6.9 반영 끝: 기자 인터뷰(`world_feed.js` IQ/interviewStep → 기사·여론), 문자 문장 풀(TPL text 배열), 배석판사 의견(`v6_world.js` ADVICE/ADVICE2), 인물 학력 고증(`fitPeople`, EDU 표), '주문' 탭(기록 탭은 선고 뒤에만), 새 증거·증인 먼저(`orderOf`), 피고인·당사자 신문(`curated/party1~4.js` → 사건 `party`, `askParty`, 진술 거부 20%), 선고 때 남기는 말(`remarksFor`).
+- v6.9 반영 끝: 기자 인터뷰(`world_feed.js` IQ/interviewStep → 기사·여론), 문자 문장 풀(TPL text 배열), 배석판사 의견(`v6_world.js` ADVICE/ADVICE2), 인물 학력 고증(`fitPeople`, EDU 표), '주문' 탭(기록 탭은 선고 뒤에만), 새 증거·증인 먼저(`orderOf`), 피고인·당사자 신문(`curated/party1~4.js` → 사건 `party`, `askParty`, 진술 거부 20%). (선고 때 남기는 말은 v8.2에서 사용자 요청으로 뺐다.)
 - v7.0.x 반응형: 화면 구간 ≤599 / 600~1100(하단 메뉴 유지) / ≥1101(사이드바). 하단 메뉴·재판 버튼 줄·본문 여백은 `game.css` 맨 끝 v7.0.2 블록 한 곳(`--nav-total`)에서만 정한다. 숨은 화면 높이는 `viewport_fix.js`(`--vv-gap`, 키보드 `kb-open`, 홈 화면 실행 `app-mode`). 화면을 바꾸면 `tests/responsive.mjs`도 돌린다.
+- v8.2 반영 끝(사용자 확정): 이의는 신문 중에(유도·관련성은 답 전 / 남에게 들은 말은 답 뒤, `live` 카드), 증거능력(뺀 말은 기록·판단·판결문 어디에도 없음)과 신빙성(이의가 있었지만 남긴 말은 `weak`, 판단 무게 절반)을 나눔, 판결 창 5단계(결론·주문·이유·미리보기·선고), 징역 6개월 단위·집행유예 1~5년(3년 이하만)·벌금 사건별 단위와 직접 입력·병과(법이 정한 죄만, `penaltyOf`)·무기·**사형**(법정형에 있을 때), 배상액 100만 원 단위와 직접 입력, 판결 결과가 인물의 재산·사는 곳·직업에 반영(`st.sentenced` → `npc_life_justice.applySentenced`). 시트의 선택 칸 `questions`·`orders`·`claim.remedies`·`charge.orders`·`after`는 양식과 검사만 준비(게임 연결은 다음).
 - 다음 후보 아이디어: 기자와의 관계를 문자·인터뷰 외 이벤트로 확장, 서버·AI 연동 준비.
