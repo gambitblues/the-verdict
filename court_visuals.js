@@ -59,7 +59,10 @@ const lines=x=>String(x).split(/\s+\/\s+/).filter(Boolean);
 const timeSplit=l=>{const m=l.match(/^((?:[^\s]+ )?\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?|\d+:\d{2}\.\d+|\d{1,2}\/\d{1,2}|\d+년 ?\d*월?|(?:전날|당일|다음 날) \d{1,2}:\d{2})\s*(.*)$/);return m?[m[1],m[2]]:['',l]};
 function evBody(type,excerpt){
  const L=lines(excerpt),row=(cls,t,x)=>`<li class="${cls}">${t?`<time>${esc(t)}</time>`:''}<span>${esc(x)}</span></li>`;
- if(type==='message')return `<div class="cv-chat">${L.map((l,i)=>{const m=l.match(/^([^:：]{1,24})[:：]\s*(.+)$/);const [t,rest]=timeSplit(m?m[1]:'');return `<div class="cv-bubble ${i%2?'me':''}">${m?`<small>${esc(rest||m[1])}${t?' · '+esc(t):''}</small>`:''}<span>${esc(m?m[2]:l)}</span></div>`}).join('')}</div>`;
+ if(type==='message'){
+  /* labelled lines keep each speaker on one side (first speaker left, the rest right); unlabelled lines alternate */
+  const who=L.map(l=>{const m=l.match(/^([^:：]{1,24})[:：]\s*(.+)$/);return m?timeSplit(m[1])[1]||m[1]:null}),first=who.find(Boolean);
+  return `<div class="cv-chat">${L.map((l,i)=>{const m=l.match(/^([^:：]{1,24})[:：]\s*(.+)$/);const [t,rest]=timeSplit(m?m[1]:'');const right=first?(who[i]?who[i]!==first:false):i%2;return `<div class="cv-bubble ${right?'me':''}">${m?`<small>${esc(rest||m[1])}${t?' · '+esc(t):''}</small>`:''}<span>${esc(m?m[2]:l)}</span></div>`}).join('')}</div>`;}
  if(type==='call'||type==='log'||type==='money'||type==='video')return `<ul class="cv-rows">${L.map(l=>{const [t,x]=timeSplit(l);return row(/거부|실패|없음|중단|안 됨|OFF|불일치/.test(l)?'warn':'',t,x)}).join('')}</ul>`;
  if(type==='contract')return `<ol class="cv-clauses">${L.map(l=>`<li>${esc(l)}</li>`).join('')}</ol><div class="cv-sign" aria-hidden="true"><span>서명</span><i></i><b>印</b></div>`;
  if(type==='report')return `<div class="cv-findings"><span class="cv-findings-h">소견</span>${L.map(l=>`<p>${esc(l)}</p>`).join('')}</div>`;
@@ -71,7 +74,7 @@ function evidence(e,d,excerpt,when){
  if(!excerpt)return '';
  const [type,,label,foot]=evType(d?.kind,e.title);
  const stamp={use:'채택',conditional:'조건부 채택',exclude:'배제'}[e.decision];
- return `<div class="cv-evidence cv-${type}" data-ev-type="${type}"><div class="cv-evidence-top"><span>${esc(d?.kind||label)}${d?.by?' · '+esc(d.by):''}</span><span>${esc(when||'')}</span></div><div class="cv-paper"><span class="cv-kicker">EXHIBIT · ${esc(e.id)} · ${esc(label)}</span>${EV_MARK[type]||''}${(b=>b?b+`<blockquote class="t4-excerpt cv-plain">${esc(excerpt)}</blockquote>`:`<blockquote class="t4-excerpt">${esc(excerpt)}</blockquote>`)(evBody(type,excerpt))}${stamp?`<div class="cv-stamp ${e.decision}">${stamp}</div>`:''}</div><div class="cv-evidence-foot">${esc(foot)}<span aria-hidden="true">THE VERDICT</span></div></div>`;
+ return `<div class="cv-evidence cv-${type}" data-ev-type="${type}"><div class="cv-evidence-top"><span>${esc(d?.kind||label)}${d?.by?' · '+esc(d.by):''}</span><span>${esc(when||'')}</span></div><div class="cv-paper"><span class="cv-kicker">EXHIBIT${/^e\d+$/.test(e.id||'')?` · 증 제${Number(e.id.slice(1))+1}호`:''} · ${esc(label)}</span>${EV_MARK[type]||''}${(b=>b?b+`<blockquote class="t4-excerpt cv-plain">${esc(excerpt)}</blockquote>`:`<blockquote class="t4-excerpt">${esc(excerpt)}</blockquote>`)(evBody(type,excerpt))}${stamp?`<div class="cv-stamp ${e.decision}">${stamp}</div>`:''}</div><div class="cv-evidence-foot">${esc(foot)}<span aria-hidden="true">THE VERDICT</span></div></div>`;
 }
 /* Courtroom moments: what just happened at the witness stand, told apart at a glance.
  * `moment` comes from trial_play (it already knows whether a story changed); this layer only shows it. */

@@ -782,3 +782,20 @@ body.t4-court #toast{bottom:168px}
 .t4-direct input{width:110px;padding:7px 9px;border:1px solid #c9b48a;border-radius:9px;font-size:16px;text-align:right;background:#fffdf8}
 .t4-cite .t4-weak{color:#9a6b1c}
 .t4-cite.weak{border-style:dashed}
+/* v8.2.2 verdict window: tidy grids (label above, five even buttons with the value in the middle) */
+.t4-chip.mit.on{color:#1f5135}.t4-chip.agg.on{color:#7a2b1f}
+.t4-sheet .t4-step{display:grid;grid-template-columns:1fr 1fr minmax(92px,1.5fr) 1fr 1fr;gap:6px;align-items:center;margin:10px 0 4px}
+.t4-sheet .t4-step>span{grid-column:1/-1;font-size:12px;font-weight:700;color:#7b705c;min-width:0}
+.t4-sheet .t4-step>b{min-width:0;text-align:center;font-size:17px;white-space:nowrap}
+.t4-sheet .t4-step .t4-chip{width:100%;padding:9px 2px;font-size:12px;white-space:nowrap;text-align:center}
+.t4-sheet .t4-step>small{grid-column:1/-1}
+.t4-sheet .t4-direct{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin:4px 0 2px}
+.t4-sheet .t4-direct input{width:100%;min-width:0}
+.t4-sheet .t4-direct small{grid-column:1/-1}
+.t4-sheet .t4-types,.t4-sheet .t4-factors{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.t4-sheet .t4-types .t4-chip,.t4-sheet .t4-factors .t4-chip{width:100%;padding:10px 8px;text-align:center}
+.t4-sheet .t4-factors .t4-chip{text-align:left}
+.t4-sheet .t4-years{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.t4-sheet .t4-years .t4-chip{width:100%;padding:9px 0;text-align:center}
+@media (min-width:600px){.t4-sheet .t4-types{grid-template-columns:repeat(3,1fr)}}
+.t4-sheet .t4-factors .t4-chip{font-size:12.5px;padding:10px 10px;line-height:1.3}
