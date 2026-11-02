@@ -163,6 +163,7 @@ function skill(t,verdict){
    const fit=side===0.5?true:side===1?c.side!=='d':c.side!=='p';
    add('cite:'+i,fit?3:-3,fit?`판결 근거가 결론과 맞음: ${c.label}`:`결론과 반대 방향의 자료를 근거로 들었음: ${c.label}`);
   });
+  for(const x of verdict.extra||[])add(x.key,x.points,x.text);   // v8.3: orders beyond the sentence (remedies, ancillary orders)
   if(verdict.sentence){const s=verdict.sentence,lighter=s.value<s.lo,heavier=s.value>s.hi;
    if(!lighter&&!heavier)add('sentence',4,`${s.what}이 참고 범위 안에 있음`);
    else if((lighter&&s.mitig>0)||(heavier&&s.aggr>0))add('sentence',0,`${s.what}이 참고 범위를 벗어났지만 그 사유를 밝혔음`);

@@ -37,9 +37,15 @@ for(const file of files){
  if(c.kind==='decision')need(c.decision,['what','yes','no'],'card.decision');
  /* v8.2 optional fields (prepared; the game reads charge.death/both now, the rest later) */
  if(c.charge&&c.charge.both!=null&&!['must','may'].includes(c.charge.both))err("card.charge.both는 'must' 또는 'may'");
- for(const r of c.claim?.remedies||[])need(r,['kind','what'],'card.claim.remedies');
- for(const q of s.questions||[]){need(q,['w','q','a'],'questions');if(q.a&&typeof q.a==='object')for(const t of ['did','didnt','reason'])if(!q.a[t])err(`questions ${q.q}: 세 세계 답(${t})이 없음`)}
- for(const o of s.orders||[]){need(o,['id','issue','to','ask'],'orders');if(o.record&&!(s.records||[]).some(r=>r.id===o.record))err(`orders ${o.id}: 없는 자료 ${o.record}`)}
+ for(const r of c.claim?.remedies||[]){need(r,['id','kind','label','order'],'card.claim.remedies');if(r.fit)for(const t of ['did','didnt','reason'])if(typeof r.fit[t]!=='boolean')err(`remedies ${r.id}: fit.${t}는 true/false`)}
+ for(const a of c.charge?.orders||[]){need(a,['id','kind','label'],'card.charge.orders');if(!a.notice&&a.ok!==false&&!a.order)err(`charge.orders ${a.id}: 판결문 문장(order)이 없음`);
+  if(a.range&&!(a.range[0]<=a.range[1]))err(`charge.orders ${a.id}: range가 거꾸로`);if(a.ok===false&&!a.why)err(`charge.orders ${a.id}: 고를 수 없는 이유(why)가 없음`)}
+ for(const q of s.questions||[]){need(q,['w','q','a'],'questions');if(!(s.people||[]).some(p=>p.key===q.w))err(`questions ${q.q}: 없는 증인 ${q.w}`);
+  if(q.a&&typeof q.a==='object')for(const t of ['did','didnt','reason'])if(!q.a[t])err(`questions ${q.q}: 세 세계 답(${t})이 없음`);
+  if(q.after&&!/^W\d+:/.test(q.after)&&!(s.records||[]).some(r=>r.id===q.after&&!r.first))err(`questions ${q.q}: after는 주문으로 받는 자료(r-…) 또는 W2:<id>`)}
+ for(const o of s.orders||[]){need(o,['record','ask'],'orders');const r=(s.records||[]).find(x=>x.id===o.record);if(!r)err(`orders: 없는 자료 ${o.record}`);else if(r.first)err(`orders ${o.record}: 첫날 자료는 주문 대상이 아님`);
+  if(o.result)for(const t of ['did','didnt','reason'])if(!['done','partial','declined','none'].includes(o.result[t]))err(`orders ${o.record}: result.${t}는 done/partial/declined/none`)}
+ for(const k of ['A','B'])for(const x of ['yes','no','part'])if(s.after?.[k]?.[x]!=null&&typeof s.after[k][x]!=='string')err(`after.${k}.${x}는 문장`);
  // people, places, devices, records
  const P=new Map();for(const p of s.people||[]){need(p,['key','name','role','age'],'people');if(P.has(p.key))err('people 중복 key '+p.key);P.set(p.key,p)}
  for(const k of [c.accused,c.complainant])if(k&&!P.has(k))err(`card가 가리키는 인물 ${k} 없음`);
