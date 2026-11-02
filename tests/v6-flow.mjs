@@ -28,7 +28,7 @@ const useAll=async()=>{await tab('evidence');for(let k=0;k<3;k++){const u=page.l
 const verdict=async(first=true)=>{/* a trial where nothing was heard or used yet has nothing to cite: use the evidence first, as a player would */await page.evaluate(()=>{const t=S.cases[ui.caseId]?.trial4;if(t&&!t.heard.length&&!t.evidence.some(e=>e.decision==='use'))t.evidence.forEach(e=>e.decision='use')});await tab('verdict');await page.locator('[data-action="t4sheet"][data-v="open"]').click();await page.locator('.t4-verdict [data-action="t4verdict"]')[first?'first':'last']().click();for(let k=0;k<4&&!(await page.locator('.t4-sheet .t4-cite').count());k++)await page.locator('.t4-sheet-foot .btn.primary').click();if(await page.locator('.t4-sheet .t4-cite').count())await page.locator('.t4-sheet .t4-cite').first().click();for(let k=0;k<4&&!(await page.locator('.t4-verdict [data-action="t4confirm"]').count());k++)await page.locator('.t4-sheet-foot .btn.primary').click();await page.locator('.t4-verdict [data-action="t4confirm"]').click();await page.waitForTimeout(400);await answer()};
 const make=aid=>page.evaluate(a=>{const cand=CasePackEngine.pool(S).find(x=>x.a.id===a);const c=createGeneratedCase(cand);S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};c.week=S.week;save();return c.id},aid);
 const finishDays=async id=>{for(let d=0;d<6;d++){if(await page.evaluate(i=>{const t=S.cases[i].trial4;return t.daysDone>=t.minDays},id))break;await startSession();
- const end=page.locator('.t4-dock [data-action="t4end"]');if(await end.count()){await end.click();await answer()}await page.evaluate(i=>{S.cases[i].trial4.nextAt=0;render()},id)}};
+ const end=page.locator('.t4-dock [data-action="t4end"]');if(await end.count()){await end.click();await page.locator('#modal-root [data-action="t4end"][data-ok]').click();await answer()}await page.evaluate(i=>{S.cases[i].trial4.nextAt=0;render()},id)}};
 const results=[];const ok=m=>{results.push(m);console.log('  ✓ '+m)};
 try{
  await page.goto('http://127.0.0.1:'+server.address().port+'/',{waitUntil:'networkidle'});
@@ -46,7 +46,7 @@ try{
   const info=await page.evaluate(i=>{const c=CASES.find(x=>x.id===i),t=VerdictTrialPlay.ensure(c,S.cases[i]);return {min:t.minDays,labels:c.verdicts.map(v=>v.id)}},id);
   assert.equal(info.min,1,aid+': decision case must take one hearing');assert.deepEqual(info.labels,['full','dismiss'],aid+': decision has exactly two outcomes');
   if(aid==='v6-public-lottery-rank'){await startSession();await useAll();
-   await page.locator('.t4-dock [data-action="t4end"]').click();await answer();
+   await page.locator('.t4-dock [data-action="t4end"]').click();await page.locator('#modal-root [data-action="t4end"][data-ok]').click();   /* v8.2.1: ending a session asks first */await answer();
    assert.equal(await page.locator('.t4-dock [data-kind="open"]').count(),0,'no second hearing for a decision case');
    assert.ok(await page.locator('.t4-dock [data-tab="verdict"]').count()>=1,'decision case goes straight to the decision');
    await tab('verdict');assert.equal(await page.locator('.t4-step').count(),0,'no amount or sentence controls in a decision');

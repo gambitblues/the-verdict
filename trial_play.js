@@ -727,6 +727,17 @@ function askNotices(force){
  return askNotices(force);
 }
 
+/* Ending a session cannot be undone, so it asks first (v8.2.1): what is still left today, then 계속 / 마치기. */
+function confirmEnd(){
+ const x=current();if(!x||x.st.verdict)return;const {c,st}=x,t=ensure(c,st);
+ if(waiting(t)||!sessionOpen(t))return endDay();
+ if(t.cards.some(pend)){askRequests(true);return}
+ const undecided=t.evidence.filter(e=>!e.decision).length,heardToday=t.heard.filter(h=>h.day===t.day&&!h.tainted).length;
+ const left=[t.qLeft>0?`남은 신문 ${t.qLeft}번`:'',undecided?`아직 쓸지 정하지 않은 증거 ${undecided}건`:'',heardToday?'':'오늘 아직 아무 증언도 듣지 않았어요'].filter(Boolean);
+ modal(`${session(c,t.day)}을 마칠까요?`,`<p>한 번 마치면 오늘 공판으로 돌아올 수 없어요.${t.daysDone+1>=t.minDays?' 마치면 판결할 수 있어요.':' 다음 기일은 시간이 지나야 열려요.'}</p>
+  ${left.length?`<ul class="t4-end-left">${left.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}`,
+  `<div class="t4-stack"><button class="btn primary full" data-action="dismiss">계속 진행하기</button><button class="btn outline full" data-action="t4end" data-ok="1">${esc(session(c,t.day))} 마치기</button></div>`);
+}
 function endDay(){
  const x=current();if(!x||x.st.verdict)return;
  const {c,st}=x,t=ensure(c,st);
@@ -1387,9 +1398,9 @@ clicker=function(e){
  if(a==='t4hearing'&&el.dataset.id==='defendant_question'){e.preventDefault();const x=current();if(!x)return;ui.t4tab='witness';ui.partyOpen=x.c.id;render();document.querySelector('details.t4-party')?.scrollIntoView({block:'center'});return}
  if(a==='t4hearing'){e.preventDefault();const x=current();if(!x)return;try{const item=window.VerdictHearingEvents.apply(x.c,x.st,el.dataset.id,sessionOpen(x.st.trial4)&&!waiting(x.st.trial4),x.st.trial4?.seed||String(S.rng||0));save();render();toast('공판 기록에 반영했습니다.')}catch(err){toast(err.message)}return}
  if(a==='t4'){e.preventDefault();act(el.dataset.kind,el.dataset.id,el.dataset.choice);return}
- if(a==='t4end'){e.preventDefault();endDay();return}
+ if(a==='t4end'){e.preventDefault();if(el.dataset.ok){ui.modal=null;endDay()}else confirmEnd();return}
  if(a==='tab'&&el.dataset.tab==='court'&&el.closest('.bottom-nav,.nav-stack')){e.preventDefault();changeTab('courtList');return}
- if(a==='t4go'){e.preventDefault();const go=el.dataset.go;if(go==='requests'){askRequests(true);return}ui.modal=null;if(go==='end'){endDay();return}ui.t4tab=go;render();window.scrollTo({top:0,behavior:'instant'});return}
+ if(a==='t4go'){e.preventDefault();const go=el.dataset.go;if(go==='requests'){askRequests(true);return}ui.modal=null;if(go==='end'){confirmEnd();return}ui.t4tab=go;render();window.scrollTo({top:0,behavior:'instant'});return}
  if(a==='t4tab'){e.preventDefault();ui.t4tab=el.dataset.tab;
   /* '판결' after a session: straight into the verdict window, not just the tab */
   if(el.dataset.sheet){const x=current();if(x&&x.st.trial4&&x.st.trial4.daysDone>=x.st.trial4.minDays&&!x.st.verdict){ui.vsheet=x.c.id;ui.vstep=vstate(x.c).opt?(ui.vstep||0):0}}

@@ -112,6 +112,18 @@ try{
  const vb=page.locator('.t4-dock [data-tab="verdict"][data-sheet]');assert.ok(await vb.count(),'dock offers 판결');await vb.first().click();
  assert.ok(await page.locator('.t4-sheet').count(),'판결 opens the verdict window directly');
  console.log('  ✓ 판결 button opens the window');
+ // ---- E. ending a session asks first; 계속 진행하기 keeps the session open (v8.2.1)
+ id=await newCase('v6-violence-final-bout');await page.locator('.t4-tabs').waitFor();
+ await page.evaluate(()=>{ui.t4tab='day';ui.vsheet=null;render()});await page.locator('.t4-dock [data-kind="open"]').click();await page.waitForTimeout(300);
+ await page.evaluate(()=>{ui.modal='';render()});
+ const day0=await page.evaluate(()=>S.cases[ui.caseId].trial4.daysDone);
+ await page.locator('.t4-dock [data-action="t4end"]').click();await page.waitForTimeout(200);
+ assert.match(await page.locator('#modal-root').innerText(),/마칠까요/,'asks before ending');await shot('end-confirm');
+ await page.locator('#modal-root [data-action="dismiss"]').first().click();await page.waitForTimeout(200);
+ assert.equal(await page.evaluate(()=>S.cases[ui.caseId].trial4.daysDone),day0,'계속 진행하기 keeps the session');
+ await page.locator('.t4-dock [data-action="t4end"]').click();await page.locator('#modal-root [data-action="t4end"][data-ok]').click();await page.waitForTimeout(200);
+ assert.equal(await page.evaluate(()=>S.cases[ui.caseId].trial4.daysDone),day0+1,'마치기 ends it');
+ console.log('  ✓ ending a session asks first');
  assert.deepEqual(errs,[]);
  console.log('PASS: v8.2 courtroom and verdict');
 }catch(e){console.error(e);console.error('page errors',errs);process.exitCode=1}

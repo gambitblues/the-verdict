@@ -66,7 +66,7 @@ try{
   for(let d=0;d<min+1;d++){
    if(await page.evaluate(id=>S.cases[id].trial4.daysDone>=S.cases[id].trial4.minDays,inProgress))break;
    await tab('day');const ob=page.locator('.t4-dock [data-kind="open"]');if(await ob.count())await ob.click();await answer();
-   const end=page.locator('.t4-dock [data-action="t4end"]');if(await end.count()){await end.click();await answer()}
+   const end=page.locator('.t4-dock [data-action="t4end"]');if(await end.count()){await end.click();await page.locator('#modal-root [data-action="t4end"][data-ok]').click();await answer()}
    await page.evaluate(id=>{S.cases[id].trial4.nextAt=0;render()},inProgress);
   }
   await tab('verdict');await page.locator('[data-action="t4sheet"][data-v="open"]').click();await page.locator('.t4-verdict [data-action="t4verdict"]').first().click();for(let k=0;k<4&&!(await page.locator('.t4-sheet .t4-cite').count());k++)await page.locator('.t4-sheet-foot .btn.primary').click();if(await page.locator('.t4-sheet .t4-cite').count())await page.locator('.t4-sheet .t4-cite').first().click();for(let k=0;k<4&&!(await page.locator('.t4-verdict [data-action="t4confirm"]').count());k++)await page.locator('.t4-sheet-foot .btn.primary').click();await page.locator('.t4-verdict [data-action="t4confirm"]').click();await page.waitForTimeout(500);await answer();
