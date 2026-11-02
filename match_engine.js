@@ -180,7 +180,9 @@ function lawyerMove(sheet,st,side,k){
  const target=Object.values(st.witnesses).find(w=>w.said.open&&w.m<=11&&w.stance==='honest'&&!w.shaken&&(w.leans!==(side==='p'?sheet.card.complainant:sheet.card.accused)));
  if(target&&(L.tactic==='press'||roll(k+'pr')<=6)&&L.exam+roll(k+'x',8)>target.m+8){target.shaken=true;target.cred-=1;
   push(st,who,`${name(sheet,target.key)} 증인, 그 시각을 시계로 직접 확인했습니까?`);push(st,name(sheet,target.key),'…시계를 본 건 아닙니다. 그쯤이었다고 생각합니다.','흔들림');return}
- push(st,who,pick(side==='p'?['지금까지 드러난 자료로 공소사실은 충분히 뒷받침됩니다.','피해의 결과와 피고인의 행동 사이를 다음 기일에 더 밝히겠습니다.']:['검찰의 주장은 추측을 사실처럼 말하고 있습니다.','아직 그 순간을 직접 보여 주는 자료는 하나도 없습니다.'],k+'idle'));
+ const crimCase=sheet.card.kind==='criminal';
+ push(st,who,pick(side==='p'?(crimCase?['지금까지 드러난 자료로 공소사실은 충분히 뒷받침됩니다.','피해의 결과와 피고인의 행동 사이를 다음 기일에 더 밝히겠습니다.']:['지금까지 나온 자료로 원고의 주장은 충분히 드러났습니다.','피고가 말하는 사정은 기록 어디에도 없습니다.'])
+  :(crimCase?['검찰의 주장은 추측을 사실처럼 말하고 있습니다.','아직 그 순간을 직접 보여 주는 자료는 하나도 없습니다.']:['원고의 주장은 서운한 마음을 사실처럼 말하고 있습니다.','그 일이 그렇게 일어났다는 것을 보여 주는 자료는 아직 없습니다.']),k+'idle'));
 }
 
 /* ---------- verdict: graded on what the court saw ---------- */
