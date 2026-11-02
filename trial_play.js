@@ -282,7 +282,10 @@ const sessionOpen=t=>t?.dates?.[t.day]!=null;
 const dateOf=t=>t.dates?.[t.day]??Math.max(t.nextDate||0,today());
 /* Decision cases (curated `decision`): one hearing, then a yes/no decision with no money. */
 const isDecision=c=>!!curOf(c)?.decision;
-function decisionVerdicts(c){const d=curOf(c)?.decision;if(!d)return;c.verdicts=[{id:'full',label:tell(c,null,d.yes),note:tell(c,null,d.yesNote)},{id:'dismiss',label:tell(c,null,d.no),note:tell(c,null,d.noNote)}]}
+/* v8.4: a sheet whose 'reason' world convicts of part of the charge must let the judge say so */
+function partialOption(c){if(!curOf(c)?.partial||!Array.isArray(c.verdicts)||c.verdicts.some(o=>o.id==='partial'))return;
+ const i=c.verdicts.findIndex(o=>T.direction(o,c.kind)==='acquit');c.verdicts.splice(i<0?c.verdicts.length:i,0,{id:'partial',label:'일부만 유죄',note:'증거로 보여준 부분만 인정한다'})}
+function decisionVerdicts(c){partialOption(c);const d=curOf(c)?.decision;if(!d)return;c.verdicts=[{id:'full',label:tell(c,null,d.yes),note:tell(c,null,d.yesNote)},{id:'dismiss',label:tell(c,null,d.no),note:tell(c,null,d.noNote)}]}
 const session=(c,n)=>isCriminal(c)?`제${n}회 공판`:isDecision(c)?`제${n}회 심리기일`:`제${n}회 변론기일`;
 const clock=ms=>new Date(ms).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
 // 재판일 1은 / 재판일 2는: particle after a spoken Korean number
@@ -1264,6 +1267,7 @@ function dayPage(c,st){
 }
 function verdictPage(c,st){
  const t=st.trial4,canVerdict=t.daysDone>=t.minDays,cur=curOf(c),v=vstate(c),crim=isCriminal(c);
+ partialOption(c);
  const opt=c.verdicts.find(o=>o.id===v.opt),dir=opt&&T.direction(opt,c.kind),sp=opt&&sentenceSpec(c,dir);
  const closing=cur?`<div class="t4-closing"><b>${esc(sideWord(c,'p'))} 최종 ${crim?'논고':'변론'}</b><p>"${esc(tell(c,t,cur.closing))}"</p>${crim?`<p class="small">구형: <b>${esc(demandText(c))}</b></p>`:(cur.decision?`<p class="small">신청: <b>${esc(tell(c,t,cur.decision.what))}</b></p>`:`<p class="small">청구: <b>${won(cur.claim?.amount||0)}</b> · ${esc(cur.claim?.what||'')}</p>`)}</div>
   <div class="t4-closing d"><b>${esc(sideWord(c,'d'))} 최종 변론</b><p>"${esc(tell(c,t,cur.claims?.[1]||''))}"</p></div>`:'';
