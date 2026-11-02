@@ -324,16 +324,18 @@ function cardText(card,t,c){
   let target,reason;
   /* show what was asked and, where there was one, what the witness answered, so the judge can rule on the exchange */
   let ask,answer=null;
-  if(card.otype==='lead'&&card.valid){ask=tell(c,t,d?.lead||'그렇게 하신 거죠?');reason=`질문에 이미 답이 들어 있습니다. 증인이 직접 겪은 일을 스스로 말하게 해야 합니다.`}
+  if(card.otype==='lead'&&card.valid){ask=tell(c,t,d?.lead||'그렇게 하신 거죠?');answer='네, 그렇습니다. 그랬던 것 같아요.';reason=`질문에 이미 답이 들어 있습니다. 증인이 직접 겪은 일을 스스로 말하게 해야 합니다.`}
   else if(card.otype==='hearsay'){const open=(d?.q||[]).filter(q=>!q.hidden&&q.side!=='n'),q=open.length?open[(T.hash(t.seed+':'+card.id)>>>5)%open.length]:null;
    ask=tell(c,t,q?.q||'그날 무슨 일이 있었는지 말해 주세요.');answer='그 부분은 제가 직접 본 건 아니고, 그렇게 됐다고 다른 사람한테서 들었습니다.';
    reason='증인은 직접 보거나 들은 것이 아니라 남에게 전해 들은 말을 옮기고 있습니다. 원래 말한 사람을 법정에 불러야 합니다.'}
-  else{const q=(d?.q||[]).find(x=>x.id===card.q);ask=tell(c,t,q?.q||'그날 무엇을 보셨습니까?');
+  else{const q=(d?.q||[]).find(x=>x.id===card.q);ask=tell(c,t,q?.q||'그날 무엇을 보셨습니까?');if(q&&t.witnesses[card.w])answer=answerOf(c,t,card.w,q).text;
    reason=card.otype==='lead'?'질문이 답을 정해 놓고 있습니다.':'이 질문은 사건과 관계가 없습니다.'}
   target=`${asker}: "${ask}"`+(answer?`\n${wn}: "${answer}"`:'');
   return {title:`이의 제기 · ${OBJ[card.otype]}`,who:objector,
    body:`${objector}가 ${asker}의 신문에 이의를 제기했습니다.`,target:`${asker} → 증인 ${wn}`,quote:target,ask,answer,askBy:asker,wn,reason,
-   choices:['이의 인용 — 질문을 거두고 답변은 기록에서 뺌','이의 기각 — 신문 계속']};
+   /* plain words: what each choice does to this question and answer */
+   choices:answer?['이의를 받아들임 — 이 질문과 답은 판단에서 뺌','이의를 받아들이지 않음 — 이 답을 기록에 남김']
+    :['이의를 받아들임 — 이 질문은 더 할 수 없음','이의를 받아들이지 않음 — 이 질문을 계속할 수 있음']};
  }
  // delay
  const late=curOf(c)?.late,fromP=card.by==='p',who=fromP?(crim?`${prosName(c)} 검사`:'원고 대리인'):objector;
@@ -623,14 +625,21 @@ function act(kind,id,choice){
     say=`⏳ 연기를 허가했어요 · 다음 기일이 늦게 열려요(현실 시간 20분 추가)`;}
    else say='⏳ 연기 신청을 기각했어요 · 예정대로 진행해요';
   }else{
-   const wn=wName(t,card.w);
+   const wn=wName(t,card.w),xt=cardText(card,t,c);
+   /* the exchange stays visible on the witness: kept or struck. An ordinary question (unsound objection types) that the
+    * judge lets stand becomes normal testimony instead, as if asked from the bench, without using the judge's questions */
+   const plain=card.otype==='relevance'||(card.otype==='lead'&&!card.valid),w=t.witnesses[card.w];
+   if(xt.answer&&w&&!(plain&&choice!=='accept')){w.objections??=[];w.objections.push({id:card.id,ask:xt.ask,answer:xt.answer,by:xt.askBy,kind:OBJ[card.otype],kept:choice!=='accept',day:t.day})}
+   if(plain&&choice!=='accept'&&w&&card.q&&!w.askedIds.includes(card.q)){const q=questionsOf(c,t,card.w).find(v=>v.id===card.q);
+    if(q){w.askedIds.push(q.id);const a=answerOf(c,t,card.w,q);t.heard.push({w:card.w,q:q.id,side:a.side,issue:q.issue,day:t.day});for(const n of q.next||[])if(!w.opened.includes(n))w.opened.push(n);
+     addLog(t,'증언',`${wn} — 문: ${tell(c,t,q.q)} / 답: "${a.text}"`)}}
    if(choice==='accept'){
-    if(card.otype==='relevance'||(card.otype==='lead'&&!card.valid)){if(card.q){const w=t.witnesses[card.w];w.blocked??=[];if(!w.blocked.includes(card.q))w.blocked.push(card.q)}say=`✋ 이의를 받아들였어요 · 증인 ${wn}에게 그 질문은 더 할 수 없어요`}
+    if(plain){if(card.q&&w){w.blocked??=[];if(!w.blocked.includes(card.q))w.blocked.push(card.q)}say=`✋ 이의를 받아들였어요 · 그 답은 판단에서 빠졌고, 증인 ${wn}에게 그 질문은 더 할 수 없어요`}
     else say=`✋ 이의를 받아들였어요 · 그 답변은 판단 자료에서 빠졌어요`;
    }else{
-    if(card.valid){t.heard.push({w:card.w,q:'obj:'+card.id,side:'p',issue:(wDetail(c,card.w)?.q||[])[0]?.issue||issuesOf(c)[0]?.id,day:t.day,tainted:true,label:card.otype==='lead'?'유도신문에 대한 답':'전해 들은 말'});
-     say=`✋ 이의를 기각했어요 · ${card.otype==='lead'?'유도된 답변':'전해 들은 말'}이 기록에 남았어요`}
-    else say='✋ 이의를 기각했어요 · 신문을 계속해요';
+    if(xt.answer&&!plain){t.heard.push({w:card.w,q:'obj:'+card.id,side:'p',issue:(wDetail(c,card.w)?.q||[])[0]?.issue||issuesOf(c)[0]?.id,day:t.day,tainted:true,label:card.otype==='lead'?'유도신문에 대한 답':'전해 들은 말',ask:xt.ask,said:xt.answer});
+     say=`✋ 이의를 받아들이지 않았어요 · ${card.otype==='lead'?'유도된 답':'전해 들은 말'}이 기록에 남았어요 (증인 탭·판결 이유에서 볼 수 있어요)`}
+    else say=`✋ 이의를 받아들이지 않았어요 · ${wn}의 답이 증언으로 기록에 남았어요`;
    }
   }
   addLog(t,card.type==='objection'?'이의':'연기',`${cardText(card,t,c).title}: ${choice==='accept'?'받아들임':'기각'}`);
@@ -804,7 +813,7 @@ function citables(c,t){
  t.evidence.forEach(e=>{if(e.decision!=='use'&&e.decision!=='conditional')return;const d=evDetail(c,e);
   out.push({key:'e:'+e.id,label:e.title,text:e.scope||'',side:d?.side==='p'||d?.side==='d'?d.side:'n',issue:d?.issue,illegal:e.flawType==='illegal',kind:'evidence'})});
  t.heard.forEach((h,i)=>{if(h.struck||h.silent)return;
-  if(h.tainted){out.push({key:'h:'+i,label:`${wName(t,h.w)} — ${h.label}`,text:'',side:'p',issue:h.issue,struck:true,kind:'testimony'});return}
+  if(h.tainted){out.push({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label} (이의가 있었던 말)`,text:h.said||'',side:'p',issue:h.issue,struck:true,kind:'testimony',name:wName(t,h.w)});return}
   if(h.text){out.push({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label||'증언'}`,text:h.text,side:h.side==='m'?'n':h.side,issue:h.issue,kind:'testimony',name:wName(t,h.w)});return}
   const q=qById(c,t,h.w,h.q);if(!q)return;const a=answerOf(c,t,h.w,q);
   out.push({key:'h:'+i,label:`${wName(t,h.w)}의 증언`,text:a.text,side:h.side==='m'?'n':h.side,issue:h.issue,kind:'testimony',name:wName(t,h.w)})});
@@ -859,7 +868,7 @@ function finish(c,st,t,opt,dir,res,judgment,sentText){
 /* The written judgment: what happened, what it rests on, each issue, and the sentence. Only cited material is quoted. */
 function writeJudgment(c,t,opt,dir,cites,sp,sent,fs){
  const crim=isCriminal(c),side=T.sideOf(dir),who=crim?'피고인':'피고',accuser=crim?'검사':'원고';
- const line=i=>i.kind==='evidence'?`${i.label}에 따르면 ${i.text.replace(/[.。]$/,'')}.`:i.struck?`${i.label}이 기록에 남아 있다.`:`${P(i.name,'은')} "${i.text}"라고 진술했다.`;
+ const line=i=>i.kind==='evidence'?`${i.label}에 따르면 ${i.text.replace(/[.。]$/,'')}.`:i.struck?(i.text?`${P(i.name,'은')} "${i.text}"라고 말했으나, 이 말에는 이의가 있었다.`:`${i.label}이 기록에 남아 있다.`):`${P(i.name,'은')} "${i.text}"라고 진술했다.`;
  const dec=curOf(c)?.decision;
  const order=dec?tell(c,null,side>0?dec.yesOrder:dec.noOrder):side<=0?(crim?'피고인은 무죄.':'원고의 청구를 기각한다.'):(sent?.order||(crim?'피고인을 유죄로 인정한다.':'원고의 청구를 인용한다.'));
  const facts=side===1?[`재판부는 다음 사실을 인정한다.`,...cites.map(line)]:side===0.5?[`재판부는 ${accuser}의 주장 중 증명된 부분만 인정한다.`,...cites.map(line)]
@@ -994,7 +1003,8 @@ function witnessCard(w,t,locked,c){
   return `<div class="t4-qa ${back?'struck':''}"><p class="q">문. ${esc(tell(c,t,q.q))}</p><p class="a">답. "${esc(a.text)}"</p>${back?'<small>⤺ 나중에 거둬들인 말</small>':''}</div>`}).join('');
  const left=qs.filter(q=>!asked.includes(q.id)&&!blocked.includes(q.id));
  const can=!locked&&t.qLeft>0;
- const extra=t.heard.filter(h=>h.w===i&&h.text).map(h=>`<div class="t4-qa v6"><p class="q">${String(h.q).startsWith('face:')?'⚖ 대질':'📁 증거를 보여 줌'}</p><p class="a">"${esc(h.text)}"</p><small>${esc(h.label||'')}</small></div>`).join('');
+ const objs=(w.objections||[]).map(o=>`<div class="t4-qa ${o.kept?'':'struck'}"><p class="q">✋ 이의 (${esc(o.kind)}) · 문. ${esc(o.ask)}</p><p class="a">답. "${esc(o.answer)}"</p><small>${o.kept?'이의를 받아들이지 않아 기록에 남은 말 · 믿을 만한 정도는 낮아요':'이의를 받아들여 판단에서 뺀 말'}</small></div>`).join('');
+ const extra=objs+t.heard.filter(h=>h.w===i&&h.text).map(h=>`<div class="t4-qa v6"><p class="q">${String(h.q).startsWith('face:')?'⚖ 대질':'📁 증거를 보여 줌'}</p><p class="a">"${esc(h.text)}"</p><small>${esc(h.label||'')}</small></div>`).join('');
  const cf=locked?[]:conflicts(c,t,i);
  const confrontBox=cf.length?`<div class="t4-confront"><p class="t4-ask-head">⚠ 이 증인의 말과 어긋나는 증거 <small>· 보여 주며 물으면 신문 1번</small></p>${cf.map(e=>`<button class="t4-q cf" data-action="t4" data-kind="confront" data-id="${i}" data-choice="${esc(e.id)}" ${can?'':'disabled'}>📁 ${esc(P(e.title,'을'))} 보여 주며 묻기</button>`).join('')}</div>`:'';
  return `<article class="t4-card">${window.VerdictVisuals?.witness(w,p,asked.length)||`<header><button class="t4-name" data-action="npc" data-id="${esc(w.id)}">👤 ${esc(p?.name||'증인')}</button><span class="t4-tag">${esc(w.role)}</span></header>`}
@@ -1008,7 +1018,7 @@ function cardBlock(card,t,c){
  if(card.type==='media')return `<div class="t4-event media"><b>📣 ${esc(x.title)}</b><p>${esc(x.body)}</p></div>`;
  const done=card.choice;
  return `<div class="t4-event ${done?'done':''}"><b>${card.type==='objection'?'✋':'⏳'} ${esc(x.title)}</b><p>${esc(x.body)}</p>
- ${x.target?`<p class="small"><b>대상</b> ${esc(x.target)}</p><blockquote class="t4-excerpt">${x.ask?`<span class="t4-obj-line"><b>질문</b> ${esc(x.askBy)}: "${esc(x.ask)}"</span>${x.answer?`<span class="t4-obj-line"><b>답변</b> ${esc(x.wn)}: "${esc(x.answer)}"</span>`:'<span class="t4-obj-line muted small">증인이 답하기 전에 이의가 나왔습니다.</span>'}`:esc(x.quote)}</blockquote>`:''}
+ ${x.target?`<p class="small"><b>대상</b> ${esc(x.target)}</p><blockquote class="t4-excerpt">${x.ask?`<span class="t4-obj-line"><b>질문</b> ${esc(x.askBy)}: "${esc(x.ask)}"</span>${x.answer?`<span class="t4-obj-line"><b>답변</b> ${esc(x.wn)}: "${esc(x.answer)}"</span>`:'<span class="t4-obj-line muted small">증인이 답하기 전에 이의가 나왔습니다. 받아들이지 않으면 증인 탭에서 이 질문을 할 수 있어요.</span>'}`:esc(x.quote)}</blockquote>`:''}
  <p class="small"><b>신청 이유</b> ${esc(x.reason)}</p>${x.opinion?`<p class="small"><b>상대방 의견</b> ${esc(x.opinion)}</p>`:''}
  ${done?`<p class="small">→ ${esc(done==='accept'?x.choices[0]:x.choices[1])}</p>`:`<div class="t4-stack"><button class="btn mini primary" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="accept">${esc(x.choices[0])}</button><button class="btn mini outline" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="reject">${esc(x.choices[1])}</button></div>`}</div>`;
 }
