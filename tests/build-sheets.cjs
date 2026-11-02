@@ -46,7 +46,8 @@ for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.json')).sort()){
  const s=JSON.parse(fs.readFileSync(path.join(dir,f),'utf8'));
  if(!['review','ready'].includes(s.status))continue;
  const g=tokenize(s);delete g.source;delete g.traps;delete g.screen;delete g.open;
- sheets[g.id]=g;
+ /* a written case keeps its own text in the game; only its undisputed facts come from the sheet */
+ sheets[g.id]=curatedIds.has(g.id)?{format:g.format,id:g.id,status:g.status,written:true,card:{kind:g.card.kind,title:g.card.title},common:g.common}:g;
  if(!curatedIds.has(g.id))pack.archetypes.push(archetype(g));
 }
 const n=pack.archetypes.length;pack.version=`1.${n}.${Object.keys(sheets).length}`;

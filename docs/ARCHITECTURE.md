@@ -120,7 +120,15 @@
 - 표시만 담당한다. 진실·결함·성향·점수를 읽지 않고, 세이브에 아무것도 쓰지 않는다. 초상화는 NPC id로 정해진다.
 - 법정 전경(접기/펼치기), 증인석, 증거 문서 모양(문서·대화·영상·녹음·감정), 짧은 법정 알림. `trial_play.js`는 `window.VerdictVisuals`가 있으면 쓰고 없으면 글로만 보여 준다. 검사는 `tests/visuals.mjs`.
 
-## v8: 매치 엔진 재판 (`match_engine.js` · `world_sheets.js` · `match_play.js`)
+## v8.1: 세계 시트 사건 (`world_sheets.js` · `match_play.js`)
+
+- 재판 화면과 진행은 모든 사건이 같다: `trial_play.js`의 6개 메뉴. 새 사건 데이터는 화면을 바꾸지 않는다.
+- `world_sheets.js`: review·ready 시트(빌드 `node tests/build-sheets.cjs`). 집필 60건에 해당하는 시트는 사건 화면의 다툼 없는 사실(`common`)만 싣는다.
+- `match_play.js` `toCurated(sheet)`: 시트 → 집필 사건 모양. 증거 3건(첫날 자료, 세계마다 다르면 진실별 값), 주문 노드(나머지 자료, 진실별 원문과 쪽), 증인(시트 인물, 질문 3개: 본 것·시각과 순서·관계, 답은 진실별), 피고인 신문(시트의 knows), 쟁점 2개, 진실·양측 주장·인물 고증. `trial_play.js`의 `tell`은 진실별 값({did, didnt, reason})을 잠긴 진실로 고른다.
+- 시트만 있는 사건은 `VerdictCurated.cases`와 사건팩 `world-sheets-v1`로 배당 풀에 들어간다.
+- v8.0 매치 화면 재판(`trial4.match`, 선고 전)은 `reset`으로 지우고 기존 법정에서 다시 만든다.
+
+## (v8.0 기록) 매치 엔진 재판 — v8.1부터 게임에 연결하지 않음 (`match_engine.js` · `world_sheets.js` · `match_play.js`)
 
 - `world_sheets.js`: `world-sheets/cases/*.json` 중 review·ready만 담은 빌드 산출물(`node tests/build-sheets.cjs`). 사람 이름은 `{A}`·`{W1}` 자리표로 바꾼다. 집필 60건에 없는 시트는 사건팩 `world-sheets-v1` 원형으로 함께 싣는다.
 - `match_play.js`: 사건팩 풀 확장(`CasePackEngine.pool`), 당사자 성별·나이·직업을 시트에 맞춤(`fixParties`), 증인을 시트 인물로 만듦(`witnesses`), 새 재판에 엔진 상태를 붙임(`attach` → `trial4.match`), 법정 화면 탭(사건·공판·자료·기록·판결)과 하단 버튼 줄, 공판 마치기(`endDay`)·다음 공판 열 때 양측 움직임과 주문 결과(`onOpen` → `VerdictMatch.endDay`), 판결(결론·형 → `trial_play.finish`).
