@@ -14,6 +14,7 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import {courtUI} from './lib/court-ui.mjs';
 const base=process.cwd(),SEEDS=Number(process.env.SEEDS||30);
 const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
 const server=http.createServer(async(q,r)=>{const f=path.resolve(base,'.'+decodeURI(q.url.split('?')[0]).replace(/\/$/,'/index.html'));if(!f.startsWith(base)){r.writeHead(403);return r.end()}try{const c=await readFile(f);r.writeHead(200,{'content-type':mime[path.extname(f)]||'application/octet-stream'});r.end(c)}catch{r.writeHead(404);r.end('')}});
@@ -23,17 +24,15 @@ const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:390,height:844}});
 await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
 const errs=[];page.on('pageerror',e=>errs.push(e.message));
-const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(100);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().click();continue}const v=page.locator('#modal-root [data-action="v6dept"]');if(await v.count()){await v.first().dispatchEvent('click');continue} /* personnel season: pick a department */const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}};
-// anything else that pops up during a long simulated career (season choices, notices): close it the way a player would
-const clear=async()=>{await answer();if(await page.locator('#modal-root .modal-veil').count()){const b=page.locator('#modal-root .modal-actions button').last();if(await b.count())await b.dispatchEvent('click');await page.evaluate(()=>{if(ui.modal){ui.modal='';render()}})}};
-const tab=async id=>{await clear();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer()};
-const boot=async()=>{await page.locator('#verdict-entry').waitFor();await page.locator('#profile-continue').click();await page.waitForFunction(()=>typeof S!=='undefined'&&S.name,null,{timeout:30000})};
+// popups by kind and waits on game state (tests/lib/court-ui.mjs); nothing clears a popup by force
+const U=courtUI(page),answer=()=>U.settle(),tab=U.tab;
+const boot=async()=>{await page.locator('#verdict-entry').waitFor();await page.locator('#profile-continue').click();await page.waitForFunction(()=>typeof S!=='undefined'&&S.name,null,{timeout:30000});await page.evaluate(()=>VerdictCurated.loadAll())};
 try{
  await page.goto(url,{waitUntil:'networkidle'});
  await page.locator('#profile-continue').click();await page.locator('#playerName').fill('주문 검증');
  await page.locator('[data-action="start"]').last().click();
  await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});
- await page.waitForFunction(()=>(S.casePacks||[]).some(p=>p.packId==='v6-new-30'),null,{timeout:10000});
+ await page.waitForFunction(()=>(S.casePacks||[]).some(p=>p.packId==='v6-new-30'),null,{timeout:10000});await page.evaluate(()=>VerdictCurated.loadAll());   // engine-level checks read every case at once; the game itself fetches one case at a time
  // the court tab lists the trials in progress under the assignment box (v6.5.1: a summary-line change had hidden it)
  await page.evaluate(()=>{ui.tab='courtList';ui.caseId=null;render()});
  assert.equal(await page.locator('.case-list > *').count(),await page.evaluate(()=>openCases().length),'court tab must list every open trial');
@@ -43,22 +42,22 @@ try{
  const id=await page.evaluate(()=>{for(const c of S.generatedCases)S.cases[c.id].referred=true;const cand=CasePackEngine.pool(S).find(x=>x.a.id==='v6-homicide-cold-storage');const c=createGeneratedCase(cand);S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};c.week=S.week;ui.tab='court';ui.caseId=c.id;save();render();return c.id});
  await page.locator('.t4-tabs').waitFor();await tab('day');
  assert.equal(await page.locator('.t4-orders-panel').count(),0,'no orders before the hearing opens');
- await page.locator('.t4-dock [data-kind="open"]').click();await answer();
+ await U.openSession();
  assert.ok(await page.locator('.t4-orders-hint.is-open').count(),'the hearing page points to the orders');
  await tab('orders');assert.ok(await page.locator('.t4-orders-panel.is-open').count(),'orders tab shows the open orders panel');
  const offered=await page.locator('.t4-q.order').allTextContents();
  assert.ok(offered.length>=3,'orders are offered');assert.ok(offered.some(t=>t.includes('검찰 · 자료 제출')),'records order to the prosecution');
  assert.ok(offered.every(t=>/쟁점 ·/.test(t)),'every order names its issue');
- const click=async key=>{await page.locator(`.t4-q.order[data-id="${key}"]`).dispatchEvent('click');await answer()};
+ const click=key=>U.order(page.locator(`.t4-q.order[data-id="${key}"]`));
  await click('f:f2');await click('f:f3');
  assert.equal(await page.evaluate(i=>S.cases[i].trial4.courtOrders.length,id),2);
  assert.equal(await page.locator('.t4-q.order').count(),0,'two orders per hearing');
- await page.locator('.t4-dock [data-action="t4end"]').click();await page.locator('#modal-root [data-action="t4end"][data-ok]').click();   /* v8.2.1: ending a session asks first */await answer();
+ await U.endSession();   // the end button, its confirmation, the result popup — exactly one hearing
  await page.evaluate(i=>{S.cases[i].trial4.nextAt=0;save();VerdictStore.flush()},id);
  await page.reload({waitUntil:'networkidle'});await boot();
  await page.evaluate(i=>{ui.tab='court';ui.caseId=i;render()},id);await page.locator('.t4-tabs').waitFor();await tab('day');
  const before=await page.evaluate(i=>{const t=S.cases[i].trial4;return {ev:t.evidence.length,w:t.witnesses.length}},id);
- await page.locator('.t4-dock [data-kind="open"]').click();await answer();
+ await U.openSession();
  await page.locator('.t4-changes').waitFor();
  const res=await page.evaluate(i=>{const t=S.cases[i].trial4;return {orders:t.courtOrders.map(o=>({k:o.key,s:o.status,o:o.outcome})),ev:t.evidence.length,w:t.witnesses.length,truth:t.truth,
   newEv:t.evidence.filter(e=>e.follow).map(e=>({title:e.title,ex:e.detail.excerpt,side:e.detail.side})),newW:t.witnesses.filter(w=>w.detail).map(w=>({role:w.role,q:w.detail.q.length}))}},id);
@@ -69,12 +68,12 @@ try{
  const f2=res.orders.find(o=>o.k==='f:f2');if(f2.o==='done'||f2.o==='partial'){assert.equal(res.w,before.w+1,'ordered witness appears');assert.equal(res.newW[0].q,3)}
  console.log('  ✓ A orders: '+res.orders.map(o=>`${o.k}=${o.o||o.s}`).join(', ')+` (truth ${res.truth})`);
  // ordered witness can be questioned
- if(res.newW.length){await tab('witness');await page.evaluate(()=>{ui.t4w=3;render()});const q=page.locator('.t4-pager .t4-q:not([disabled]):not(.cf):not(.face)').first();await q.click();await answer();
+ if(res.newW.length){await tab('witness');await page.evaluate(()=>{ui.t4w=3;render()});const q=page.locator('.t4-pager .t4-q:not([disabled]):not(.cf):not(.face)').first();await U.ask(q);
   assert.ok(await page.evaluate(i=>S.cases[i].trial4.heard.some(h=>h.w===3),id),'answers from the ordered witness are heard');
   assert.ok((await page.locator('.t4-qa').count())>=1);console.log('  ✓ A ordered witness questioned')}
  // questioning the accused (v6.9): a written question, an answer or a refusal that never becomes a reason
  await tab('witness');await page.evaluate(i=>{ui.partyOpen=i;render()},id);
- await page.locator('.t4-party .t4-q:not([disabled])').first().dispatchEvent('click');await answer();
+ await U.ask(page.locator('.t4-party .t4-q:not([disabled])').first());
  const pq=await page.evaluate(i=>{const t=S.cases[i].trial4,h=t.heard.filter(x=>x.w==='party');return {n:h.length,silent:h.some(x=>x.silent),text:h[0]?.text||''}},id);
  assert.equal(pq.n,1,'one question to the accused is recorded');assert.ok(pq.text.length>4);
  console.log('  ✓ A accused questioned'+(pq.silent?' (declined to answer)':''));
@@ -151,21 +150,24 @@ try{
  console.log(`  ✓ B2 material orders ${B2.tried} · refused ${B2.declined} (no evidence, no penalty, said so) · partial ${B2.partial}`);
  B.kinds.declined=(B.kinds.declined||0)+B2.declined;B.kinds.partial=(B.kinds.partial||0)+B2.partial;
  for(const k of ['none','partial','late','declined'])assert.ok((B.kinds[k]||0)>=20,`outcome "${k}" seen only ${B.kinds[k]||0} times (need 20+)`);
- // ---- D: 20 representative cases through the real screen, 3~5 hearings each ----
+ // ---- D: a few representative cases through the real screen (popups, buttons, exactly-once). The thousands of trials
+ //      are B above, run on the engine without the screen. Importance 4~5 and lower, 3 each, up to 5 hearings.
  const D=await page.evaluate(()=>{const C=VerdictCurated;const imp=id=>CasePackEngine.pool(S).find(x=>x.a.id===id)?.a?.importance||3;
-  const ids=C.ids.filter(id=>!C.cases[id].decision);return [...ids.filter(id=>imp(id)>=4).slice(0,10),...ids.filter(id=>imp(id)<4).slice(0,10)]});
- let walked=0,changesSeen=0,maxHearing=0;
+  const ids=C.ids.filter(id=>!C.cases[id].decision);return [...ids.filter(id=>imp(id)>=4).slice(0,3),...ids.filter(id=>imp(id)<4).slice(0,3)]});
+ let walked=0,changesSeen=0,maxHearing=0,ruled=0;
  for(const aid of D){
   const id=await page.evaluate(a=>{for(const c of S.generatedCases)S.cases[c.id].referred=true;const cand=CasePackEngine.pool(S).find(x=>x.a.id===a);const c=createGeneratedCase(cand);S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};c.week=S.week;ui.tab='court';ui.caseId=c.id;render();return c.id},aid);
   await page.locator('.t4-tabs').waitFor();
   for(let d=0;d<5;d++){
-   await tab('day');const ob=page.locator('.t4-dock [data-kind="open"]');if(!(await ob.count()))break;await clear();await ob.click();await answer();
+   await tab('day');if(!(await U.openSession()))break;
    if(d>0&&await page.locator('.t4-changes').count())changesSeen++;
    await tab('witness');
-   for(let k=0;k<2;k++){const q=page.locator('.t4-pager .t4-q:not([disabled]):not(.cf):not(.face):not(.order)').first();if(await q.count()){await q.dispatchEvent('click');await answer()}}
-   await tab('orders');const sm=page.locator('.t4-orders-panel');
-   if(await sm.count()){const o=page.locator('.t4-q.order').first();if(await o.count()){await o.dispatchEvent('click');await answer()}}
-   const end=page.locator('.t4-dock [data-action="t4end"]');if(!(await end.count()))break;await clear();await end.click();await page.locator('#modal-root [data-action="t4end"][data-ok]').click();await answer();
+   for(let k=0;k<2;k++){const q=page.locator('.t4-pager .t4-q:not([disabled]):not(.cf):not(.face):not(.order)').first();if(await q.count())await U.ask(q)}
+   await tab('orders');
+   if(await page.locator('.t4-orders-panel').count()){const o=page.locator('.t4-q.order').first();if(await o.count())assert.equal(await U.order(o),1,aid+': one order per press')}
+   const bad=await U.audit();assert.deepEqual(bad,[],aid+' hearing '+(d+1)+': '+bad.join('; '));
+   ruled+=await page.evaluate(()=>S.cases[ui.caseId].trial4.cards.filter(v=>v.choice&&v.type!=='media').length);
+   await tab('day');if(!(await U.endSession()))break;
    await page.evaluate(i=>{S.cases[i].trial4.nextAt=0;render()},id);maxHearing=Math.max(maxHearing,d+1);
   }
   const r=await page.evaluate(i=>{const t=S.cases[i].trial4;return {days:t.daysDone,orders:(t.courtOrders||[]).length}},id);
@@ -173,7 +175,7 @@ try{
   walked++;
  }
  assert.ok(changesSeen>=walked,'results of earlier orders should show at later hearings');
- console.log(`  ✓ D ${walked} cases on screen (importance 4~5: 10) · up to ${maxHearing} hearings · result cards ${changesSeen}`);
+ console.log(`  ✓ D ${walked} cases on screen · up to ${maxHearing} hearings · result cards ${changesSeen} · requests ruled ${ruled} · every hearing/ruling/order recorded once`);
  // ---- new game wipes everything: both player slots, snapshots, the old career ----
  await page.evaluate(()=>{localStorage.setItem('verdict_player_save_2','{"name":"옛 판사"}');localStorage.setItem('verdict_player_save_1','{"name":"옛 판사"}')});
  const nav=page.waitForNavigation();await page.evaluate(()=>wipeGame());await nav;await page.waitForTimeout(1500);

@@ -5,6 +5,7 @@
  * keeps the game; the gap rule for Android home-screen launches lifts the bar and the dock by exactly the gap and
  * ignores the keyboard; pure rules of viewport_fix.js. Screenshots go to qa-visuals/responsive-*.png. */
 import { chromium } from 'playwright';
+import {courtUI} from './lib/court-ui.mjs';
 import http from 'node:http';
 import {readFile,mkdir} from 'node:fs/promises';
 import path from 'node:path';
@@ -32,7 +33,7 @@ try{
   const page=await browser.newPage({viewport:{width:w,height:h},isMobile:w<=1100,hasTouch:w<=1100});
   await page.addInitScript(()=>{try{localStorage.setItem('verdict_match_off','1')}catch{}});   // this test covers the scripted trial; match trials: tests/match-play.mjs
   const errs=[];page.on('pageerror',e=>errs.push(e.message));
-  const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(60);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().dispatchEvent('click');continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().dispatchEvent('click');continue}break}};
+  const answer=()=>courtUI(page).settle();   // popups by kind, waiting on state (tests/lib/court-ui.mjs)
   const noSideways=async where=>{const o=await page.evaluate(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth}));assert.ok(o.sw<=o.cw+1,`${name}/${where}: sideways scroll ${o.sw}>${o.cw}`)};
   await page.goto(url,{waitUntil:'networkidle'});
   // first screen
@@ -42,8 +43,8 @@ try{
   await page.screenshot({path:`qa-visuals/responsive-${name}-0-entry.png`});await noSideways('entry');
   await page.locator('#profile-continue').click();await page.locator('#playerName').fill('반응형');
   await page.locator('[data-action="start"]').last().click();
-  await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});await page.waitForTimeout(800);await answer();
-  await page.evaluate(()=>{ui.modal='';ui.tab='home';render()});await noSideways('home');
+  await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});await page.waitForFunction(()=>(S.generatedCases||[]).length>0,null,{timeout:30000});await answer();
+  await page.evaluate(()=>{ui.tab='home';render()});await noSideways('home');
   const navShown=await page.locator('.bottom-nav').isVisible();
   if(w<=1100){
    assert.ok(navShown,`${name}: bottom bar shown`);
@@ -67,9 +68,11 @@ try{
   await page.locator('[data-action="t4sheet"][data-v="close"]').dispatchEvent('click');
   // Android home-screen launch: a 48px hidden strip lifts the bar and the dock by exactly that much
   if(w<=1100){const before=await page.evaluate(()=>[document.querySelector('.bottom-nav').getBoundingClientRect().bottom,document.querySelector('.t4-dock')?.getBoundingClientRect().bottom,document.querySelector('.bottom-nav').getBoundingClientRect().top]);
-   await page.evaluate(()=>document.documentElement.style.setProperty('--vv-gap','48px'));await page.waitForTimeout(400);
-   const after=await page.evaluate(()=>[document.querySelector('.bottom-nav').getBoundingClientRect().bottom,document.querySelector('.t4-dock')?.getBoundingClientRect().bottom]);
-   assert.equal(Math.round(before[0]-after[0]),48,`${name}: bar lifted by the hidden strip`);if(before[1]&&after[1]&&Math.abs(before[1]-before[2])<=3){assert.equal(Math.round(before[1]-after[1]),48,`${name}: dock lifted with it`);docksLifted++}   // the dock is sticky: it only rides the bar while it is stuck above it (short pages leave it in place)
+   await page.evaluate(()=>document.documentElement.style.setProperty('--vv-gap','48px'));   // wait until the bar has moved and the sticky dock has settled (CI runners are slow)
+   await page.waitForFunction(b=>Math.round(b-document.querySelector('.bottom-nav').getBoundingClientRect().bottom)===48,before[0],{timeout:5000}).catch(()=>{});await page.waitForTimeout(600);
+   const after=await page.evaluate(()=>[document.querySelector('.bottom-nav').getBoundingClientRect().bottom,document.querySelector('.t4-dock')?.getBoundingClientRect().bottom,document.querySelector('.bottom-nav').getBoundingClientRect().top]);
+   assert.equal(Math.round(before[0]-after[0]),48,`${name}: bar lifted by the hidden strip`);if(before[1]&&after[1]&&Math.abs(before[1]-before[2])<=3){   // a dock resting on the bar rides up with it; one that only happened to sit there (not stuck) may stay, but never under the bar
+    if(Math.round(before[1]-after[1])===48)docksLifted++;else assert.ok(after[1]<=after[2]+1,`${name}: dock lifted with it (not hidden under the bar)`)}   // the dock is sticky: it only rides the bar while it is stuck above it (short pages leave it in place)
    await page.evaluate(()=>{document.documentElement.classList.add('kb-open')});assert.ok(!(await page.locator('.bottom-nav').isVisible()),`${name}: bar hides while typing`);
    await page.evaluate(()=>{document.documentElement.classList.remove('kb-open');document.documentElement.style.setProperty('--vv-gap','0px')})}
   // fold / unfold: same page, new size, game kept

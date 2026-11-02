@@ -55,9 +55,22 @@ function opponentOf(c){return c.side?.[1]}
 function styleOf(id){const p=NPC[id];if(!p)return T.pick(T.STYLES,'none');p.trialStyle??=T.pick(T.STYLES,'style:'+id);return p.trialStyle}
 
 /* ---------- curated story ---------- */
-const curOf=c=>window.VerdictCurated?.cases[c.contentPack?.archetypeId||c.story?.packOrigin?.id];
+const archId=c=>c?.contentPack?.archetypeId||c?.story?.packOrigin?.id;
+/* v8.2.3: the courtroom detail of a case is fetched when the case is assigned or opened (case-data/). Until it has
+ * arrived the case reads as not-yet-ready: curOf gives null and the court screen shows a short loading line, so no
+ * trial is ever built from the index alone. Cases already in the save are fetched at start. */
+const VC_=()=>window.VerdictCurated;
+const caseReady=c=>{const id=archId(c),V=VC_();return !V?.cases[id]||!V.isLoaded||V.isLoaded(id)};
+const curOf=c=>{const id=archId(c),V=VC_(),x=V?.cases[id];return x&&(!V.isLoaded||V.isLoaded(id))?x:null};
+let preloading=false;
+function preloadSave(){
+ const V=VC_();if(!V?.lazy||typeof S==='undefined'||!S.cases||preloading)return;
+ const ids=(typeof CASES!=='undefined'?CASES:[]).filter(c=>S.cases[c.id]).map(archId).filter(id=>id&&V.cases[id]&&!V.isLoaded(id));
+ if(!ids.length)return;preloading=true;
+ V.loadMany(ids).finally(()=>{preloading=false;if(!ui.modal)render()});
+}
 function namesOf(c,t){
- const n={A:NPC[c.who?.[0]]?.name,B:NPC[c.who?.[1]]?.name,L:t?NPC[t.opponent]?.name:null};
+ const n={A:NPC[c.who?.[0]]?.name,B:NPC[c.who?.[1]]?.name,L:t?NPC[t.opponent]?.name:null,_seed:c.id};   // _seed: made-up place names stay fixed per case
  (t?.witnesses||[]).forEach((w,i)=>{n['W'+(i+1)]=NPC[w.id]?.name});
  const sx=id=>NPC[id]?.gender?(/여/.test(NPC[id].gender)?'여':'남'):null;
  n._sex={A:sx(c.who?.[0]),B:sx(c.who?.[1]),L:t?sx(t.opponent):null};(t?.witnesses||[]).forEach((w,i)=>{n._sex['W'+(i+1)]=sx(w.id)});
@@ -1216,7 +1229,7 @@ function verdictPage(c,st){
   ${v.type==='death'?`<p class="notice small">사형은 법정형에 사형이 있는 죄에서만 고를 수 있어요. 가장 무거운 형이라 판결 이유가 특히 단단해야 해요.</p>`:''}
   ${(jail||v.type==='life')&&pen.both==='may'?`<button class="t4-chip ${v.withFine?'on':''}" data-action="t4v" data-k="withFine" data-v="1">${v.withFine?'☑':'☐'} 벌금도 함께 선고</button>`:''}
   ${v.type==='fine'||((jail||v.type==='life')&&pen.both&&v.withFine)?fineCtl:''}
-  <p class="t4-ask-head">양형 사유</p><div class="t4-seg wrap t4-factors">${CRIM_FACTORS.map(([k,l,d])=>`<button class="t4-chip ${v.factors.includes(k)?'on':''} ${d<0?'mit':'agg'}" data-action="t4v" data-k="factor" data-v="${k}">${d<0?'↓':'↑'} ${l}</button>`).join('')}</div>`;
+  <p class="t4-ask-head">양형 사유</p><div class="t4-seg wrap t4-factors">${CRIM_FACTORS.filter(([k])=>!(curOf(c)?.victimless&&(k==='repair'||k==='vuln'))).map(([k,l,d])=>`<button class="t4-chip ${v.factors.includes(k)?'on':''} ${d<0?'mit':'agg'}" data-action="t4v" data-k="factor" data-v="${k}">${d<0?'↓':'↑'} ${l}</button>`).join('')}</div>`;
  }else if(sp?.mode==='civil'){
   sentence=`<p class="small">원고 청구 <b>${won(sp.cl.amount)}</b> · ${esc(sp.cl.what)}${sp.full?'':`<br>입증된 손해의 참고 범위 <b>${won(sp.ref.lo)}~${won(sp.ref.hi)}</b>`}</p>
   ${sp.full?`<p class="small">전부 인용: <b>${won(sp.cl.amount)}</b> 지급</p>`:`<div class="t4-step"><span>배상액</span><button class="t4-chip" data-action="t4v" data-k="amount" data-v="-10">−1,000만</button><button class="t4-chip" data-action="t4v" data-k="amount" data-v="-1">−100만</button><b>${won(v.amount||0)}</b><button class="t4-chip" data-action="t4v" data-k="amount" data-v="1">+100만</button><button class="t4-chip" data-action="t4v" data-k="amount" data-v="10">+1,000만</button></div>
@@ -1311,6 +1324,8 @@ let lastCaseId=null;
 court=function(){
  const html=priorCourt(),x=current();
  if(!x||!html.includes('court-screen-hearing'))return html;
+ if(!caseReady(x.c)){preloadSave();VC_().load(archId(x.c)).then(()=>render(),e=>{console.warn(e);toast('사건 기록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.')});
+  return `<section class="panel t4"><h3>사건 기록을 펼치는 중…</h3><p class="muted small">이 사건의 증거와 증인 기록을 불러오고 있어요.</p></section>`}
  const {c,st}=x,tpl=document.createElement('template');tpl.innerHTML=html;
  for(const sel of ['.compact-case-witness','.witness-exams','.trial-v32','.live-hearing-panel','.action-panel'])tpl.content.querySelectorAll(sel).forEach(n=>n.remove());
  tpl.content.querySelectorAll('section.panel').forEach(s=>{if(s.querySelector('[data-action="activateWitnesses"],[data-action="dramaAsk"],[data-action="witnessQuestion"]'))s.remove()});
@@ -1327,16 +1342,17 @@ court=function(){
  const status=header?.querySelector('.court-play-status');
  if(status&&t)status.innerHTML=st.verdict?`<span>선고 완료</span><span>기일 ${t.daysDone}회</span>`:`<span>${esc(stage(c,st).short)}</span><span>${t.daysDone>t.minDays?`기일 ${t.daysDone}회 · 추가 심리`:`기일 ${t.daysDone}/${t.minDays}`}</span><span>중요도 ${c.importance}</span>`;
  const crim=isCriminal(c),who=c.who||[];
- const facts=[[crim?'피고인':'원고',NPC[who[crim?0:0]]?.name],[crim?'피해자':'피고',NPC[who[1]]?.name],['분류',c.tag],['상대 변호사',t?NPC[t.opponent]?.name:null],[crim?'죄명':'청구',crim?(chargeOf(c)?`${chargeOf(c).name} (${chargeOf(c).law})`:null):(claimOf(c)?`${won(claimOf(c).amount)} · ${claimOf(c).what}`:null)],[isDecision(c)?'신청':null,isDecision(c)?tell(c,t,curOf(c).decision.what):null],[isDecision(c)?'진행':'최소 기일',t?(isDecision(c)?'심리기일 1회 뒤 바로 결정':t.minDays+'회'):null],['증거·증인',t?`증거 ${t.evidence.length}건 · 증인 ${t.witnesses.length}명`:null]].filter(v=>v[1]);
+ const vless=curOf(c)?.victimless;
+ const facts=[[crim?'피고인':'원고',NPC[who[crim?0:0]]?.name],vless?['피해자','따로 없음 (검사가 공소를 제기한 사건)']:[crim?(curOf(c)?.bRole||'피해자'):'피고',NPC[who[1]]?.name],['분류',c.tag],['상대 변호사',t?NPC[t.opponent]?.name:null],[crim?'죄명':'청구',crim?(chargeOf(c)?`${chargeOf(c).name} (${chargeOf(c).law})`:null):(claimOf(c)?`${won(claimOf(c).amount)} · ${claimOf(c).what}`:null)],[isDecision(c)?'신청':null,isDecision(c)?tell(c,t,curOf(c).decision.what):null],[isDecision(c)?'진행':'최소 기일',t?(isDecision(c)?'심리기일 1회 뒤 바로 결정':t.minDays+'회'):null],['증거·증인',t?`증거 ${t.evidence.length}건 · 증인 ${t.witnesses.length}명`:null]].filter(v=>v[1]);
  const cur=curOf(c),crimRole=isCriminal(c);
  const people=cur?`<h4>사람들</h4><div class="t4-people">
   <div class="t4-person">${nameBtn(who[0])}<span class="t4-tag">${crimRole?'피고인':'원고'}</span><p>${esc(tell(c,t,cur.people.A))}</p></div>
-  <div class="t4-person">${nameBtn(who[1])}<span class="t4-tag">${crimRole?'피해자':'피고'}</span><p>${esc(tell(c,t,cur.people.B))}</p></div>
+  ${cur.victimless?'':`<div class="t4-person">${nameBtn(who[1])}<span class="t4-tag">${crimRole?(cur.bRole||'피해자'):'피고'}</span><p>${esc(tell(c,t,cur.people.B))}</p></div>`}
   ${(t?.witnesses||[]).map(w=>`<div class="t4-person">${nameBtn(w.id)}<span class="t4-tag">증인 · ${esc(w.role)}</span>${w.story?`<p>${esc(w.story)}</p>`:''}</div>`).join('')}</div>`:'';
  const claims=cur?`<h4>양측의 주장</h4><div class="t4-claims"><p><b>${crimRole?'검찰':'원고'}</b> ${esc(tell(c,t,cur.claims[0]))}</p><p><b>${crimRole?'변호인':'피고'}</b> ${esc(tell(c,t,cur.claims[1]))}</p></div>`:'';
  const casePage=`<section class="panel t4 t4-case"><h3>무슨 사건인가?</h3>${!completed().length&&!st.verdict&&!(t?.daysDone)?HELP:''}${cur?`<p class="t4-logline">${esc(tell(c,t,cur.logline))}</p><p>${esc(tell(c,t,cur.summary))}</p>`:(overviewHtml||`<p>${esc(c.sub||'')}</p>`)}
   <dl class="t4-facts">${facts.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
-  ${(()=>{const F=window.VerdictMatchPlay?.factsOf?.(c);if(!F||!(F.timeline.length+F.facts.length))return '';return `<h4>다툼 없는 사실</h4><p class="muted small">양쪽 모두 인정하는 사실입니다. 다툼은 이 사실들 사이에서 벌어집니다.</p><ul class="small mp-facts">${F.timeline.map(e=>`<li><b>${esc(e.at)}</b> ${esc(tell(c,t,e.what))}</li>`).join('')}${F.facts.map(x=>`<li>${esc(tell(c,t,x))}</li>`).join('')}</ul>`})()}
+  ${(()=>{const F=window.VerdictMatchPlay?.factsOf?.(c);if(!F||!(F.timeline.length+F.facts.length))return '';const al=F.alleged?`<h4>${crimRole?'공소사실 — 검사가 주장하는 범행':isDecision(c)?'신청 이유 — 신청인이 주장하는 사정':'청구 원인 — 원고가 주장하는 사실'}</h4><p class="muted small">${crimRole?'검사가 법정에서 증명하겠다는 내용입니다. 아직 사실로 정해진 것은 아니에요.':'원고 쪽 주장입니다. 아직 사실로 정해진 것은 아니에요.'}</p><blockquote class="t4-excerpt">${esc(tell(c,t,F.alleged))}</blockquote>`:'';return al+`<h4>다툼 없는 사실</h4><p class="muted small">양쪽 모두 인정하는 사실입니다. 다툼은 이 사실들 사이에서 벌어집니다.</p><ul class="small mp-facts">${F.timeline.map(e=>`<li><b>${esc(e.at)}</b> ${esc(tell(c,t,e.what))}</li>`).join('')}${F.facts.map(x=>`<li>${esc(tell(c,t,x))}</li>`).join('')}</ul>`})()}
   ${cur?claims+people:(argsHtml?`<details class="t4-more"><summary>검사·변호인 주장 자세히 보기</summary><div>${argsHtml}</div></details>`:'')}
   ${!st.verdict&&t?(waiting(t)?`<button class="btn primary full mt" data-action="t4tab" data-tab="day">재판으로 돌아가기 →</button>`:!sessionOpen(t)?`<button class="btn primary full mt" data-action="t4" data-kind="open">▶ ${esc(session(c,t.day))} 열기</button>${!t.daysDone?`<button class="btn outline full mt" data-action="t4" data-kind="handoff">다른 재판부로 넘기기 <small>(하루 1건)</small></button>`:''}`:`<button class="btn primary full mt" data-action="t4tab" data-tab="day">재판으로 돌아가기 →</button>`):''}</section>`;
  const logPage=`<section class="panel t4"><h3>📋 재판 기록 요약</h3>${window.VerdictV6?.officerName?.()?`<p class="muted small">기록 정리 · 참여관 ${esc(window.VerdictV6.officerName())}</p>`:''}${t?recordSummary(c,t):'<p class="muted">아직 기록이 없습니다.</p>'}
@@ -1370,7 +1386,7 @@ function swipeInit(){
 }
 swipeInit();
 const priorRender=render;
-render=function(){priorRender();document.body.classList.toggle('t4-court',ui.tab==='court');if(ui.tab==='courtList')document.querySelectorAll('.bottom-nav [data-tab="court"],.nav-stack [data-tab="court"]').forEach(b=>b.classList.add('active'));if(ui.tab==='court'&&ui.t4tab&&ui.t4tab!=='case'&&!ui.modal)setTimeout(()=>{if(!ui.modal&&ui.tab==='court'&&!askRequests(false))askNotices(false)},0)};
+render=function(){priorRender();preloadSave();document.body.classList.toggle('t4-court',ui.tab==='court');if(ui.tab==='courtList')document.querySelectorAll('.bottom-nav [data-tab="court"],.nav-stack [data-tab="court"]').forEach(b=>b.classList.add('active'));if(ui.tab==='court'&&ui.t4tab&&ui.t4tab!=='case'&&!ui.modal)setTimeout(()=>{if(!ui.modal&&ui.tab==='court'&&!askRequests(false))askNotices(false)},0)};
 
 /* Case list: plain words and the v4 trial-day counter. */
 if(typeof courtList==='function'){

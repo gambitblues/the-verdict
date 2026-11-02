@@ -60,9 +60,13 @@ node tests/career-hearing-events.test.cjs  # 40년 경력 성장 속도·공판 
 node tests/world-sheets.test.cjs   # 세계 시트(world-sheets/cases) 구조·세 세계 구별
 node tests/match-engine.test.cjs   # 매치 엔진: 세계 불변·거짓은 다른 세계 사실에서만·판마다 다른 재판
 node tests/build-sheets.cjs --check  # world_sheets.js가 시트와 같은지 (시트 고치면 node tests/build-sheets.cjs)
+node tests/build-curated.cjs --check # curated_cases.js·curated_index.js·case-data/가 curated/와 같은지
+node tests/case-data.test.cjs      # 사건 데이터를 필요할 때 불러오기: 색인+case-data = 전체, 오프라인 목록
 ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node tests/v6-flow.mjs; node tests/court-orders.mjs; node tests/visuals.mjs; node tests/responsive.mjs; node tests/hearing-events.mjs; node tests/evidence-moments.mjs; node tests/v5-migration.mjs; node tests/v6-narrative-combos.mjs; node tests/match-play.mjs; node tests/verdict-v82.mjs; node tests/long-career.mjs 40; rm node_modules
 ```
-- `curated/*.js`를 고치면 `node tests/build-curated.cjs`로 `curated_cases.js`를 다시 만든다.
+- `curated/*.js`를 고치면 `node tests/build-curated.cjs`(→ `curated_cases.js`·`curated_index.js`·`case-data/<id>.json`), 그다음 `node tests/build-sheets.cjs`(→ 시트 파일과 `case-data/manifest.json`)를 다시 돌린다.
+- **사건 데이터는 필요할 때 불러온다(v8.2.3):** 게임은 처음에 색인(`curated_index.js` 51KB·`world_sheets_index.js` 26KB)만 읽고, 사건의 법정 기록은 배당되거나 열 때 `case-data/<id>.json`·`sheet-<id>.json`에서 가져온다(`VerdictCurated.load/isLoaded/loadMany/loadAll`). 받기 전에는 `curOf`가 null이고 법정 화면은 '불러오는 중'을 보여 재판을 색인만으로 만들지 않는다. 세이브에 있는 사건은 시작 때 미리 받는다. 서비스 워커가 `case-data/manifest.json`의 파일을 모두 저장해 오프라인도 된다. 전체 파일 `curated_cases.js`·`world_sheets.js`는 테스트·도구용(게임은 안 읽음). 엔진 수준 브라우저 테스트는 시작 뒤 `VerdictCurated.loadAll()`을 부른다.
+- **브라우저 테스트의 팝업:** `tests/lib/court-ui.mjs`(팝업 종류별 처리·상태 대기·한 번만 실행)를 쓴다. `ui.modal`을 강제로 지우지 않는다.
 - 화면을 바꾸면 Playwright로 390px 모바일 스크린샷을 찍어 직접 확인한다.
 
 ## 릴리스 절차

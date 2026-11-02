@@ -26,7 +26,7 @@ try{
  await page.locator('#profile-continue').click();await page.locator('#playerName').fill('서사 검증');
  await page.locator('[data-action="start"]').last().click();
  await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});
- await page.waitForFunction(()=>(S.casePacks||[]).some(p=>p.packId==='v6-new-30'),null,{timeout:10000});
+ await page.waitForFunction(()=>(S.casePacks||[]).some(p=>p.packId==='v6-new-30'),null,{timeout:10000});await page.evaluate(()=>VerdictCurated.loadAll());   // engine-level checks read every case at once; the game itself fetches one case at a time
  const out=await page.evaluate(COMBOS=>{
   window.save=()=>true; // thousands of throwaway trials: skip writing them to storage
   for(const c of S.generatedCases)S.cases[c.id].referred=true;

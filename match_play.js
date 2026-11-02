@@ -15,7 +15,10 @@ if(!M||!SH)return;
 let I=null;                                     // trial_play.js internals (bind)
 const T=()=>window.VerdictTrialCore;
 const esc=x=>h(String(x??''));
-const sheetById=id=>SH.cases[id]||null;
+const sheetById=id=>{const s=SH.cases[id];return s&&!s.stub?s:null};   // an index stub (v8.2.3) is not a sheet until loaded
+/* v8.2.3: with the index build, each full sheet is fetched from case-data/ when its case is assigned or opened */
+const sheetLoads={};
+const fetchSheet=id=>sheetLoads[id]??=fetch(`./case-data/sheet-${id}.json`).then(r=>{if(!r.ok)throw new Error('sheet '+id+' '+r.status);return r.json()}).then(g=>{SH.cases[id]=g;return g}).finally(()=>{delete sheetLoads[id]});
 const archOf=c=>c?.contentPack?.archetypeId||c?.story?.packOrigin?.id;
 /* scripted-trial regression tests switch the sheet cases off for themselves (localStorage verdict_match_off=1) */
 const off=(()=>{try{return localStorage.getItem('verdict_match_off')==='1'}catch{return false}})();
@@ -77,14 +80,34 @@ function toCurated(s){
   profile:Object.fromEntries(['A','B'].map(k=>{const p=person(s,k);return [k,p&&isToken(p.name)?{job:String(p.job||'').replace(/\s*\(.*\)$/,''),age:p.age?[p.age-3,p.age+3]:[30,55]}:undefined]}).filter(([,v])=>v)),
   facts:{timeline:s.common.timeline||[],facts:s.common.facts||[]}};
  if(partyQ)cur.party=partyQ;
+ /* v8.2.3: the accuser's closing and sentencing request (the verdict page and the reference range need them), whether
+  * there is a victim at all (drug use, bribery: the prosecution stands alone), and the facts as the accuser alleges them */
+ const B=person(s,'B'),victimless=cr&&(s.card.complainant==null||!B||/공소|검찰|국가|없음/.test(B.role||''));
+ if(victimless)cur.victimless=true;
+ else if(cr&&B?.role)cur.bRole=String(B.role).replace(/\s*\(.*\)$/,'');   // 피해자 / 고소인 / 고발인
+ cur.alleged=s.worlds.did.act;
+ cur.closing=cr?`피고인의 행위는 기록으로 충분히 증명됐습니다. ${plainLegal(s.worlds.did.legal).replace(/^[^—]*—\s*/,'')}. 엄히 처벌해 주십시오.`
+  :dec?`신청한 사정은 기록으로 확인됩니다. ${plainLegal(s.worlds.did.legal).replace(/^[^—]*—\s*/,'')}. 신청을 받아들여 주십시오.`
+  :`원고의 청구는 기록으로 충분히 뒷받침됩니다. ${plainLegal(s.worlds.did.legal).replace(/^[^—]*—\s*/,'')}. 청구를 받아들여 주십시오.`;
+ if(cr){const ch=s.card.charge||{},min=ch.min||0,max=ch.max||5;
+  cur.demand=s.card.demand??(ch.fine&&max<=3&&!min?{fine:Math.max(100,Math.round(ch.fine*0.3/50)*50)}:Math.max(1,Math.round((min+Math.min(max,min*2+3))/2*2)/2))}
  const sx={};for(const k of ['A','B'])if(person(s,k)?.sex)sx[k]=person(s,k).sex;if(Object.keys(sx).length)cur.sex=sx;
  if(cr)cur.charge={life:false,fine:0,...s.card.charge};else if(!dec)cur.claim=s.card.claim;
  return cur;
 }
 /* register the sheet-only cases next to the 60 written ones */
-if(!off&&window.VerdictCurated){const VC=window.VerdictCurated;for(const [id,s] of Object.entries(SH.cases))if(!VC.cases[id]){VC.cases[id]=toCurated(s);VC.ids.push(id)}}
+if(!off&&window.VerdictCurated){const VC=window.VerdictCurated;
+ for(const [id,s] of Object.entries(SH.cases))if(!VC.cases[id]){
+  if(s.stub&&VC.loaders){const c=s.card;   // index entry now, the written-case shape once the sheet arrives
+   VC.cases[id]={id,logline:c.title,summary:c.summary,...(c.charge?{charge:{life:false,fine:0,...c.charge}}:{}),...(c.claim&&!c.decision?{claim:c.claim}:{}),...(c.decision?{decision:c.decision}:{})};
+   VC.loaders[id]=()=>fetchSheet(id).then(toCurated);
+  }else VC.cases[id]=toCurated(s);
+  VC.ids.push(id)}
+ /* a written case's own sheet (다툼 없는 사실, 공소사실) comes with its courtroom detail */
+ VC.also?.push(id=>SH.cases[id]?.stub&&!VC.loaders[id]?fetchSheet(id):null);
+}
 /* 다툼 없는 사실: the sheet's fixed timeline for the case page (written cases with a sheet get it too) */
-function factsOf(c){const s=sheetOf(c);if(!s)return null;return {timeline:s.common.timeline||[],facts:s.common.facts||[]}}
+function factsOf(c){const s=sheetOf(c);if(!s)return null;return {timeline:s.common.timeline||[],facts:s.common.facts||[],alleged:s.alleged||s.worlds?.did?.act||''}}
 /* a v8.0 trial that ran on the match screen and has no verdict yet restarts in the normal courtroom */
 function reset(st){if(st?.trial4?.match&&!st.verdict){delete st.trial4;return true}return false}
 
@@ -98,7 +121,7 @@ if(!off&&typeof CasePackEngine!=='undefined'&&SH.pack?.archetypes?.length){
   return all.concat(extra.filter(x=>!ids.has(x.a.id)&&SH.cases[x.a.id]))};
 }
 /* one-line teaser for the offer card (names are not known yet: role words) */
-function logline(id){const s=sheetById(id);if(!s)return '';const role={A:crim(s)?'피고인':'원고',B:crim(s)?'피해자':'피고'};
+function logline(id){const s=SH.cases[id];if(!s?.card)return '';const role={A:crim(s)?'피고인':'원고',B:crim(s)?'피해자':'피고'};
  return window.VerdictCurated?VerdictCurated.fill(s.card.summary.split(/(?<=[.다])\s/)[0],role):s.card.summary}
 
 /* ---------- people: parties fit the sheet, witnesses are made from the sheet ---------- */

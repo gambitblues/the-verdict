@@ -3,6 +3,7 @@
  * Checks: load → resume the trial in progress → verdict → reload → read the old record, while NPC IDs, relations,
  * family links, past news and the finished verdict stay unchanged, and the second player slot survives. */
 import { chromium } from 'playwright';
+import {courtUI} from './lib/court-ui.mjs';
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -53,7 +54,7 @@ try{
   assert.equal(fin.order,old.cases[finished].trial4.final.judgment.order,mode+': judgment order changed');
   assert.equal(fin.skill,old.cases[finished].trial4.final.skill,mode+': past skill score changed');
   // resume the trial in progress and take it to a verdict
-  const answer=async()=>{for(let k=0;k<8;k++){await page.waitForTimeout(120);const b=page.locator('#modal-root [data-kind="card"][data-choice="reject"]');if(await b.count()){await b.first().click();continue}const d=page.locator('#modal-root [data-action="dismiss"]');if(await d.count()){await d.first().click();continue}break}};
+  const answer=()=>courtUI(page).settle();   // popups by kind, waiting on state (tests/lib/court-ui.mjs)
   const tab=async id=>{await answer();await page.locator(`.t4-tab[data-tab="${id}"]`).click();await answer()};
   await page.evaluate(id=>{ui.tab='court';ui.caseId=id;render()},inProgress);
   await page.locator('.t4-tabs').waitFor();

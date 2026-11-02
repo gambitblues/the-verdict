@@ -2,6 +2,7 @@
  * - only sheets marked review or ready go into the game (drafts stay in the folder);
  * - people written with real-looking names (clinic-001, gym-001) are turned into name tokens ({A}, {W1}…) so the game
  *   gives them its own people, like every other case;
+ * - a written case keeps its own text; from its sheet the game takes the undisputed facts and the accuser's version (alleged);
  * - sheets that are not one of the 60 curated cases get a case-pack archetype, so they join the offer pool. */
 const fs=require('fs'),path=require('path');
 const root=path.join(__dirname,'..'),dir=path.join(root,'world-sheets','cases');
@@ -47,12 +48,24 @@ for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.json')).sort()){
  if(!['review','ready'].includes(s.status))continue;
  const g=tokenize(s);delete g.source;delete g.traps;delete g.screen;delete g.open;
  /* a written case keeps its own text in the game; only its undisputed facts come from the sheet */
- sheets[g.id]=curatedIds.has(g.id)?{format:g.format,id:g.id,status:g.status,written:true,card:{kind:g.card.kind,title:g.card.title},common:g.common}:g;
+ sheets[g.id]=curatedIds.has(g.id)?{format:g.format,id:g.id,status:g.status,written:true,card:{kind:g.card.kind,title:g.card.title},common:g.common,alleged:g.worlds?.did?.act}:g;
  if(!curatedIds.has(g.id))pack.archetypes.push(archetype(g));
 }
 const n=pack.archetypes.length;pack.version=`1.${n}.${Object.keys(sheets).length}`;
 const head='/* THE VERDICT — world sheets for the match engine (game data). Built from world-sheets/cases/*.json by\n * node tests/build-sheets.cjs — do not edit by hand. Only sheets marked review or ready are here. */\n';
 const out=head+'window.VerdictSheets={cases:'+JSON.stringify(sheets)+',\npack:'+JSON.stringify(pack)+'};\n',file=path.join(root,'world_sheets.js');
-if(process.argv.includes('--check')){const same=fs.existsSync(file)&&fs.readFileSync(file,'utf8')===out;if(!same){console.error('FAIL world_sheets.js is out of date — run: node tests/build-sheets.cjs');process.exit(1)}console.log('PASS world_sheets.js is up to date');process.exit(0)}
-fs.writeFileSync(file,out);
-console.log(`world_sheets.js: ${Object.keys(sheets).length} sheets (${Object.keys(sheets).filter(id=>curatedIds.has(id)).length} curated, ${n} new in the pool)`);
+/* v8.2.3: the game loads only an index (each sheet's card, for the offer pool) and fetches the sheet itself from
+ * case-data/sheet-<id>.json when the case is assigned or opened. world_sheets.js (everything) stays for tests and tools. */
+const stub=Object.fromEntries(Object.entries(sheets).map(([id,g])=>[id,{id,status:g.status,written:!!g.written,stub:true,card:g.written?g.card:{kind:g.card.kind,title:g.card.title,summary:g.card.summary,charge:g.card.charge,claim:g.card.claim,decision:g.card.decision,accused:g.card.accused,complainant:g.card.complainant}}]));
+const idx='/* THE VERDICT — world-sheet index (built by node tests/build-sheets.cjs; do not edit). Full sheets: case-data/sheet-<id>.json. */\n'
+ +'window.VerdictSheets={cases:'+JSON.stringify(stub)+',\npack:'+JSON.stringify(pack)+',lazy:true};\n';
+const files={[file]:out,[path.join(root,'world_sheets_index.js')]:idx};
+for(const [id,g] of Object.entries(sheets))files[path.join(root,'case-data','sheet-'+id+'.json')]=JSON.stringify(g)+'\n';
+/* every file the game may fetch, for the service worker to keep offline (case-data/manifest.json) */
+{const cd=path.join(root,'case-data'),curatedFiles=(fs.existsSync(cd)?fs.readdirSync(cd):[]).filter(f=>f.endsWith('.json')&&!f.startsWith('sheet-')&&f!=='manifest.json'),sheetFiles=Object.keys(sheets).map(id=>'sheet-'+id+'.json');
+ files[path.join(root,'case-data','manifest.json')]=JSON.stringify({files:[...curatedFiles,...sheetFiles].sort()})+'\n'}
+if(process.argv.includes('--check')){const stale=Object.entries(files).filter(([f,t])=>!fs.existsSync(f)||fs.readFileSync(f,'utf8')!==t).map(([f])=>path.relative(root,f));
+ if(stale.length){console.error('FAIL world sheet outputs out of date — run: node tests/build-sheets.cjs\n  '+stale.slice(0,8).join('\n  '));process.exit(1)}console.log('PASS world_sheets.js is up to date');process.exit(0)}
+fs.mkdirSync(path.join(root,'case-data'),{recursive:true});
+for(const [f,t] of Object.entries(files))fs.writeFileSync(f,t);
+console.log(`world_sheets.js: ${Object.keys(sheets).length} sheets (${Object.keys(sheets).filter(id=>curatedIds.has(id)).length} curated, ${n} new in the pool) · index ${Math.round(idx.length/1024)}KB`);
