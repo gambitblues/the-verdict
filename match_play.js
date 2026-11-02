@@ -100,6 +100,7 @@ function toCurated(s){
   * there is a victim at all (drug use, bribery: the prosecution stands alone), and the facts as the accuser alleges them */
  const B=person(s,'B'),victimless=cr&&(s.card.complainant==null||!B||/공소|검찰|국가|없음/.test(B.role||''));
  if(victimless)cur.victimless=true;
+ if(cr&&!reasonAcquits(s))cur.partial=true;   // v8.4: the 'reason' world convicts of part of the charge
  else if(cr&&B?.role)cur.bRole=String(B.role).replace(/\s*\(.*\)$/,'');   // 피해자 / 고소인 / 고발인
  cur.alleged=s.worlds.did.act;
  cur.closing=cr?`피고인의 행위는 기록으로 충분히 증명됐습니다. ${plainLegal(s.worlds.did.legal).replace(/^[^—]*—\s*/,'')}. 엄히 처벌해 주십시오.`
@@ -242,7 +243,7 @@ function truthBlock(c,t,s){const d=t.match.done;if(!d)return '';const W=s.worlds
 
 /* ---------- verdict ---------- */
 /* the 'reason' world either still convicts of something (part of the charge, a lesser crime) or acquits of the charge */
-const reasonAcquits=s=>s.card.decision?s.worlds.reason.decide!=='yes':crim(s)&&/불성립|살해하지 않았음|고의 없음|고의가 아닌/.test(s.worlds.reason.legal)&&!/해당|일부|준강제추행\)/.test(s.worlds.reason.legal);
+function reasonAcquits(s){return s.card.decision?s.worlds.reason.decide!=='yes':crim(s)&&/불성립|살해하지 않았음|고의 없음|고의가 아닌/.test(s.worlds.reason.legal)&&!/해당|일부|준강제추행\)/.test(s.worlds.reason.legal)}
 const choiceWord=(s,w)=>s.card.decision?(w==='did'?'받아들임 — '+s.card.decision.yes:w==='didnt'?'기각 — '+s.card.decision.no:reasonAcquits(s)?'기각하되 사정을 살핌 — '+s.card.decision.no:'받아들이되 사정을 살핌 — '+s.card.decision.yes):!crim(s)?{did:'청구 인용',didnt:'청구 기각',reason:'일부 인용'}[w]:w==='did'?'유죄 — 공소사실대로':w==='didnt'?'무죄':reasonAcquits(s)?'무죄 — 다만 다른 사정이 있음':'일부만 유죄';
 const V=c=>{ui.mpv??={};return ui.mpv[c.id]??={choice:null,sent:null}};
 function sentences(s,choice){
