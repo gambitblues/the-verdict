@@ -1,6 +1,7 @@
 # THE VERDICT — 작업 인수인계 (새 세션은 이 파일부터 읽기)
 
 풋볼매니저식 법정 시뮬레이션 PWA. 바닐라 JS, 빌드 도구 없음. GitHub Pages(main)에서 서비스.
+**다음으로 `docs/HANDOFF.md`를 읽는다** — 게임 방향, 사건(세계 시트) 쓰는 법, 지금 어디까지 왔는지.
 구조는 `docs/ARCHITECTURE.md`, 버전별 변경은 `docs/CHANGELOG.md`, 배포 정책은 `docs/RELEASE_WORKFLOW.md`.
 
 ## 사용자(기획자)와 일하는 방식
