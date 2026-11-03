@@ -14,6 +14,7 @@ jobs:
           node-version: '22'
       - name: Validate bundled Javascript and case packs
         run: |
+          node --check shared_world.js
           node --check game_runtime.js
           node --check game_hearings.js
           node --check game_professions.js
