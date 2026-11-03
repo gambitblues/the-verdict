@@ -32,7 +32,7 @@ function scene(c,t,tab,status){
    +(seated?seat('cv-center'+(live?' is-live':''),sw.id,'증인 · '+(NPC[sw.id]?.name||'증인')):`<div class="cv-seat cv-center"><div class="cv-seat-empty"><span>증인석</span></div></div>`)
    +seat('cv-right',c.side?.[0],left)})()}</div></section>`;
 }
-const CHIP={flip:['말이 바뀜','flip'],shift:['자기 말과 어긋남','clash'],clash:['다른 증인과 엇갈림','clash'],admit:['증거 앞에서 털어놓음','turn'],correct:['정정함','turn'],revert:['처음 말로 돌아옴','turn'],hold:['증거에도 버팀','hold'],yield:['대질에서 물러섬','turn'],standoff:['대질에서 버팀','hold']};
+const CHIP={flip:['말이 바뀜','flip'],shift:['자기 말과 어긋남','clash'],clash:['다른 증인과 반대쪽','clash'],admit:['증거 앞에서 털어놓음','turn'],correct:['정정함','turn'],revert:['처음 말로 돌아옴','turn'],hold:['증거에도 버팀','hold'],yield:['대질에서 물러섬','turn'],standoff:['대질에서 버팀','hold']};
 function witness(w,p,latest){
  const speaking=last?.actor===w.id&&portraitShown!==last.serial;if(speaking)portraitShown=last.serial;
  const mood=speaking&&last.moment&&MOMENTS[last.moment]?.[2]?' cv-mood-'+MOMENTS[last.moment][2]:'';
@@ -80,7 +80,7 @@ function evidence(e,d,excerpt,when){
  * `moment` comes from trial_play (it already knows whether a story changed); this layer only shows it. */
 const MOMENTS={
  answer:['증인의 답변','·',''],recall:['다시 부른 증인의 답변','↺','recall'],
- flip:['진술이 흔들립니다','≋','flip'],shift:['앞선 자기 진술과 어긋납니다','⚠','clash'],clash:['다른 증인의 말과 엇갈립니다','⇄','clash'],
+ flip:['진술이 흔들립니다','≋','flip'],shift:['앞선 자기 진술과 어긋납니다','⚠','clash'],clash:['다른 증인과 반대쪽을 가리킵니다','⇄','clash'],
  admit:['증거 앞에서 털어놓았습니다','◆','turn'],correct:['증거를 보고 정정했습니다','✎','turn'],revert:['처음 진술로 돌아왔습니다','↩','turn'],hold:['증거를 보고도 버팁니다','▮','hold'],
  yield:['대질 끝에 한쪽이 물러섰습니다','⇆','turn'],standoff:['대질에서 둘 다 물러서지 않았습니다','⇹','hold'],
  objection:['이의에 대한 결정','✋',''],delay:['기일 연기 신청에 대한 결정','⏳','']
