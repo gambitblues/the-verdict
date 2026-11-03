@@ -23,3 +23,19 @@ export function publicCaseSheet(sheet,caseId){
  if(serialized.length>50000)throw Error('public_sheet_too_large');
  return result;
 }
+
+/* Only first-day records can be shown before a court order. All other source
+ * evidence remains sealed; truth branch is used inside the trusted Worker.
+ */
+export function initialEvidence(sheet,caseId,branch){
+ if(!sheet||sheet.id!==caseId||!['did','didnt','reason'].includes(branch))
+  throw Error('invalid_sealed_case');
+ const byId=sheet.worlds?.[branch]?.records;
+ if(!byId||typeof byId!=='object')throw Error('missing_sealed_records');
+ return (sheet.records||[]).filter(r=>r.first===true).slice(0,20).map(r=>{
+  const text=byId[r.id];
+  if(typeof text!=='string')throw Error('missing_record_content');
+  return {id:r.id,title:String(r.title||'자료').slice(0,200),
+   kind:String(r.kind||'문서').slice(0,80),text:text.slice(0,5000)};
+ });
+}
