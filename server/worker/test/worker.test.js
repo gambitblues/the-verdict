@@ -149,3 +149,12 @@ test('bench: factual memo is verified before it is returned',async()=>{
  assert.equal(d.why,'numbers');
  assert.equal(f.openai,1,'invalid response is rejected before paying for second verifier');
 });
+
+test('objection exchange uses one generation and one verification for two known arguments',async()=>{
+ const base={openingA:'검사는 기록이 부정확하다고 이의를 신청했다.',openingB:'변호인은 기록이 정확하다고 반박했다.',names:[]};
+ const f=fake({reply:{openingA:base.openingA,openingB:base.openingB}});
+ const d=await (await handle(req('/ai/exchange',base),env,f)).json();
+ assert.equal(d.ok,true);
+ assert.equal(f.openai,2);
+ assert.equal(f.usage[0].p_ok,true);
+});
