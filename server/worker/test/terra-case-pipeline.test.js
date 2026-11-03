@@ -46,3 +46,17 @@ test('승인된 사건만 추가하고 중복 및 원본 변형을 방지한다'
  const approval2={...approval,id:second.id};
  assert.equal(Pipeline.admit(second,approval2,first.inventory).ok,false);
 });
+
+test('approval hashes the complete worlds so post-review edits cannot be silently admitted',()=>{
+ const c=candidate(),checks=Object.fromEntries(Pipeline.REVIEW.map(k=>[k,true]));
+ const a=Pipeline.makeReview(c,checks,'운영자');assert.equal(a.ok,true);
+ c.worlds.did.records['r-camera']='승인 이후 변경된 CCTV 사건 내용에 대한 원문 기술';
+ assert.equal(Pipeline.admit(c,{...a.record,approvedAt:'2026-11-04'}).ok,false);
+});
+test('review-status candidates need detailed category realism, but rough drafts remain editable',()=>{
+ const c=candidate();assert.equal(Pipeline.validateDraft(c).ok,true);
+ c.status='review';
+ const checked=Pipeline.validateDraft(c);
+ assert.equal(checked.ok,false);
+ assert.ok(checked.errors.some(x=>x.includes('realism')));
+});
