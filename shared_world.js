@@ -87,7 +87,7 @@ function mount(){
  document.head.appendChild(style);
 }
 function start(){
- if(!user())return;
+ if(window.VERDICT_CONFIG?.p4SharedWorld!==true||!user())return;
  mount();refresh();
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
  addEventListener('online',()=>refresh());
