@@ -233,3 +233,26 @@ test('P4 global docket disabled by default, accepts only server-derived judge id
  assert.ok(rpc.every(x=>JSON.parse(x.opt.body).p_judge==='u1'));
  assert.ok(rpc.every(x=>!Object.hasOwn(JSON.parse(x.opt.body),'p_truth')));
 });
+
+
+test('P4 case endpoint requires ownership and never returns sealed sheet or another judge case',async()=>{
+ const sheet={format:'verdict-world-sheet/v1',id:'case-p4',
+  card:{kind:'civil',category:'civil',title:'공개 사건',summary:'분쟁 요지'},
+  common:{date:'2026-11-04',facts:['계약이 존재한다'],timeline:[]},
+  people:[],records:[{id:'r1',title:'서면',first:true}],questions:[],orders:[],
+  worlds:{did:{act:'SECRET_DID'},didnt:{act:'SECRET_DIDNT'}}};
+ let owner='u1';
+ const f=async(url,opt={})=>{
+  const u=String(url),ok=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'content-type':'application/json'}});
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/rest/v1/case_stock')){assert.equal(opt.headers.authorization,'Bearer svc');return ok([{case_id:'case-p4',assigned_to:owner,state:'assigned',sheet}])}
+  throw Error('unexpected '+u);
+ };
+ const good=await (await handle(req('/world/case?caseId=case-p4'),env,f)).json();
+ assert.equal(good.ok,true);assert.equal(good.case.card.title,'공개 사건');
+ assert.ok(!JSON.stringify(good).includes('SECRET_'));
+ owner='another-user';
+ assert.equal((await handle(req('/world/case?caseId=case-p4'),env,f)).status,404);
+ assert.equal((await handle(req('/world/case?caseId=bad'),env,f)).status,400);
+});
