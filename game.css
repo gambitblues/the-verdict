@@ -464,6 +464,22 @@ body{font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',s
 .t4-meta{font-size:12px;color:#7a7266;margin:2px 0 6px}
 .t4-excerpt{margin:8px 0;padding:9px 12px;border-left:3px solid #c9a86a;background:#fbf7ee;border-radius:0 9px 9px 0;font-size:13px;line-height:1.6;color:#3b3427}
 .t4-check{background:#f1f5f9;border-radius:8px;padding:7px 9px}
+.t4-cond{margin-top:10px;border:1px solid #d9c9a3;background:#fffaf0;border-radius:10px;padding:10px 11px}
+.t4-cond-h{font-weight:700;font-size:13px;margin:0 0 6px}
+.t4-cond-sub{font-size:12px;color:#6b5b3e;margin:8px 0 4px;font-weight:600}.t4-cond-sub small{font-weight:400;color:#8a7a5c;margin-left:4px}
+.t4-cond-rows{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.t4-crow{width:100%;display:flex;gap:8px;align-items:flex-start;text-align:left;font:inherit;font-size:13px;background:#fff;border:1px solid #e5dccb;border-radius:8px;padding:7px 9px;color:#9aa0a6;text-decoration:line-through}
+.t4-crow.on{color:#1f2933;text-decoration:none;border-color:#c8b07c}.t4-crow.on.warn{color:#9b2c2c;font-weight:600}
+.t4-crow span{flex:none}
+.t4-cond-how{flex-wrap:wrap;gap:6px}
+.t4-cond-st{margin:8px 0 0;font-size:12.5px;border-radius:7px;padding:6px 8px}.t4-cond-st.ok{background:#e9f5ec;color:#1e6b3a}.t4-cond-st.wait{background:#fdf1dc;color:#8a5a12}
+.t4-compare{margin:8px 0;border:1px solid #e2e8f0;border-radius:9px;background:#fff;padding:6px 9px}
+.t4-compare summary{cursor:pointer;font-size:13px;font-weight:600}
+.t4-compare table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12.5px;table-layout:fixed}
+.t4-compare th{text-align:left;font-size:11.5px;color:#64748b;border-bottom:1px solid #e2e8f0;padding:4px 5px;font-weight:600}
+.t4-compare td{border-bottom:1px dashed #edf0f3;padding:6px 5px;vertical-align:top;word-break:keep-all;overflow-wrap:anywhere}
+.t4-compare td.warn{color:#9b2c2c;font-weight:600}.t4-compare td.off{color:#a0a7b0;text-decoration:line-through}.t4-compare td.nil{color:#c0c6cc}
+.t4-compare small{display:block;color:#64748b;margin-top:4px}
 .t4-issue-tag{display:inline-block;font-size:11px;color:#5d4a1f;background:#f5ead2;border-radius:999px;padding:2px 9px;margin:4px 0}
 .t4-tag.new{background:#fde7d3;color:#9a4b12}
 .t4-qa{border-top:1px dashed #e6dfd2;padding:7px 0}
