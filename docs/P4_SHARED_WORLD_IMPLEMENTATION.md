@@ -1,26 +1,39 @@
-# P4 공유 세계 — 1차 구현 (develop 전용)
+# THE VERDICT — P4 공유 세계 구현 상태 (develop)
 
-상태: **서버 데이터 계층 + 읽기 API 구현 / 운영 미적용 / 게임 UI 미연결**.
+> 대상: develop ONLY. main, 운영 Supabase, 현재 Cloudflare Worker, 운영 세이브 변경 없음.
+> 상태: **P4 서버 기반 + 공유 연혁 화면 연결까지 구현. 전체 플레이 가능한 2인 공유 세계는 아직 미완료**.
 
-## 구현됨
-- `server/supabase/003_case_stock.sql`의 원래 `case_stock_assign`: 전역 사건 재고의 원자적 단일 배당. 이미 있던 기능을 재사용하며 사건 본문/봉인 진실은 브라우저에 노출하지 않는다.
-- `server/supabase/006_shared_world_events.sql`: 두 판사가 공유해 볼 공개 사건 연혁. 서버 단일 증가 ID와 게임 날짜, 사건 ID, 담당 판사, 공개 필드만 저장한다.
-- `shared_world_append`: **service_role 전용** 등록, 같은 event_key 요청은 멱등 성공, 같은 키로 내용을 바꾸면 거절, 판결/심리 이벤트는 담당 판사 일치 검사. INSERT 이후 UPDATE/DELETE 금지.
-- 초대 플레이어는 공개 연혁 **읽기만 가능**, 익명·미초대 계정은 조회 불가. `case_stock.sheet`, `world_secrets`는 절대 반환하지 않는다.
-- Worker `GET /world/events?after=<id>`: 로그인 사용자 JWT를 Supabase에 그대로 전달하여 RLS 적용, 최대 50개 이벤트 순차 페이지. 인증 없는 요청 차단.
-- `server/supabase/test/shared-world.test.js`, `server/worker/test/worker.test.js`: 권한/사실 변조/멱등성/담당 판사 분리/읽기 API 테스트 정의.
+## 반영된 구현
+| 계층 | 구현 | 검증 |
+|---|---|---|
+| 전역 사건 재고 | 기존 `003_case_stock.sql`의 `FOR UPDATE SKIP LOCKED` 단일 배당 재사용 | PGlite 2판사 비중복 테스트 추가 |
+| 공통 연혁 | `006_shared_world_events.sql`: 비공개 진실 분리, 이벤트 키 멱등성, 공개 필드 제한, INSERT 이후 수정 불가 | 권한·중복·변조 테스트 추가 |
+| 공통 시계 | `007_shared_world_clock_npc.sql`: 전역 게임 날짜와 버전, CAS 갱신, 최대 14일 전진, 역행 금지 | 서버 전용·충돌 테스트 |
+| 객관적 NPC | 동일 SQL: 공통 이름/직업/생존상태, 버전 충돌 검사, 사망 후 생존 복원 금지 | 2인 동일 조회·생애 모순 테스트 |
+| 사건 배당 기사 | `008_shared_docket_publication.sql`: 기존 글로벌 case_stock의 실제 배당 상태 전환을 서버 트리거로 공개 연혁에 1회 기록 | 같은 사건 중복 배당/두 판사 공통 조회 테스트 |
+| Worker API | `GET /world/events`, `GET /world/clock`, `GET /world/npcs`: 초대·로그인 확인 후 플레이어 JWT로 Supabase RLS 읽기 | 단위 테스트, `server/worker npm run check` |
+| 플레이어 화면 | `shared_world.js`를 `auth_gate.js` 부트스트랩에 연결. 로그인/온라인일 때만 🌐 공유 세계 패널, 공개 사건/날짜/NPC 조회 | 정적·Actions 회귀 대상, 실환경 검증 필요 |
+| CI | `.github/workflows/worker-regression.yml`에서 Worker + PGlite DB 테스트 | GitHub Actions 확인 필요 |
 
-## 적용 전 주의
-**이 저장소 커밋은 운영 DB 마이그레이션이나 Worker 배포를 수행하지 않는다.** 기존 이용자 세이브와 main도 변경되지 않았다.
+## 아직 미구현 — P4 전체 완료를 위해 필요
+1. **실제 2인 공통 사건 배당 UI 및 수락**: 현재 게임의 `VerdictDocket.offerPair`는 개인 세이브 기반. 기존 글로벌 `case_stock_assign`은 백엔드에 있지만 게임의 수락/재판 루프와 연결되어 있지 않음.
+2. **봉인 진실의 서버 이전 및 사건 자료 API**: 현재 브라우저의 기존 curated/world-sheet 엔진은 진실 분기를 로드함. P4 공통 사건은 서버가 비공개 진실을 잠그고, 판사에게 그 시점에 제출된 공적 자료만 내려줘야 함. 진실/판결 실력의 서버 재계산 및 기존 사건 호환 설계 필요.
+3. **공동 세계 날짜의 실시간 적용**: 읽기 UI는 연결했지만 `VerdictCalendar.advanceTo`가 서버의 단일 시계를 CAS로 확정하지 않음. 두 판사 동시 기일 진행·시계 충돌·오프라인 복구 미완료.
+4. **실판결/공방/후속 뉴스 이벤트 업로드**: 배당 이벤트는 DB에서 자동 발행. 선고 이벤트는 현재 개인 `trial_play.finish`에만 존재하므로 검증 가능한 서버 선고 엔드포인트/증거 스냅샷이 필요. 브라우저에서 자유롭게 거짓 판결을 서버에 게시하는 API는 금지.
+5. **NPC 객관적 생애 사건의 동기화**: 공통 NPC 레지스트리는 생겼으나 게임의 `S.npcDB`를 이 레지스트리와 병합하지 않음. 개인 호감도/대화 기억은 각 계정에만 보존.
+6. **2계정 실제 E2E**: 독립 TEST 계정, QA Supabase + QA Worker에서 동시 배당·법정·뉴스·세계 시계·세이브·AI 호출 검증. 테스트는 미실행. 운영 환경에 임의 배포하지 않음.
 
-개발/QA DB에서만 `001_init.sql`, `002_api_privileges.sql`, `003_case_stock.sql` 이후 `006_shared_world_events.sql`을 실행한다. 게임 화면에 연결하기 전 `npm test` (server/supabase), `npm run check` (server/worker), 그리고 2인 실환경 E2E를 수행한다. 마이그레이션은 QA 승인을 거쳐 운영 적용한다.
+## QA 적용 순서
+- 독립 QA DB: `001`, `002`, `003`, `006`, `007`, `008` 순서. `004`, `005`는 Terra 전용 기능을 별도 요구할 때 기존 순서대로 적용.
+- `cd server/supabase && npm ci && npm test` — SQL/RLS/동시 배당 테스트.
+- `cd server/worker && npm run check` — Worker 단위·API·기능 회귀.
+- `develop` 전체 GitHub Actions 확인. 실제 사용자 동작은 독립 테스트 계정으로 별도 기록.
 
-## 다음 P4 작업 (아직 미구현)
-1. 클라이언트: 두 계정이 동일한 공개 연혁을 읽어 화면에 반영하되, 각자 개인 NPC 기억/세이브를 섞지 않는다.
-2. 신뢰된 서버 경로: 사건 배당·심리·선고 시 서버 권한으로만 `shared_world_append` 호출. 브라우저가 임의의 판결/사건 연혁을 올릴 수 있는 범용 쓰기 API는 만들지 않는다.
-3. 과거 집필 사건은 현재 `case_stock` 외부에 있으므로 세계 공통 고유 ID·봉인 진실 이전 정책 및 스키마를 별도 설계한다. 현재 이벤트 연혁은 `case_stock` 등록 사건만 연결 가능하다.
-4. 두 판사의 세계 시계 동기화, 객관적 NPC 기본 생애/전역 사건 이력과 각자 관계·기억 분리, 항소·후속 사건 연계, 2인 동시 배당/연속성 E2E.
-5. 선택 과제 공동 합의부 P5는 P4 안정화 이후.
+## 보안/호환성
+- 운영 DB, 서비스 Worker의 환경변수/Secret 변경이나 재배포 수행하지 않았음.
+- 공통 서버 테이블에는 개인 관계·판사별 기억·봉인 진실 저장 금지.
+- 기존 6메뉴 및 개인 세이브를 변환하지 않음.
+- 서버 연동이 안 되더라도 기존 로컬 테스트는 싱글플레이 그대로 동작.
+- P5 공동 합의부는 P4 범위 밖.
 
-## 배포 금지 확인
-`main` 병합, 기존 Cloudflare Worker 재배포, 운영 Supabase SQL 적용, 기존 세이브 변환은 이 단계의 범위에 포함되지 않는다.
+**실서비스 P4 출시 판정: 아직 NO-GO. 코드 추가와 실제 공유 세계 E2E 완료는 다르다.**
