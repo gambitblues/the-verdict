@@ -88,6 +88,8 @@ for(const file of files){
   if(decisive.length)warn('처음 제출 자료 하나만으로 세 세계가 다 갈림: '+decisive.join(', ')+' — 너무 쉬울 수 있음');}
  for(const d of D.values())if(d.clockOffsetSec){const used=[...R.values()].filter(r=>r.device===d.id);
   if(!used.length)warn(`기기 ${d.id}의 시계 오차가 어느 자료에도 쓰이지 않음`);}
+ // sex crimes: the accused is a man (기획자 확정 2026-11-03)
+ if(c.kind==='criminal'&&(c.category==='sexual'||/추행|강간|성폭력|성희롱|촬영|허위영상|성매매|성착취/.test(c.charge?.name||''))&&P.get(c.accused)?.sex!=='남')err('성범죄 사건은 피고인이 남성: people의 피고인에 "sex": "남"');
  // player-facing words
  const fixedSex=[c.accused,c.complainant].some(k=>P.get(k)?.sex);
  for(const [k,v] of [['card.title',c.title],['card.summary',c.summary]])if(GENDERED.test(v||'')&&!fixedSex)err(`${k}: 성별을 단정하는 말 "${(v.match(GENDERED)||[])[0]}" (성별이 정해진 사건이면 people에 sex를 적기)`);

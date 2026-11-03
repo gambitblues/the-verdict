@@ -27,6 +27,8 @@ const fetchLocal=url=>{const f=path.join(root,url.replace(/^\.\//,''));let n=0;r
  for(const id of Object.keys(FS)){assert.ok(!SH.cases[id].stub,id+': sheet loaded');assert.deepEqual(JSON.parse(JSON.stringify(SH.cases[id])),JSON.parse(JSON.stringify(FS[id])),id+': sheet file = full sheet')}
  const sheetOnly=Object.keys(V.cases).filter(id=>!FC[id]);assert.equal(sheetOnly.length,Object.keys(FS).filter(id=>!FC[id]).length);
  for(const id of sheetOnly){const c=V.cases[id];assert.ok(c.evidence?.length>=3&&c.witnesses?.length&&c.truth,id+': sheet case becomes a full written-case shape')}
+ /* sex crimes: the accused is a man (기획자 확정 2026-11-03) */
+ for(const [id,c] of Object.entries(V.cases))if(c.charge&&(/추행|강간|성폭력|성희롱|촬영|허위영상|성매매|성착취/.test(c.charge.name||'')||/sexual/.test(id)))assert.equal(c.sex?.A,'남',id+': sex-crime accused is a man');
  /* every fetchable file is in the offline list */
  const m=JSON.parse(fs.readFileSync(path.join(root,'case-data','manifest.json'),'utf8')).files;
  for(const f of fs.readdirSync(path.join(root,'case-data')).filter(f=>f!=='manifest.json'))assert.ok(m.includes(f),f+' missing from case-data/manifest.json (offline)');
