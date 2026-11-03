@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -108,4 +108,29 @@ test('P4 global case stock: a case cannot be assigned twice to different judges'
  assert.deepEqual(new Set(published.map(x=>x.case_id)),new Set([ra.rows[0].case_id,rb.rows[0].case_id]));
  assert.deepEqual((await pb(`select case_id from public.shared_world_events where event_type='case_assigned'`)).rows.map(x=>x.case_id).sort(),published.map(x=>x.case_id).sort());
  await assert.rejects(pa('select * from public.case_stock_assign($1::uuid,$2)',[A,'civil']),/permission denied/);
+});
+
+test('P4 two hourly options are globally reserved, immutable until one accepted',async()=>{
+ // Only the in-memory TEST database gets a deterministic KST clock.
+ await svc(`create or replace function public.shared_kst_slot() returns text language sql stable as $$
+  select '2026-11-04T12'::text $$`);
+ const batch=['case-opt-a','case-opt-b','case-opt-c','case-opt-d','case-opt-e'];
+ for(const id of batch)await svc(
+  'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb)',
+  [id,'civil',HASH,HASH,'fingerprint-'+id,JSON.stringify({id}),JSON.stringify({passed:true})]);
+ await assert.rejects(pa('select * from public.shared_docket_offer($1::uuid,$2)',[A,'2026-11-04T12']),/permission denied/);
+ await assert.rejects(svc('select * from public.shared_docket_offer($1::uuid,$2)',[A,'2026-11-04T11']),/invalid_offer_slot/);
+ const offer=(id)=>svc('select * from public.shared_docket_offer($1::uuid,$2)',[id,'2026-11-04T12']);
+ const a=(await offer(A)).rows,b=(await offer(B)).rows;
+ assert.equal(a.length,2);assert.equal(b.length,2);
+ assert.equal(new Set([...a,...b].map(x=>x.case_id)).size,4,'reserved cases never overlap');
+ assert.deepEqual((await offer(A)).rows.map(x=>x.case_id),a.map(x=>x.case_id),'re-request is idempotent');
+ const accepted=(await svc('select * from public.shared_docket_accept($1::uuid,$2,$3)',[A,'2026-11-04T12',a[0].case_id])).rows;
+ assert.equal(accepted.length,1);
+ assert.equal(accepted[0].case_id,a[0].case_id);
+ assert.equal((await svc('select * from public.shared_docket_accept($1::uuid,$2,$3)',[A,'2026-11-04T12',a[0].case_id])).rows[0].case_id,a[0].case_id);
+ assert.equal((await svc('select state from public.shared_docket_offers where judge_id=$1 and case_id=$2',[A,a[1].case_id])).rows[0].state,'expired');
+ await assert.rejects(svc('select * from public.shared_docket_accept($1::uuid,$2,$3)',[B,'2026-11-04T12',a[0].case_id]),/offer_not_found/);
+ const evt=(await pb('select case_id from public.shared_world_events where event_type=\'case_assigned\'')).rows;
+ assert.ok(evt.some(x=>x.case_id===a[0].case_id),'acceptance creates shared public record');
 });
