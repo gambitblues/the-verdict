@@ -52,6 +52,7 @@ jobs:
           node tests/terra-trial-qa.test.cjs
           node tests/terra-generate.test.cjs
           node tests/terra-stock.test.cjs
+          node tests/terra-replenish-plan.test.cjs
           node tests/case-afterlife.test.cjs
           node tests/advanced-production-ledger.test.cjs
           node tests/advanced-story-beats-99.test.cjs
