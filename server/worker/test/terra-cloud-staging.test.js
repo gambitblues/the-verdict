@@ -24,6 +24,7 @@ test('existing worker API key is used only in private scheduled generation; no r
  const calls=[];let got;
  const result=await Terra.runCloudStaging(env,{
   fetcher:fake(calls),random:()=> '00000000-0000-4000-8000-000000000123',
+  trialQA:()=>({ok:true,completed:18}),
   generateCase:async(seed,options)=>{got={seed,options};return {ok:true,candidate:{id:seed.id,status:'draft'},
    worldSheet:{id:seed.id,status:'draft'},candidateHash:'a'.repeat(64),sheetHash:'b'.repeat(64)}}
  });
@@ -37,6 +38,7 @@ test('existing worker API key is used only in private scheduled generation; no r
 test('failed model generation never writes public or private stock',async()=>{
  const calls=[];const result=await Terra.runCloudStaging(env,{
   fetcher:fake(calls),random:()=> '11111111-0000-4000-8000-000000000123',
+  trialQA:()=>({ok:true,completed:18}),
   generateCase:async()=>({ok:false})
  });
  assert.equal(result.stage,'quarantine');
@@ -67,4 +69,16 @@ test('readiness reports missing private schema without model calls',async()=>{
   }
  });
  assert.deepEqual(results,{scheduled:false,privateStock:true,draftStorage:false,budgetLedger:true,modelConfigured:true});
+});
+
+test('simulation failure stops private draft storage',async()=>{
+ const calls=[];
+ const result=await Terra.runCloudStaging(env,{
+  fetcher:fake(calls),random:()=> '22222222-0000-4000-8000-000000000123',
+  generateCase:async(seed)=>({ok:true,candidate:{id:seed.id,status:'draft'},
+   worldSheet:{id:seed.id,status:'draft'},candidateHash:'a'.repeat(64),sheetHash:'b'.repeat(64)}),
+  trialQA:()=>({ok:false,completed:7})
+ });
+ assert.equal(result.stage,'quarantine');
+ assert.ok(!calls.some(x=>x.url.endsWith('/rpc/terra_stage_draft')));
 });
