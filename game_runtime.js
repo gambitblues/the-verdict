@@ -315,7 +315,7 @@ function currentPost(){
 function annualNPCLives(){
  LifeJustice.annualLifeTick(S,NPC,year(),S.week,remember,news,rand);
  FamilyEngine.annualTick(S,NPC,year(),S.week,remember,rand);
- const ids=Object.keys(S.npcDB||{}).filter(id=>NPC[id]&&NPC[id].alive!==false&&LifeJustice.isFree(NPC[id],S.week)&&year()-(NPC[id].bornYear||year())<78);
+ const ids=Object.keys(S.npcDB||{}).filter(id=>NPC[id]&&NPC[id].alive!==false&&LifeJustice.isFree(NPC[id],S.week)&&(!NPC[id].reentry||NPC[id].reentry.completed)&&year()-(NPC[id].bornYear||year())<78);
  S.lifeTriggers??=[];
  for(let i=0;i<Math.min(5,ids.length);i++){
   const id=choose(ids),p=NPC[id];if(!p||p.alive===false||p.lastLifeYear===year())continue;
