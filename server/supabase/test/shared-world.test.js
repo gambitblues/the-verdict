@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -172,4 +172,37 @@ test('P4 truth is sealed once at admission and never exposed to judges',async()=
  await assert.rejects(svc('update public.world_secrets set truth=$1::jsonb where case_id=$2',[JSON.stringify({branch:'did'}),id]),/sealed_truth_immutable/);
  await assert.rejects(pa('select * from public.world_secrets'),/permission denied/);
  await assert.rejects(pa(sql,args),/permission denied/);
+});
+
+test('P4 asynchronous judges: eight hearings by A do not auto-try B; B rejoins with protection',async()=>{
+ // World starts on day 3. B has a hearing on day 4 but does not sign in as A proceeds.
+ const ownA='case-opt-a',ownB='case-new-b';
+ assert.equal((await svc('select public.shared_judge_resume($1::uuid) as x',[B])).rows.length,1);
+ await svc('select public.shared_hearing_schedule($1,$2::uuid,$3,$4)',[ownA,A,1,4]);
+ await svc('select public.shared_hearing_schedule($1,$2::uuid,$3,$4)',[ownB,B,1,4]);
+ assert.equal((await pa('select * from public.shared_judge_hearings where judge_id=$1',[B])).rows.length,0,'A cannot read B private obligations');
+ // Even when a judge opens eight hearings on the SAME global date, the clock moves once.
+ const tick=(await svc('select * from public.shared_clock_advance($1,$2)',[1,10])).rows[0];
+ assert.equal(Number(tick.game_day),10);
+ for(let i=0;i<8;i++){
+  const key='p4-eight-hearings-'+String(i).padStart(3,'0');
+  await svc('select public.shared_world_append($1,$2,$3,$4,$5::jsonb,$6::uuid)',
+   [key,ownA,'hearing_opened',10,JSON.stringify({title:'공판 '+(i+1)}),A]);
+ }
+ assert.equal((await svc('select game_day from public.shared_world_clock')).rows[0].game_day,10);
+ assert.equal((await svc('select count(*)::int as n from public.shared_world_events where event_type=\'hearing_opened\' and game_day=10')).rows[0].n,8);
+ assert.equal((await pb('select due_game_day from public.shared_judge_hearings')).rows[0].due_game_day,4,
+  'B case is not automatically heard or lost while offline');
+ const resume=(await svc('select * from public.shared_judge_resume($1::uuid)',[B])).rows[0];
+ assert.deepEqual([Number(resume.previous_day),Number(resume.world_day),Number(resume.lag_days),Number(resume.protected_until_day),Number(resume.rescheduled_hearings)],
+ [3,10,7,12,1]);
+ const after=(await pb('select due_game_day,state,revised_by_catchup from public.shared_judge_hearings')).rows[0];
+ assert.deepEqual([after.due_game_day,after.state,after.revised_by_catchup],[12,'scheduled',true]);
+ assert.equal((await pa('select due_game_day from public.shared_judge_hearings')).rows[0].due_game_day,4,
+  'B reconnect must not alter A private docket');
+ const twice=(await svc('select * from public.shared_judge_resume($1::uuid)',[B])).rows[0];
+ assert.equal(twice.rescheduled_hearings,0,'refresh does not grant infinite extensions');
+ assert.equal(twice.lag_days,0);
+ await assert.rejects(pa('select * from public.shared_judge_resume($1::uuid)',[A]),/permission denied/);
+ await assert.rejects(svc('select public.shared_hearing_schedule($1,$2::uuid,$3,$4)',[ownA,B,2,12]),/hearing_case_not_owned/);
 });
