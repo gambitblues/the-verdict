@@ -88,4 +88,12 @@ async function runCloudStaging(env,{fetcher=fetch,now=()=>new Date(),random=()=>
   if(lease){try{await rpc(env,fetcher,'refill_lease_release',{p_run:runId,p_token:token})}catch{}}
  }
 }
-module.exports={runCloudStaging,policy,THEMES};
+async function readiness(env,{fetcher=fetch}={}){
+ const status={scheduled:env.TERRA_REFILL_ENABLED==='1',privateStock:false,draftStorage:false,budgetLedger:false,modelConfigured:!!env.MODEL_CASE};
+ if(!env.SUPABASE_URL||!env.SUPABASE_SERVICE_ROLE_KEY)return status;
+ try{await stockCounts(env,fetcher);status.privateStock=true}catch{}
+ try{const x=await rpc(env,fetcher,'terra_pending_counts',{});status.draftStorage=!!x&&typeof x==='object'}catch{}
+ try{const x=await rpc(env,fetcher,'refill_budget_snapshot',{});status.budgetLedger=Array.isArray(x)&&x.length>0}catch{}
+ return status;
+}
+module.exports={runCloudStaging,policy,THEMES,readiness};
