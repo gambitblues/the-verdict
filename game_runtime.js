@@ -266,14 +266,13 @@ function createGeneratedCase(selectedCandidate=null){
    &&S.week-(S.cases[c.id]?.closedWeek||0)>(S.cases[c.id]?.verdict==='guilty'?(c.story?.deep?.key==='murder'?624:208):52)).slice(-60);
  const recidivist=bp.kind==='criminal'&&previous.length&&rand()<.18?choose(previous):null;
  const prior=getPriorByKey(bp.key),caseId=`proc-${year()}-${String(serial).padStart(6,'0')}`;
- const lifePool=(S.lifeTriggers||[]).filter(x=>!x.consumed&&NPC[x.id]?.alive!==false&&S.week-x.week>=1&&S.week-x.week<312);
+ const lifePool=(S.lifeTriggers||[]).filter(x=>!x.consumed&&NPC[x.id]?.alive!==false&&LifeJustice.isFree(NPC[x.id],S.week)&&S.week-x.week>=1&&S.week-x.week<312);
  const appropriate=lifePool.filter(x=>(x.type==='이혼'&&['affair','inherit','contract','defamation'].includes(bp.key))||(x.type==='재산'&&['fraud','rent','contract','embezzle'].includes(bp.key))||(x.type==='직업'&&['harassment','contract','privacy','celebrity'].includes(bp.key)));
- const lifeSeed=appropriate.length&&rand()<.65?choose(appropriate):null;
- const c=StoryEngine.build({caseId,blueprint:bp,instance:i,loc,now:day(),week:S.week,r:rand,
+ const lifeSeed=bp.kind==='civil'&&appropriate.length&&rand()<.65?choose(appropriate):null;
+ const c=StoryEngine.build({caseId,blueprint:bp,instance:i,loc,now:day(),week:S.week,r:rand,lifeActorId:lifeSeed?.id||null,
   makeNPC:(role)=>freshNPC(role,serial,bp.key),oldCriminal:recidivist,priorDecision:prior,
   prosecutorPool:livePool(['soo','jun'],'prosecutor','검사',serial),counselPool:livePool(['jiyu','seon'],'lawyer','변호사',serial),people:NPC});
  if(lifeSeed){
-  lifeSeed.consumed=true;
   c.lifeConnection={npcId:lifeSeed.id,originWeek:lifeSeed.week,type:lifeSeed.type,detail:lifeSeed.change};
   // Background is context, not proof or automatic guilt; keep evidence and the incident immutable.
   c.story.lifeContext=`${NPC[lifeSeed.id].name}의 과거 생활 변화: ${lifeSeed.change}. 이 변화가 현재 사건의 법적 책임을 증명하지는 않습니다.`;
@@ -284,6 +283,7 @@ function createGeneratedCase(selectedCandidate=null){
  c.continuityAudit=continuity;
  if(!continuity.pass){S.caseSerial--;throw new Error(`사건 연속성 검증 실패: ${continuity.errors.join(', ')}`)};
  if(!c.qa.pass){S.caseSerial--;throw new Error(`사건 스토리 검증 실패: ${c.qa.errors.join(', ')}`)}
+ if(lifeSeed&&c.who?.[0]===lifeSeed.id)lifeSeed.consumed=true; // consume only after continuity & story QA pass
  c.contentPack=c.story?.pack?{...c.story.pack}:null;
  CASES.push(c);S.generatedCases.push(c);
  S.cases[caseId]={phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null,positions:null,positionHistory:[],review:null};
