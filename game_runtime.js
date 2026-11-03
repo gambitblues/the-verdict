@@ -318,6 +318,12 @@ function annualNPCLives(){
  for(let i=0;i<Math.min(5,ids.length);i++){
   const id=choose(ids),p=NPC[id];if(!p||p.alive===false||p.lastLifeYear===year())continue;
   p.lastLifeYear=year();p.life??={marital:p.maritalStatus||'미혼',career:p.career,wealth:p.wealth,partner:p.partnerId||null,children:p.children||0};
+  // FamilyEngine or an earlier judgment may have changed the canonical life state.
+  // Do not run the annual event against a stale second copy.
+  p.life.marital=p.maritalStatus||p.life.marital;
+  p.life.children=Number.isInteger(p.children)?p.children:p.life.children;
+  p.life.career=p.career||p.life.career;
+  p.life.wealth=Number.isFinite(p.wealth)?p.wealth:p.life.wealth;
   const life=p.life,roll=rand();let change='',type='일상';
   if(roll<.18&&life.marital==='미혼'&&year()-(p.bornYear||year())>=24){life.marital='기혼';life.partner='가상 배우자';type='혼인';change='혼인하여 새로운 가족 관계가 형성됨';}
   else if(roll<.29&&life.marital==='기혼'){life.marital='이혼';type='이혼';change='별거와 이혼을 경험하며 가족 관계가 변화함';}
