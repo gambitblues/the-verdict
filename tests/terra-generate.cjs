@@ -39,7 +39,7 @@ async function produce({seed,root,fetcher,apiKey,model='gpt-6.1-terra'}){
  fs.mkdirSync(folder,{recursive:false,mode:0o700});
  try{
   const files=[['candidate.json',candidate],['world-sheet.json',worldSheet],
-   ['qa-result.json',{stage:qa.stage,trial:qa.trial,candidateHash:qa.candidateHash,sheetHash:qa.sheetHash,
+   ['qa-result.json',{id:spec.id,stage:qa.stage,trial:qa.trial,candidateHash:qa.candidateHash,sheetHash:qa.sheetHash,
     model,usage,repairs}]];
   for(const [name,data] of files)fs.writeFileSync(path.join(folder,name),JSON.stringify(data,null,2)+'\n',{flag:'wx',mode:0o600});
  }catch(e){fs.rmSync(folder,{recursive:true,force:true});throw e}
