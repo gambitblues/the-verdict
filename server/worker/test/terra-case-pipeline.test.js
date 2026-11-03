@@ -48,7 +48,7 @@ test('승인된 사건만 추가하고 중복 및 원본 변형을 방지한다'
  const approved=Pipeline.makeReview(c,checks,'담당 운영자');assert.equal(approved.ok,true);
  const approval={...approved.record,approvedAt:'2026-11-04'};
  const first=Pipeline.admit(c,approval);assert.equal(first.ok,true);
- assert.equal(c.status,'draft');assert.equal(first.item.worldSheet.status,'ready');
+ assert.equal(c.status,'review');assert.equal(first.item.worldSheet.status,'ready');
  assert.equal(Pipeline.admit(c,approval,first.inventory).ok,false);
  const second=prepare();second.id='terra-warehouse-002';
  const approval2={...approval,id:second.id};
