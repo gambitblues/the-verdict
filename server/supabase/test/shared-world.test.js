@@ -240,3 +240,17 @@ test('P4 calendar: eight hearings on one date count as one shared date, absent B
  assert.equal((await pa('select game_day from public.shared_world_clock')).rows[0].game_day,12);
  assert.equal((await pb('select game_day from public.shared_world_clock')).rows[0].game_day,12);
 });
+
+test('P4 first login with pending old hearing gets grace even without progress record',async()=>{
+ const state=(await svc('select game_day from public.shared_world_clock')).rows[0];
+ assert.equal(state.game_day,12);
+ const before=(await pa('select due_game_day,state from public.shared_judge_hearings where case_id=$1',['case-new-a'])).rows[0];
+ assert.deepEqual(before,{due_game_day:4,state:'scheduled'});
+ const r=(await svc('select * from public.shared_judge_resume($1::uuid)',[A])).rows[0];
+ assert.deepEqual([r.previous_day,r.world_day,r.lag_days,r.protected_until_day,r.rescheduled_hearings],
+  [4,12,8,14,1]);
+ const after=(await pa('select due_game_day,state from public.shared_judge_hearings where case_id=$1',['case-new-a'])).rows[0];
+ assert.deepEqual(after,{due_game_day:14,state:'scheduled'});
+ assert.equal((await pb('select count(*)::int as n from public.shared_judge_hearings where judge_id=$1',[A])).rows[0].n,0,
+  'B cannot inspect the other judge court schedule');
+});
