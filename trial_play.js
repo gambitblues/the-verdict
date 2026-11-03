@@ -1292,7 +1292,7 @@ function cardBlock(card,t,c){
  return `<div class="t4-event ${done?'done':''}"><b>${card.type==='objection'?'✋':'⏳'} ${esc(x.title)}</b><p>${esc(x.body)}</p>
  ${x.target?`<p class="small"><b>대상</b> ${esc(x.target)}</p><blockquote class="t4-excerpt">${x.ask?`${x.prevQ?`<span class="t4-obj-line"><b>앞 질문</b> ${esc(x.askBy)}: "${esc(x.prevQ)}"</span><span class="t4-obj-line"><b>앞 답변</b> ${esc(x.wn)}: "${esc(x.prevA)}"</span>`:''}<span class="t4-obj-line"><b>${x.prevQ?'덧붙인 질문':'질문'}</b> ${esc(x.askBy)}: "${esc(x.ask)}"</span>${x.answer?`<span class="t4-obj-line"><b>답변</b> ${esc(x.wn)}: "${esc(x.answer)}"</span>`:`<span class="t4-obj-line muted small">${card.live?(card.choice==='accept'?'이의를 받아들여 증인은 답하지 않았습니다.':'증인이 답하기 전에 이의가 나왔습니다.'):'증인이 답하기 전에 이의가 나왔습니다. 받아들이지 않으면 증인 탭에서 이 질문을 할 수 있어요.'}</span>`}`:esc(x.quote)}</blockquote>`:''}
  <p class="small"><b>신청 이유</b> ${esc(exchange?.openingA||x.reason)}</p>${x.opinion?`<p class="small"><b>상대방 의견</b> ${esc(exchange?.openingB||x.opinion)}</p>`:''}
- ${x.reason&&x.opinion?`<div class="t4-row"><span class="t4-tag">${exchange?'AI 문장 검증 완료':'기존 신청 기록'}</span><button class="btn outline mini" data-action="t4exchange" data-id="${esc(card.id)}" ${exchange||!window.VerdictAI?.on?'disabled':''}>${exchange?'공방 검증 완료':'AI 법정 공방 듣기'}</button></div>`:''}
+ ${x.reason&&x.opinion?`<div class="t4-row"><button class="btn outline mini" data-action="t4exchange" data-id="${esc(card.id)}" ${exchange||!window.VerdictAI?.on?'disabled':''}>${exchange?'공방 검증 완료':'AI 법정 공방 듣기'}</button></div>`:''}
  ${done?`<p class="small">→ ${esc(done==='accept'?x.choices[0]:x.choices[1])}</p>`:`<div class="t4-stack"><button class="btn mini primary" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="accept">${esc(x.choices[0])}</button><button class="btn mini outline" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="reject">${esc(x.choices[1])}</button></div>`}</div>`;
 }
 /* Where the case stands, issue by issue, from what has been shown in court so far. Nothing hidden is used.
@@ -1395,7 +1395,7 @@ function openingStatements(c,t,cur){
  const key=c.id+':'+left+':'+right,ai=t.aiOpening?.source===key?t.aiOpening:null;
  const card=(speaker,body,cls)=>body?`<div class="t4-closing ${cls}"><b>${esc(speaker)}</b><p>"${esc(body)}"</p></div>`:'';
  return `<section class="t4-opening" aria-label="첫 기일 양측 주장">
-   <div class="t4-subhead"><h4>첫 기일 · 양측 입장</h4><span class="t4-tag">${ai ? "AI 문장 검증 완료" : "사건 기록 원문"}</span></div>
+   <div class="t4-subhead"><h4>첫 기일 · 양측 입장</h4></div>
    <p class="muted small">두 주장은 사건 기록을 바탕으로 표시됩니다. 증거를 살피고 어느 쪽을 믿을지는 재판장이 판단합니다.</p>
    ${card(sideWord(c,'p'),ai?.openingA||left,'p')}${card(sideWord(c,'d'),ai?.openingB||right,'d')}
    <div class="t4-row"><button class="btn outline mini" data-action="t4tab" data-tab="evidence">증거 검토</button><button class="btn outline mini" data-action="t4tab" data-tab="witness">증인신문</button></div>
@@ -1445,7 +1445,7 @@ function benchPanel(c,t){
  const source=benchSource(c,t),ai=t.aiBench?.source===source?t.aiBench.text:null;
  if(!source)return '';
  return `<section class="t4-card t4-bench" aria-label="재판연구원 검토">
-  <div class="t4-subhead"><h4>재판연구원 · 쟁점 검토</h4><span class="t4-tag">${ai?'AI 문장 검증 완료':'공판 기록 자동 정리'}</span></div>
+  <div class="t4-subhead"><h4>재판연구원 · 쟁점 검토</h4></div>
   <p class="muted small">채택한 증거와 실제로 들은 증언만 반영합니다. AI는 결론·형량을 추천하지 않으며, 판결은 재판장이 결정합니다.</p>
   <p class="small">${esc(ai||source)}</p>
   <button class="btn outline mini" data-action="t4bench" ${!window.VerdictAI?.on||!!ai?'disabled':''}>${ai?'검토 완료':window.VerdictAI?.on?'AI 문장으로 정리하기':'AI 연결 시 사용 가능'}</button>
@@ -1459,7 +1459,7 @@ function verdictPage(c,st){
  const closingKey=c.id+':'+first+':'+second;
  if(canVerdict&&first&&second)window.VerdictAI?.closing?.(c,t,first,second);
  const aiClosing=t.aiClosing?.source===closingKey?t.aiClosing:null;
- const closing=cur?`<div class="t4-subhead"><h4>최종 변론 · 양측 입장</h4><span class="t4-tag">${aiClosing?'AI 문장 검증 완료':'사건 기록 원문'}</span></div>
+ const closing=cur?`<div class="t4-subhead"><h4>최종 변론 · 양측 입장</h4></div>
   <div class="t4-closing"><b>${esc(sideWord(c,'p'))} 최종 ${crim?'논고':'변론'}</b><p>"${esc(aiClosing?.openingA||first)}"</p>${crim?`<p class="small">구형: <b>${esc(demandText(c))}</b></p>`:(cur.decision?`<p class="small">신청: <b>${esc(tell(c,t,cur.decision.what))}</b></p>`:`<p class="small">청구: <b>${won(cur.claim?.amount||0)}</b> · ${esc(cur.claim?.what||'')}</p>`)}</div>
   <div class="t4-closing d"><b>${esc(sideWord(c,'d'))} 최종 변론</b><p>"${esc(aiClosing?.openingB||second)}"</p></div>`:'';
  claimNotes(c);const optBtns=c.verdicts.map(o=>`<button class="choice ${v.opt===o.id?'on':''}" data-action="t4verdict" data-id="${esc(o.id)}" ${canVerdict?'':'disabled'}><span class="choice-index">${v.opt===o.id?'✔':'⚖'}</span><span><strong>${esc(plainLabel(o))}</strong><small>${esc(plainNote(o))}</small></span></button>`).join('');
