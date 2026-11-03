@@ -21,14 +21,23 @@ alter table public.shared_docket_offers enable row level security;
 revoke all on public.shared_docket_offers from public,anon,authenticated;
 grant select,insert,update on public.shared_docket_offers to service_role;
 
+-- The slot calculation is a database-owned function. Test DB can substitute a
+-- deterministic fixture without changing production UTC/KST behavior.
+create or replace function public.shared_kst_slot() returns text
+language sql stable set search_path=public as $
+ select public.shared_kst_slot()
+$;
+revoke all on function public.shared_kst_slot() from public,anon,authenticated;
+grant execute on function public.shared_kst_slot() to service_role;
+
 -- Request is idempotent within one KST hour and uses DB clock rather than
 -- client time. Releasing expired reservations never releases ACCEPTED cases.
 create or replace function public.shared_docket_offer(p_judge uuid,p_slot text)
 returns table(case_id text,category text,position smallint,expires_at timestamptz)
 language plpgsql security definer set search_path=public as $$
 declare
- current_slot text:=to_char(now() at time zone 'Asia/Seoul','YYYY-MM-DD"T"HH24');
- current_hour int:=extract(hour from now() at time zone 'Asia/Seoul');
+ current_slot text:=public.shared_kst_slot();
+ current_hour int:=right(public.shared_kst_slot(),2)::int;
  found_id text;
  n int;
 begin
