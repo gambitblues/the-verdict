@@ -280,3 +280,38 @@ test('P4 initial evidence endpoint seals future exhibits and non-owner cannot in
  assert.equal((await handle(req('/world/case/initial?caseId=case-p4'),env,f)).status,404);
  assert.equal(secretReads,1,'never query sealed truth for the wrong judge');
 });
+
+
+test('P4 catch-up is own-only and absent judge resumes without modifying other players',async()=>{
+ const calls=[];let worldDay=14,previousDay=3;
+ const ok=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'content-type':'application/json'}});
+ const f=async(url,opt={})=>{
+  const u=String(url);calls.push({u,opt});
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/rest/v1/shared_world_clock'))return ok([{game_day:worldDay,version:2}]);
+  if(u.includes('/rest/v1/shared_judge_progress'))return ok([{last_seen_world_day:previousDay,protected_until_day:3}]);
+  if(u.includes('/rest/v1/shared_judge_hearings'))return ok([{case_id:'case-p4',hearing_index:1,due_game_day:4,state:'scheduled',revised_by_catchup:false}]);
+  if(u.includes('/rpc/shared_judge_resume')){previousDay=worldDay;return ok([{previous_day:3,world_day:14,lag_days:11,protected_until_day:16,rescheduled_hearings:1}])}
+  throw Error('unexpected '+u);
+ };
+ const disabled=await handle(req('/world/catchup'),env,f);
+ assert.equal(disabled.status,404);
+ const enabled={...env,P4_SHARED_DOCKET_ENABLED:'1'};
+ const preview=await (await handle(req('/world/catchup'),enabled,f)).json();
+ assert.equal(preview.ok,true);
+ assert.equal(preview.lagDays,11);
+ assert.equal(preview.pending[0].due_game_day,4);
+ assert.equal(calls.filter(x=>x.u.includes('/rpc/shared_judge_resume')).length,0,'read cannot mutate');
+ const reply=await (await handle(req('/world/resume',{}),enabled,f)).json();
+ assert.equal(reply.ok,true);
+ assert.equal(reply.resume.protected_until_day,16);
+ const rpc=calls.find(x=>x.u.includes('/rpc/shared_judge_resume'));
+ assert.deepEqual(JSON.parse(rpc.opt.body),{p_judge:'u1'},'server derives identity, not from client');
+ const restCalls=calls.filter(x=>x.u.includes('/rest/v1/shared_'));
+ assert.ok(restCalls.every(x=>x.opt.headers.authorization==='Bearer good'),'RLS with player JWT');
+ assert.ok(restCalls.every(x=>!x.u.includes('/world_secrets')));
+ const after=await (await handle(req('/world/catchup'),enabled,f)).json();
+ assert.equal(after.lagDays,0);
+ assert.equal((await handle(req('/world/resume',{},''),enabled,f)).status,401);
+});
