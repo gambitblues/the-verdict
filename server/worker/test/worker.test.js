@@ -256,3 +256,27 @@ test('P4 case endpoint requires ownership and never returns sealed sheet or anot
  assert.equal((await handle(req('/world/case?caseId=case-p4'),env,f)).status,404);
  assert.equal((await handle(req('/world/case?caseId=bad'),env,f)).status,400);
 });
+
+test('P4 initial evidence endpoint seals future exhibits and non-owner cannot inspect truth',async()=>{
+ let owner='u1',secretReads=0;
+ const sheet={format:'verdict-world-sheet/v1',id:'case-p4',
+  records:[{id:'r1',title:'처음 제출된 자료',first:true},{id:'r2',title:'추가 주문 자료',first:false}],
+  worlds:{did:{records:{r1:'첫날 증거 텍스트',r2:'SECRET_FUTURE_RECORD'}},
+   didnt:{records:{r1:'다른 세계 증거',r2:'SECRET_OTHER_BRANCH'}}}};
+ const f=async(url,opt={})=>{
+  const u=String(url),ok=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'content-type':'application/json'}});
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/rest/v1/case_stock'))return ok([{case_id:'case-p4',assigned_to:owner,state:'assigned',sheet}]);
+  if(u.includes('/rest/v1/world_secrets')){secretReads++;assert.equal(opt.headers.authorization,'Bearer svc');return ok([{truth:{branch:'did'}}])}
+  throw Error('unexpected '+u);
+ };
+ const result=await (await handle(req('/world/case/initial?caseId=case-p4'),env,f)).json();
+ assert.equal(result.ok,true);
+ assert.deepEqual(result.records,[{id:'r1',title:'처음 제출된 자료',kind:'문서',text:'첫날 증거 텍스트'}]);
+ assert.ok(!JSON.stringify(result).includes('SECRET_'));
+ assert.equal(secretReads,1);
+ owner='another-user';
+ assert.equal((await handle(req('/world/case/initial?caseId=case-p4'),env,f)).status,404);
+ assert.equal(secretReads,1,'never query sealed truth for the wrong judge');
+});
