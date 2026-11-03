@@ -37,7 +37,7 @@ test('세 갈래 진실의 증거가 동일하면 거부한다',()=>{
 test('2차 출처는 경고만 주며 법률 검증을 대체하지 않는다',()=>{
  const c=candidate();c.source={type:'secondary',title:'배경을 참고한 가상의 위키 문서',publisher:'온라인 백과사전',url:'https://example.org/context',accessedAt:'2026-11-04',learning:'사회적 맥락만 참고하고 범죄 사실은 차용하지 않는다'};
  const result=Pipeline.validateDraft(c);
- assert.equal(result.ok,true);assert.equal(result.warnings.length,1);
+ assert.equal(result.ok,true);assert.ok(result.warnings.some(x=>x.includes('2차 자료')));
 });
 test('독립 검토 체크리스트 없이는 승인되지 않는다',()=>{
  const c=candidate();
