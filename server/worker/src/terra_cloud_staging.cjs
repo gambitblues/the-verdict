@@ -4,6 +4,7 @@
  */
 'use strict';
 const {generate}=require('./terra_case_generator.cjs');
+const CloudTrialQA=require('./terra_cloud_trial_qa.cjs');
 const {TARGETS}=require('./terra_case_pipeline.cjs');
 const THEMES=Object.freeze({
  civil:'상가 건물 누수 시점과 수리 의무, 현장 사진 및 계약서 사이의 모순을 다투는 가상의 민사 사건',
@@ -72,6 +73,10 @@ async function runCloudStaging(env,{fetcher=fetch,now=()=>new Date(),random=()=>
    ' — 증거 및 목격자의 관찰 범위를 구분하고 완전히 독립적인 가상 사실관계를 작성한다.'},{
    fetcher,apiKey:env.OPENAI_API_KEY,model:p.model});
   if(!result.ok||!result.candidate||!result.worldSheet)return {stage:'quarantine',created:0};
+  // The browser QA remains a separate final gate, but an obviously broken
+  // world must not even enter the private staging table.
+  const trial=CloudTrialQA.run(result.worldSheet);
+  if(!trial.ok)return {stage:'quarantine',created:0};
   // Keep hidden truth private, not in public world_state or player saves.
   const stored=await rpc(env,fetcher,'terra_stage_draft',{
    p_id:id,p_category:category,p_candidate:result.candidate,p_sheet:result.worldSheet,
