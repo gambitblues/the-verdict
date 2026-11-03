@@ -16,6 +16,7 @@ export const datesIn=t=>{
  return [...S(t).matchAll(re)].map(m=>m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0')).sort();
 };
 const sameDates=(a,b)=>JSON.stringify(datesIn(a))===JSON.stringify(datesIn(b));
+const numbersWithoutDates=t=>numbersIn(S(t).replace(/\d{4}\s*(?:년\s*|[.\/-]\s*)\d{1,2}\s*(?:월\s*|[.\/-]\s*)\d{1,2}\s*(?:일)?/g,' '));
 /* sentences end in 다/요/까 followed by a stop (Korean news and testimony) */
 export const sentencesIn=t=>S(t).split(/(?<=[.!?。])\s+/).filter(x=>x.length>1);
 
@@ -39,7 +40,7 @@ const namesOf=p=>(Array.isArray(p.names)?p.names:[]).map(S).filter(n=>n.length>=
 export function verifyPrompt(kind,src,out){
  return {instructions:`두 글을 비교하는 검사원입니다. B가 A의 표현만 바꾼 글인지 확인합니다.
 다음 중 하나라도 있으면 same=false입니다: B에 A에 없는 사실·사람·장소·시각·숫자가 있음, A의 사실이 빠지거나 바뀜, 인정과 부인(긍정·부정)이 뒤집힘, 누가 무엇을 했는지가 바뀜, 증언이라면 증인이 말하는 뜻이 달라짐, 확신의 정도가 크게 달라짐(“~였을 거예요”를 “~였습니다”로 단정 등).
-말투·어순·문장 나누기·같은 뜻의 다른 낱말은 괜찮습니다.`,
+말투·어순·문장 나누기·같은 뜻의 다른 낱말, 2026.12.21과 2026년 12월 21일처럼 동일한 날짜의 표기 변화는 괜찮습니다.`,
   input:`종류: ${kind}\nA(원래 글): ${cap(src,3000)}\nB(바꾼 글): ${cap(out,3000)}`,
   schema:{name:'meaning_check',schema:{type:'object',additionalProperties:false,required:['same','problem'],properties:{same:{type:'boolean'},problem:{type:'string'}}}}};
 }
@@ -101,7 +102,7 @@ export function checkArticle(p,out){
  if(n<2||n>4)return {ok:false,why:'sentences'};
  if(body.length<80||body.length>240)return {ok:false,why:'length'};
  if(!sameDates(src,title+' '+body))return {ok:false,why:'dates'};
- const b=numbersIn(title+' '+body),a=numbersIn(src);if(!b.every(x=>a.includes(x)))return {ok:false,why:'numbers'};
+ const b=numbersWithoutDates(title+' '+body),a=numbersWithoutDates(src);if(!b.every(x=>a.includes(x)))return {ok:false,why:'numbers'};
  for(const n of namesOf(p))if(!src.includes(n)&&(title+body).includes(n))return {ok:false,why:'person_added'};
  if(negated(S(p.body))!==negated(body))return {ok:false,why:'polarity'};
  return {ok:true,value:{title,body},compare:[src,title+' '+body]};
