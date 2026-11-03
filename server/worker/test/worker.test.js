@@ -182,3 +182,26 @@ test('P4 read-only public chronology: token, cursor, RLS token forwarding and no
  assert.equal(rest.headers.apikey,'anon');
  assert.ok(!rest.url.includes('world_secrets'));
 });
+
+test('P4 shared clock and NPC API use invitation-checked JWT and expose only public data',async()=>{
+ const log=[];
+ const f=async(url,opt={})=>{
+  const u=String(url);log.push({u,headers:opt.headers});
+  const ok=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}});
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/rest/v1/shared_world_clock'))return ok([{id:'main',game_day:31,version:3}]);
+  if(u.includes('/rest/v1/shared_npc_public'))return ok([{npc_id:'npc:test-001',public_profile:{name:'김가람'},life_status:'alive',effective_day:12,version:1}]);
+  throw Error('unexpected '+u);
+ };
+ assert.equal((await handle(req('/world/clock',undefined,''),env,f)).status,401);
+ const clock=await (await handle(req('/world/clock'),env,f)).json();
+ assert.deepEqual([clock.ok,clock.clock.game_day],[true,31]);
+ const npcs=await (await handle(req('/world/npcs?after=npc:test-000'),env,f)).json();
+ assert.equal(npcs.npcs[0].npc_id,'npc:test-001');
+ assert.equal((await handle(req('/world/npcs?after=bad%3Dinput'),env,f)).status,400);
+ const calls=log.filter(x=>x.u.includes('/rest/v1/shared_'));
+ assert.equal(calls.length,2);
+ assert.ok(calls.every(x=>x.headers.authorization==='Bearer good'&&x.headers.apikey==='anon'));
+ assert.ok(calls.every(x=>!x.u.includes('world_secrets')&&!x.u.includes('case_stock')));
+});
