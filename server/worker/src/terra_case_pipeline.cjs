@@ -72,6 +72,7 @@ function validateDraft(candidate){
  return {ok:!errors.length,errors,warnings,category:card.category,fingerprint:keyFor(candidate)};
 }
 function makeReview(candidate,checks,reviewer){
+ if(!candidate||candidate.status!=='review')return {ok:false,errors:['검수 완료된 review 상태 사건만 승인 신청할 수 있습니다.'],warnings:[]};
  const result=validateDraft(candidate);
  if(!result.ok)return {ok:false,errors:result.errors,warnings:result.warnings};
  if(typeof reviewer!=='string'||reviewer.trim().length<2||!checks||REVIEW.some(k=>checks[k]!==true))return {ok:false,errors:['독립 검증자와 8개 검수 항목이 모두 필요합니다.'],warnings:result.warnings};
@@ -80,6 +81,7 @@ function makeReview(candidate,checks,reviewer){
 function admit(candidate,approval,inventory=[]){
  const result=validateDraft(candidate);
  if(!result.ok)return {ok:false,errors:result.errors};
+ if(candidate.status!=='review')return {ok:false,errors:['draft는 승인 재고에 등록할 수 없습니다.']};
  if(!approval||approval.id!==candidate.id||approval.fingerprint!==result.fingerprint||approval.contentHash!==contentHash(candidate)||(typeof approval.reviewer!=='string'||approval.reviewer.trim().length<2)||REVIEW.some(k=>approval.checks?.[k]!==true)||!validDate(approval.approvedAt))
   return {ok:false,errors:['승인 정보가 없거나 사건 내용과 일치하지 않습니다.']};
  if(!Array.isArray(inventory))return {ok:false,errors:['재고 형식이 잘못됐습니다.']};
