@@ -1384,7 +1384,7 @@ function openingStatements(c,t,cur){
  if(t.daysDone!==0||!cur?.claims)return '';
  const left=tell(c,t,cur.claims[0]||''),right=tell(c,t,cur.claims[1]||'');
  if(!left&&!right)return '';
- if(left&&right)window.VerdictAI?.opening?.(c,t,left,right);
+ if(left&&right&&sessionOpen(t))window.VerdictAI?.opening?.(c,t,left,right);
  const key=c.id+':'+left+':'+right,ai=t.aiOpening?.source===key?t.aiOpening:null;
  const card=(speaker,body,cls)=>body?`<div class="t4-closing ${cls}"><b>${esc(speaker)}</b><p>"${esc(body)}"</p></div>`:'';
  return `<section class="t4-opening" aria-label="첫 기일 양측 주장">
