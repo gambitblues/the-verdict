@@ -420,9 +420,10 @@ function progressPendingCases(){
  }
 }
 function ensureGeneratedCases(){
+ // Existing queued cases finish their public timeline even if later content sources change.
+ progressPendingCases();
  if(S.realtimeInbox?.enabled)return;
  moveOldCasesToOtherCourt();
- progressPendingCases();
  // Existing queued case must reach filing before the next incident is prepared.
  if(S.week<14||age()>=75)return;
  if(openCases().length>=4||(S.pendingCases||[]).length)return;
