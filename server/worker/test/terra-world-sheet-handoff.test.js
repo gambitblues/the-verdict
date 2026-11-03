@@ -28,7 +28,7 @@ function sheet(c){
  records:c.records.map(r=>({...r,unlock:r.first?undefined:'법원이 관리 원장 제출을 명함'})),
  worlds:{},traps:[],screen:{allow:['사건의 기록된 사실'],avoid:'선정적 묘사'},open:[]};
  for(const t of ['did','didnt','reason']){
-  const w=c.worlds[t];s.worlds[t]={...w,label:t,legal:'폭행죄 적용 및 책임 범위에 대한 검토가 필요하다.',
+  const w=structuredClone(c.worlds[t]);s.worlds[t]={...w,label:t,legal:'폭행죄 적용 및 책임 범위에 대한 검토가 필요하다.',
    saw:{...w.witnesses},knows:{A:fact,B:fact},
    sentencing:Object.fromEntries(['means','degree','count','setting','harm','victim','planning','after'].map(k=>[k,fact]))};
   delete s.worlds[t].witnesses;
