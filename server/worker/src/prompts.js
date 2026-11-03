@@ -77,6 +77,34 @@ export function checkNpc(p,out){
  return {ok:true,value:{text},compare:[src,text]};
 }
 
+/* ---------- opening statements: both sides in a single call, no new arguments ---------- */
+export function openingPrompt(p){
+ const a=cap(p.openingA,700),b=cap(p.openingB,700);
+ if(!a||!b)return {error:'missing_text'};
+ return {instructions:`${COMMON}
+지금 할 일: 재판 첫 기일에 나온 양측 입장 두 개를 실제 법정에서 듣기 편한 한국어로 다듬습니다.
+- 첫 번째와 두 번째의 입장, 사람, 숫자, 금액, 시각, 확신 정도를 각각 그대로 유지합니다.
+- 상대방의 주장이나 근거를 한쪽 발언에 옮기지 않습니다.
+- 원문에 없는 사실, 법령, 증거를 추가하지 않습니다.
+- 각 발언은 최대 3문장, 원래 주장보다 지나치게 길지 않게 작성합니다.`,
+  input:`첫 번째 입장: ${a}\n두 번째 입장: ${b}`,
+  schema:{name:'opening_statements',schema:{type:'object',additionalProperties:false,required:['openingA','openingB'],properties:{openingA:{type:'string'},openingB:{type:'string'}}}}};
+}
+export function checkOpening(p,out){
+ const result={};const pairs=[];
+ for(const k of ['openingA','openingB']){
+  const src=S(p[k]),text=S(out?.[k]);
+  if(!src||!text)return {ok:false,why:'empty'};
+  if(text.length>src.length*1.7+30||text.length<Math.min(src.length*0.4,12))return {ok:false,why:'length'};
+  if(!sameDates(src,text))return {ok:false,why:'dates'};
+  if(!sameNumbers(src,text))return {ok:false,why:'numbers'};
+  if(sentencesIn(text).length>3)return {ok:false,why:'sentences'};
+  const g=guard(src,text,{names:namesOf(p),keep:0.5});if(g)return {ok:false,why:g};
+  result[k]=text;pairs.push([src,text]);
+ }
+ return {ok:true,value:result,compare:[pairs.map(x=>x[0]).join('\n---\n'),pairs.map(x=>x[1]).join('\n---\n')]};
+}
+
 /* ---------- a reporter's article: title + 2~4 sentences, about 100~200 characters ---------- */
 export function articlePrompt(p){
  const body=cap(p.body,700),title=cap(p.title,80);
