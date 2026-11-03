@@ -108,6 +108,16 @@ export function checkOpening(p,out){
  return {ok:true,value:result,compare:[pairs.map(x=>x[0]).join('\n---\n'),pairs.map(x=>x[1]).join('\n---\n')]};
 }
 
+/* Final pleadings are the disclosed closing and defense statements, not an AI judgment. */
+export function closingPrompt(p){
+ const r=openingPrompt(p);
+ if(r.error)return r;
+ return {...r,
+  instructions:r.instructions.replace('재판 첫 기일에 나온 양측 입장 두 개','재판 마지막에 나온 양측 최종 변론 두 개'),
+  schema:{...r.schema,name:'closing_statements'}};
+}
+export const checkClosing=checkOpening;
+
 /* P1 bench clerk: rewrite only the disclosed issue-by-issue record. Never suggest a verdict. */
 export function benchPrompt(p){
  const source=cap(p.source,1300);
