@@ -266,7 +266,7 @@ function createGeneratedCase(selectedCandidate=null){
    &&S.week-(S.cases[c.id]?.closedWeek||0)>(S.cases[c.id]?.verdict==='guilty'?(c.story?.deep?.key==='murder'?624:208):52)).slice(-60);
  const recidivist=bp.kind==='criminal'&&previous.length&&rand()<.18?choose(previous):null;
  const prior=getPriorByKey(bp.key),caseId=`proc-${year()}-${String(serial).padStart(6,'0')}`;
- const lifePool=(S.lifeTriggers||[]).filter(x=>!x.consumed&&NPC[x.id]?.alive!==false&&LifeJustice.isFree(NPC[x.id],S.week)&&S.week-x.week>=23&&S.week-x.week<312); // life event must predate the newly generated incident (7–22 weeks before filing)
+ const lifePool=(S.lifeTriggers||[]).filter(x=>LifeJustice.eligibleLifeTrigger(x,NPC[x.id],S.week));
  const appropriate=lifePool.filter(x=>(x.type==='이혼'&&['affair','inherit','contract','defamation'].includes(bp.key))||(x.type==='재산'&&['fraud','rent','contract','embezzle'].includes(bp.key))||(x.type==='직업'&&['harassment','contract','privacy','celebrity'].includes(bp.key)));
  const lifeSeed=bp.kind==='civil'&&appropriate.length&&rand()<.65?choose(appropriate):null;
  const c=StoryEngine.build({caseId,blueprint:bp,instance:i,loc,now:day(),week:S.week,r:rand,lifeActorId:lifeSeed?.id||null,
