@@ -106,6 +106,23 @@ export async function handle(req,env,fetcher=fetch){
  if(who.error)return json({error:who.error},who.status,head);
  const uid=who.user.id;
 
+ // P4-1: public-only, read-only shared chronology. Use the caller's JWT so
+ // Supabase RLS verifies invitation; never read case_stock or world_secrets.
+ if(url.pathname==='/world/events'&&req.method==='GET'){
+  const afterRaw=url.searchParams.get('after')||'0';
+  if(!/^(0|[1-9][0-9]{0,15})$/.test(afterRaw))return json({error:'bad_cursor'},400,head);
+  const after=Number(afterRaw);
+  if(!Number.isSafeInteger(after))return json({error:'bad_cursor'},400,head);
+  const endpoint=`${env.SUPABASE_URL}/rest/v1/shared_world_events?select=event_id,event_key,case_id,event_type,game_day,public_data,judge_id,created_at&event_id=gt.${after}&order=event_id.asc&limit=50`;
+  let response;
+  try{response=await fetcher(endpoint,{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:`Bearer ${who.token}`}})}
+  catch{return json({error:'world_unavailable'},503,head)}
+  if(!response.ok)return json({error:'world_unavailable'},503,head);
+  let events;try{events=await response.json()}catch{return json({error:'world_unavailable'},503,head)}
+  if(!Array.isArray(events))return json({error:'world_unavailable'},503,head);
+  return json({ok:true,events,next:events.length?events[events.length-1].event_id:after},200,head);
+ }
+
  // Read-only health check for the existing invited judges. Never returns
  // private case material, budget amounts, service credentials or model output.
  if(url.pathname==='/terra/status'&&req.method==='GET'){
