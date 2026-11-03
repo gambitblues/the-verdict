@@ -11,7 +11,9 @@ export function publicCaseSheet(sheet,caseId){
  const charge=pick(sheet.card?.charge,['name','law','min','max','life','fine']);
  card.charge=charge;
  const people=(sheet.people||[]).slice(0,20).map(p=>pick(p,['key','name','role','age','job','edu','family','stake','leans']));
- const common=pick(sheet.common,['date','timeline','facts']);
+ const common={date:limited(sheet.common?.date||'',64),
+  timeline:(sheet.common?.timeline||[]).slice(0,80).map(t=>pick(t,['at','place','who','what'])),
+  facts:(sheet.common?.facts||[]).filter(x=>typeof x==='string').slice(0,50).map(x=>limited(x,1000))};
  const records=(sheet.records||[]).slice(0,30).map(r=>pick(r,['id','title','kind','by','how','first']));
  const questions=(sheet.questions||[]).slice(0,40).map(q=>pick(q,['id','w','q','issue','after']));
  const orders=(sheet.orders||[]).slice(0,40).map(o=>pick(o,['record','issue','to','ask']));
