@@ -8,7 +8,7 @@ const candidate=()=>{
  const worlds={};
  for(const [key,action] of [['did','당사자가 창고 복도에서 상대와 충돌하여 사고 직후 현장을 떠난 상황'],['didnt','당사자는 창고 밖에서 물건을 인계한 뒤 다른 길로 이동한 상황'],['reason','당사자가 창고 안에서 물건을 옮기다가 실수로 사람과 부딪힌 상황']]){
  worlds[key]={act:action,cause:'서로 다른 움직임과 당사자들의 인식이 충돌한 결과',motive:'사건 직전의 생활 관계와 다툼이 행동에 영향을 미침',
- timeline:[{at:'21:10',what:action}],records:Object.fromEntries(records.map(r=>[r.id,key+' 세계에서 '+r.title+'에 남은 서로 다른 원문 내용'])),
+ timeline:[{at:'21:10',what:action}],records:Object.fromEntries(records.map(r=>[r.id,key+' 당시 '+r.title+' 확인서에는 21시 이후 출입 시각과 관계자의 이동 경로가 기록됨'])),
  witnesses:{W1:key+' 세계에서 소리만 듣고 누가 들어갔는지는 보지 못한 이웃'}};
  }
  return {format:'verdict-terra-candidate/v1',id:'terra-warehouse-001',status:'draft',
