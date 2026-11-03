@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -118,6 +118,7 @@ test('P4 two hourly options are globally reserved, immutable until one accepted'
  for(const id of batch)await svc(
   'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb)',
   [id,'civil',HASH,HASH,'fingerprint-'+id,JSON.stringify({id}),JSON.stringify({passed:true})]);
+ for(const id of batch)await svc('insert into public.world_secrets(case_id,truth) values($1,$2::jsonb)',[id,JSON.stringify({branch:'did',sealedAt:'TEST'})]);
  await assert.rejects(pa('select * from public.shared_docket_offer($1::uuid,$2)',[A,'2026-11-04T12']),/permission denied/);
  await assert.rejects(svc('select * from public.shared_docket_offer($1::uuid,$2)',[A,'2026-11-04T11']),/invalid_offer_slot/);
  const offer=(id)=>svc('select * from public.shared_docket_offer($1::uuid,$2)',[id,'2026-11-04T12']);
@@ -155,4 +156,20 @@ test('P4 public judgment: one immutable verdict, both judges see same facts, aft
   [caseId,A,'claim_granted',order,record]),/permission denied/);
  await assert.rejects(svc('select public.shared_world_append($1,$2,$3,$4,$5::jsonb,$6::uuid)',
   ['aftermath-before-0001',caseId,'aftermath_published',0,JSON.stringify({title:'과거 기사'}),A]),/world_event_out_of_order/);
+});
+
+test('P4 truth is sealed once at admission and never exposed to judges',async()=>{
+ const id='case-sealed-0001';
+ const sheet={format:'verdict-world-sheet/v1',id,status:'draft',card:{category:'civil'},worlds:{
+  did:{act:'SEALED_DID'},didnt:{act:'SEALED_DIDNT'},reason:{act:'SEALED_REASON'}}};
+ const verification={decision:'stock',sheetHash:HASH,candidateHash:HASH,passed:true};
+ const args=[id,'civil',HASH,HASH,'fingerprint-sealed-0001',JSON.stringify(sheet),JSON.stringify(verification),'didnt'];
+ const sql='select public.shared_case_admit_sealed($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8) as admitted';
+ assert.equal((await svc(sql,args)).rows[0].admitted,true);
+ assert.equal((await svc(sql,args)).rows[0].admitted,false,'idempotent same approved case');
+ assert.equal((await svc('select truth->>\'branch\' as branch from public.world_secrets where case_id=$1',[id])).rows[0].branch,'didnt');
+ await assert.rejects(svc(sql,[...args.slice(0,-1),'did']),/sealed_truth_conflict/);
+ await assert.rejects(svc('update public.world_secrets set truth=$1::jsonb where case_id=$2',[JSON.stringify({branch:'did'}),id]),/sealed_truth_immutable/);
+ await assert.rejects(pa('select * from public.world_secrets'),/permission denied/);
+ await assert.rejects(pa(sql,args),/permission denied/);
 });
