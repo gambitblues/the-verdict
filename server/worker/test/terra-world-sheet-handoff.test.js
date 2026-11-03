@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Converter from '../src/terra_world_sheet_handoff.cjs';
+import Generator from '../src/terra_case_generator.cjs';
 import Pipeline from '../src/terra_case_pipeline.cjs';
 const fact='작성된 시각과 기록을 비교하여 공간과 관찰 범위를 구체적으로 확인하였다.';
 function prepared(){
@@ -58,4 +59,40 @@ test('truth and original evidence cannot silently mutate during conversion',()=>
 test('reject status ready before independent world-sheet validation',()=>{
  const c=prepared(),s=sheet(c);s.status='ready';
  assert.equal(Converter.prepareWorldSheet(c,s).ok,false);
+});
+
+test('repair only fills world-sheet structure and never modifies original locked truth',async()=>{
+ const c=prepared();c.status='draft';
+ const flawed=sheet(c);delete flawed.worlds.did.sentencing;
+ let calls=0;
+ const corrected=sheet(c);
+ const repair=await Generator.repairWorldSheet(c,flawed,['did: 8개 양형 인자가 필요합니다.'],{
+  apiKey:'fake',model:'fake-model',
+  fetcher:async()=>{calls++;return {ok:true,json:async()=>({output_text:JSON.stringify(corrected),usage:{output_tokens:30}})}}
+ });
+ assert.equal(calls,1);
+ assert.equal(repair.ok,true,JSON.stringify(repair.errors));
+ assert.equal(repair.worldSheet.status,'draft');
+ assert.equal(flawed.worlds.did.sentencing,undefined);
+ assert.equal(c.worlds.did.act,corrected.worlds.did.act);
+});
+test('repair model cannot change evidence in the locked world',async()=>{
+ const c=prepared();c.status='draft';
+ const incorrect=sheet(c);incorrect.worlds.did.records['r-camera']='새로운 사실을 임의로 만들어 첨부한 증거 문서';
+ const result=await Generator.repairWorldSheet(c,sheet(c),['증거 원본 검증 실패'],{
+  apiKey:'fake',model:'fake-model',
+  fetcher:async()=>({ok:true,json:async()=>({output_text:JSON.stringify(incorrect)})})
+ });
+ assert.equal(result.ok,false);
+ assert.equal(result.stage,'repair-rejected');
+ assert.ok(result.errors.some(x=>x.includes('증거 원문')));
+});
+test('repair cannot be used to rewrite a candidate with missing review fields',async()=>{
+ const c=prepared();c.status='draft';delete c.realism;
+ let calls=0;
+ const result=await Generator.repairWorldSheet(c,sheet(c),['미작성'],{
+  apiKey:'fake',model:'fake-model',
+  fetcher:async()=>{calls++;throw Error('must not call API')}
+ });
+ assert.equal(result.ok,false);assert.equal(result.stage,'candidate-QA');assert.equal(calls,0);
 });
