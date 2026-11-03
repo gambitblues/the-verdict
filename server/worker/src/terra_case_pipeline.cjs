@@ -5,12 +5,15 @@
 'use strict';
 
 const SexualQuality=require('./sexual_case_quality.cjs');
+const CaseRealism=require('./case_realism_quality.cjs');
+const {createHash}=require('node:crypto');
 const TARGETS=Object.freeze({homicide:85,sexual:80,violence:40,financial:50,property:45,reputation:45,civil:25,family:55,professional:45,public:30});
 const TRUTHS=['did','didnt','reason'];
 const REVIEW=['sourceVerified','fictionalizationChecked','legalChecked','timelineChecked','evidenceChecked','witnessChecked','allWorldsPlaytested','privacyChecked'];
 const value=x=>typeof x==='string'&&x.trim().length>=8;
 const serial=x=>JSON.parse(JSON.stringify(x));
 const canonical=x=>String(x||'').toLowerCase().replace(/[^a-z0-9가-힣]+/g,' ').trim().replace(/\s+/g,' ');
+const contentHash=x=>createHash('sha256').update(JSON.stringify(x)).digest('hex');
 const keyFor=x=>canonical([x?.card?.category,x?.card?.kind,x?.premise?.cause,x?.premise?.action,(x?.records||[]).map(r=>r.kind).sort().join(' ')].join(' '));
 const validDate=x=>/^\d{4}-\d{2}-\d{2}$/.test(x||'')&&!Number.isNaN(Date.parse(x+'T00:00:00Z'));
 function validateDraft(candidate){
@@ -23,6 +26,8 @@ function validateDraft(candidate){
  const card=candidate.card||{};
  if(!['criminal','civil','decision'].includes(card.kind)||!TARGETS.hasOwnProperty(card.category))e('사건 분류가 유효하지 않습니다.');
  if(!value(card.title)||!value(card.summary))e('공개 사건 제목/요지가 부족합니다.');
+ const general=CaseRealism.validate(candidate);
+ errors.push(...general.errors);warnings.push(...general.warnings);
  if(card.category==='sexual'){
   const realism=SexualQuality.validate(candidate.sexualRealism);
   errors.push(...realism.errors);warnings.push(...realism.warnings);
@@ -70,12 +75,12 @@ function makeReview(candidate,checks,reviewer){
  const result=validateDraft(candidate);
  if(!result.ok)return {ok:false,errors:result.errors,warnings:result.warnings};
  if(typeof reviewer!=='string'||reviewer.trim().length<2||!checks||REVIEW.some(k=>checks[k]!==true))return {ok:false,errors:['독립 검증자와 8개 검수 항목이 모두 필요합니다.'],warnings:result.warnings};
- return {ok:true,record:{id:candidate.id,reviewer:reviewer.trim(),checks:Object.fromEntries(REVIEW.map(k=>[k,true])),fingerprint:result.fingerprint,approvedAt:null},warnings:result.warnings};
+ return {ok:true,record:{id:candidate.id,reviewer:reviewer.trim(),checks:Object.fromEntries(REVIEW.map(k=>[k,true])),fingerprint:result.fingerprint,contentHash:contentHash(candidate),approvedAt:null},warnings:result.warnings};
 }
 function admit(candidate,approval,inventory=[]){
  const result=validateDraft(candidate);
  if(!result.ok)return {ok:false,errors:result.errors};
- if(!approval||approval.id!==candidate.id||approval.fingerprint!==result.fingerprint||(typeof approval.reviewer!=='string'||approval.reviewer.trim().length<2)||REVIEW.some(k=>approval.checks?.[k]!==true)||!validDate(approval.approvedAt))
+ if(!approval||approval.id!==candidate.id||approval.fingerprint!==result.fingerprint||approval.contentHash!==contentHash(candidate)||(typeof approval.reviewer!=='string'||approval.reviewer.trim().length<2)||REVIEW.some(k=>approval.checks?.[k]!==true)||!validDate(approval.approvedAt))
   return {ok:false,errors:['승인 정보가 없거나 사건 내용과 일치하지 않습니다.']};
  if(!Array.isArray(inventory))return {ok:false,errors:['재고 형식이 잘못됐습니다.']};
  if(inventory.some(x=>x.id===candidate.id))return {ok:false,errors:['동일 사건 ID가 이미 등록됐습니다.']};
