@@ -206,6 +206,12 @@ function skilled(c,t,cards,day){
  for(const cd of cards){if(cd.skillSet||cd.type!=='objection')continue;cd.skillSet=true;cd.valid=T.objectionValid(sk,t.style,t.seed+':ov:'+day+':'+cd.id)}
  return cards;
 }
+/* P2: only a previous completed-case record can alter the opponent's
+ * objection frequency. Legal validity remains with trial_core.objectionValid. */
+function opponentCards(t,day){
+ const base=T.cards(t,day,t.seed);
+ return window.VerdictCourtMemory?.adaptCards(base,t.opponentMemory,t.seed,day)||base;
+}
 const prepWord=id=>{const s=lawyerSkill(id);return s>=78?'준비가 철저함':s>=60?'준비가 꼼꼼한 편':s>=45?'준비가 보통':'준비가 허술한 편'};
 
 function ensure(c,st){
@@ -235,7 +241,7 @@ function ensure(c,st){
  const t={...rolled,v:5,seed,opponent,style,opponentMemory:window.VerdictCourtMemory?.snapshot(S.cases,c.id,opponent)||null,day:1,daysDone:0,minDays:isDecision(c)?1:Math.max(1,T.minDays(c.importance)-(isCriminal(c)?0:1)),qLeft:isCriminal(c)?QPD:6,qpd:isCriminal(c)?QPD:6,cards:[],nextAt:0,heard:[],notices:[],dates:{},nextDate:today()+7,
   delayAccepted:false,twistUsed:false,log:[],media:T.pressStart(c.importance,{criminal:isCriminal(c),heatBonus:heat}),startedAt:now()};
  t.witnesses.forEach(w=>{w.askedIds=[];w.opened=[]});
- t.cards=dressCards(c,t,skilled(c,t,T.cards(t,1,seed),1));
+ t.cards=dressCards(c,t,skilled(c,t,opponentCards(t,1),1));
  st.trial4=t;
  S.trial4History=[...history,{archetypeId:rolled.archetypeId,truth:rolled.truth,firstFlaw:rolled.firstFlaw}].slice(-60);
  save();
@@ -436,7 +442,7 @@ function cardText(card,t,c){
    reason=card.otype==='lead'?'질문이 답을 정해 놓고 있습니다.':'이 질문은 사건과 관계가 없습니다.'}
   target=`${asker}: "${ask}"`+(answer?`\n${wn}: "${answer}"`:'');
   return {title:`이의 제기 · ${OBJ[card.otype]}`,who:objector,
-   body:first?`${objector}가 ${asker}의 덧붙인 질문에 이의를 제기했습니다.`:`${objector}가 ${asker}의 신문에 이의를 제기했습니다.`,target:`${asker} → 증인 ${wn}`,quote:target,ask,answer,askBy:asker,wn,reason,prevQ:first,prevA,
+   body:first?`${objector}가 ${asker}의 덧붙인 질문에 이의를 제기했습니다.`:`${objector}가 ${asker}의 신문에 ${window.VerdictCourtMemory?.strategy(t.opponentMemory)==='cautious'?'조심스럽게 ':''}이의를 제기했습니다.`,target:`${asker} → 증인 ${wn}`,quote:target,ask,answer,askBy:asker,wn,reason,prevQ:first,prevA,
    /* plain words: what each choice does to this question and answer */
    choices:card.live&&liveWhen(card)==='before'?['이의를 받아들임 — 질문을 거두고 답을 듣지 않음','이의를 받아들이지 않음 — 증인이 답함']
     :answer?['이의를 받아들임 — 이 질문과 답은 판단에서 뺌','이의를 받아들이지 않음 — 이 답을 기록에 남김']
@@ -891,7 +897,7 @@ function endDay(){
  addLog(t,'기일',`${session(c,t.daysDone)} 종료 · 오늘 들은 증언 ${heardToday}건 · 증거 결정 ${decided}/${t.evidence.length}`);
  const more=!isDecision(c)&&t.daysDone<t.minDays+EXTRA_DAYS;
  if(more){
-  t.day++;t.qLeft=t.qpd||QPD;t.cards=dressCards(c,t,skilled(c,t,T.cards(t,t.day,t.seed),t.day));
+  t.day++;t.qLeft=t.qpd||QPD;t.cards=dressCards(c,t,skilled(c,t,opponentCards(t,t.day),t.day));
   t.nextDate=(t.dates?.[t.day-1]??today())+14+(t.delayAccepted?(t.delayWeeks||2)*7:0);
   t.nextAt=now()+DAY_WAIT+(t.delayAccepted?DELAY_EXTRA:0);t.delayAccepted=false;
   if(t.daysDone===1&&curOf(c)?.rebut)t.notices.push({type:'rebut',day:t.day});
