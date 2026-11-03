@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict');
+const Trial=require('./terra-trial-qa.cjs');
+const clinic=require('../world-sheets/cases/clinic-001.json');
+const original=JSON.stringify(clinic);
+const run=Trial.run(clinic,{seeds:3,days:3});
+assert.equal(run.ok,true,JSON.stringify(run.errors));
+assert.equal(run.summary.simulations,9);
+assert.equal(JSON.stringify(clinic),original);
+const bad=structuredClone(clinic);delete bad.worlds.didnt;
+assert.equal(Trial.run(bad).ok,false);
+const invalid=Trial.run(clinic,{seeds:0});
+assert.equal(invalid.ok,false);
+console.log('PASS staged match trial QA · 3 worlds × 3 seeds, immutable locked truth and verdict');
