@@ -59,12 +59,14 @@ const StoryEngine = (()=>{
  const fmt=(x)=>`${Math.round(x)}만 원`;
  function findEvidenceCategory(title){if(/계좌|송금|금융|매출|정산|지출|세금/.test(title))return PROOF_TYPES[1];if(/CCTV|영상|사진|블랙박스/.test(title))return PROOF_TYPES[3];if(/연락|통화|메시지|대화|메일/.test(title))return PROOF_TYPES[2];if(/진료|감정|부검|진단|검사/.test(title))return PROOF_TYPES[4];if(/진술|증언|목격/.test(title))return PROOF_TYPES[5];if(/로그|공문|행정|등록/.test(title))return PROOF_TYPES[6];return PROOF_TYPES[0]}
  function build(ctx){
-  const {caseId,blueprint:bp,instance:index,loc,now,week,r,makeNPC,oldCriminal,priorDecision,prosecutorPool,counselPool,people}=ctx;
+  const {caseId,blueprint:bp,instance:index,loc,now,week,r,makeNPC,oldCriminal,lifeActorId,priorDecision,prosecutorPool,counselPool,people}=ctx;
   const criminal=bp.kind==='criminal',title=bp.titles[index],base=bp.premises[index];
   const value=pick([350,900,1800,2800,5200,8400,12000,26000,53000],r),
    trigger=bp.packOrigin?.trigger||pick(TRIGGERS[bp.key]||TRIGGERS.contract,r), pattern=bp.packOrigin?.incident?.action||pick(PATTERNS,r), motive=bp.packOrigin?.motive||pick(MOTIVES,r);
   const prev=oldCriminal&&r()<.20?oldCriminal:null;
-  const a=prev?.who?.[0]||makeNPC(criminal?'피고인':'원고');
+  // A real earlier life event may bring the SAME person back in an unrelated civil dispute.
+  // The incident and its truth are still generated independently of that person's history.
+  const a=prev?.who?.[0]||(!criminal&&lifeActorId&&people[lifeActorId]?lifeActorId:null)||makeNPC(criminal?'피고인':'원고');
   const b=makeNPC(criminal?'피해자':'피고');
   const pa=people[a],pb=people[b];
   if(bp.key==='murder'){pb.alive=false;pb.deathWeek=week;pb.careerAtDeath=pb.career;}
