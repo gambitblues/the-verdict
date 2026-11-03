@@ -222,7 +222,9 @@ export async function handle(req,env,fetcher=fetch){
    const [clocks,progresses,hearings]=await Promise.all([clockResp.json(),progressResp.json(),hearingsResp.json()]);
    if(!Array.isArray(clocks)||!Array.isArray(progresses)||!Array.isArray(hearings))
     return json({error:'calendar_unavailable'},503,head);
-   const today=Number(clocks[0]?.game_day??0),last=Number(progresses[0]?.last_seen_world_day??today);
+   const today=Number(clocks[0]?.game_day??0);
+   const earliest=hearings.length?Math.min(...hearings.map(h=>Number(h.due_game_day)).filter(Number.isFinite)):today;
+   const last=Number(progresses[0]?.last_seen_world_day??Math.min(today,earliest));
    if(!Number.isSafeInteger(today)||!Number.isSafeInteger(last))return json({error:'calendar_unavailable'},503,head);
    return json({ok:true,worldDay:today,previousDay:last,lagDays:Math.max(0,today-last),
     protectedUntil:progresses[0]?.protected_until_day??today,
