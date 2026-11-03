@@ -127,7 +127,13 @@ try{
   }finally{await context.close()}
  }
  assert.equal(results.length,3);
- console.log(JSON.stringify({ok:true,id:candidate.id,stage:'browser-courtroom-QA',passed:true,sheetHash:createHash('sha256').update(JSON.stringify(candidate)).digest('hex'),results},null,2));
+ const report={ok:true,id:candidate.id,stage:'browser-courtroom-QA',passed:true,sheetHash:createHash('sha256').update(JSON.stringify(candidate)).digest('hex'),results};
+ if(args[0]==='--sheet'){
+  const pending=path.resolve(root,'pending')+path.sep;
+  if(!input.startsWith(pending))throw Error('브라우저 QA 보고서는 저장소 pending 디렉터리의 시트에만 기록할 수 있습니다.');
+  fs.writeFileSync(path.join(path.dirname(input),'browser-qa.json'),JSON.stringify(report,null,2)+'\\n',{flag:'wx',mode:0o600});
+ }
+ console.log(JSON.stringify(report,null,2));
 }finally{
  if(browser)await browser.close();
  if(server)await new Promise(resolve=>server.close(resolve));
