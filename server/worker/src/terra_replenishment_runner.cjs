@@ -26,7 +26,7 @@ async function runBatch({ops,policy={},runId}={}){
    let reservation;
    try{
     reservation=await ops.reserveBudget({runId,leaseToken:lease.token,request,ordinal:index,
-     maxUsd:effective.maxEstimatedUsdPerCase,maxCalls:2});
+     maxUsd:effective.maxEstimatedUsdPerCase,maxCalls:4});
     if(!reservation||reservation.ok!==true||typeof reservation.id!=='string') {
      processed.push({category:request.category,decision:'budget-blocked'});
      break; // Never start an unreserved AI request.
