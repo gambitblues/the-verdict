@@ -6,7 +6,7 @@ import vm from 'node:vm';
 
 const filename=fileURLToPath(new URL('../../../npc_court_memory.js',import.meta.url));
 const ctx={};vm.runInNewContext(readFileSync(filename,'utf8'),ctx);
-const {snapshot,greeting,relationship,rulingReaction,strategy,adaptCards}=ctx.VerdictCourtMemory;
+const {snapshot,greeting,relationship,rulingReaction,strategy,adaptCards,participation,participationLine}=ctx.VerdictCourtMemory;
 const ruling=(kind,text)=>({kind,text});
 const st=(opponent,log,verdict=true)=>({verdict:verdict?{id:'done'}:null,trial4:{opponent,startedAt:10,log,cards:[]}});
 
@@ -100,4 +100,30 @@ test('persona differentiates familiar counsel without inventing court history',(
  assert.match(greeting(familiar,'meticulous'),/기록부터 차근차근/);
  assert.match(greeting(familiar,'aggressive'),/분명하게 다투겠습니다/);
  assert.equal(relationship(familiar),'familiar');
+});
+
+test('prosecutor returns only after a completed criminal case with same person id',()=>{
+ const roster=[{id:'a',kind:'criminal',side:['p1']},{id:'b',kind:'civil',side:['p1']},{id:'c',kind:'criminal',side:['p2']},{id:'new',kind:'criminal',side:['p1']}];
+ const data={a:{verdict:{},trial4:{}},b:{verdict:{},trial4:{}},c:{verdict:{},trial4:{}},new:{verdict:{},trial4:{}}};
+ const prior=participation(data,roster,'new','p1','prosecutor');
+ assert.equal(prior.cases,1);
+ assert.match(participationLine(prior),/다시 뵙습니다/);
+ assert.equal(participation(data,roster,'new','p3','prosecutor'),null);
+});
+test('witness only remembers completed prior testimony actually heard in court',()=>{
+ const roster=[{id:'a'},{id:'b'},{id:'c'},{id:'new'}];
+ const mk=(who,heard,done=true)=>({verdict:done?{}:null,trial4:{witnesses:[{id:who}],heard}});
+ const data={a:mk('w1',[{w:0,q:'q1'}]),b:mk('w1',[]),c:mk('w1',[{w:0,q:'q2'}],false),
+  new:mk('w1',[{w:0,q:'current'}])};
+ const prior=participation(data,roster,'new','w1','witness');
+ assert.equal(prior.cases,1);assert.equal(prior.heard,1);
+ assert.match(participationLine(prior),/지난 사건/);
+ assert.equal(participation(data,roster,'new','w2','witness'),null);
+});
+test('excluded or tainted answers do not count as a witness reappearing',()=>{
+ const roster=[{id:'a'},{id:'new'}];
+ const data={a:{verdict:{},trial4:{witnesses:[{id:'w1'}],heard:[{w:0,struck:true},{w:0,tainted:true}]}}};
+ assert.equal(participation(data,roster,'new','w1','witness'),null);
+ assert.equal(participationLine(null),'');
+ assert.equal(participation(data,roster,'new','w1','invalid-role'),null);
 });
