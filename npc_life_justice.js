@@ -145,10 +145,47 @@ window.LifeJustice=(()=>{
    if(p.life?.marital&&p.maritalStatus!==p.life.marital){p.maritalStatus=p.life.marital;p.relationshipHistory.push({year:yr,type:'혼인 상태 변화',detail:p.life.marital});}
   }
  }
+ /* Commit an already generated annual event to the canonical biography.
+  * Do not generate new facts here: life events, career, finances and family must agree.
+  * Idempotent on event week/type so a rerender or save retry cannot duplicate history. */
+ function recordAnnualEvent(p,event,yr){
+  if(!p||!event||!Number.isFinite(event.week)||!event.type)return false;
+  p.historyEvents??=[];
+  if(p.historyEvents.some(e=>e.week===event.week&&e.type===event.type&&e.change===event.change))return false;
+  p.jobHistory??=[];p.financialHistory??=[];p.relationshipHistory??=[];
+  const reason=String(event.change||'생활 변화');
+  if(event.type==='직업'&&event.career){
+   p.career=event.career;
+   if(p.jobHistory.at(-1)?.job!==event.career)p.jobHistory.push({year:yr,job:event.career,reason});
+  }
+  if(event.type==='재산'&&Number.isFinite(event.wealth)){
+   p.wealth=limit(event.wealth,0,100);
+   p.financialHistory.push({year:yr,wealth:p.wealth,reason});
+  }
+  if(event.type==='혼인'||event.type==='이혼'){
+   p.maritalStatus=event.type==='혼인'?'기혼':'이혼';
+   p.relationshipHistory.push({year:yr,type:'혼인 상태 변화',detail:p.maritalStatus,reason});
+  }
+  if(event.type==='출생'&&Number.isInteger(event.children)&&event.children>=0){
+   p.children=event.children;
+   p.relationshipHistory.push({year:yr,type:'가족 변화',detail:reason});
+  }
+  if(event.type==='관계')p.relationshipHistory.push({year:yr,type:'교류 변화',detail:reason});
+  p.historyEvents.push({...event});
+  return true;
+ }
+ /* A short, sourced life moment for a character's profile; not a claim about
+  * the new case or a judgment about an individual's character. */
+ function latestLifeMoment(p,w){
+  const events=(p?.historyEvents||[]).filter(e=>e&&Number.isFinite(e.week)&&e.week<=w&&e.change);
+  if(!events.length)return null;
+  const item=events.reduce((a,b)=>!a||b.week>a.week?b:a,null);
+  return {week:item.week,type:item.type,text:String(item.change)};
+ }
  function custodySummary(p,w){const hist=p.custodyHistory||[];if(!hist.length)return '확정된 복역 이력 없음';return hist.slice(-3).map(x=>`${x.caseId}: ${x.releasedWeek?'출소 완료':isFree(p,w)?'형기 종료':'복역 중'} (${Math.round(x.termWeeks/52*10)/10}년 상당)`).join(' · ')}
  /* Sibling words depend on whose point of view: 형/누나 for a man, 오빠/언니 for a woman. */
  function sibText(p){const f=/여/.test(p?.gender||'');let s=String(p?.siblings||p?.family||'미상');
   return f?s.replace(/^형 /,'오빠 ').replace(/^누나 /,'언니 '):s.replace(/^오빠 /,'형 ').replace(/^언니 /,'누나 ')}
  function summary(p,yr,w){return [`${p.gender||'미상'} · ${p.bornYear?yr-p.bornYear+'세':'연령 미상'}`,`학위 ${p.degree||'미상'} (${p.educationField||'전공 미상'})`,`부모 경제수준 ${p.parentWealth??'?'} / 100`,`형제 ${sibText(p)}`,`혼인 ${p.maritalStatus||'미상'} · 자녀 ${p.children??0}명`,`MBTI ${p.mbti||'-'} / 혈액형 ${p.blood||'-'}`,`생활 ${p.legalStatus||'일반 생활'}`].join(' · ')}
- return {sibText,enrich,hydrate,isFree,currentSentence,applyVerdict,weekTick,annualLifeTick,summary,custodySummary};
+ return {sibText,enrich,hydrate,isFree,currentSentence,applyVerdict,weekTick,annualLifeTick,recordAnnualEvent,latestLifeMoment,summary,custodySummary};
 })();
