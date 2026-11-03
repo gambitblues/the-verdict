@@ -4,6 +4,7 @@
  */
 'use strict';
 
+const SexualQuality=require('./sexual_case_quality.cjs');
 const TARGETS=Object.freeze({homicide:85,sexual:80,violence:40,financial:50,property:45,reputation:45,civil:25,family:55,professional:45,public:30});
 const TRUTHS=['did','didnt','reason'];
 const REVIEW=['sourceVerified','fictionalizationChecked','legalChecked','timelineChecked','evidenceChecked','witnessChecked','allWorldsPlaytested','privacyChecked'];
@@ -22,6 +23,10 @@ function validateDraft(candidate){
  const card=candidate.card||{};
  if(!['criminal','civil','decision'].includes(card.kind)||!TARGETS.hasOwnProperty(card.category))e('사건 분류가 유효하지 않습니다.');
  if(!value(card.title)||!value(card.summary))e('공개 사건 제목/요지가 부족합니다.');
+ if(card.category==='sexual'){
+  const realism=SexualQuality.validate(candidate.sexualRealism);
+  errors.push(...realism.errors);warnings.push(...realism.warnings);
+ }
  const source=candidate.source||{};
  if(!['original','precedent','article','secondary'].includes(source.type))e('출처 유형이 유효하지 않습니다.');
  if(source.type!=='original'){
