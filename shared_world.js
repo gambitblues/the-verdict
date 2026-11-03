@@ -5,10 +5,10 @@
 const LIMIT=50;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let events=[],cursor=0,loading=false,owner='',panel=null,button=null,clock=null,npcs=[];
-let sharedSlot='',offerCandidates=[],selectedCase=null,firstDocs=[];
+let sharedSlot='',offerCandidates=[],selectedCase=null,firstDocs=[],catchup=null,resumeNotice='';
 const seen=new Set();
 function user(){const a=window.VerdictAuth;return a?.online&&a?.user?.id?a.user.id:null}
-function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];seen.clear();render();renderOffers()}
+function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
 function valid(ev){
  return ev&&Number.isSafeInteger(ev.event_id)&&ev.event_id>0&&
   typeof ev.event_key==='string'&&typeof ev.event_type==='string'&&
@@ -81,6 +81,37 @@ async function acceptOffer(id){
  }catch{status.textContent='배당 또는 사건 자료 조회에 실패했습니다. 서버 기록을 확인해 주세요.'}
 }
 
+function renderCatchup(){
+ const area=panel?.querySelector('[data-world-catchup]');if(!area)return;
+ const status=area.querySelector('[data-world-lag]'),button=area.querySelector('[data-world-resume]');
+ if(!catchup){status.textContent='세계 시간 확인 전';button.hidden=true;return}
+ const lag=Number(catchup.lagDays||0),pending=Array.isArray(catchup.pending)?catchup.pending:[];
+ if(lag>0){
+  const changes=events.filter(x=>x.game_day>catchup.previousDay&&x.game_day<=catchup.worldDay);
+  status.textContent='접속하지 않은 동안 세계 날짜가 '+lag+'일 진행됐습니다. 공개 사건·기사 '+changes.length+'건, 미처리 개인 기일 '+pending.length+'건. 자동 선고나 패소는 없습니다.';
+  button.hidden=false;
+ }else{
+  status.textContent=resumeNotice||('세계 날짜 동기화 완료 · 미처리 기일 '+pending.length+'건');
+  button.hidden=true;
+ }
+}
+async function loadCatchup(){
+ if(!panel||window.VERDICT_CONFIG?.p4SharedDocket!==true||!user())return;
+ try{const d=await window.VerdictAuth.api('/world/catchup',undefined,{timeout:8000});
+  if(d?.ok){catchup=d;renderCatchup()}}catch{}
+}
+async function resumeWorld(){
+ const status=panel?.querySelector('[data-world-lag]');if(!status||!user())return;
+ status.textContent='공통 세계에 복귀하고 기일을 확인하는 중…';
+ try{
+  const d=await window.VerdictAuth.api('/world/resume',{});
+  if(!d?.ok||!d.resume)throw Error('resume_failed');
+  const r=d.resume;
+  resumeNotice='세계 '+r.world_day+'일로 복귀 완료 · 미처리 기일 '+r.rescheduled_hearings+'건을 최소 '+r.protected_until_day+'일까지 보호합니다.';
+  await loadCatchup();
+ }catch{status.textContent='복귀 처리를 확인하지 못했습니다. 개인 재판 기록은 변경하지 않았습니다.'}
+}
+
 async function refresh(){
  const u=user();if(!u){if(owner)reset('');return false}
  if(owner!==u)reset(u);
@@ -102,6 +133,7 @@ async function refresh(){
   // Missing P4 tables on older QA deployments must not break local trials or the public log.
   try{const c=await window.VerdictAuth.api('/world/clock',undefined,{timeout:8000});if(c?.ok&&c.clock)clock=c.clock}catch{}
   try{const n=await window.VerdictAuth.api('/world/npcs',undefined,{timeout:8000});if(n?.ok&&Array.isArray(n.npcs))npcs=n.npcs.slice(0,50)}catch{}
+  await loadCatchup();
   if(panel){panel.querySelector('[data-world-status]').textContent='공개 기록 '+events.length+'건';render()}
   return true;
  }catch(e){if(panel)panel.querySelector('[data-world-status]').textContent='세계 연결을 확인할 수 없습니다. 개인 재판은 계속할 수 있습니다.';return false}
@@ -119,6 +151,7 @@ function mount(){
   <p data-world-clock></p>
   <div data-world-list></div>
   <div data-world-npcs></div>
+  <section data-world-catchup hidden><h4>복귀 및 기일 보호</h4><p data-world-lag>세계 시간 확인 중</p><button type="button" data-world-resume hidden>세계에 복귀하기</button></section>
   <section data-world-docket hidden><h4>전역 사건 후보</h4><p data-world-offers-status>서버 승인된 사건만 표시됩니다.</p>
    <button type="button" data-world-offers>사건 후보 2건 확인</button><div data-world-offers-list></div></section>
   <button type="button" data-world-refresh>새로고침</button>
@@ -128,7 +161,9 @@ function mount(){
  button.onclick=set;root.querySelector('[data-world-close]').onclick=set;
  root.querySelector('[data-world-refresh]').onclick=()=>refresh();
  const docket=root.querySelector('[data-world-docket]');
- if(window.VERDICT_CONFIG?.p4SharedDocket===true){docket.hidden=false;root.querySelector('[data-world-offers]').onclick=reserveOffers;
+ if(window.VERDICT_CONFIG?.p4SharedDocket===true){docket.hidden=false;
+ root.querySelector('[data-world-catchup]').hidden=false;root.querySelector('[data-world-resume]').onclick=resumeWorld;
+ root.querySelector('[data-world-offers]').onclick=reserveOffers;
  docket.addEventListener('click',e=>{const id=e.target.closest('[data-world-accept]')?.dataset.worldAccept;if(id)acceptOffer(id)})}
  const style=document.createElement('style');style.textContent=
  '#verdict-shared-world{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:7500;font:inherit}' +
@@ -146,5 +181,5 @@ function start(){
  setInterval(()=>{if(!document.hidden)refresh()},60000);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-window.VerdictSharedWorld={refresh,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get selectedCase(){return selectedCase?JSON.parse(JSON.stringify(selectedCase)):null},get clock(){return clock?{...clock}:null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
+window.VerdictSharedWorld={refresh,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get selectedCase(){return selectedCase?JSON.parse(JSON.stringify(selectedCase)):null},get clock(){return clock?{...clock}:null},get catchup(){return catchup?JSON.parse(JSON.stringify(catchup)):null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
 })();
