@@ -5,10 +5,10 @@
 const LIMIT=50;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let events=[],cursor=0,loading=false,owner='',panel=null,button=null,clock=null,npcs=[];
-let sharedSlot='',offerCandidates=[],selectedCase=null,firstDocs=[],catchup=null,resumeNotice='';
+let sharedSlot='',offerCandidates=[],selectedCase=null,firstDocs=[],courtStatus=null,courtActions=[],catchup=null,resumeNotice='';
 const seen=new Set();
 function user(){const a=window.VerdictAuth;return a?.online&&a?.user?.id?a.user.id:null}
-function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
+function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
 function valid(ev){
  return ev&&Number.isSafeInteger(ev.event_id)&&ev.event_id>0&&
   typeof ev.event_key==='string'&&typeof ev.event_type==='string'&&
@@ -46,9 +46,19 @@ function renderOffers(){
  const region=panel?.querySelector('[data-world-offers-list]');if(!region)return;
  if(selectedCase){
   const c=selectedCase.card||{};
+  const ready=window.VERDICT_CONFIG?.p4CourtActions===true&&courtStatus?.canAct===true;
+  const questions=(selectedCase.questions||[]).slice(0,30).map((q,i)=>({
+   kind:'question',key:q.id||'index-'+i,label:'신문 · '+String(q.w||'증인')+': '+String(q.q||'질문')}));
+  const orders=(selectedCase.orders||[]).slice(0,30).map(o=>({
+   kind:'order',key:o.record,label:'제출 명령 · '+String(o.ask||o.record)}));
   region.innerHTML='<article class="vsw-event"><strong>'+esc(c.title||selectedCase.caseId)+'</strong><p>'+esc(c.summary||'')+'</p><small>초기 제출 자료</small>'+
    firstDocs.map(r=>'<p><b>'+esc(r.title)+'</b> · '+esc(r.text)+'</p>').join('')+
-   '<small>이 화면은 공개 자료 검토 단계입니다. 서버 심리/선고가 연결되기 전에는 개인 사건 세이브를 변경하지 않습니다.</small></article>';
+   '<small>공유 세계 공판은 서버가 승인한 기일에서만 가능합니다. 로컬 재판 저장은 변경하지 않습니다.</small>'+
+   (window.VERDICT_CONFIG?.p4CourtActions===true
+    ?'<p>'+esc(ready?'현재 세계 날짜에 공판 기일이 열려 있습니다.':'서버에서 열린 공판이 확인되지 않아 신문/주문이 잠겼습니다.')+'</p>'+
+     (ready?[...questions,...orders].map(a=>'<p><button type="button" data-court-kind="'+esc(a.kind)+'" data-court-key="'+esc(a.key)+'">'+esc(a.label)+'</button></p>').join(''):'')+
+     '<div data-court-outcomes>'+courtActions.map(a=>'<p><strong>'+esc(a.action_key)+'</strong> · '+esc(a.response?.answer||a.response?.text||a.response?.status||'')+'</p>').join('')+'</div>'
+    :'')+'</article>';
   return;
  }
  if(!offerCandidates.length){region.textContent='현재 예약된 사건 후보가 없습니다.';return}
@@ -62,10 +72,37 @@ async function reserveOffers(){
  sharedSlot=kstSlot();status.textContent='서버에서 사건 후보를 확인하는 중…';
  try{const d=await window.VerdictAuth.api('/world/offers',{slot:sharedSlot});
   if(!d?.ok||!Array.isArray(d.offers))throw Error('not_available');
-  selectedCase=null;firstDocs=[];offerCandidates=d.offers.slice(0,2);
+  selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];offerCandidates=d.offers.slice(0,2);
   status.textContent='두 판사에게 같은 사건이 중복 예약되지 않습니다.';renderOffers();
  }catch{status.textContent='이 시간대에 공유 배당을 사용할 수 없습니다. 개인 재판에는 영향이 없습니다.'}
 }
+async function refreshCourt(){
+ if(!selectedCase||window.VERDICT_CONFIG?.p4CourtActions!==true)return;
+ const id=encodeURIComponent(selectedCase.caseId);
+ try{
+  const [status,history]=await Promise.all([
+   window.VerdictAuth.api('/world/court/status?caseId='+id),
+   window.VerdictAuth.api('/world/court/history?caseId='+id)
+  ]);
+  if(status?.ok&&history?.ok&&Array.isArray(history.actions)){
+   courtStatus=status;courtActions=history.actions;renderOffers();
+  }
+ }catch{courtStatus=null;renderOffers()}
+}
+async function doCourtAction(kind,key){
+ if(!selectedCase||courtStatus?.canAct!==true||!['question','order'].includes(kind))return;
+ const region=panel?.querySelector('[data-world-offers-status]');
+ if(region)region.textContent='서버에서 법정 기록을 검증하는 중…';
+ try{
+  const r=await window.VerdictAuth.api('/world/court/action',{
+   caseId:selectedCase.caseId,kind,key,hearingIndex:courtStatus.hearingIndex
+  });
+  if(!r?.ok)throw Error('invalid_action');
+  await refreshCourt();
+  if(region)region.textContent='서버 법정기록에 반영됐습니다. 개인 세이브는 변경되지 않았습니다.';
+ }catch{if(region)region.textContent='신문·주문이 승인되지 않았습니다. 기일과 선행 증거를 확인하세요.'}
+}
+
 async function acceptOffer(id){
  const status=panel?.querySelector('[data-world-offers-status]');
  if(!status||!offerCandidates.some(x=>x.case_id===id)||!user())return;
@@ -77,7 +114,7 @@ async function acceptOffer(id){
   const r=await window.VerdictAuth.api('/world/case/initial?caseId='+encodeURIComponent(id));
   if(!c?.ok||!r?.ok||c.case?.caseId!==id)throw Error('case_unavailable');
   selectedCase=c.case;firstDocs=Array.isArray(r.records)?r.records:[];offerCandidates=[];
-  status.textContent='공통 사건 배당 완료 · 공개 초기 자료만 표시';renderOffers();refresh();
+  status.textContent='공통 사건 배당 완료 · 공개 초기 자료만 표시';renderOffers();await refreshCourt();refresh();
  }catch{status.textContent='배당 또는 사건 자료 조회에 실패했습니다. 서버 기록을 확인해 주세요.'}
 }
 
@@ -164,7 +201,9 @@ function mount(){
  if(window.VERDICT_CONFIG?.p4SharedDocket===true){docket.hidden=false;
  root.querySelector('[data-world-catchup]').hidden=false;root.querySelector('[data-world-resume]').onclick=resumeWorld;
  root.querySelector('[data-world-offers]').onclick=reserveOffers;
- docket.addEventListener('click',e=>{const id=e.target.closest('[data-world-accept]')?.dataset.worldAccept;if(id)acceptOffer(id)})}
+ docket.addEventListener('click',e=>{const target=e.target.closest('button');if(!target)return;
+ const id=target.dataset.worldAccept;if(id)acceptOffer(id);
+ else if(target.dataset.courtKind&&target.dataset.courtKey)doCourtAction(target.dataset.courtKind,target.dataset.courtKey)})}
  const style=document.createElement('style');style.textContent=
  '#verdict-shared-world{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:7500;font:inherit}' +
  '.vsw-button{padding:9px 13px;border-radius:22px;background:#182e42;color:#fff;border:1px solid #a8926c;box-shadow:0 2px 12px #0004;cursor:pointer}' +
