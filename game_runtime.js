@@ -298,7 +298,8 @@ function createGeneratedCase(selectedCandidate=null,planning=null){
   c.newsLifecycle='reported';
   c.contentPack=c.story?.pack?{...c.story.pack}:null;
   S.pendingCases??=[];
-  S.pendingCases.push({case:c,incidentWeek:planning.incidentWeek,investigationWeek:planning.incidentWeek+3,filingWeek:planning.filingWeek,investigated:false});
+  S.pendingCases.push({case:c,incidentWeek:planning.incidentWeek,investigationWeek:planning.incidentWeek+3,
+   filingWeek:planning.filingWeek,investigated:false,publicOutcome:publicIncidentOutcome(c.kind,rand())});
   for(const id of c.who)remember(id,'사건 발생',`${c.id} · 별개의 사건 관계인`,c.id);
   if(c.story.investigator)remember(c.story.investigator.detective,'수사 착수',`${c.id} 사건 수사`,c.id);
   newsForIncident(c);
@@ -388,6 +389,26 @@ function moveOldCasesToOtherCourt(){
 }
 /* P3: incident reporting uses the allegation and known public timeline, NEVER
  * privateTruth, proofStrength, suspect identity, or unavailable evidence. */
+/* Some reported incidents never enter this judge's docket.
+ * Route selection is fixed at incident creation, not retrofitted after a verdict.
+ * These outcomes are procedural/public: they do not resolve privateTruth. */
+function publicIncidentOutcome(kind,roll){
+ if(roll>=.22)return 'court';
+ if(kind==='criminal')return roll<.11?'investigation_closed':'not_prosecuted';
+ return roll<.11?'settled':'withdrawn';
+}
+function publicOutcomeNews(c,outcome){
+ const label=String(c.name||'사건').split(' · ')[0];
+ const criminal=c.kind==='criminal';
+ const outcomes={
+  investigation_closed:[`${label} 수사 종결`,'관계 기관은 현재까지 확보한 자료에 대한 검토를 마쳤습니다. 이 결과만으로 사건 관련자의 형사책임을 단정할 수 없습니다.'],
+  not_prosecuted:[`${label} 불기소 처분`,'검찰은 이번 사건에 공소를 제기하지 않기로 했습니다. 관련 의혹이 법원에서 유죄로 판단된 것은 아닙니다.'],
+  settled:[`${label} 당사자 간 합의`,'분쟁 당사자들이 재판을 거치지 않고 합의로 사건을 마무리했다고 밝혔습니다. 법원의 본안 판단은 없었습니다.'],
+  withdrawn:[`${label} 소 제기 없이 종결`,'당사자가 소송을 진행하지 않기로 해 이번 분쟁은 법원에 배당되지 않았습니다. 법적 책임이 확정된 것은 아닙니다.']
+ };
+ const [title,body]=outcomes[outcome]||[label,criminal?'수사가 진행 중입니다.':'분쟁이 진행 중입니다.'];
+ news(title,body,criminal?'사회':'지역 소식',{caseId:c.id,stage:'closed'});
+}
 function newsForIncident(c){
  const criminal=c.kind==='criminal';
  const shortTitle=String(c.name||'사건').split(' · ')[0];
@@ -411,6 +432,18 @@ function progressPendingCases(){
     '지역 소식',{caseId:c.id,stage:'investigation'});
   }
   if(S.week<pending.filingWeek)continue;
+  if(pending.publicOutcome&&pending.publicOutcome!=='court'){
+   S.worldIncidents??=[];
+   if(!S.worldIncidents.some(x=>x.caseId===c.id)){
+    S.worldIncidents.push({caseId:c.id,week:S.week,kind:c.kind,outcome:pending.publicOutcome,
+     title:String(c.name||'사건').split(' · ')[0],participantIds:[...(c.who||[])]});
+    publicOutcomeNews(c,pending.publicOutcome);
+    for(const id of c.who||[])remember(id,'사건 경과',`${c.id} · 재판 없이 종결`,c.id);
+   }
+   // Keep only a small public record of untried incidents; discard sealed case data.
+   S.pendingCases=S.pendingCases.filter(x=>x.case?.id!==c.id);
+   continue;
+  }
   if(!CASES.some(x=>x.id===c.id)){
    CASES.push(c);S.generatedCases.push(c);
    S.cases[c.id]={phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null,positions:null,positionHistory:[],review:null};
@@ -454,7 +487,7 @@ function worldTick(){
 const START=new Date(Date.UTC(2027,2,1));
 // Every new career gets its own world: cases, people and their lives start from a random seed.
 const freshSeed=()=>{try{const a=new Uint32Array(1);crypto.getRandomValues(a);return (a[0]>>>0)||37519}catch{return (Date.now()^Math.floor(Math.random()*4294967296))>>>0||37519}};
-const newState=()=>({version:5,casePacks:[],removedPackIds:[],lifeTriggers:[],qaLog:[],generatedCases:[],pendingCases:[],npcDB:{},memories:{},caseSerial:0,nextCaseWeek:14,lastYear:2027,post:'지방법원 판사',milestones:[],ended:false,name:'',style:0,week:0,actions:0,cash:1250,salary:340,notes:'',owned:[],equipped:{},romance:{person:null,stage:'single',lastYear:-1},market:Object.fromEntries(SECTORS.map(x=>[x.id,100])),holdings:{},traded:-1,rng:freshSeed(),relations:{hyun:66,senior:48,jiyu:39,seon:32,soo:39,jun:35,reporter:25,tenant:20,owner:18,builder:20,actor:10,singer:10,ceo:10},professional:50,publicity:12,cases:Object.fromEntries(CASES.map(c=>[c.id,{phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null}])),journal:[{week:0,type:'커리어',title:'신임 판사 발령',body:'법조인으로서 첫 커리어가 시작되었습니다.'}],news:[{week:0,title:'신임 법관 인사 발령 발표',body:'전국 각급 법원에서 신임 법관이 새로운 업무를 시작했다.',category:'법조일보'}],msgs:[{week:0,from:'hyun',body:'첫 발령 축하해! 서로 잘 버텨보자. 시간 나면 연락해.'}],events:[]});
+const newState=()=>({version:5,casePacks:[],removedPackIds:[],lifeTriggers:[],qaLog:[],generatedCases:[],pendingCases:[],worldIncidents:[],npcDB:{},memories:{},caseSerial:0,nextCaseWeek:14,lastYear:2027,post:'지방법원 판사',milestones:[],ended:false,name:'',style:0,week:0,actions:0,cash:1250,salary:340,notes:'',owned:[],equipped:{},romance:{person:null,stage:'single',lastYear:-1},market:Object.fromEntries(SECTORS.map(x=>[x.id,100])),holdings:{},traded:-1,rng:freshSeed(),relations:{hyun:66,senior:48,jiyu:39,seon:32,soo:39,jun:35,reporter:25,tenant:20,owner:18,builder:20,actor:10,singer:10,ceo:10},professional:50,publicity:12,cases:Object.fromEntries(CASES.map(c=>[c.id,{phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null}])),journal:[{week:0,type:'커리어',title:'신임 판사 발령',body:'법조인으로서 첫 커리어가 시작되었습니다.'}],news:[{week:0,title:'신임 법관 인사 발령 발표',body:'전국 각급 법원에서 신임 법관이 새로운 업무를 시작했다.',category:'법조일보'}],msgs:[{week:0,from:'hyun',body:'첫 발령 축하해! 서로 잘 버텨보자. 시간 나면 연락해.'}],events:[]});
 let S;
 try{
  const loaded=VerdictStore.read(KEY);
@@ -473,7 +506,7 @@ for(const c of S.generatedCases||[]){
  if(!CASES.some(x=>x.id===c.id))CASES.push(c);
  if(!S.cases[c.id])S.cases[c.id]={phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null};
 }
-S.pendingCases??=[];S.qaLog??=[];S.casePacks??=[];S.removedPackIds??=[];S.lifeTriggers??=[];S.version=5;S.memories??={};S.milestones??=[];S.equipped??={};S.romance??={person:null,stage:'single',lastYear:-1};S.relations.mina??=28;S.relations.taeo??=28;for(const cs of Object.values(S.cases||{})){if(cs.verdict&&cs.review&&cs.review.status!=='재판상 화해로 종결'){cs.review={status:'게임 내 최종 판결 · 즉시 확정',filingDeadline:null};if(cs.precedent)cs.precedent.authority='게임 세계의 확정 판결 기록';}} S.post??='지방법원 판사';S.nextCaseWeek??=14;S.caseSerial??=0;S.ended??=false;
+S.pendingCases??=[];S.worldIncidents??=[];S.qaLog??=[];S.casePacks??=[];S.removedPackIds??=[];S.lifeTriggers??=[];S.version=5;S.memories??={};S.milestones??=[];S.equipped??={};S.romance??={person:null,stage:'single',lastYear:-1};S.relations.mina??=28;S.relations.taeo??=28;for(const cs of Object.values(S.cases||{})){if(cs.verdict&&cs.review&&cs.review.status!=='재판상 화해로 종결'){cs.review={status:'게임 내 최종 판결 · 즉시 확정',filingDeadline:null};if(cs.precedent)cs.precedent.authority='게임 세계의 확정 판결 기록';}} S.post??='지방법원 판사';S.nextCaseWeek??=14;S.caseSerial??=0;S.ended??=false;
 
 const ui={archiveQuery:'',tab:'home',caseId:'deposit',shopCat:'집',assetTab:'shop',tabletTab:'news',npcId:'hyun',modal:null,lastResult:null};
 const money=n=>`${Math.round(n).toLocaleString('ko-KR')}만 원`;
@@ -526,9 +559,9 @@ function log(type,title,body){S.journal.unshift({week:S.week,type,title,body});/
 /* P3: preserve publicly known source, never hidden case facts. */
 function news(title,body,category='법조일보',source=null){
  const item={week:S.week,title,body,category};
- if(source?.caseId&&(CASES.some(c=>c.id===source.caseId)||(S.pendingCases||[]).some(x=>x.case?.id===source.caseId))){
+ if(source?.caseId&&(CASES.some(c=>c.id===source.caseId)||(S.pendingCases||[]).some(x=>x.case?.id===source.caseId)||(S.worldIncidents||[]).some(x=>x.caseId===source.caseId))){
   item.caseId=source.caseId;
-  if(['incident','investigation','filed','verdict','reaction'].includes(source.stage))item.caseStage=source.stage;
+  if(['incident','investigation','filed','verdict','reaction','closed'].includes(source.stage))item.caseStage=source.stage;
  }
  S.news.unshift(item);/* 과거 뉴스 보존 */
 }
