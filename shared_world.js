@@ -5,9 +5,10 @@
 const LIMIT=50;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let events=[],cursor=0,loading=false,owner='',panel=null,button=null,clock=null,npcs=[];
+let sharedSlot='',offerCandidates=[],selectedCase=null,firstDocs=[];
 const seen=new Set();
 function user(){const a=window.VerdictAuth;return a?.online&&a?.user?.id?a.user.id:null}
-function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];seen.clear();render()}
+function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];seen.clear();render();renderOffers()}
 function valid(ev){
  return ev&&Number.isSafeInteger(ev.event_id)&&ev.event_id>0&&
   typeof ev.event_key==='string'&&typeof ev.event_type==='string'&&
@@ -34,6 +35,52 @@ function render(){
   return `<article class="vsw-event"><small>게임 ${x.gameDay}일 · ${esc(x.kind)} · ${esc(x.caseId)}</small><strong>${esc(x.title)}</strong>${x.summary?`<p>${esc(x.summary)}</p>`:''}</article>`
  }).join('');
 }
+/* P4 isolated docket preview: public case fields only. Never touches local
+ * courtroom case objects or commits a verdict without server adjudication. */
+function kstSlot(){
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
+ const v=k=>parts.find(p=>p.type===k)?.value||'';
+ return v('year')+'-'+v('month')+'-'+v('day')+'T'+v('hour');
+}
+function renderOffers(){
+ const region=panel?.querySelector('[data-world-offers-list]');if(!region)return;
+ if(selectedCase){
+  const c=selectedCase.card||{};
+  region.innerHTML='<article class="vsw-event"><strong>'+esc(c.title||selectedCase.caseId)+'</strong><p>'+esc(c.summary||'')+'</p><small>초기 제출 자료</small>'+
+   firstDocs.map(r=>'<p><b>'+esc(r.title)+'</b> · '+esc(r.text)+'</p>').join('')+
+   '<small>이 화면은 공개 자료 검토 단계입니다. 서버 심리/선고가 연결되기 전에는 개인 사건 세이브를 변경하지 않습니다.</small></article>';
+  return;
+ }
+ if(!offerCandidates.length){region.textContent='현재 예약된 사건 후보가 없습니다.';return}
+ region.innerHTML=offerCandidates.map(c=>
+  '<div class="vsw-event"><strong>'+esc(c.case_id)+'</strong><small>'+esc(c.category||'')+
+  '</small><button type="button" data-world-accept="'+esc(c.case_id)+'">이 사건 선택</button></div>').join('');
+}
+async function reserveOffers(){
+ const status=panel?.querySelector('[data-world-offers-status]');
+ if(!status||!user())return;
+ sharedSlot=kstSlot();status.textContent='서버에서 사건 후보를 확인하는 중…';
+ try{const d=await window.VerdictAuth.api('/world/offers',{slot:sharedSlot});
+  if(!d?.ok||!Array.isArray(d.offers))throw Error('not_available');
+  selectedCase=null;firstDocs=[];offerCandidates=d.offers.slice(0,2);
+  status.textContent='두 판사에게 같은 사건이 중복 예약되지 않습니다.';renderOffers();
+ }catch{status.textContent='이 시간대에 공유 배당을 사용할 수 없습니다. 개인 재판에는 영향이 없습니다.'}
+}
+async function acceptOffer(id){
+ const status=panel?.querySelector('[data-world-offers-status]');
+ if(!status||!offerCandidates.some(x=>x.case_id===id)||!user())return;
+ status.textContent='사건 배당을 확인하는 중…';
+ try{
+  const d=await window.VerdictAuth.api('/world/accept',{slot:sharedSlot,caseId:id});
+  if(!d?.ok||d.assignment?.case_id!==id)throw Error('claim_failed');
+  const c=await window.VerdictAuth.api('/world/case?caseId='+encodeURIComponent(id));
+  const r=await window.VerdictAuth.api('/world/case/initial?caseId='+encodeURIComponent(id));
+  if(!c?.ok||!r?.ok||c.case?.caseId!==id)throw Error('case_unavailable');
+  selectedCase=c.case;firstDocs=Array.isArray(r.records)?r.records:[];offerCandidates=[];
+  status.textContent='공통 사건 배당 완료 · 공개 초기 자료만 표시';renderOffers();refresh();
+ }catch{status.textContent='배당 또는 사건 자료 조회에 실패했습니다. 서버 기록을 확인해 주세요.'}
+}
+
 async function refresh(){
  const u=user();if(!u){if(owner)reset('');return false}
  if(owner!==u)reset(u);
@@ -72,12 +119,17 @@ function mount(){
   <p data-world-clock></p>
   <div data-world-list></div>
   <div data-world-npcs></div>
+  <section data-world-docket hidden><h4>전역 사건 후보</h4><p data-world-offers-status>서버 승인된 사건만 표시됩니다.</p>
+   <button type="button" data-world-offers>사건 후보 2건 확인</button><div data-world-offers-list></div></section>
   <button type="button" data-world-refresh>새로고침</button>
  </section>`;
  document.body.appendChild(root);button=root.querySelector('.vsw-button');panel=root.querySelector('.vsw-panel');
  const set=()=>{toggle();button.setAttribute('aria-expanded',String(!panel.hidden))};
  button.onclick=set;root.querySelector('[data-world-close]').onclick=set;
  root.querySelector('[data-world-refresh]').onclick=()=>refresh();
+ const docket=root.querySelector('[data-world-docket]');
+ if(window.VERDICT_CONFIG?.p4SharedDocket===true){docket.hidden=false;root.querySelector('[data-world-offers]').onclick=reserveOffers;
+ docket.addEventListener('click',e=>{const id=e.target.closest('[data-world-accept]')?.dataset.worldAccept;if(id)acceptOffer(id)})}
  const style=document.createElement('style');style.textContent=
  '#verdict-shared-world{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:7500;font:inherit}' +
  '.vsw-button{padding:9px 13px;border-radius:22px;background:#182e42;color:#fff;border:1px solid #a8926c;box-shadow:0 2px 12px #0004;cursor:pointer}' +
@@ -94,5 +146,5 @@ function start(){
  setInterval(()=>{if(!document.hidden)refresh()},60000);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-window.VerdictSharedWorld={refresh,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get clock(){return clock?{...clock}:null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
+window.VerdictSharedWorld={refresh,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get selectedCase(){return selectedCase?JSON.parse(JSON.stringify(selectedCase)):null},get clock(){return clock?{...clock}:null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
 })();
