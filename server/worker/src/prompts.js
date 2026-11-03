@@ -126,7 +126,7 @@ export function checkBench(p,out){
  if(!src||!text)return {ok:false,why:'empty'};
  if(text.length>src.length*1.7+60||text.length<Math.min(src.length*0.45,24))return {ok:false,why:'length'};
  if(!sameDates(src,text))return {ok:false,why:'dates'};
- if(!sameNumbers(src,text))return {ok:false,why:'numbers'};
+ if(JSON.stringify(numbersWithoutDates(src))!==JSON.stringify(numbersWithoutDates(text)))return {ok:false,why:'numbers'};
  if(sentencesIn(text).length>8)return {ok:false,why:'sentences'};
  const g=guard(src,text,{names:namesOf(p),keep:0.5});if(g)return {ok:false,why:g};
  return {ok:true,value:{text},compare:[src,text]};
