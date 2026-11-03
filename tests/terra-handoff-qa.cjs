@@ -5,6 +5,7 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),cp=require('node:child_process');
 const handoff=require('../server/worker/src/terra_world_sheet_handoff.cjs');
+const TrialQA=require('./terra-trial-qa.cjs');
 function evaluate(candidate,sheet){
  const prepared=handoff.prepareWorldSheet(candidate,sheet);
  if(!prepared.ok)return {ok:false,stage:'candidate-handoff',errors:prepared.errors};
@@ -14,8 +15,10 @@ function evaluate(candidate,sheet){
   fs.writeFileSync(file,JSON.stringify(prepared.sheet,null,2)+'\n',{flag:'wx',mode:0o600});
   const check=cp.spawnSync(process.execPath,[path.join(__dirname,'world-sheets.test.cjs'),file],{encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
   if(check.status!==0)return {ok:false,stage:'world-sheet-QA',errors:[check.stdout?.slice(-3000)||'',check.stderr?.slice(-1000)||''].filter(Boolean)};
+  const trial=TrialQA.run(prepared.sheet,{seeds:6,days:4});
+  if(!trial.ok)return {ok:false,stage:'simulated-trial-QA',errors:trial.errors,summary:trial.summary};
   return {ok:true,stage:'staged-draft',id:prepared.sheet.id,candidateHash:prepared.candidateHash,sheetHash:prepared.sheetHash,
-   note:'This is only schema/content QA. Not a playable case or a verified human approval.'};
+   trial:trial.summary,note:'Schema QA + match-engine simulated trials only. No browser E2E, legal certification or human approval.'};
  }finally{fs.rmSync(dir,{recursive:true,force:true})}
 }
 if(require.main===module){
