@@ -1384,11 +1384,13 @@ function openingStatements(c,t,cur){
  if(t.daysDone!==0||!cur?.claims)return '';
  const left=tell(c,t,cur.claims[0]||''),right=tell(c,t,cur.claims[1]||'');
  if(!left&&!right)return '';
+ if(left&&right)window.VerdictAI?.opening?.(c,t,left,right);
+ const key=c.id+':'+left+':'+right,ai=t.aiOpening?.source===key?t.aiOpening:null;
  const card=(speaker,body,cls)=>body?`<div class="t4-closing ${cls}"><b>${esc(speaker)}</b><p>"${esc(body)}"</p></div>`:'';
  return `<section class="t4-opening" aria-label="첫 기일 양측 주장">
    <div class="t4-subhead"><h4>첫 기일 · 양측 입장</h4><span class="t4-tag">사건 기록</span></div>
    <p class="muted small">두 주장은 사건 기록을 바탕으로 표시됩니다. 증거를 살피고 어느 쪽을 믿을지는 재판장이 판단합니다.</p>
-   ${card(sideWord(c,'p'),left,'p')}${card(sideWord(c,'d'),right,'d')}
+   ${card(sideWord(c,'p'),ai?.openingA||left,'p')}${card(sideWord(c,'d'),ai?.openingB||right,'d')}
    <div class="t4-row"><button class="btn outline mini" data-action="t4tab" data-tab="evidence">증거 검토</button><button class="btn outline mini" data-action="t4tab" data-tab="witness">증인신문</button></div>
   </section>`;
 }
