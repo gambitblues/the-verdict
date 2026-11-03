@@ -117,6 +117,14 @@ window.LifeJustice=(()=>{
   }
   return info;
  }
+ /* A dated, idempotent life event from a real sentence transition.
+  * Reuses the biography history rather than creating a second parallel timeline. */
+ function recordCustodyMilestone(p,caseId,week,type,change,career,wealth){
+  const yr=2027+Math.floor(week/52);
+  const event={week,type,change,sourceCaseId:caseId,career:career||p.career,wealth:Number.isFinite(wealth)?wealth:p.wealth};
+  if(!recordAnnualEvent(p,event,yr))return false;
+  return true;
+ }
  function weekTick(S,NPC,w,remember,news,log){
   for(const [id,p] of Object.entries(NPC)){
    if(!p.custodyHistory)continue;
@@ -124,13 +132,15 @@ window.LifeJustice=(()=>{
     sentence.releasedWeek=w;p.legalStatus='출소 · 사회 복귀';
     p.career='구직·사회 복귀 준비';if(p.residence==='교정시설'){p.residenceHistory??=[];p.residenceHistory.push({year:2027+Math.floor(w/52),from:'교정시설',to:'출소자 임시 거처',reason:'출소'});p.residence='출소자 임시 거처'}p.reentry={startWeek:w,stage:'구직 중',priorCareer:sentence.originalCareer,completed:false};
     p.wealth=limit(Math.round((p.wealth||25)*.9),0,100);
+    recordCustodyMilestone(p,sentence.caseId,w,'출소',`${sentence.caseId} 형기 종료 후 사회 복귀 시작`,p.career,p.wealth);
     remember(id,'출소',`${sentence.caseId}에 따른 형기 종료. 거주·구직·가족관계 재정비 시작`,sentence.caseId);
     log('NPC 생활',`${p.name} 출소`,`과거 ${sentence.caseId} 판결의 장기 결과가 발생했다.`);
    }
-   if(p.reentry&&!p.reentry.completed&&w-p.reentry.startWeek>=26){
+   if(p.reentry&&!p.reentry.completed&&w-p.reentry.startWeek>=26&&isFree(p,w)){
     p.reentry.completed=true;p.reentry.stage='생활 재정착';
     const job=p.traits?.conscientiousness>=60&&p.wealth>=25?'중소기업 취업': '비정규·임시직 구직';
-    p.career=job;p.jobHistory??=[];p.jobHistory.push({year:2027+Math.floor(w/52),job,reason:'출소 후 사회 복귀'});
+    p.career=job;
+    recordCustodyMilestone(p,p.custodyHistory.at(-1)?.caseId,w,'사회 복귀','출소 후 약 6개월, '+job,job,p.wealth);
     remember(id,'사회 복귀',`출소 후 약 6개월 경과, 현재 생활: ${job}`,p.custodyHistory.at(-1).caseId);
    }
   }
