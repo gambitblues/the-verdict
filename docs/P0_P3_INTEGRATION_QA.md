@@ -1,0 +1,62 @@
+# THE VERDICT — P0~P3 통합 QA (develop)
+
+- 검수일: 2026-11-04 (KST)
+- 대상: `gambitblues/the-verdict`, `develop` HEAD `0eb6254a2d6464841196c666ce0d5eaebbbfca9a` (검수 시점)
+- 범위: 기존 재판·AI 출력/원본 복구·NPC 생애·뉴스/사건 연결·2계정 세이브·40년·화면·CI
+- 변경: **본 문서만 신규 작성.** 기능/세이브/서버/운영 `main` 변경 없음.
+- 판정 용어: **코드 확인** = 파일에서 구현·검사 경로 확인(실행 성공 아님); **통과** = 이번 검수에서 직접 실행해 성공 로그 확보; **실패** = 실제 테스트 실패 증거 확보; **미실행** = 테스트 실행 환경/증빙 없음; **미구현** = 구현 부재 확인; **미검증** = 일부 관련 코드가 있으나 해당 동작을 검증하지 못함.
+
+## 총괄 판정
+
+**P0~P3 통합 수용 보류 / P4 착수 게이트 NO-GO.** 이번 검수는 GitHub `develop`의 문서·코드·테스트 정의를 읽은 **정적 검토**이다. 저장소를 실행할 수 있는 소스 체크아웃 및 Chromium, 로그인된 독립 테스트 서버 접근을 확보하지 못했으므로 이번 검수에서 직접 통과시킨 자동 테스트·브라우저 테스트·실 API 테스트는 **0건**이다. 테스트 파일이 존재하거나 기존 문서가 과거 로컬 통과를 기술해도 이번 통합 QA의 PASS로 계산하지 않는다.
+
+`develop`은 `main`보다 286개 커밋 앞서 있으며 비교 시 `main`에서 뒤처진 커밋은 0개였다. 해당 비교는 기능·동작의 통과 증거가 아니다.
+
+## 1. 항목별 결과
+
+| 영역 | 정적 검토에서 확인한 것 | 이번 검수 결과 | 남은 게이트 |
+|---|---|---|---|
+| 6개 재판 메뉴, 배당→선고 | `README.md`와 `docs/HANDOFF.md`에 단일 6메뉴(사건·기일·증거·증인·주문·판결) 명시. `tests/match-play.mjs`는 실제 6메뉴와 정상 판결 경로를 검증하도록 작성됨; `tests/verdict-v82.mjs`, `tests/verdict-v83.mjs`도 존재 | **코드/테스트 설계 확인, 실행 미실행** | 신규·기존·결정형·형사·민사별 배당부터 선고까지 독립 브라우저에서 완주 |
+| AI 증인/공방/기사/판결문, 실패 원문 복구 | `auth_gate.js`, `ai_bridge.js`, `server/worker`와 `server/IMPLEMENTATION_STATUS.md`에 AI 호출, 규칙/원문 fallback 관련 설명·경로 있음. 기존 문서는 P1의 실 API·브라우저 통합 검증을 미완료로 명시 | **미검증** | 성공·타임아웃·429·500·의미검증 거절·네트워크 단절마다 결과 고정, 원문 복구 및 저장 후 재열기 확인 |
+| NPC 기억·재등장·생애·후속 사건 | `npc_court_memory.js`, `npc_life_justice.js`, `case_afterlife_engine.js`, `continuity_engine.js` 및 P2-1~7 구현 내역 문서화. `tests/long-career.mjs`는 나이/사망/역할 충돌/가족 대칭/직업/세이브 크기를 검사하도록 작성됨 | **미검증** | 실제 40년 실행, 출소·재취업·재등장·후속 사건의 연대기/기억 스냅샷 및 중복 이벤트 확인 |
+| 뉴스→수사→배당→재판→판결 | `server/IMPLEMENTATION_STATUS.md`는 `pendingCases`, `worldIncidents`, 같은 사건 ID의 단계별 뉴스 및 배당/미배당 종결 분기를 기술 | **미검증** | 같은 ID·NPC 식별자 유지, 배당 전 비공개, 기사 중복 금지, 직접 배당/뉴스 선행/뉴스 종결 분기 E2E |
+| 2계정 세이브·충돌·오프라인 | `auth_gate.js`에 사용자별 로컬 키 격리, IndexedDB 백업, 원격 저장 버전 충돌, 7일 오프라인 확인 정책이 서술됨. `tests/auth-gate.mjs`는 가짜 Supabase 두 계정·충돌·오프라인을 검증하도록 작성됨 | **미검증** | 독립 테스트 계정 2개로 저장 분리·동시 쓰기·충돌 선택·복구·오프라인→온라인 전환 실검증 |
+| 기존 사건·세이브 호환, 40년 | `tests/v5-migration.mjs`, `tests/long-career.mjs 40`, `tests/match-play.mjs` 존재. 장기 테스트는 일부 재판 상태를 직접 설정하여 판결 경로를 빠르게 진행하므로 40년 모든 사건을 수동 UI로 완주한 증거와 구분해야 함 | **미실행** | 이전 버전 실픽스처 읽기/복원·재저장·40년 장기 실행과 UI 완주 표본을 별도로 통과 |
+| 390/412/884px·데스크톱 | `tests/responsive.mjs`, `tests/visuals.mjs`, `tests/browser-smoke.mjs`와 Actions 실행 단계가 정의됨 | **미실행** | 지정 4종 화면 스크린샷을 직접 보고 클리핑·탭·모달·판결 창 검수, 모바일 실제 기기 별도 |
+| 자동 테스트·GitHub Actions | `.github/workflows/develop-smoke.yml` 및 `worker-regression.yml` 존재, `develop` push 트리거와 Node/Playwright/Worker 테스트 단계 확인. HEAD SHA에 대한 GitHub 연결 도구의 PR 기반 workflow 조회는 `[]`, combined status 조회도 `[]` | **현재 HEAD 성공 증빙 없음(실패 판정 아님)** | 실제 GitHub Actions 화면에서 해당 HEAD의 워크플로 실행 ID, 모든 job 결론 및 아티팩트를 확인하고 로그 보존 |
+
+## 2. 이번 검수에서 실제 수행한 작업
+
+1. GitHub 저장소 `gambitblues/the-verdict` 접근·`develop` 존재 확인.
+2. HEAD 커밋 `0eb6254a2d6464841196c666ce0d5eaebbbfca9a`와 `main...develop` 차이 비교(286 ahead / 0 behind).
+3. `README.md`, `CLAUDE.md`, `docs/HANDOFF.md`, `docs/ARCHITECTURE.md`, `docs/RELEASE_WORKFLOW.md`, `server/IMPLEMENTATION_STATUS.md`의 관련 개발·검수 기준 정적 열람.
+4. `index.html`, `auth_gate.js`, `config.js`, 두 Actions 워크플로, `tests/auth-gate.mjs`, `tests/match-play.mjs`, `tests/verdict-v83.mjs`, `tests/long-career.mjs`, Worker/Supabase 테스트 스크립트 정의 검토.
+5. HEAD의 workflow 실행 목록 및 commit status 조회. 두 응답 모두 비어 있어 성공/실패를 확정할 수 없음.
+6. 외부 원격 소스 체크아웃 시도: 실행 환경의 GitHub 도메인 DNS 접근 실패. 따라서 `node`/Playwright/DB 자동 테스트 실행 불가. **실행한 자동 테스트 0 / PASS 0 / FAIL 0.**
+7. **독립 테스트 서버에 접속하거나 프로덕션 세이브를 변경하지 않음.** 서버 쓰기, 마이그레이션, 배포 미실행.
+
+## 3. 검수 중 발견된 장애·위험 및 조치
+
+| ID | 중요도 | 관찰 / 근거 | 조치 및 상태 |
+|---|---|---|---|
+| QA-01 | **Release blocker** | `develop/config.js`의 `supabaseUrl`, `supabaseAnonKey`, `apiBase`가 빈 문자열. `auth_gate.js`는 설정이 없으면 원격 로그인 게임 진입을 막음. 외부 배포 환경에서 별도 주입 여부는 확인하지 못함 | **미수정**. 개발 설정을 임의로 채우거나 Secret을 커밋하지 않음. 독립 QA 환경의 공개 설정과 로그인 검증 필요 |
+| QA-02 | **Release blocker** | 현재 HEAD의 Github Actions PASS를 입증할 실행 ID/로그 확보 실패. 조회 API는 PR 트리거 실행에 제한될 수 있어 빈 배열은 workflow 미실행을 증명하지 않음 | **미수정**. GitHub Actions 페이지에서 develop push 실행과 전체 job 결론을 따로 확보 |
+| QA-03 | **Release blocker** | P0~P3 교차 시나리오를 실제 브라우저와 실 API에서 완료하지 못함. 특히 P2-1~7과 P3 뉴스 단계는 코드/테스트 작성 사실만 확인 | **미수정**. 아래 게이트 실행 전 수용 불가 |
+| QA-04 | 높음 | `docs/RELEASE_WORKFLOW.md`의 현실시계 배당 기술(매시간 1건/하루 최대 4건)이 `README.md`/ `CLAUDE.md`(매시간 2건 제안)과 충돌함. 코드 실제 규칙은 미확인 | **문서 불일치 확인, 동작 오류 미확정**. 제품 기준값 확인 후 문서만 일치시키기 |
+| QA-05 | 높음 | `server/IMPLEMENTATION_STATUS.md`는 P1/P2/P3 기능마다 직접 브라우저/실 API/전체 회귀가 미완료라고 명시 | **미실행**. 과거 개발자 로컬 테스트 주장과 이번 통합 PASS를 구분 |
+
+**수정 결과:** 치명적 런타임 오류가 재현되지 않았으므로 애플리케이션 코드는 수정하지 않았다. 재실행 대상인 수정 테스트도 없다. 본 QA 보고서만 `develop`에 추가한다.
+
+## 4. 재검수 실행 게이트 (독립 환경 한정)
+
+- `develop` HEAD를 독립 머신에 체크아웃하고 `CLAUDE.md`의 모든 Node 테스트 + `server/worker`의 `npm run check` + `server/supabase`의 `npm test` 실행. 명령·종료코드·테스트 건수·로그 SHA 보관.
+- Playwright `tests/browser-smoke.mjs`, `match-play.mjs`, `verdict-v82.mjs`, `verdict-v83.mjs`, `auth-gate.mjs`, `responsive.mjs`, `v5-migration.mjs`, `long-career.mjs 40`, `terra-browser-qa.mjs` 실제 실행. 40년 테스트의 내부 직접 상태 조작은 UI 플레이 커버리지와 별도 기재.
+- P0~P3 수동 교차 시나리오: 계정 A/B를 각각 새 빈 테스트 세이브로 로그인 → 동일 재판 메뉴 전부 사용해 선고 → 성공/실패 AI 출력 고정 → 기사·NPC·사건 ID 확인 → 새로고침·동시 쓰기·단절·복귀·백업 복원 → 과거 세이브/40년 시뮬레이션. 운영계정과 운영 데이터 사용 금지.
+- 390×844, 412px, 884px, 데스크톱 실제 캡처 비교. Playwright 스크린샷과 Safari/Android 실제 기기 확인을 구분.
+- `develop` HEAD와 대응하는 GitHub Actions **run URL, run ID, conclusion, job logs**를 기록. `main` merge/deploy 금지.
+
+## 5. P4 착수 조건 및 결론
+
+**현재 NO-GO.** 최소한 ① 전체 회귀 PASS, ② 6메뉴 사건 완주와 AI 성공/실패 복구, ③ 2개 테스트 계정 격리/충돌/오프라인 복구, ④ NPC·기사·사건 연속성 및 40년, ⑤ 반응형 4화면, ⑥ Actions 증빙을 확보해야 재판정한다. 특히 P4의 공유 세계로 넘어가기 전, 현 P2 기억이 플레이어 개인 세이브 기반이라는 제한과 P3의 관리자 승인/서버 재고 적용 범위를 명확히 해야 한다.
+
+> QA 결론은 **기능 실패**가 아니라 **필수 통합 검증 증거 부족으로 승인 보류**이다. 공개 `main`, 실제 계정 저장 데이터, 배포 환경은 변경하지 않았다.
