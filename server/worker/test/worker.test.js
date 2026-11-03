@@ -205,3 +205,31 @@ test('P4 shared clock and NPC API use invitation-checked JWT and expose only pub
  assert.ok(calls.every(x=>x.headers.authorization==='Bearer good'&&x.headers.apikey==='anon'));
  assert.ok(calls.every(x=>!x.u.includes('world_secrets')&&!x.u.includes('case_stock')));
 });
+
+
+test('P4 global docket disabled by default, accepts only server-derived judge identity',async()=>{
+ const observed=[];
+ const f=async(url,opt={})=>{
+  const u=String(url);observed.push({u,opt});
+  const ok=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}});
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/rpc/shared_docket_offer'))return ok([{case_id:'case-p4',category:'civil',position:0,expires_at:'2026-11-04T12:45:00Z'}]);
+  if(u.includes('/rpc/shared_docket_accept'))return ok([{case_id:'case-p4',category:'civil',assigned_at:'2026-11-04T12:30:00Z'}]);
+  throw Error('unexpected '+u);
+ };
+ const disabled=await handle(req('/world/offers',{slot:'2026-11-04T12'}),env,f);
+ assert.equal(disabled.status,404);
+ assert.equal(observed.filter(x=>x.u.includes('shared_docket')).length,0);
+ const enabled={...env,P4_SHARED_DOCKET_ENABLED:'1'};
+ assert.equal((await handle(req('/world/offers',{slot:'bad'}),enabled,f)).status,400);
+ const first=await (await handle(req('/world/offers',{slot:'2026-11-04T12',judgeId:'another-user'}),enabled,f)).json();
+ assert.deepEqual([first.ok,first.offers[0].case_id],[true,'case-p4']);
+ const second=await (await handle(req('/world/accept',{slot:'2026-11-04T12',caseId:'case-p4'}),enabled,f)).json();
+ assert.equal(second.assignment.case_id,'case-p4');
+ const rpc=observed.filter(x=>x.u.includes('/rpc/shared_docket'));
+ assert.equal(rpc.length,2);
+ assert.ok(rpc.every(x=>x.opt.headers.authorization==='Bearer svc'));
+ assert.ok(rpc.every(x=>JSON.parse(x.opt.body).p_judge==='u1'));
+ assert.ok(rpc.every(x=>!Object.hasOwn(JSON.parse(x.opt.body),'p_truth')));
+});
