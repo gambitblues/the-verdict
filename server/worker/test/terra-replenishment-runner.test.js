@@ -40,3 +40,13 @@ test('concurrent worker cannot generate when exclusive lease fails',async()=>{
  const out=await Runner.runBatch({ops,runId:'refill-test-0005'});
  assert.equal(out.stage,'busy');assert.equal(requested,0);
 });
+
+test('budget accounting failure halts further batches',async()=>{
+ let calls=0;const ops=base();const snap=ops.loadSnapshot;
+ ops.loadSnapshot=async()=>({...await snap(),budget:{...budget,maxNewCasesPerRun:2,maxCallsToday:12,maxUsdToday:3}});
+ ops.closeReservation=async()=>{throw Error('ledger offline')};
+ ops.generateCandidate=async()=>{calls++;return {ok:true,candidate:{id:'terra-test-011',status:'draft'},sheet:{status:'draft'}}};
+ const result=await Runner.runBatch({ops,runId:'refill-test-0006'});
+ assert.equal(calls,1);assert.equal(result.ok,false);
+ assert.ok(result.processed.some(x=>x.decision==='reservation-close-failed'));
+});
