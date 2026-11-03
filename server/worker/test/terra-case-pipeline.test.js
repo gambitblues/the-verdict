@@ -18,6 +18,14 @@ const candidate=()=>{
  scene:{location:'시외 창고 복도',observed:'바닥에 떨어진 상자와 출입 기록 장치가 남아 있었다.',uncertainty:'상자가 떨어진 경위와 두 사람의 접촉 순서는 확인되지 않았다.'},
  records,witnesses:[{id:'W1',role:'창고 옆 점포에서 일하던 목격자',knowledgeLimit:'소리는 들었으나 충돌 순간은 보지 못했다.'}],worlds};
 };
+const prepare=()=>{
+ const c=candidate();c.status='review';
+ const detail='시각별 객관적 기록과 주변 환경, 증인들의 관찰 범위를 서로 대조하여 작성하였다.';
+ c.realism={timelineMechanics:detail,physicalScene:detail,evidenceProvenance:detail,witnessObservability:detail,
+ alternativeHypotheses:detail,aftermathConsequences:detail,contactMechanism:detail,injuryOrNoInjury:detail,
+ medicalLimits:detail,sensitiveDetailPolicy:'non-graphic'};
+ return c;
+};
 test('Terra 초안은 승인 전 배당 재고에 들어갈 수 없다',()=>{
  const c=candidate();assert.equal(Pipeline.validateDraft(c).ok,true);
  assert.equal(Pipeline.admit(c,null).ok,false);
@@ -36,19 +44,19 @@ test('독립 검토 체크리스트 없이는 승인되지 않는다',()=>{
  assert.equal(Pipeline.makeReview(c,{},'담당 운영자').ok,false);
 });
 test('승인된 사건만 추가하고 중복 및 원본 변형을 방지한다',()=>{
- const c=candidate();const checks=Object.fromEntries(Pipeline.REVIEW.map(k=>[k,true]));
+ const c=prepare();const checks=Object.fromEntries(Pipeline.REVIEW.map(k=>[k,true]));
  const approved=Pipeline.makeReview(c,checks,'담당 운영자');assert.equal(approved.ok,true);
  const approval={...approved.record,approvedAt:'2026-11-04'};
  const first=Pipeline.admit(c,approval);assert.equal(first.ok,true);
  assert.equal(c.status,'draft');assert.equal(first.item.worldSheet.status,'ready');
  assert.equal(Pipeline.admit(c,approval,first.inventory).ok,false);
- const second=candidate();second.id='terra-warehouse-002';
+ const second=prepare();second.id='terra-warehouse-002';
  const approval2={...approval,id:second.id};
  assert.equal(Pipeline.admit(second,approval2,first.inventory).ok,false);
 });
 
 test('approval hashes the complete worlds so post-review edits cannot be silently admitted',()=>{
- const c=candidate(),checks=Object.fromEntries(Pipeline.REVIEW.map(k=>[k,true]));
+ const c=prepare(),checks=Object.fromEntries(Pipeline.REVIEW.map(k=>[k,true]));
  const a=Pipeline.makeReview(c,checks,'운영자');assert.equal(a.ok,true);
  c.worlds.did.records['r-camera']='승인 이후 변경된 CCTV 사건 내용에 대한 원문 기술';
  assert.equal(Pipeline.admit(c,{...a.record,approvedAt:'2026-11-04'}).ok,false);
