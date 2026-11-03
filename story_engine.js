@@ -173,7 +173,7 @@ const StoryEngine = (()=>{
   if(criminal&&!hasMultiple)outcomes.splice(1,1); // don't invent partial guilt in single-count case
   const relatedCaseId=prev?.id||null;
   const story={engine:'causal-v0.4',privateTruth:{kind:truthKind,actual,notes:'사실 자체와 법정에서 인정 가능한 증명은 별개'},
-   trigger,scene:scene?{location:scene.location,observed:scene.observed,uncertainty:scene.uncertainty}:null,storyMotif:`${bp.packOrigin?.id||bp.key}|${index}|${pattern}|${trigger}|${relation}|${truthKind}`,timeline,relation,place:pick(PLACE[bp.key]||PLACE.contract,r),
+   trigger,scene:scene?{location:scene.location,observed:scene.observed,uncertainty:scene.uncertainty}:null,storyMotif:`${bp.packOrigin?.id||bp.key}|${index}|${pattern}|${trigger}|${relation}|${truthKind}`,timeline,relation,place:scene?.location||pick(PLACE[bp.key]||PLACE.contract,r),
    arc:{begin:bp.packOrigin?.incident?.cause||`${relation} · ${title} 관련 갈등이 시작됐다.`,development:bp.packOrigin?`${bp.packOrigin.incident.action} ${bp.packOrigin.incident.aftermath}`:`${trigger}. ${pattern} 문제가 수사·소송 준비 중 드러났다.`,trial:`${bp.legal} 쟁점에 관하여 서면과 반론이 제출됐다.`,resolution:'법정에서 확인한 증거에 따라 판단이 달라진다.'},
    roleA:a,roleB:b,witness,investigator:agency,prosecutor,lawyerA,lawyerB,criminal,financial:{a:wealthA,b:wealthB},
    initialDispute:progress,amount:value,publicDossier,evidenceDetails:evidences,proofStrength:strength,proofClass,
