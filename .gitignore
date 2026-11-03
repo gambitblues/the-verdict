@@ -1,3 +1,5 @@
 qa-visuals/
 node_modules
 server/live/out/
+# AI-generated unreviewed cases contain hidden world facts; keep local
+pending/
