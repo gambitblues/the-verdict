@@ -296,7 +296,7 @@ function createGeneratedCase(selectedCandidate=null){
  if(prior)remember(c.who[0],'참조할 과거 판결',`${prior.id}의 법적 쟁점을 참조하되 구속력·차이점 검토 필요`,caseId);
  const quality=c.story.evidenceDetails.map(e=>`${e.id}:${e.quality}`).join(', ');
  log('사건 배당',c.name,`${caseId} · 고유 사건 · 검증 ${c.qa.checks}항목 통과`);
- news('새 사건 배당',`${c.name} · ${c.legal}`,'법원 접수');
+ news('새 사건 배당',`${c.name} · ${c.legal}`,'법원 접수',{caseId:c.id,stage:'filed'});
  S.qaLog??=[];S.qaLog.push({id:caseId,week:S.week,pass:c.qa.pass,warnings:c.qa.warnings,proof:c.story.proofClass,evidenceQuality:quality,deepAudit:c.story.deep?.version||null});
  return c;
 }
@@ -457,7 +457,15 @@ function save(){const build=()=>JSON.stringify({...S,casePacks:(S.casePacks||[])
  VerdictStore.save(KEY,build)}
 VerdictStore.onError(()=>{try{archiveOld(true);S.qaLog=(S.qaLog||[]).slice(-50);S.news=(S.news||[]).slice(0,300);localStorage.setItem(KEY,VerdictStore.encode(JSON.stringify({...S,casePacks:(S.casePacks||[]).filter(p=>p.packId!=='starter-diverse-2026')})));toast('저장 공간을 정리해 저장했습니다.')}catch{toast('브라우저 저장 공간이 가득 찼습니다. 설정에서 백업 파일을 저장해주세요.')}});
 function log(type,title,body){S.journal.unshift({week:S.week,type,title,body});/* 30년 커리어 전체 보존 */}
-function news(title,body,category='법조일보'){S.news.unshift({week:S.week,title,body,category});/* 과거 뉴스 보존 */}
+/* P3: preserve publicly known source, never hidden case facts. */
+function news(title,body,category='법조일보',source=null){
+ const item={week:S.week,title,body,category};
+ if(source?.caseId&&CASES.some(c=>c.id===source.caseId)){
+  item.caseId=source.caseId;
+  if(['filed','verdict','reaction'].includes(source.stage))item.caseStage=source.stage;
+ }
+ S.news.unshift(item);/* 과거 뉴스 보존 */
+}
 function message(from,body){S.msgs.unshift({week:S.week,from,body});/* 과거 메시지 보존 */}
 function modifyRel(id,delta){S.relations[id]=clamp((S.relations[id]||20)+delta,0,100)}
 function rand(){let x=S.rng>>>0;x^=x<<13;x^=x>>>17;x^=x<<5;S.rng=x>>>0;return(S.rng>>>0)/4294967296}
@@ -564,8 +572,8 @@ function tablet(){return `${heading('나의 태블릿','문자부터 판결문�
  <div class="app-grid mt2">${APPS.map(([id,icon,name,color])=>`<button class="app-tile" data-action="tablet" data-sub="${id}"><span class="app-icon" style="background:${color};${ui.tabletTab===id?'outline:3px solid #debd7a;outline-offset:2px':''}">${icon}</span><span>${name}</span></button>`).join('')}</div>
  <div class="panel mt2">${tabletInner()}</div>`}
 function tabletInner(){switch(ui.tabletTab){
- case 'news':return `<div class="row between"><h3 class="no-margin">📰 뉴스</h3><span class="chip">${S.news.length}건</span></div><div class="feed-list mt">${S.news.map(n=>`<div class="feed"><div class="feed-label">${h(n.category)} · ${day(n.week)}</div><b>${h(n.title)}</b><p>${h(n.body)}</p></div>`).join('')}</div>`;
- case 'social':return `<h3 class="no-margin">＃ 시민광장</h3><p class="small muted">가상의 온라인 여론입니다. 실제 법률적 판단과 여론의 방향은 다를 수 있습니다.</p>${S.news.filter(x=>x.category!=='법조일보').length?`<div class="feed-list mt">${S.news.filter(x=>x.category!=='법조일보').map(n=>`<div class="feed"><div class="feed-label">${h(n.category)} · ${day(n.week)}</div><b>${h(n.title)}</b><p>${h(n.body)}</p></div>`).join('')}</div>`:'<div class="empty"><i>＃</i><strong>아직 관심을 끄는 게시글이 없습니다.</strong><span class="small">화제성 있는 판결 이후 커뮤니티 글이 올라올 수 있습니다.</span></div>'}`;
+ case 'news':return `<div class="row between"><h3 class="no-margin">📰 뉴스</h3><span class="chip">${S.news.length}건</span></div><div class="feed-list mt">${S.news.map(n=>`<div class="feed"><div class="feed-label">${h(n.category)} · ${day(n.week)}</div><b>${h(n.title)}</b><p>${h(n.body)}</p>${n.caseId&&CASES.some(c=>c.id===n.caseId)?`<button class="btn outline mini" data-action="openCase" data-id="${h(n.caseId)}">${S.cases[n.caseId]?.verdict?'판결 기록 보기':'사건 기록 보기'}</button>`:''}</div>`).join('')}</div>`;
+ case 'social':return `<h3 class="no-margin">＃ 시민광장</h3><p class="small muted">가상의 온라인 여론입니다. 실제 법률적 판단과 여론의 방향은 다를 수 있습니다.</p>${S.news.filter(x=>x.category!=='법조일보').length?`<div class="feed-list mt">${S.news.filter(x=>x.category!=='법조일보').map(n=>`<div class="feed"><div class="feed-label">${h(n.category)} · ${day(n.week)}</div><b>${h(n.title)}</b><p>${h(n.body)}</p>${n.caseId&&CASES.some(c=>c.id===n.caseId)?`<button class="btn outline mini" data-action="openCase" data-id="${h(n.caseId)}">사건 기록 보기</button>`:''}</div>`).join('')}</div>`:'<div class="empty"><i>＃</i><strong>아직 관심을 끄는 게시글이 없습니다.</strong><span class="small">화제성 있는 판결 이후 커뮤니티 글이 올라올 수 있습니다.</span></div>'}`;
  case 'messages':return `<h3 class="no-margin">💬 문자</h3><div class="feed-list mt">${S.msgs.map(m=>`<div class="feed"><div class="row">${avatar(m.from)}<div><b>${h(NPC[m.from]?.name||'알림')}</b><div class="xs muted">${day(m.week)}</div></div></div><p class="mt">${h(m.body)}</p></div>`).join('')}</div>`;
  case 'archives':{
  const q=ui.archiveQuery.trim().toLowerCase();
@@ -685,8 +693,8 @@ function conclude(id){
  S.actions++;window.VerdictCareerBalance.award(S,c.id,st.grade,c.importance,year());
  modifyRel(c.side[0],st.grade>=70?3:-2);modifyRel(c.side[1],st.grade>=70?2:-3);
  const messageText=`${c.name}에서 ${v.label} 판결이 선고됐다. 재판부 판단 요지: ${v.note}.`;
- news(`${c.name} · 최종 선고`,messageText);
- if(c.importance>=4)news(`시민광장 반응: ${c.name}`,`판결 결과를 놓고 네티즌들의 평가가 엇갈리고 있다. 법률적 판단과 대중 여론은 별개라는 목소리도 나온다.`,'시민광장');
+ news(`${c.name} · 최종 선고`,messageText,'법조일보',{caseId:c.id,stage:'verdict'});
+ if(c.importance>=4)news(`시민광장 반응: ${c.name}`,`판결 결과를 놓고 네티즌들의 평가가 엇갈리고 있다. 법률적 판단과 대중 여론은 별개라는 목소리도 나온다.`,'시민광장',{caseId:c.id,stage:'reaction'});
  log('판결',c.name,`${v.label} · 검토 점수 ${st.grade}점`);
  for(const npcId of [...new Set([...(c.who||[]),...(c.side||[])])])remember(npcId,'판결',`${c.name} · ${v.label}`,c.id);
  st.precedent={decision:v.label,issue:c.legal||c.tag,week:S.week,authority:'게임 세계의 확정 판결 기록'};
