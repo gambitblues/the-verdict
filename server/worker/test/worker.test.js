@@ -214,7 +214,7 @@ test('P4 global docket disabled by default, accepts only server-derived judge id
   const ok=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}});
   if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
   if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
-  if(u.includes('/rpc/shared_docket_offer'))return ok([{case_id:'case-p4',category:'civil',position:0,expires_at:'2026-11-04T12:45:00Z'}]);
+  if(u.includes('/rpc/shared_docket_offer'))return ok([{case_id:'case-p4',category:'civil',option_index:0,expires_at:'2026-11-04T12:45:00Z'}]);
   if(u.includes('/rpc/shared_docket_accept'))return ok([{case_id:'case-p4',category:'civil',assigned_at:'2026-11-04T12:30:00Z'}]);
   throw Error('unexpected '+u);
  };
