@@ -76,6 +76,8 @@ jobs:
         run: node tests/match-engine-screen.mjs
       - name: World-sheet cases in the normal courtroom (six pages, verdict, every sheet case)
         run: node tests/match-play.mjs
+      - name: P3-12 staged case real six-tab courtroom and verdict (isolated)
+        run: node tests/terra-browser-qa.mjs --fixture clinic-001
       - name: v8.2 objections during questioning and the verdict window
         run: node tests/verdict-v82.mjs
       - name: v8.3 own questions and orders, ancillary orders, remedies, life after
