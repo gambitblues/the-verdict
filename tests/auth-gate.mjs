@@ -47,6 +47,8 @@ async function routes(ctx){
    if(cur.rev!==b.p_base_rev&&!b.p_force)return j([{ok:false,conflict:true,rev:cur.rev,updated_at:cur.updated_at,device:cur.device}]);
    if(cur.rev!==b.p_base_rev)serverBackups.push({...cur});
    Object.assign(cur,{data:b.p_data,rev:cur.rev+1,device:b.p_device,updated_at:now});return j([{ok:true,conflict:false,rev:cur.rev,updated_at:now,device:b.p_device}])}
+  if(u.pathname==='/rest/v1/save_backups'){const id=u.searchParams.get('user_id').replace('eq.','');assert.equal(id,uid);
+   return j(serverBackups.filter(b=>b.user_id===id).map(b=>({slot:b.slot,data:b.data,rev:b.rev,device:b.device,created_at:b.updated_at})).reverse())}
   return j({},404)});
  await ctx.route('https://api.test/**',async route=>{const req=route.request();if(req.method()==='OPTIONS')return route.fulfill({status:204,headers:cors});
   const me=who(req),body=JSON.parse(req.postData()||'{}');aiCalls.push({path:new URL(req.url()).pathname,user:me?.[1].id,body});
@@ -102,7 +104,7 @@ try{
  console.log('  ✓ AI answer: the player\'s token and visible text only, shown in the game');
 
  // 4. logout uploads and puts away
- await gameSave(page);await page.locator('#verdict-entry .vl-out button').click();await page.locator('#verdict-login form').waitFor();
+ await gameSave(page);await page.locator('#verdict-entry [data-vl="out"]').click();await page.locator('#verdict-login form').waitFor();
  assert.equal(cloud.get('uid-a:1')?.rev,1,'player A\'s slot 1 is in the cloud');
  let keys=await page.evaluate(()=>Object.keys(localStorage));
  assert.ok(!keys.some(k=>/^(the_verdict|verdict_)/.test(k)),'nothing of player A is left in the game\'s working keys');
@@ -113,7 +115,7 @@ try{
  await login(page,'b@x.kr','pw-b');await loaded(page);
  assert.equal(await page.locator('#verdict-login [data-a="y"]').count(),0,'the old-save question is asked only once');
  assert.notEqual(await page.evaluate(()=>S.name),'옛 판사','player B does not see player A\'s career');
- await page.locator('#verdict-entry .vl-out button').click();await page.locator('#verdict-login form').waitFor();
+ await page.locator('#verdict-entry [data-vl="out"]').click();await page.locator('#verdict-login form').waitFor();
  await login(page,'a@x.kr','pw-a');await loaded(page,'옛 판사');
  console.log('  ✓ two players, separate careers on one device');
 
@@ -142,8 +144,17 @@ try{
  await page.locator('#verdict-login [data-a="n"]').waitFor({timeout:30000});await page.locator('#verdict-login [data-a="n"]').click();
  await page.waitForFunction(()=>true);await new Promise(r=>setTimeout(r,800));
  assert.ok(serverBackups.some(b=>/태블릿 판사 2/.test(b.data)),'the tablet\'s newer save was kept on the server before the phone\'s replaced it');
+ // bring the tablet's record back from the server's backups (profile screen → 보관된 기록)
+ await page.reload({waitUntil:'networkidle'});await loaded(page,'휴대폰 판사 2');
+ await page.locator('#verdict-entry [data-vl="bk"]').click();await page.locator('#verdict-login [data-i="0"]').waitFor();
+ const listText=await page.locator('#verdict-login').innerText();assert.match(listText,/태블릿 판사 2/);assert.match(listText,/서버/);
+ const idx=await page.evaluate(()=>[...document.querySelectorAll('#verdict-login [data-i]')].findIndex(b=>/태블릿 판사 2/.test(b.textContent)&&/서버/.test(b.textContent)));
+ await page.locator(`#verdict-login [data-i="${idx}"]`).click();await page.locator('#verdict-login [data-a="y"]').click();
+ await page.waitForLoadState('networkidle');await loaded(page,'태블릿 판사 2');
+ assert.match(cloud.get('uid-a:1').data,/태블릿 판사 2/,'the restored record is uploaded');
+ assert.ok((await backups(page)).filter(b=>b.kind==='replaced').length>=2,'the record it replaced was kept first');
  await ctx2.close();
- console.log('  ✓ two devices: no silent overwrite; the player picks; the other side is backed up');
+ console.log('  ✓ two devices: no silent overwrite; the player picks; the other side is backed up and can be restored');
 
  // 7. offline rules
  const ctx3=await browser.newContext({viewport:{width:390,height:844}});await routes(ctx3);const p3=await ctx3.newPage();const e3=[];p3.on('pageerror',e=>e3.push(e.message));

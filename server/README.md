@@ -47,6 +47,17 @@
 4. 게임: `config.js`에 공개 값 3개를 넣고 저장소 폴더에서 `npx serve .` → `http://localhost:3000/?auth=1`.
    두 사람이 각자 로그인 → 서로의 커리어가 안 보이는지, 증인 답변·기사가 자연스럽게 바뀌는지, 인터넷을 끊었다 켰을 때 원래 문장이 그대로 나오는지 확인.
 
+## 4. 전체 실연결 검수 (자동, 자기 컴퓨터에서)
+```
+cd server/live && npm i && npx playwright install chromium
+SUPABASE_URL=https://<프로젝트>.supabase.co SUPABASE_ANON_KEY=<anon key> \
+VERDICT_API=https://the-verdict-api.<계정>.workers.dev node live-e2e.mjs
+```
+- 두 사람(그리고 있으면 초대되지 않은 계정)의 이메일·비밀번호를 물으면 입력합니다. 비밀번호는 화면에 *로 보이고 Supabase로만 갑니다.
+- develop 게임을 이 컴퓨터에서 띄워(공개 값 3개만 사용) 실제 서버로 확인합니다: 로그인 2명·거절·계정 분리 → 같은 계정 두 기기 충돌·보관·되돌리기 → 기사 1건·답변 1건(모델·토큰·비용)·AI 오류 시 원래 문장 → 증인 답변 20건 과잉 거부율 → 사건 1건 배당부터 판결문까지.
+- 결과: `server/live/out/<시각>/report.md`(+ 화면 캡처, 비밀 값 없음). 이 폴더를 그대로 공유하면 됩니다.
+- 새 게임을 만들기 때문에 이미 클라우드 세이브가 있으면 멈춥니다(`--allow-overwrite`로 계속). 테스트 커리어 이름은 '실검 …'. `--headed`로 화면을 보며 실행할 수 있습니다.
+
 ## API
 | 경로 | 하는 일 |
 |---|---|

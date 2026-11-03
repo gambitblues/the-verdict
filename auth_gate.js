@@ -207,11 +207,36 @@ async function logout(){
  try{window.VerdictStore?.halt()}catch{}
  putAway(uid);localStorage.removeItem(OWNER);keep(null);location.reload();
 }
+/* ---------- bring back a kept record (v8.7.2) ----------
+ * Lists what was kept when one record replaced another: this browser's backups (IndexedDB) and the server's
+ * save_backups. Choosing one keeps the current record first (IndexedDB), then puts the chosen one in its slot and uploads it. */
+const judgeName=v=>{try{return (window.VerdictStore?VerdictStore.parse(v):JSON.parse(v))?.name||''}catch{return ''}};
+async function kept(uid){
+ const out=[];
+ try{const db=await idb();const all=await new Promise(res=>{const q=db.transaction('b').objectStore('b').getAll();q.onsuccess=()=>res(q.result||[])});
+  for(const x of all)if(x.uid===uid&&x.kind==='replaced')for(const [k,v] of Object.entries(x.keys||{})){const m=k.match(/^verdict_player_save_([12])$/);if(m&&v)out.push({where:'이 기기',slot:m[1],at:x.at,data:v,device:deviceId()})}}catch{}
+ if(online)try{const r=await rest(`save_backups?select=slot,data,rev,device,created_at&user_id=eq.${uid}&order=id.desc&limit=10`);
+  if(r.ok)for(const x of await r.json())out.push({where:'서버',slot:x.slot,at:Date.parse(x.created_at),data:x.data,device:x.device})}catch{}
+ return out.sort((a,b)=>b.at-a.at).slice(0,12);
+}
+async function restoreScreen(){
+ const uid=session?.user?.id;if(!uid)return;
+ const list=await kept(uid);
+ const b=card(`<div class="entry-sub">보관된 기록 ${list.length?`(${list.length})`:''}</div>${list.length?list.map((x,i)=>`<button class="entry-btn" data-i="${i}">프로필 ${x.slot} · ${esc(judgeName(x.data)||'이름 없는 기록')} 판사<small style="display:block;font-weight:400;font-size:12px;opacity:.8">${new Date(x.at).toLocaleString('ko-KR')} · ${esc(x.where)} · ${esc(devName(x.device))}</small></button>`).join(''):'<p class="entry-sub">보관된 기록이 없어요.</p>'}<button class="entry-btn primary" data-i="x">닫기</button>`);
+ b.querySelectorAll('[data-i]').forEach(btn=>btn.onclick=async()=>{const i=btn.dataset.i;if(i==='x')return close();const x=list[Number(i)];
+  if(!await ask(`프로필 ${x.slot}을 ${esc(new Date(x.at).toLocaleString('ko-KR'))}의 기록으로 되돌릴까요?<br><small>지금 프로필 ${x.slot}의 기록은 먼저 이 기기에 보관돼요.</small>`,'되돌리기','취소'))return restoreScreen();
+  try{window.VerdictStore?.flush()}catch{}
+  const now=slotValue(x.slot);if(now!=null&&!await backup('replaced',uid,{[slotKey(x.slot)]:now})){card('<div class="entry-sub">지금 기록을 보관하지 못해서 되돌리지 않았어요.</div>');return}
+  try{window.VerdictStore?.halt()}catch{}
+  writeSlot(x.slot,x.data);localStorage.removeItem(PUSHED(uid,x.slot));   // counts as a change on this device; uploads on the next save round
+  if(online){const c=await put(uid,x.slot).catch(()=>null);if(c?.conflict)await put(uid,x.slot,true).catch(()=>null)}
+  location.reload()});
+}
 /* a small sign-out line on the judge's profile screen */
 function logoutButton(){
  const add=()=>{const box=document.querySelector('#verdict-entry .entry-card');if(!box||box.querySelector('.vl-out'))return;
-  const d=document.createElement('div');d.className='entry-info vl-out';d.innerHTML=`${esc(session?.user?.email||'')}${online?'':' (오프라인)'} · <button type="button" class="vl-link">로그아웃</button>`;
-  d.querySelector('button').onclick=logout;box.appendChild(d)};
+  const d=document.createElement('div');d.className='entry-info vl-out';d.innerHTML=`${esc(session?.user?.email||'')}${online?'':' (오프라인)'} · <button type="button" class="vl-link" data-vl="out">로그아웃</button> · <button type="button" class="vl-link" data-vl="bk">보관된 기록</button>`;
+  d.querySelector('[data-vl="out"]').onclick=logout;d.querySelector('[data-vl="bk"]').onclick=()=>restoreScreen().catch(e=>console.warn(e));box.appendChild(d)};
  new MutationObserver(add).observe(document.body,{childList:true});add();
 }
 

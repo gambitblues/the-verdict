@@ -1,0 +1,7 @@
+{
+  "name": "the-verdict-live-test",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node live-e2e.mjs" },
+  "dependencies": { "playwright": "^1.50.0" }
+}
