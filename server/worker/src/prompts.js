@@ -97,7 +97,8 @@ export function checkOpening(p,out){
   if(!src||!text)return {ok:false,why:'empty'};
   if(text.length>src.length*1.7+30||text.length<Math.min(src.length*0.4,12))return {ok:false,why:'length'};
   if(!sameDates(src,text))return {ok:false,why:'dates'};
-  if(!sameNumbers(src,text))return {ok:false,why:'numbers'};
+  const originalNums=numbersWithoutDates(src),revisedNums=numbersWithoutDates(text);
+  if(originalNums.length!==revisedNums.length||!originalNums.every((x,i)=>x===revisedNums[i]))return {ok:false,why:'numbers'};
   if(sentencesIn(text).length>3)return {ok:false,why:'sentences'};
   const g=guard(src,text,{names:namesOf(p),keep:0.5});if(g)return {ok:false,why:g};
   result[k]=text;pairs.push([src,text]);
