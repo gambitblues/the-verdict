@@ -40,6 +40,7 @@
 ### 새 코드
 - `012_asynchronous_judge_calendar.sql`: 판사별 마지막 접속 세계 날짜, 개인 예약 기일 분리, 복귀 보호 및 중복 재조정 방지
 - `013_shared_hearing_progress.sql`: 실제 예정 기일을 열었을 때만 공통 세계 시계가 `max(현재 날짜, 열린 기일)`로 전진, 같은 날짜 여러 공판은 시간 중복 증가 없음
+- `014_world_chronology_guards.sql`: 미래 날짜의 기사·NPC 생애 변화 공개 금지, 근거 없는 판결 기사·선고 후 공판 기록 생성 금지
 - Worker `GET /world/catchup`: 서명된 판사 자신의 미처리 기일과 세계 날짜 차이 조회
 - Worker `POST /world/resume`: 본인 판사 ID를 서버 JWT에서 결정하며 타 판사 기일을 건드리지 않는 복귀 RPC
 - `shared_world.js`: 비동기 판사 복귀 상태 표시·복귀 버튼(독립 QA 옵션을 켠 경우만)
@@ -48,7 +49,7 @@
 
 이 단계의 GitHub 코드 변경은 **운영 DB나 Worker에 적용되지 않았습니다**.
 
-1. 독립 QA 프로젝트에서 SQL `001 → 002 → 003 → 006 → 007 → 008 → 009 → 010 → 011 → 012 → 013` 순서로 적용. P3 Terra 기능이 필요한 QA DB라면 기존 `004 → 005`도 해당 절차에 포함.
+1. 독립 QA 프로젝트에서 SQL `001 → 002 → 003 → 006 → 007 → 008 → 009 → 010 → 011 → 012 → 013 → 014` 순서로 적용. P3 Terra 기능이 필요한 QA DB라면 기존 `004 → 005`도 해당 절차에 포함.
 2. `cd server/supabase && npm ci && npm test`; `cd server/worker && npm run check`.
 3. 개발 QA Worker 변수 `P4_SHARED_DOCKET_ENABLED="1"`은 데이터/권한/이벤트 검수 환경에서만 사용. **기존 운영 Worker와 wrangler.toml의 예시 값으로 재배포 금지.**
 4. 별도 QA 게임 설정에 `p4SharedWorld:true`, `p4SharedDocket:true`를 지정하고 UI 확인.
