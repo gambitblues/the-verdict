@@ -123,6 +123,26 @@ export async function handle(req,env,fetcher=fetch){
   return json({ok:true,events,next:events.length?events[events.length-1].event_id:after},200,head);
  }
 
+ // P4-2: shared clock and objective NPC biographies are read via the player's JWT.
+ // Private relationship memories never belong in these server records.
+ if(req.method==='GET'&&(url.pathname==='/world/clock'||url.pathname==='/world/npcs')){
+  const clock=url.pathname==='/world/clock';
+  const after=url.searchParams.get('after')||'';
+  if(!clock&&!/^[a-zA-Z0-9:_-]{0,120}$/.test(after))return json({error:'bad_cursor'},400,head);
+  const path=clock
+   ?'shared_world_clock?select=id,game_day,version&limit=1'
+   :'shared_npc_public?select=npc_id,public_profile,life_status,effective_day,version&npc_id=gt.'+encodeURIComponent(after)+'&order=npc_id.asc&limit=50';
+  let response;
+  try{response=await fetcher(`${env.SUPABASE_URL}/rest/v1/${path}`,{
+   headers:{apikey:env.SUPABASE_ANON_KEY,authorization:`Bearer ${who.token}`}})}
+  catch{return json({error:'world_unavailable'},503,head)}
+  if(!response.ok)return json({error:'world_unavailable'},503,head);
+  let rows;try{rows=await response.json()}catch{return json({error:'world_unavailable'},503,head)}
+  if(!Array.isArray(rows))return json({error:'world_unavailable'},503,head);
+  if(clock)return json({ok:true,clock:rows[0]||null},200,head);
+  return json({ok:true,npcs:rows,next:rows.length?rows[rows.length-1].npc_id:after},200,head);
+ }
+
  // Read-only health check for the existing invited judges. Never returns
  // private case material, budget amounts, service credentials or model output.
  if(url.pathname==='/terra/status'&&req.method==='GET'){
