@@ -393,6 +393,19 @@ function dressCards(c,t,cards){
   card.dressed=true;return card;
  }).filter(card=>!card.void);
 }
+/* a witness's answer turned into the leading question that would have put it in the witness's mouth:
+ * "제가 봤어요" → "증인이 봤지요?". Returns null when the sentence does not end in a form we can turn. */
+function leadOf(text){
+ const ss=String(text||'').split(/(?<=[.?!])\s+/).map(v=>v.replace(/[.!?。…\s]+$/,'').trim()).filter(Boolean);
+ const hedge=v=>/^(네|아뇨|아니요|글쎄|솔직히|잘 모르|기억이)|아니에요$|모르겠어요$/.test(v);
+ let x=ss.find(v=>/\d/.test(v)&&!hedge(v))||ss.find(v=>!hedge(v))||ss[0];if(!x)return null;
+ const core=x.length>36?x.slice(0,35)+'…':x;
+ x=x.replace(/^제가\s/,'증인이 ').replace(/^저는\s/,'증인은 ').replace(/^저도\s/,'증인도 ').replace(/^제\s/,'증인의 ').replace(/^저희\s/,'증인 쪽 ');
+ const R=[[/(을|ㄹ) 거예요$/,'지요?'],[/이요$/,'이었지요?'],[/(이에요|이었어요)$/,m=>m==='이었어요'?'이었지요?':'이지요?'],[/예요$/,'지요?'],[/했어요$/,'했지요?'],[/해요$/,'하지요?'],[/돼요$/,'되지요?'],
+  [/(었|았|였|했|겠)(어요|습니다)$/,(m,p)=>p+'지요?'],[/(습니다|ㅂ니다)$/,'지요?'],[/(거든요|네요|는데요|어요|아요)$/,'지요?']];
+ for(const [re,to] of R)if(re.test(x)){const out=x.replace(re,to);if(out!==x&&/지요\?$/.test(out))return {ask:out,core};}
+ return {ask:`${x}, 맞지요?`,core};
+}
 function cardText(card,t,c){
  const lawyer=NPC[t.opponent]?.name||'상대';
  const crim=isCriminal(c),asker=crim?`${prosName(c)} 검사`:'원고 대리인',objector=crim?`${lawyer} 변호사`:`피고 대리인 ${lawyer} 변호사`;
@@ -401,8 +414,14 @@ function cardText(card,t,c){
   const wn=wName(t,card.w),d=wDetail(c,card.w);
   let target,reason;
   /* show what was asked and, where there was one, what the witness answered, so the judge can rule on the exchange */
-  let ask,answer=null;
-  if(card.otype==='lead'&&card.valid){ask=tell(c,t,d?.lead||'그렇게 하신 거죠?');answer=card.live&&card.choice!=='reject'?null:'네, 그렇습니다. 그랬던 것 같아요.';reason=`질문에 이미 답이 들어 있습니다. 증인이 직접 겪은 일을 스스로 말하게 해야 합니다.`}
+  let ask,answer=null,first='',prevA='';
+  if(card.otype==='lead'&&card.valid){
+   /* v8.6.2: the leading follow-up grows out of the question the judge actually picked — the asker repeats the
+    * witness's own answer back as a "…지요?" question, so the screen shows what was asked and which answer was put in */
+   const q=card.q?qById(c,t,card.w,card.q):null,a=q?answerOf(c,t,card.w,q).text:'',l=a?leadOf(a):null;
+   if(l){ask=l.ask;first=tell(c,t,q.q);prevA=a;answer=card.live&&card.choice!=='reject'?null:'네, 맞습니다.';reason=`검사가 증인의 답 가운데 "${l.core}"를 질문에 그대로 넣어 '맞지요?' 하고 확인받으려 합니다. 증인이 직접 겪은 일을 스스로 말하게 해야 합니다.`}
+   else{ask=tell(c,t,d?.lead||'그렇게 하신 거죠?');answer=card.live&&card.choice!=='reject'?null:'네, 그렇습니다. 그랬던 것 같아요.';reason=`질문에 이미 답이 들어 있습니다. 증인이 직접 겪은 일을 스스로 말하게 해야 합니다.`}
+   if(!isCriminal(c))reason=reason.replace('검사가','원고 대리인이')}
   else if(card.otype==='hearsay'){const open=(d?.q||[]).filter(q=>!q.hidden&&q.side!=='n'),q=card.q?questionsOf(c,t,card.w).find(x=>x.id===card.q):open.length?open[(T.hash(t.seed+':'+card.id)>>>5)%open.length]:null;
    ask=tell(c,t,q?.q||'그날 무슨 일이 있었는지 말해 주세요.');answer='그 부분은 제가 직접 본 건 아니고, 그렇게 됐다고 다른 사람한테서 들었습니다.';
    reason='증인은 직접 보거나 들은 것이 아니라 남에게 전해 들은 말을 옮기고 있습니다. 원래 말한 사람을 법정에 불러야 합니다.'}
@@ -410,7 +429,7 @@ function cardText(card,t,c){
    reason=card.otype==='lead'?'질문이 답을 정해 놓고 있습니다.':'이 질문은 사건과 관계가 없습니다.'}
   target=`${asker}: "${ask}"`+(answer?`\n${wn}: "${answer}"`:'');
   return {title:`이의 제기 · ${OBJ[card.otype]}`,who:objector,
-   body:`${objector}가 ${asker}의 신문에 이의를 제기했습니다.`,target:`${asker} → 증인 ${wn}`,quote:target,ask,answer,askBy:asker,wn,reason,
+   body:first?`${objector}가 ${asker}의 덧붙인 질문에 이의를 제기했습니다.`:`${objector}가 ${asker}의 신문에 이의를 제기했습니다.`,target:`${asker} → 증인 ${wn}`,quote:target,ask,answer,askBy:asker,wn,reason,prevQ:first,prevA,
    /* plain words: what each choice does to this question and answer */
    choices:card.live&&liveWhen(card)==='before'?['이의를 받아들임 — 질문을 거두고 답을 듣지 않음','이의를 받아들이지 않음 — 증인이 답함']
     :answer?['이의를 받아들임 — 이 질문과 답은 판단에서 뺌','이의를 받아들이지 않음 — 이 답을 기록에 남김']
@@ -1242,7 +1261,7 @@ function cardBlock(card,t,c){
  if(card.type==='media')return `<div class="t4-event media"><b>📣 ${esc(x.title)}</b><p>${esc(x.body)}</p></div>`;
  const done=card.choice;
  return `<div class="t4-event ${done?'done':''}"><b>${card.type==='objection'?'✋':'⏳'} ${esc(x.title)}</b><p>${esc(x.body)}</p>
- ${x.target?`<p class="small"><b>대상</b> ${esc(x.target)}</p><blockquote class="t4-excerpt">${x.ask?`<span class="t4-obj-line"><b>질문</b> ${esc(x.askBy)}: "${esc(x.ask)}"</span>${x.answer?`<span class="t4-obj-line"><b>답변</b> ${esc(x.wn)}: "${esc(x.answer)}"</span>`:`<span class="t4-obj-line muted small">${card.live?(card.choice==='accept'?'이의를 받아들여 증인은 답하지 않았습니다.':'증인이 답하기 전에 이의가 나왔습니다.'):'증인이 답하기 전에 이의가 나왔습니다. 받아들이지 않으면 증인 탭에서 이 질문을 할 수 있어요.'}</span>`}`:esc(x.quote)}</blockquote>`:''}
+ ${x.target?`<p class="small"><b>대상</b> ${esc(x.target)}</p><blockquote class="t4-excerpt">${x.ask?`${x.prevQ?`<span class="t4-obj-line"><b>앞 질문</b> ${esc(x.askBy)}: "${esc(x.prevQ)}"</span><span class="t4-obj-line"><b>앞 답변</b> ${esc(x.wn)}: "${esc(x.prevA)}"</span>`:''}<span class="t4-obj-line"><b>${x.prevQ?'덧붙인 질문':'질문'}</b> ${esc(x.askBy)}: "${esc(x.ask)}"</span>${x.answer?`<span class="t4-obj-line"><b>답변</b> ${esc(x.wn)}: "${esc(x.answer)}"</span>`:`<span class="t4-obj-line muted small">${card.live?(card.choice==='accept'?'이의를 받아들여 증인은 답하지 않았습니다.':'증인이 답하기 전에 이의가 나왔습니다.'):'증인이 답하기 전에 이의가 나왔습니다. 받아들이지 않으면 증인 탭에서 이 질문을 할 수 있어요.'}</span>`}`:esc(x.quote)}</blockquote>`:''}
  <p class="small"><b>신청 이유</b> ${esc(x.reason)}</p>${x.opinion?`<p class="small"><b>상대방 의견</b> ${esc(x.opinion)}</p>`:''}
  ${done?`<p class="small">→ ${esc(done==='accept'?x.choices[0]:x.choices[1])}</p>`:`<div class="t4-stack"><button class="btn mini primary" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="accept">${esc(x.choices[0])}</button><button class="btn mini outline" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="reject">${esc(x.choices[1])}</button></div>`}</div>`;
 }
