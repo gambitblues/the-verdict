@@ -38,8 +38,8 @@
  }
  function greeting(memory){
   if(!memory||memory.cases<1)return '';
-  if(memory.rejected>=2)return '재판장님, 지난 재판에서 제 이의가 여러 차례 받아들여지지 않았습니다. 이번에는 신청 근거를 더 분명히 말씀드리겠습니다.';
-  if(memory.accepted>=2)return '재판장님, 지난번처럼 쟁점을 분명히 하겠습니다. 필요한 경우 이의를 제기하겠습니다.';
+  if(strategy(memory)==='cautious')return '재판장님, 지난 재판에서 제 이의가 여러 차례 받아들여지지 않았습니다. 이번에는 신청 근거를 더 분명히 말씀드리겠습니다.';
+  if(strategy(memory)==='assertive')return '재판장님, 지난번처럼 쟁점을 분명히 하겠습니다. 필요한 경우 이의를 제기하겠습니다.';
   return '재판장님, 이전 재판에서도 뵈었습니다. 이번 사건은 기록에 따라 차분히 말씀드리겠습니다.';
  }
  /* A repeated courtroom history changes how often an opponent raises an objection,
