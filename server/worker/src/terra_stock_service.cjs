@@ -16,13 +16,16 @@ async function rpc({url,serviceKey,fetcher},name,body){
  if(!response.ok)throw Error('stock RPC '+name+' failed: '+response.status);
  return response.json();
 }
-async function admitVerified({env,candidate,sheet,qa,browserQa,inventory,policy}={}){
+async function admitVerified({env,candidate,sheet,qa,browserQa,inventory,policy,reverify}={}){
  const decision=triage({candidate,sheet,qa,browserQa,inventory,policy});
  if(decision.decision!=='stock')return {ok:false,decision:decision.decision,reasons:decision.reasons};
  const item=decision.item;
  if(!item||item.published!==false||item.status!=='staged-approved')throw Error('not an unpublished verified case');
  // The trusted service should re-run QA, not trust tamperable browser artifacts.
- if(policy?.serverReverified!==true)return {ok:false,decision:'quarantine',reasons:['서버 독립 검증 기록이 없습니다.']};
+ if(typeof reverify!=='function')return {ok:false,decision:'quarantine',reasons:['신뢰할 수 있는 서버 재검증기가 없습니다.']};
+ const independent=await reverify({candidate,sheet});
+ if(!independent?.ok||independent.sheetHash!==item.sheetHash||independent.candidateHash!==item.candidateHash)
+  return {ok:false,decision:'quarantine',reasons:['서버 재검증 결과 및 사건 해시가 일치하지 않습니다.']};
  const result=await rpc(env,'case_stock_admit',{
   p_id:item.id,p_category:item.category,p_sheet_hash:item.sheetHash,
   p_candidate_hash:item.candidateHash,p_fingerprint:item.fingerprint,
