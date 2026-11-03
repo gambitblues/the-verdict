@@ -25,6 +25,20 @@ async function npc(c,t,x){
  if(res?.text){(t.ai??={})[key]=res.text;save();redraw()}
 }
 
+/* P1: both first-hearing arguments share one low-cost request; already disclosed text only.
+ * The original engine text stays visible while AI runs and on any verification failure. */
+const openingAttempted=new Set();
+async function opening(c,t,openingA,openingB){
+ if(!on()||!c?.id||!openingA||!openingB)return;
+ const key=c.id+':'+openingA+':'+openingB;
+ if(t.aiOpening?.source===key||openingAttempted.has(key))return;
+ openingAttempted.add(key);
+ const res=await ask('opening',{openingA,openingB,names:namesOf(c,t)});
+ if(!res?.openingA||!res?.openingB)return;
+ t.aiOpening={source:key,openingA:res.openingA,openingB:res.openingB};
+ save();redraw();
+}
+
 /* a reporter's article, asked for when the player opens it; kept in S.aiArticles by case, article and phase */
 async function article(a){
  if(!on()||!a?.caseId)return;const key=`${a.caseId}:${a.index}:${a.phase||''}`;
@@ -46,5 +60,5 @@ async function judgment(c,t){
  if(res?.facts){t.final.judgmentAI={...j,facts:res.facts,issues:res.issues,conclusion:res.conclusion};save();redraw()}
 }
 
-window.VerdictAI={npc,article,articleKey,judgment,get on(){return on()}};
+window.VerdictAI={npc,article,articleKey,judgment,opening,get on(){return on()}};
 })();
