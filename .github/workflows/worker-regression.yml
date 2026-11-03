@@ -4,6 +4,7 @@ on:
     branches: [develop]
     paths:
       - 'server/worker/**'
+      - 'server/supabase/**'
       - 'game_runtime.js'
       - 'npc_life_justice.js'
       - 'npc_court_memory.js'
@@ -33,6 +34,11 @@ jobs:
       - name: Run offline Worker regression tests (no external API calls)
         working-directory: server/worker
         run: npm run check
+      - name: Test shared-world SQL and Supabase RLS in isolated PGlite
+        working-directory: server/supabase
+        run: |
+          npm ci
+          npm test
       - name: Bundle Cloudflare Worker without deploying
         working-directory: server/worker
         run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/the-verdict-worker-bundle
