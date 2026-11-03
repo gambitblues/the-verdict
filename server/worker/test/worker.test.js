@@ -355,6 +355,7 @@ test('P4 sealed courtroom endpoint: only the assigned judge can obtain a server-
   if(u.includes('/rest/v1/world_secrets'))return response([{truth:{branch:'did'}}]);
   if(u.includes('/rest/v1/shared_court_actions'))return response(journal);
   if(u.includes('/rest/v1/shared_world_clock'))return response([{game_day:5}]);
+  if(u.includes('/rest/v1/shared_case_judgments'))return response([]);
   if(u.includes('/rpc/shared_court_action_record')){
    assert.equal(opt.headers.authorization,'Bearer svc');
    const payload=JSON.parse(opt.body);
