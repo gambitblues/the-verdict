@@ -15,7 +15,7 @@
  *                                 MODEL_CASE, MODEL_TALK, PRICES, DAILY_CALLS, DAILY_USD
  */
 import TerraCloud from './terra_cloud_staging.cjs';
-import {publicCaseSheet} from './public_case_projection.js';
+import {publicCaseSheet,initialEvidence} from './public_case_projection.js';
 import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,exchangePrompt,checkExchange,verifyPrompt} from './prompts.js';
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8',...headers}});
@@ -183,6 +183,28 @@ export async function handle(req,env,fetcher=fetch){
   if(!row||row.state!=='assigned'||row.assigned_to!==uid)return json({error:'case_not_found'},404,head);
   try{return json({ok:true,case:publicCaseSheet(row.sheet,id)},200,head)}
   catch{return json({error:'case_unavailable'},503,head)}
+ }
+
+ // P4-6: first-day evidence only, selected using the locked server-side truth.
+ // No later document, alternative world, witness answer or truth label is sent.
+ if(url.pathname==='/world/case/initial'&&req.method==='GET'){
+  const id=url.searchParams.get('caseId')||'';
+  if(!/^[a-z][a-z0-9-]{3,79}$/.test(id))return json({error:'bad_case_id'},400,head);
+  try{
+   const caseResp=await fetcher(
+    `${env.SUPABASE_URL}/rest/v1/case_stock?select=case_id,assigned_to,state,sheet&case_id=eq.${encodeURIComponent(id)}&limit=1`,
+    {headers:svc(env)});
+   if(!caseResp.ok)return json({error:'case_unavailable'},503,head);
+   const rows=await caseResp.json(),row=Array.isArray(rows)?rows[0]:null;
+   if(!row||row.state!=='assigned'||row.assigned_to!==uid)return json({error:'case_not_found'},404,head);
+   const truthResp=await fetcher(
+    `${env.SUPABASE_URL}/rest/v1/world_secrets?select=truth&case_id=eq.${encodeURIComponent(id)}&limit=1`,
+    {headers:svc(env)});
+   if(!truthResp.ok)return json({error:'case_unavailable'},503,head);
+   const branches=await truthResp.json(),branch=Array.isArray(branches)?branches[0]?.truth?.branch:null;
+   if(!branch)return json({error:'case_not_sealed'},409,head);
+   return json({ok:true,caseId:id,records:initialEvidence(row.sheet,id,branch)},200,head);
+  }catch{return json({error:'case_unavailable'},503,head)}
  }
 
  // Read-only health check for the existing invited judges. Never returns
