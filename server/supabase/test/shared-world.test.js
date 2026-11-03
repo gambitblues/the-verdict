@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -133,4 +133,26 @@ test('P4 two hourly options are globally reserved, immutable until one accepted'
  await assert.rejects(svc('select * from public.shared_docket_accept($1::uuid,$2,$3)',[B,'2026-11-04T12',a[0].case_id]),/offer_not_found/);
  const evt=(await pb('select case_id from public.shared_world_events where event_type=\'case_assigned\'')).rows;
  assert.ok(evt.some(x=>x.case_id===a[0].case_id),'acceptance creates shared public record');
+});
+
+test('P4 public judgment: one immutable verdict, both judges see same facts, aftermath cannot precede verdict',async()=>{
+ const record='b'.repeat(64),caseId='case-opt-a',order='원고의 청구를 인용한다.';
+ // The earlier docket acceptance assigned case-opt-a to judge A.
+ const result=(await svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5) as published',
+  [caseId,A,'claim_granted',order,record])).rows[0];
+ assert.equal(result.published,true);
+ const again=(await svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5) as published',
+  [caseId,A,'claim_granted',order,record])).rows[0];
+ assert.equal(again.published,false);
+ assert.equal((await pb('select public_order from public.shared_case_judgments where case_id=$1',[caseId])).rows[0].public_order,order);
+ assert.equal((await pa('select count(*)::int as n from public.shared_world_events where case_id=$1 and event_type=\'judgment_published\'',[caseId])).rows[0].n,1);
+ await assert.rejects(svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5)',
+  [caseId,B,'claim_granted',order,record]),/case_not_assigned_to_judge/);
+ await assert.rejects(svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5)',
+  [caseId,A,'claim_denied','기각한다.',record]),/judgment_already_published/);
+ await assert.rejects(svc('update public.shared_case_judgments set public_order=$1 where case_id=$2',['변조',caseId]),/shared_judgment_immutable/);
+ await assert.rejects(pa('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5)',
+  [caseId,A,'claim_granted',order,record]),/permission denied/);
+ await assert.rejects(svc('select public.shared_world_append($1,$2,$3,$4,$5::jsonb,$6::uuid)',
+  ['aftermath-before-0001',caseId,'aftermath_published',0,JSON.stringify({title:'과거 기사'}),A]),/world_event_out_of_order/);
 });
