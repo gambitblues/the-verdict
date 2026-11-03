@@ -1,5 +1,43 @@
 # THE VERDICT — P0~P3 통합 QA (develop)
 
+## 후속 QA — Run 41694840528 실패 분석 및 최소 조치 (2026-11-04)
+
+### 결과 구분
+
+| 대상 | 실제 상태 | 증빙/한계 |
+|---|---|---|
+| `0eb6254` Actions Run `41691697637` | **PASS** | 이전 확인 로그의 전체 browser-smoke 성공. 해당 SHA에만 귀속 |
+| `7fb01c6` Actions Run `41694840528` | **FAIL** | Job `126122524703`의 `verdict-v83.mjs` step 13 실패(Exit 1). step 4~12 PASS, 뒤 단계 14~22 **SKIPPED**, 성공으로 보고하지 않음 |
+| `tests/verdict-v83.mjs:47` | **실제 CI 재현 증빙 확보, 로컬 재실행 미실행** | `AssertionError: didnt world: the defence hands the video over`; expected `['done']`, actual `[null]`; page errors `[]` |
+| `05b7322` 테스트 수정 후 | **새 CI PASS 미확인** | `fetch_commit_workflow_runs`, combined status 조회 결과 빈 목록. 해당 API는 일부 트리거 실행을 조회하지 못하므로 실행 여부/성공 여부 확정 불가 |
+| 실 Supabase/AI 및 NPC·뉴스 실제 E2E | **미실행** | 독립 TEST 계정, 공개 환경값, Worker TEST 허용 및 실 브라우저 실행 환경 부재 |
+
+### 원인 및 수정 범위
+
+- **분류: 테스트 자체의 잘못된 가정(현재까지 게임 로직 회귀 증거 없음).** `trial_core.js`의 `orderOutcome`은 사건 주문에 정상 `late` 결과를 낼 수 있고, `trial_play.js:resolveOrders`는 `late`인 주문을 `pending`/결과 `null`로 유지하고 `due=t.day+1`로 이월한다. `world-sheets/cases/adv-cr-001.json`의 `r-hall` 주문은 `didnt` 진실에서 최종 결과 `done`이지만 정상적인 한 기일 지연은 가능하다.
+- 기존 `tests/verdict-v83.mjs:47`은 둘째 기일에 무조건 `['done']`을 요구함. 실제 CI에서는 이월 상태의 `[null]`이 발생. 이는 UI/판결 확정이 실패했다는 증거가 아니다.
+- **최소 수정:** `tests/verdict-v83.mjs`에서 `null`일 때 `status=pending`, `delayed=true`, `due=현재 기일+1` 검증 후 다음 기일로 진행하여 `status=done`, `outcome=done`을 요구. 즉 주문 이월도 명시적으로 검사하는 회귀 검증을 추가. 게임 엔진/서버/DB 수정 없음.
+- 수정 커밋: `05b7322734bbdef5deca68a762f8d2c730aead74` (`develop`). 코드 변경 없음, 테스트 파일만 수정. **테스트 수정 자체가 PASS를 증명하지 않음**.
+- 로컬 소스 체크아웃은 GitHub DNS 접근 실패로 불가. 최신 커밋의 워크플로는 확인할 수 있는 새 Run ID/Job 로그 없이 `PASS`라 하지 않는다.
+
+### 실서버 E2E 실행을 위한 정확한 준비물 (운영 데이터 쓰기 금지)
+
+1. **실 운영 계정이 아닌 별도 Supabase QA 프로젝트 권장.** Auth 사용자 2명(`TEST-1`, `TEST-2`에 대응하는 각기 다른 이메일)을 초대하고, `public.players`에 이름이 `TEST`로 시작하는 row를 등록. 두 계정에서 `rpc/is_test_player`가 `true`인지 확인. `saves`와 `save_backups`는 모두 **0행**. 기존 사용자 레코드는 사용하지 않는다.
+2. QA Supabase의 `SUPABASE_URL` 및 **공개 anon key** `SUPABASE_ANON_KEY`, QA Worker의 `VERDICT_API` 주소 준비. 비밀번호, `service_role`, OpenAI Secret은 채팅/문서/깃에 전송하지 않고 **실행 환경의 안전한 비밀 입력/Secret 설정**으로만 주입.
+3. QA Worker의 `ALLOWED_EMAILS`에 위 두 TEST 이메일, `ALLOWED_ORIGINS`에 QA 로컬 origin을 허용하고 QA Worker에만 실패 시나리오용 `ALLOW_TEST_FAIL=1` 설정. 실 운영 Worker 설정·배포 변경 금지. 테스트 후 QA Worker에서 테스트 실패 플래그 해제.
+4. Chromium과 Playwright가 있는 독립 머신에 `develop`을 체크아웃. `cd server/live && npm i && npx playwright install chromium` 실행. 이어서 `SUPABASE_URL=... SUPABASE_ANON_KEY=... VERDICT_API=... node live-e2e.mjs` 실행하고 콘솔의 프롬프트에 TEST 계정 자격을 **직접** 입력. `--allow-overwrite` 옵션 금지. 리포트는 `server/live/out/<timestamp>/report.md`, `report.json`, 스크린샷으로 생성.
+5. 위 테스트 도구는 로그인·세이브 충돌·기사와 증인 실제 AI 및 단일 사건 선고를 다루지만, **공방 `opening/exchange/closing`, 판결문 `judgment` 전체 실패 매트릭스와 NPC 과거사건 재등장 및 뉴스 단계 전체 E2E가 자동 충족된다고 보지 않는다.** 별도 TEST 브라우저 시나리오 증거와 case ID/NPC ID, 시점, fallback 원문·토큰/사용량 내역을 추가 확보해야 한다. 실 환경에서 직접 확인하지 못한 단계는 미실행으로 유지.
+
+### 현재 남은 Release blocker
+
+- **RB-A — 고장 난 v8.3 검증의 수정 후 전체 CI PASS 미확보:** Actions에서 `05b7322`(또는 이후 QA 문서만 추가한 HEAD)의 `develop-smoke` run ID/job 로그를 확인하고 step 13과 나머지 회귀 전부 `success`로 끝나야 함.
+- **RB-B — 독립 TEST 2계정 Supabase·저장 충돌·오프라인 및 실제 AI 호출/실패복구 미실행:** 자격·QA 인프라 확보 전 무단 실행 금지.
+- **RB-C — 실제 사용자 흐름의 NPC 재등장/후속 사건 및 뉴스→수사→배당→선고 연결 E2E 미실행:** 단위/장기 시뮬레이션 성공으로 대체 불가.
+
+**P4 착수: NO-GO.** 실제 로직 오류가 입증되지 않아 게임 코드를 변경하지 않았고, CI 실패는 수정 후 재검증이 필요. 운영 `main`, 운영 DB/계정/세이브, 배포에 변경 없음.
+
+---
+
 ## 후속 검수 — 2026-11-04 (기존 1차 판정 갱신)
 
 > **이 섹션의 증빙과 판정이 아래 1차 검수에서의 '해당 Actions 실행 결과 미확인/미실행' 문구보다 우선한다.** 다른 테스트나 실서버 동작에 자동으로 성공 판정을 확장하지 않는다.
