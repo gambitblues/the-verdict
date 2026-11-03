@@ -49,3 +49,20 @@ test('old saves and malformed events safely preserve existing profile',()=>{
  assert.equal(recordAnnualEvent(null,{week:3,type:'직업'},2028),false);
  assert.equal(p.career,'회사원');
 });
+
+test('case snapshots freeze lived biography and ignore events from the future',()=>{
+ const path=fileURLToPath(new URL('../../../continuity_engine.js',import.meta.url));
+ const source=readFileSync(path,'utf8');
+ const local={};vm.runInNewContext(source+';this.ContinuityEngine=ContinuityEngine;',local,{filename:path});
+ const person={name:'김모',role:'증인',career:'기술직',wealth:42,alive:true,legalStatus:'사회 복귀',
+  maritalStatus:'기혼',children:1,residence:'월세 빌라',
+  historyEvents:[{week:54,type:'직업',change:'기술직으로 이직'},{week:120,type:'재산',change:'경제 상황 변화'}]};
+ const snap=local.ContinuityEngine.snapshots({who:['p1'],side:[]},{p1:person},80)[0];
+ assert.equal(snap.career,'기술직');
+ assert.equal(snap.maritalStatus,'기혼');
+ assert.equal(snap.children,1);
+ assert.equal(snap.lastLifeEvent.week,54);
+ person.career='다른 직업';person.children=2;
+ assert.equal(snap.career,'기술직');
+ assert.equal(snap.children,1);
+});
