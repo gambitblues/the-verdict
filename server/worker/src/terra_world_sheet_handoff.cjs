@@ -26,7 +26,7 @@ function prepareWorldSheet(candidate,authored){
  ))errors.push('사건 카드의 유형·제목·요지를 임의로 변경할 수 없습니다.');
  if(!['A','B'].every(k=>authored.people?.some(p=>p.key===k)))errors.push('당사자 A, B의 상세 인물 설정이 필요합니다.');
  if(!['A','B'].every(k=>nonempty(authored.worlds?.did?.knows?.[k])))errors.push('잠긴 세계에서 당사자의 실제 지식이 필요합니다.');
- if(!Array.isArray(authored.common?.timeline)||!authored.common.timeline.length||!/^\\d{4}-\\d{2}-\\d{2}$/.test(authored.common.date||''))errors.push('사건 발생일 및 공통 시간표를 작성해야 합니다.');
+ if(!Array.isArray(authored.common?.timeline)||!authored.common.timeline.length||!/^\d{4}-\d{2}-\d{2}$/.test(authored.common.date||''))errors.push('사건 발생일 및 공통 시간표를 작성해야 합니다.');
  const fromRecords=candidate?.records||[],toRecords=authored.records||[];
  if(!Array.isArray(toRecords)||toRecords.length!==fromRecords.length||fromRecords.some((r,i)=>RECORD_KEYS.some(k=>r[k]!==toRecords[i]?.[k])))
   errors.push('자료의 ID·제목·종류·제출자·확보경위·최초 공개 여부를 보존해야 합니다.');
