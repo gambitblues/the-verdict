@@ -2,6 +2,8 @@
 name = "the-verdict-api"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
+# Terra QA libraries use the Node.js crypto shim in the Worker bundle.
+compatibility_flags = ["nodejs_compat"]
 
 # Run at 03:00 KST (18:00 UTC), but NEVER spend unless TERRA_REFILL_ENABLED='1'.
 [triggers]
