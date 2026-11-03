@@ -14,6 +14,7 @@
  * Vars (wrangler.toml):           SUPABASE_URL, SUPABASE_ANON_KEY, ALLOWED_ORIGINS, ALLOWED_EMAILS,
  *                                 MODEL_CASE, MODEL_TALK, PRICES, DAILY_CALLS, DAILY_USD
  */
+import TerraCloud from './terra_cloud_staging.cjs';
 import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,exchangePrompt,checkExchange,verifyPrompt} from './prompts.js';
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8',...headers}});
@@ -141,4 +142,11 @@ export async function handle(req,env,fetcher=fetch){
  return json({ok:true,result:verdict.value,model:r.model||model,usage:r.usage,cost_usd:Number(cost.toFixed(6))},200,head);
 }
 
-export default {fetch:(req,env)=>handle(req,env).catch(e=>json({error:'server_error',detail:String(e?.message||e).slice(0,200)},500,cors(req,env)))};
+export default {
+ fetch:(req,env)=>handle(req,env).catch(e=>json({error:'server_error'},500,cors(req,env))),
+ // Cloudflare scheduler is the only Terra entrypoint. No player-facing route,
+ // no hidden-truth responses, and disabled unless TERRA_REFILL_ENABLED='1'.
+ scheduled:(event,env,ctx)=>ctx.waitUntil(TerraCloud.runCloudStaging(env)
+  .then(result=>console.log('terra-staging:',result.stage,'created:',result.created))
+  .catch(()=>console.log('terra-staging: failed-closed')))
+};
