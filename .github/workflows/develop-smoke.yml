@@ -91,6 +91,8 @@ jobs:
         run: node tests/hearing-events.mjs
       - name: Evidence shapes and witness moments (visual review gallery)
         run: node tests/evidence-moments.mjs
+      - name: P4 two-judge shared-world browser UI (isolated data)
+        run: node tests/shared-world-ui.mjs
       - name: Run mobile viewport browser test
         run: node tests/browser-smoke.mjs
       - name: v6 features end to end (decision cases, witnesses, confrontation, face-off, bench, truth, experts, pressure, personnel season)
