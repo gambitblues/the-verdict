@@ -64,13 +64,13 @@ function validateDraft(candidate){
 function makeReview(candidate,checks,reviewer){
  const result=validateDraft(candidate);
  if(!result.ok)return {ok:false,errors:result.errors,warnings:result.warnings};
- if(!value(reviewer)||!checks||REVIEW.some(k=>checks[k]!==true))return {ok:false,errors:['독립 검증자와 8개 검수 항목이 모두 필요합니다.'],warnings:result.warnings};
+ if(typeof reviewer!=='string'||reviewer.trim().length<2||!checks||REVIEW.some(k=>checks[k]!==true))return {ok:false,errors:['독립 검증자와 8개 검수 항목이 모두 필요합니다.'],warnings:result.warnings};
  return {ok:true,record:{id:candidate.id,reviewer:reviewer.trim(),checks:Object.fromEntries(REVIEW.map(k=>[k,true])),fingerprint:result.fingerprint,approvedAt:null},warnings:result.warnings};
 }
 function admit(candidate,approval,inventory=[]){
  const result=validateDraft(candidate);
  if(!result.ok)return {ok:false,errors:result.errors};
- if(!approval||approval.id!==candidate.id||approval.fingerprint!==result.fingerprint||!value(approval.reviewer)||REVIEW.some(k=>approval.checks?.[k]!==true)||!validDate(approval.approvedAt))
+ if(!approval||approval.id!==candidate.id||approval.fingerprint!==result.fingerprint||(typeof approval.reviewer!=='string'||approval.reviewer.trim().length<2)||REVIEW.some(k=>approval.checks?.[k]!==true)||!validDate(approval.approvedAt))
   return {ok:false,errors:['승인 정보가 없거나 사건 내용과 일치하지 않습니다.']};
  if(!Array.isArray(inventory))return {ok:false,errors:['재고 형식이 잘못됐습니다.']};
  if(inventory.some(x=>x.id===candidate.id))return {ok:false,errors:['동일 사건 ID가 이미 등록됐습니다.']};
