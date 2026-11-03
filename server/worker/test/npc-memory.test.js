@@ -6,7 +6,7 @@ import vm from 'node:vm';
 
 const filename=fileURLToPath(new URL('../../../npc_court_memory.js',import.meta.url));
 const ctx={};vm.runInNewContext(readFileSync(filename,'utf8'),ctx);
-const {snapshot,greeting,strategy,adaptCards}=ctx.VerdictCourtMemory;
+const {snapshot,greeting,relationship,rulingReaction,strategy,adaptCards}=ctx.VerdictCourtMemory;
 const ruling=(kind,text)=>({kind,text});
 const st=(opponent,log,verdict=true)=>({verdict:verdict?{id:'done'}:null,trial4:{opponent,startedAt:10,log,cards:[]}});
 
@@ -66,4 +66,38 @@ test('new and balanced-history opponents preserve the original daily events',()=
  assert.equal(adaptCards(cards,null,'test',1),cards);
  assert.equal(adaptCards(cards,{cases:2,accepted:1,rejected:1},'test',1),cards);
  assert.equal(strategy({cases:2,accepted:1,rejected:1}),'steady');
+});
+
+test('recurring courtroom relationship evolves from observed rulings, not verdict direction',()=>{
+ const newcomer=null;
+ const guarded={cases:1,accepted:0,rejected:2};
+ const respect={cases:2,accepted:4,rejected:1};
+ const rival={cases:3,accepted:3,rejected:3};
+ assert.equal(relationship(newcomer),'new');
+ assert.equal(relationship(guarded),'guarded');
+ assert.equal(relationship(respect),'respectful');
+ assert.equal(relationship(rival),'rival');
+ assert.equal(relationship({cases:1,accepted:1,rejected:1}),'familiar');
+ assert.equal(greeting(null),'');
+ assert.match(greeting(rival),/여러 번 의견이 엇갈렸습니다/);
+ assert.match(greeting(respect),/쟁점을 충분히/);
+ assert.match(greeting(guarded),/신청 근거/);
+});
+test('counsel reaction is shown only after an actual objection ruling',()=>{
+ const respect={cases:2,accepted:4,rejected:1};
+ const rival={cases:3,accepted:3,rejected:3};
+ const guarded={cases:1,accepted:0,rejected:2};
+ assert.equal(rulingReaction(null,'accept'),'');
+ assert.equal(rulingReaction(respect,null),'');
+ assert.equal(rulingReaction(respect,'delay'),'');
+ assert.match(rulingReaction(respect,'accept'),/더 묻지 않겠습니다/);
+ assert.match(rulingReaction(rival,'reject'),/기록에 남기고/);
+ assert.match(rulingReaction(guarded,'reject'),/더 명확히/);
+ assert.notEqual(rulingReaction(respect,'accept'),rulingReaction(guarded,'accept'));
+});
+test('persona differentiates familiar counsel without inventing court history',()=>{
+ const familiar={cases:1,accepted:1,rejected:1};
+ assert.match(greeting(familiar,'meticulous'),/기록부터 차근차근/);
+ assert.match(greeting(familiar,'aggressive'),/분명하게 다투겠습니다/);
+ assert.equal(relationship(familiar),'familiar');
 });
