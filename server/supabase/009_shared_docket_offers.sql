@@ -24,9 +24,9 @@ grant select,insert,update on public.shared_docket_offers to service_role;
 -- The slot calculation is a database-owned function. Test DB can substitute a
 -- deterministic fixture without changing production UTC/KST behavior.
 create or replace function public.shared_kst_slot() returns text
-language sql stable set search_path=public as $
- select public.shared_kst_slot()
-$;
+language sql stable set search_path=public as $$
+ select to_char(now() at time zone 'Asia/Seoul','YYYY-MM-DD"T"HH24')
+$$;
 revoke all on function public.shared_kst_slot() from public,anon,authenticated;
 grant execute on function public.shared_kst_slot() to service_role;
 
@@ -101,7 +101,7 @@ begin
  end if;
  if offer.state<>'offered' or offer.expires_at<=now()
  then raise exception 'offer_expired'; end if;
- if p_slot is distinct from to_char(now() at time zone 'Asia/Seoul','YYYY-MM-DD"T"HH24')
+ if p_slot is distinct from public.shared_kst_slot()
  then raise exception 'offer_expired'; end if;
  select count(*) into accepted_today from public.shared_docket_offers o
  where o.judge_id=p_judge and left(o.slot,10)=left(p_slot,10) and o.state='accepted';
