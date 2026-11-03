@@ -1377,6 +1377,21 @@ function todo(c,t){
  steps.push({done:false,text:t.daysDone+1>=t.minDays?`${session(c,t.day)} 마치기 → 그다음 판결할 수 있어요`:`${session(c,t.day)} 마치기 → 다음 기일 잡기`,go:'end'});
  return `<ol class="t4-todo">${steps.map(x=>`<li class="${x.done?'done':''}"><button data-action="t4go" data-go="${x.go}">${x.done?'✔':'•'} ${esc(x.text)}</button></li>`).join('')}</ol>`;
 }
+/* P1: opening statements use only the case engine's already disclosed claims.
+ * Rendering never calls AI, mutates the trial, or exposes any hidden truth.
+ * Later wording enhancement can be applied to these same fixed statements. */
+function openingStatements(c,t,cur){
+ if(t.daysDone!==0||!cur?.claims)return '';
+ const left=tell(c,t,cur.claims[0]||''),right=tell(c,t,cur.claims[1]||'');
+ if(!left&&!right)return '';
+ const card=(speaker,body,cls)=>body?`<div class="t4-closing ${cls}"><b>${esc(speaker)}</b><p>"${esc(body)}"</p></div>`:'';
+ return `<section class="t4-opening" aria-label="첫 기일 양측 주장">
+   <div class="t4-subhead"><h4>첫 기일 · 양측 입장</h4><span class="t4-tag">사건 기록</span></div>
+   <p class="muted small">두 주장은 사건 기록을 바탕으로 표시됩니다. 증거를 살피고 어느 쪽을 믿을지는 재판장이 판단합니다.</p>
+   ${card(sideWord(c,'p'),left,'p')}${card(sideWord(c,'d'),right,'d')}
+   <div class="t4-row"><button class="btn outline mini" data-action="t4tab" data-tab="evidence">증거 검토</button><button class="btn outline mini" data-action="t4tab" data-tab="witness">증인신문</button></div>
+  </section>`;
+}
 function dayPage(c,st){
  const t=st.trial4,wait=waiting(t),opp=NPC[t.opponent],rec=opp?.vsJudge,cur=curOf(c);
  const recent=t.log.length?`<details class="t4-log"><summary>방금 일어난 일</summary>${t.log.slice(0,5).map(l=>`<p><small>${esc(session(c,l.day))} · ${esc(l.kind)}</small> ${esc(l.text)}</p>`).join('')}</details>`:'';
@@ -1394,6 +1409,7 @@ function dayPage(c,st){
  const opponentLine=`<div class="t4-oppcard"><span>상대 ${esc(sideWord(c,'d'))}</span>${nameBtn(t.opponent,opp?.name||'변호인')}<small>${esc(T.LABEL.style[t.style])} · ${prepWord(t.opponent)}${rec&&(rec.win+rec.lose)?` · 내 법정 ${rec.win}승 ${rec.lose}패`:''}</small></div>`;
  return `<section class="panel t4 t4-day"><div class="t4-head"><h3>${esc(session(c,t.day))}</h3><span class="t4-tag">${esc(dlabel(dateOf(t)))} · ${t.daysDone+1}/${t.minDays}회</span></div>
  ${act}
+ ${openingStatements(c,t,cur)}
  ${changesBlock(c,t)}
  ${ordersHint(c,t)}
  <h4>오늘 할 일</h4>${todo(c,t)}
