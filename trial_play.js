@@ -1286,7 +1286,7 @@ function witnessCard(w,t,locked,c){
  const cf=locked?[]:conflicts(c,t,i);
  const confrontBox=cf.length?`<div class="t4-confront"><p class="t4-ask-head">⚠ 이 증인의 말과 어긋나는 증거 <small>· 보여 주며 물으면 신문 1번</small></p>${cf.map(e=>`<button class="t4-q cf" data-action="t4" data-kind="confront" data-id="${i}" data-choice="${esc(e.id)}" ${can?'':'disabled'}>📁 ${esc(P(e.title,'을'))} 보여 주며 묻기</button>`).join('')}</div>`:'';
  return `<article class="t4-card">${window.VerdictVisuals?.witness(w,p,asked.length)||`<header><button class="t4-name" data-action="npc" data-id="${esc(w.id)}">👤 ${esc(p?.name||'증인')}</button><span class="t4-tag">${esc(w.role)}</span></header>`}
- ${priorWitness?`<p class="t4-return-line">${esc(window.VerdictCourtMemory?.participationLine(priorWitness)||'')}</p>`:''}
+ ${priorWitness&&!asked.length?`<p class="t4-return-line">${esc(window.VerdictCourtMemory?.participationLine(priorWitness)||'')}</p>`:''}
  ${w.story?`<p class="t4-story">${esc(w.story)}</p>`:''}${w.interest?`<p class="small muted">이해관계 · ${esc(w.interest)}</p>`:''}
  ${heard||'<p class="muted small">아직 묻지 않았습니다.</p>'}${extra}${confrontBox}
  ${left.length?`<p class="t4-ask-head">물어볼 질문 ${locked?'':`· 오늘 남은 신문 ${t.qLeft}/${t.qpd||QPD}`}</p>${left.map(q=>`<button class="t4-q" data-action="t4" data-kind="ask" data-id="${i}" data-choice="${esc(q.id)}" ${can?'':'disabled'}>🗣 ${esc(tell(c,t,q.q))}${q.ordered?' <i>다시 부른 질문</i>':q.hidden?' <i>새 질문</i>':''}</button>`).join('')}`:'<p class="muted small">이 증인에게 물을 질문을 모두 물었습니다.</p>'}
