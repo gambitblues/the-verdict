@@ -158,3 +158,27 @@ test('objection exchange uses one generation and one verification for two known 
  assert.equal(f.openai,2);
  assert.equal(f.usage[0].p_ok,true);
 });
+
+
+test('P4 read-only public chronology: token, cursor, RLS token forwarding and no secret exposure',async()=>{
+ const seen=[];
+ const f=async(url,opt={})=>{
+  const u=String(url);seen.push({url:u,headers:opt.headers});
+  const ok=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'content-type':'application/json'}});
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/rest/v1/shared_world_events'))return ok([{event_id:17,case_id:'case-p4',event_type:'judgment_published',game_day:123,public_data:{title:'판결 확정'}}]);
+  throw Error('unexpected '+u);
+ };
+ assert.equal((await handle(req('/world/events',undefined,''),env,f)).status,401);
+ assert.equal((await handle(req('/world/events?after=no'),env,f)).status,400);
+ const response=await handle(req('/world/events?after=16'),env,f);
+ assert.equal(response.status,200);
+ const payload=await response.json();
+ assert.deepEqual([payload.ok,payload.next,payload.events[0].case_id],[true,17,'case-p4']);
+ const rest=seen.find(x=>x.url.includes('/rest/v1/shared_world_events'));
+ assert.match(rest.url,/event_id=gt.16/);
+ assert.equal(rest.headers.authorization,'Bearer good');
+ assert.equal(rest.headers.apikey,'anon');
+ assert.ok(!rest.url.includes('world_secrets'));
+});
