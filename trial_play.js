@@ -351,6 +351,8 @@ function condState(c,t,e){
  const hw=t.heard.find(h=>h.issue===d?.issue&&!h.struck&&!h.tainted&&h.w!=='party'&&same(h.side));
  return ev?{ok:true,text:`${P(ev.title,'이')} 같은 쪽을 뒷받침해요`}:hw?{ok:true,text:`${P(wName(t,hw.w),'의')} 증언이 같은 쪽을 뒷받침해요`}:{ok:false,text:'같은 쪽을 뒷받침하는 다른 근거가 아직 없어요'};
 }
+/* v8.6.1: the proof gauge (trial_core) reads e.condOk — checked condition true, unchecked false, 'weight' or none: absent */
+function syncCond(c,t){for(const e of t.evidence){if(e.decision==='conditional'&&e.cond&&e.cond.how!=='weight')e.condOk=condState(c,t,e).ok;else delete e.condOk}}
 /* the lines the judge chose to use (all of them unless some were left out) */
 function condUsed(c,t,e){const rows=evRows(c,t,e),k=e.cond;return !k?.rows?rows:rows.filter((_,i)=>k.rows.includes(i))}
 function condSet(c,t,e,choice){
@@ -439,16 +441,32 @@ function conflicts(c,t,i){
  return t.evidence.filter(e=>{if(e.decision!=='use'&&e.decision!=='conditional')return false;const d=evDetail(c,e);
   return d&&(d.side==='p'||d.side==='d')&&!(t.witnesses[i].shown||[]).includes(e.id)&&mine.some(h=>h.issue===d.issue&&h.side!==d.side)});
 }
+/* v8.6.1: what the witness actually says when shown a record — the earlier words in quotes, the line of the record,
+ * and (when correcting) what the record says happened. Falls back to the plain lines when the record has no text. */
+function confrontWords(c,t,i,e,d){
+ const said=t.heard.filter(h=>h.w===i&&h.issue===d.issue&&!h.struck&&!h.tainted&&(h.side==='p'||h.side==='d'));
+ const textOf=h=>{if(!h)return '';if(h.text)return h.text;const q=qById(c,t,i,h.q);return q?answerOf(c,t,i,q).text:''};
+ const clip=x=>{x=String(x||'').split(/(?<=[.?!])\s+/)[0].replace(/[.。]$/,'');return x.length>40?x.slice(0,39)+'…':x};
+ const against=said.filter(h=>h.side!==d.side),earlier=clip(textOf(against[against.length-1])),first=clip(textOf(said[0]));
+ const rows=evRows(c,t,e),row=clip(rows.find(r=>warnRow(r))||rows[0]||'');
+ const sc=String(e.scope||'').trim().replace(/[.。]$/,''),fact=/다$/.test(sc)?sc:'';
+ return {earlier,first,row,fact,pick:T.hash(t.seed+':cw:'+i+':'+e.id)%2};
+}
 function confront(c,t,i,eid){
  const w=t.witnesses[i],e=t.evidence.find(x=>x.id===eid),d=e&&evDetail(c,e);if(!w||!d)return '';
  if(t.qLeft<1){toast('오늘 신문 시간이 끝났어요.');return ''}
  t.qLeft--;(w.shown??=[]).push(eid);
  const name=wName(t,i),o=T.confrontOutcome({attitude:w.attitude,flipped:w.flipped,traits:NPC[w.id]?.traits||{}},t.truth,t.seed+':cf:'+i+':'+eid);
  let text,side=o.side,label,strike=o.strike;
- if(o.kind==='hold'){text=`그 ${P(e.title,'이')} 뭘 말하든 제가 기억하는 건 그대로입니다`;label='증거를 보고도 바꾸지 않은 말'}
- else if(o.kind==='correct'){text='제 기억이 틀렸을 수 있겠네요. 그 기록이 더 정확할 겁니다';label='증거를 보고 정정한 말'}
- else if(o.kind==='revert'){w.flipped=false;text='기록을 보니 처음에 말씀드린 게 맞습니다. 중간에 말이 흔들렸어요';label='처음 진술로 돌아온 말'}
- else{const pool=ADMIT[t.truth]||ADMIT.reason;text=pool[T.hash(t.seed+i+eid)%pool.length];label=w.attitude==='fear'?'두려움을 털어놓으며 한 말':'감싸던 것을 털어놓은 말';w.revealed=2}
+ const cw=confrontWords(c,t,i,e,d),at=cw.row?`${e.title}에 적힌 '${cw.row}' 부분`:P(e.title,'을');
+ if(o.kind==='hold'){text=cw.earlier?(cw.pick?`${cw.row?at+'이 있어도':P(e.title,'이')+' 있어도'}, 제가 "${cw.earlier}"라고 한 건 직접 겪은 대로 말씀드린 겁니다. 바꿀 게 없습니다`
+   :`기록은 기록이고요. "${cw.earlier}" — 제가 본 건 그랬습니다. 그 기록이 그날 일을 다 담고 있지는 않을 겁니다`)
+   :`그 ${P(e.title,'이')} 뭘 말하든 제가 기억하는 건 그대로입니다`;label='증거를 보고도 바꾸지 않은 말'}
+ else if(o.kind==='correct'){text=cw.earlier?(cw.pick?`${cw.row?at+'을 보니':P(e.title,'을')+' 보니'} 제가 잘못 기억했네요. 아까 "${cw.earlier}"라고 한 건 거두겠습니다.${cw.fact?` ${cw.fact}는 게 맞는 것 같습니다`:' 기록대로가 맞을 겁니다'}`
+   :`"${cw.earlier}"라고 말씀드렸는데, 기록을 보니 아니었습니다.${cw.fact?` ${cw.fact}는 쪽이 맞겠네요. 제가 헷갈렸어요`:' 제가 헷갈렸어요'}`)
+   :'제 기억이 틀렸을 수 있겠네요. 그 기록이 더 정확할 겁니다';label='증거를 보고 정정한 말'}
+ else if(o.kind==='revert'){w.flipped=false;text=cw.first&&cw.first!==cw.earlier?`${cw.row?at+'을 보니':'기록을 보니'} 처음에 말씀드린 "${cw.first}"라는 말이 맞습니다. 중간에 말이 흔들렸어요`:'기록을 보니 처음에 말씀드린 게 맞습니다. 중간에 말이 흔들렸어요';label='처음 진술로 돌아온 말'}
+ else{const pool=ADMIT[t.truth]||ADMIT.reason;text=(cw.earlier?`"${cw.earlier}"라고 한 건 다 말씀드린 게 아니었습니다. `:'')+pool[T.hash(t.seed+i+eid)%pool.length];label=w.attitude==='fear'?'두려움을 털어놓으며 한 말':'감싸던 것을 털어놓은 말';w.revealed=2}
  if(strike)t.heard.forEach(h=>{if(h.w===i&&h.issue===d.issue&&!h.text&&(h.side==='p'||h.side==='d')&&h.side!==d.side)h.struck=true});
  t.heard.push({w:i,q:'cf:'+eid,side,issue:d.issue,day:t.day,text,label});
  addLog(t,'증거 대조',`${name}에게 ${P(e.title,'을')} 보여 줌 — "${text}"`);
@@ -934,7 +952,7 @@ function tweak(c,k,val){
  else if(k==='addon'){const a=addonsOf(c).find(x=>x.id===val);if(a&&a.ok!==false&&!a.fixed){v.addons??={};if(v.addons[val]!=null)delete v.addons[val];else v.addons[val]=a.range?.[0]??1}}
  else if(k==='addonN'){const [id,d]=String(val).split(':'),a=addonsOf(c).find(x=>x.id===id);if(a?.range&&v.addons?.[id]!=null){const st=a.step||1;v.addons[id]=Math.max(a.range[0],Math.min(a.range[1],v.addons[id]+Number(d)*st))}}
  else if(k==='remedy'){v.remedies??=[];v.remedies=v.remedies.includes(val)?v.remedies.filter(x=>x!==val):[...v.remedies,val]}
- else if(k==='cite'){v.cites=v.cites.includes(val)?v.cites.filter(f=>f!==val):v.cites.length>=3?v.cites:[...v.cites,val]}
+ else if(k==='cite'){v.cites=v.cites.includes(val)?v.cites.filter(f=>f!==val):[...v.cites,val]}
  render();
 }
 /* Material the player may cite: evidence they used, and testimony that stayed in the record.
@@ -943,7 +961,7 @@ function tweak(c,k,val){
  *    those never reach this list, the gauge or the judgment.
  *  - how far can it be trusted (신빙성)? A leading answer or hearsay kept over an objection is usable but `weak`. */
 function citables(c,t){
- const out=[];
+ syncCond(c,t);const out=[];
  t.evidence.forEach(e=>{if(e.decision!=='use'&&e.decision!=='conditional')return;const d=evDetail(c,e);
   const cd=e.decision==='conditional'?{how:condOf(c,t,e).how,link:condLink(c,t,e),ok:condState(c,t,e).ok}:null;
   out.push({key:'e:'+e.id,label:e.title,text:cd&&e.cond.rows?condUsed(c,t,e).join(', '):e.scope||'',cond:cd,side:d?.side==='p'||d?.side==='d'?d.side:'n',issue:d?.issue,illegal:e.flawType==='illegal',kind:'evidence'})});
@@ -1026,7 +1044,7 @@ function confirmVerdict(){
  const dir=T.direction(opt,c.kind),sp=sentenceSpec(c,dir),sent=sentenceOf(c,sp,v);
  const fs=(v.factors||[]).map(f=>(sp?.mode==='civil'?CIVIL_FACTORS:CRIM_FACTORS).find(x=>x[0]===f)).filter(Boolean);
  const score=sent?.score?{...sent.score,mitig:fs.filter(f=>f[2]<0).length,aggr:fs.filter(f=>f[2]>0).length}:null;
- const res=T.skill(t,{dir,criminal:isCriminal(c),cites:cites.map(i=>({label:i.label,side:i.side,illegal:i.illegal,weak:i.weak})),sentence:score,extra:extraScore(c,t,v,dir,sp)});
+ const res=T.skill(t,{dir,criminal:isCriminal(c),cites:cites.map(i=>({label:i.label,side:i.side,illegal:i.illegal,weak:i.weak,cond:i.cond?{how:i.cond.how,ok:i.cond.ok}:null})),sentence:score,extra:extraScore(c,t,v,dir,sp)});
  const judgment=writeJudgment(c,t,opt,dir,cites,sp,sent,fs);
  /* what was actually ordered, as plain data: the people's lives follow it (npc_life_justice.applyVerdict) */
  const side=T.sideOf(dir);
@@ -1380,7 +1398,7 @@ function verdictPage(c,st){
   <p class="t4-ask-head">판단 사유</p><div class="t4-seg wrap t4-factors">${CIVIL_FACTORS.map(([k,l,d])=>`<button class="t4-chip ${v.factors.includes(k)?'on':''} ${d<0?'mit':'agg'}" data-action="t4v" data-k="factor" data-v="${k}">${d<0?'↓':'↑'} ${l}</button>`).join('')}</div>${remedyBlock(c,v)}`;
  }
  const items=citables(c,t);
- const citeList=items.length?items.map(i=>`<button class="t4-cite ${v.cites.includes(i.key)?'on':''} ${i.weak?'weak':''}" data-action="t4v" data-k="cite" data-v="${esc(i.key)}"><b>${v.cites.includes(i.key)?'☑':'☐'} ${esc(i.label)}</b>${i.text?`<small>${esc(short(i.text,70))}</small>`:''}${i.weak?'<small class="t4-weak">이의가 있었던 말 · 믿을 만한 정도가 낮아요</small>':''}</button>`).join(''):'<p class="notice">쓰기로 정한 증거나 들은 증언이 없습니다. 창을 닫고 증거 탭과 증인 탭을 먼저 확인하세요.</p>';
+ const citeList=items.length?items.map(i=>`<button class="t4-cite ${v.cites.includes(i.key)?'on':''} ${i.weak?'weak':''}" data-action="t4v" data-k="cite" data-v="${esc(i.key)}"><b>${v.cites.includes(i.key)?'☑':'☐'} ${esc(i.label)}</b>${i.text?`<small>${esc(short(i.text,70))}</small>`:''}${i.weak?'<small class="t4-weak">이의가 있었던 말 · 믿을 만한 정도가 낮아요</small>':''}${i.cond?(i.cond.how==='weight'?'<small class="t4-weak">가볍게 보기로 한 자료</small>':i.cond.ok?'<small class="t4-cond-ok">✔ 붙인 조건을 확인한 자료</small>':'<small class="t4-weak">⏳ 붙인 조건을 확인하지 못한 자료 · 근거로서 힘이 약해요</small>'):''}</button>`).join(''):'<p class="notice">쓰기로 정한 증거나 들은 증언이 없습니다. 창을 닫고 증거 탭과 증인 탭을 먼저 확인하세요.</p>';
  const pend_=(t.courtOrders||[]).filter(o=>o.status==='pending').length;
  const overview=`<section class="panel t4 t4-verdict-home"><h3>⚖ 판결</h3>${canVerdict?'':`<p class="notice">기일이 ${t.minDays-t.daysDone}번 더 필요해요.${waiting(t)?` ${esc(session(c,t.day))}은 ${esc(dlabel(Math.max(t.nextDate||0,today())))}에 열려요.`:''}</p>`}
  ${pend_?`<p class="notice">아직 결과가 오지 않은 재판장 주문이 ${pend_}건 있어요. 지금 선고해도 되지만, 그 결과는 판단에 들어가지 않아요.</p>`:''}
@@ -1398,7 +1416,7 @@ function verdictPage(c,st){
  const draft=key==='doc'||key==='ok'?(()=>{const fs=(v.factors||[]).map(f=>(sp?.mode==='civil'?CIVIL_FACTORS:CRIM_FACTORS).find(x=>x[0]===f)).filter(Boolean);return writeJudgment(c,t,opt,dir,chosen,sp,sent,fs)})():null;
  const body=key==='opt'?`<p class="t4-sheet-lead">이 사건의 결론을 고르세요.</p>${optBtns}`
   :key==='sent'?`<p class="t4-sheet-lead">${crim?'어떤 형을 얼마나 선고할지 정하세요.':'얼마를 지급하라고 할지 정하세요.'}</p>${sentence}`
-  :key==='why'?`<p class="t4-sheet-lead">판결문에 근거로 적을 증거와 증언을 1~3개 고르세요. 쓰기로 정한 증거와 법정에서 들은 증언만 고를 수 있어요. 이의를 받아들여 뺀 말은 목록에 없어요.</p>${citeList}`
+  :key==='why'?`<p class="t4-sheet-lead">판결문에 근거로 적을 증거와 증언을 고르세요. 개수 제한은 없지만, 결론과 반대쪽 자료나 확인하지 못한 자료를 많이 고르면 판결이 약해져요. 쓰기로 정한 증거와 법정에서 들은 증언만 고를 수 있어요. 이의를 받아들여 뺀 말은 목록에 없어요.</p>${citeList}`
   :key==='doc'?`<p class="t4-sheet-lead">선고하기 전에 판결문을 읽어 보세요. 고치려면 앞 단계로 돌아가면 돼요.</p>${judgmentView(draft)}`
   :`<div class="t4-sheet-sum"><p><span>결론</span><b>${esc(plainLabel(opt))}</b></p><p><span>주문</span><b>${esc(draft?.order||'')}</b></p>${facts.length?`<p><span>${crim?'양형 사유':'판단 사유'}</span><b>${esc(facts.join(' · '))}</b></p>`:''}<p><span>판결 이유</span><b>${chosen.length?esc(chosen.map(i=>i.label).join(' · ')):'아직 고르지 않음'}</b></p></div>
    <p class="muted small">선고하면 되돌릴 수 없어요. 이 세계에는 항소가 없고, 판결은 당사자들의 삶에 그대로 남아요.</p>
@@ -1485,7 +1503,7 @@ court=function(){
  const argsHtml=grab('.court-screen-arguments'),evidHtml=grab('.court-screen-evidence'),histHtml=grab('.court-screen-history');
  const header=tpl.content.querySelector('.court-play-header');
  const t=st.verdict?st.trial4:ensure(c,st);
- if(lastCaseId!==c.id){lastCaseId=c.id;ui.t4ev=null;ui.t4w=null;ui.t4tab=st.verdict?'result':(t.daysDone===0&&!t.log.length?'case':'day')}
+ if(!st.verdict)syncCond(c,t);if(lastCaseId!==c.id){lastCaseId=c.id;ui.t4ev=null;ui.t4w=null;ui.t4tab=st.verdict?'result':(t.daysDone===0&&!t.log.length?'case':'day')}
  const tabs=t?tabsFor(c,st):[['case','사건'],['log','기록']];
  if(!tabs.some(v=>v[0]===ui.t4tab))ui.t4tab=tabs[0][0];
  const status=header?.querySelector('.court-play-status');
@@ -1629,5 +1647,5 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&tick()&&!
 setTimeout(()=>{if(tick()&&!ui.modal)render()},1500);
 
 window.VerdictMatchPlay?.bind({namesOf,setSex,setAge,setJob,session,dlabel,dateOf,sessionOpen,waiting,openSession,addLog,finish,DAY_WAIT,EXTRA_DAYS,minsLeft,clock,today});
-window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel,addToModal,orders:{available:availableOrders,issue:issueOrder,resolve:resolveOrders,state:nodeState},qById,questions:(c,t,i)=>questionsOf(c,t,i),ask:askQuestion,moment:momentOf};
+window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel,addToModal,orders:{available:availableOrders,issue:issueOrder,resolve:resolveOrders,state:nodeState},qById,questions:(c,t,i)=>questionsOf(c,t,i),ask:askQuestion,confront,conflicts,moment:momentOf};
 })();

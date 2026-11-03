@@ -106,7 +106,8 @@ function gauge(t){
  for(const e of t.evidence){
   const known=e.revealed>=2?1:e.revealed===1?0.5:0,f=clamp(e.flaw)/100;
   if(e.decision==='use'){p+=e.strength*(1-f*known)*0.55;d+=f*known*30}
-  else if(e.decision==='conditional'){p+=e.strength*(1-f*known*0.5)*0.4;d+=f*known*15}
+  else if(e.decision==='conditional'){   // v8.6.1: a condition the court has checked weighs almost like full use; one never checked, little
+   const w=e.condOk===true?0.5:e.condOk===false?0.25:0.4;p+=e.strength*(1-f*known*0.5)*w;d+=f*known*15+(e.condOk===false?4:0)}
   else if(e.decision==='exclude'){d+=6}
  }
  const heard=t.heard||[];
@@ -155,14 +156,19 @@ function skill(t,verdict){
   else if(side===-1)add('verdict',g.margin<need?10:g.margin>=need+25?-10:4,g.margin<need?'의문이 남아 책임을 인정하지 않았음':'증거가 충분한데 책임을 인정하지 않았음');
   else if(side===0.5)add('verdict',g.margin>=need-15&&g.margin<need+20?6:-5,'일부만 인정하는 판단');
   for(const r of verdict.reasons||[]){const fit=reasonFits(r,t,g);add('reason:'+r,fit?4:-4,fit?'판결 이유가 기록과 맞음':'판결 이유가 기록과 맞지 않음')}
-  // v5: cited evidence and testimony must point the way the verdict goes
-  (verdict.cites||[]).slice(0,3).forEach((c,i)=>{
+  // v5: cited evidence and testimony must point the way the verdict goes.
+  // v8.6.1: any number may be cited; the credit for fitting grounds stays worth at most three good ones, while every
+  // ground that points the wrong way still counts. Conditional evidence: checked = full ground, unchecked = no credit.
+  (verdict.cites||[]).forEach((c,i)=>{
    if(c.illegal){add('cite:'+i,-6,`불법으로 얻은 증거(${c.label})를 판결 근거로 삼았음`);return}
    if(c.struck){add('cite:'+i,-4,`이의가 받아들여진 진술(${c.label})을 근거로 삼았음`);return}
-   if(c.weak){const fit=side===0.5?true:side===1?c.side!=='d':c.side!=='p';add('cite:'+i,fit?1:-3,fit?`이의가 있었던 말(${c.label})을 다른 자료와 함께 근거로 삼았음`:`결론과 반대 방향의 자료를 근거로 들었음: ${c.label}`);return}
+   if(c.cond&&c.cond.how!=='weight'&&!c.cond.ok){const fit=side===0.5?true:side===1?c.side!=='d':c.side!=='p';add('cite:'+i,fit?0:-3,fit?`조건을 확인하지 못한 자료(${c.label})는 판결 근거로서 힘이 약했음`:`결론과 반대 방향의 자료를 근거로 들었음: ${c.label}`);return}
+   if(c.weak||c.cond?.how==='weight'){const fit=side===0.5?true:side===1?c.side!=='d':c.side!=='p';add('cite:'+i,fit?1:-3,fit?(c.weak?`이의가 있었던 말(${c.label})을 다른 자료와 함께 근거로 삼았음`:`가볍게 보기로 한 자료(${c.label})를 다른 자료와 함께 근거로 삼았음`):`결론과 반대 방향의 자료를 근거로 들었음: ${c.label}`);return}
    const fit=side===0.5?true:side===1?c.side!=='d':c.side!=='p';
-   add('cite:'+i,fit?3:-3,fit?`판결 근거가 결론과 맞음: ${c.label}`:`결론과 반대 방향의 자료를 근거로 들었음: ${c.label}`);
+   add('cite:'+i,fit?3:-3,fit?(c.cond?`조건을 확인한 자료를 근거로 삼았음: ${c.label}`:`판결 근거가 결론과 맞음: ${c.label}`):`결론과 반대 방향의 자료를 근거로 들었음: ${c.label}`);
   });
+  {const good=Object.entries(items).filter(([k,v])=>k.startsWith('cite:')&&v.points>0),sum=good.reduce((a,[,v])=>a+v.points,0);
+   if(sum>9)for(const [,v] of good)v.points=Math.round(v.points*9/sum*10)/10}
   for(const x of verdict.extra||[])add(x.key,x.points,x.text);   // v8.3: orders beyond the sentence (remedies, ancillary orders)
   if(verdict.sentence){const s=verdict.sentence,lighter=s.value<s.lo,heavier=s.value>s.hi;
    if(!lighter&&!heavier)add('sentence',4,`${s.what}이 참고 범위 안에 있음`);
