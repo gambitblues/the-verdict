@@ -48,7 +48,7 @@ async function stockCounts(env,fetcher){
  if(!Array.isArray(rows)||rows.length>=1000)throw Error('private stock scan incomplete');
  return rows.filter(x=>x.state==='stock').reduce((a,x)=>{a[x.category]=(a[x.category]||0)+1;return a},{});
 }
-async function runCloudStaging(env,{fetcher=fetch,now=()=>new Date(),random=()=>crypto.randomUUID(),generateCase=generate}={}){
+async function runCloudStaging(env,{fetcher=fetch,now=()=>new Date(),random=()=>crypto.randomUUID(),generateCase=generate,trialQA=CloudTrialQA.run}={}){
  const p=policy(env);
  if(!p)return {stage:'disabled',created:0};
  const runId='refill-'+random().replace(/[^a-z0-9-]/gi,'').toLowerCase().slice(0,40);
@@ -75,7 +75,7 @@ async function runCloudStaging(env,{fetcher=fetch,now=()=>new Date(),random=()=>
   if(!result.ok||!result.candidate||!result.worldSheet)return {stage:'quarantine',created:0};
   // The browser QA remains a separate final gate, but an obviously broken
   // world must not even enter the private staging table.
-  const trial=CloudTrialQA.run(result.worldSheet);
+  const trial=trialQA(result.worldSheet);
   if(!trial.ok)return {stage:'quarantine',created:0};
   // Keep hidden truth private, not in public world_state or player saves.
   const stored=await rpc(env,fetcher,'terra_stage_draft',{
