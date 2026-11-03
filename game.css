@@ -472,6 +472,7 @@ body{font-family:system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',s
 .t4-crow.on{color:#1f2933;text-decoration:none;border-color:#c8b07c}.t4-crow.on.warn{color:#9b2c2c;font-weight:600}
 .t4-crow span{flex:none}
 .t4-cond-how{flex-wrap:wrap;gap:6px}
+.t4-cond-ok{display:block;color:#1e6b3a;font-size:12px}
 .t4-cond-st{margin:8px 0 0;font-size:12.5px;border-radius:7px;padding:6px 8px}.t4-cond-st.ok{background:#e9f5ec;color:#1e6b3a}.t4-cond-st.wait{background:#fdf1dc;color:#8a5a12}
 .t4-compare{margin:8px 0;border:1px solid #e2e8f0;border-radius:9px;background:#fff;padding:6px 9px}
 .t4-compare summary{cursor:pointer;font-size:13px;font-weight:600}
