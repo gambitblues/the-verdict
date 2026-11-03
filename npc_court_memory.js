@@ -12,10 +12,21 @@
    const t=st?.trial4;
    if(id===currentCaseId||!st?.verdict||!t||t.opponent!==opponentId)continue;
    hearings++;
-   for(const card of t.cards||[]){
-    if(card.type!=='objection')continue;
-    if(card.choice==='accept')accepted++;
-    else if(card.choice==='reject')rejected++;
+   // The persistent log contains rulings from every hearing; cards only hold the current day.
+   const rulings=(t.log||[]).filter(e=>e.kind==='이의');
+   if(rulings.length){
+    for(const entry of rulings){
+     const line=String(entry.text||'');
+     if(/받아들이지 않음|기각/.test(line))rejected++;
+     else if(/받아들임/.test(line))accepted++;
+    }
+   }else{
+    // Backward compatibility for older trial saves that lack decision logs.
+    for(const card of t.cards||[]){
+     if(card.type!=='objection')continue;
+     if(card.choice==='accept')accepted++;
+     else if(card.choice==='reject')rejected++;
+    }
    }
    // The trial log survives from previous sessions, unlike t.cards (current hearing only).
    // A card's historic outcome is not inferred from the verdict or from unrelated actions.
