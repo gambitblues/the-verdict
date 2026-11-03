@@ -4,6 +4,7 @@
  */
 'use strict';
 const {validateDraft}=require('./terra_case_pipeline.cjs');
+const {TYPES}=require('./case_realism_quality.cjs');
 const {prepareWorldSheet}=require('./terra_world_sheet_handoff.cjs');
 const TRUTHS=['did','didnt','reason'];
 const CATEGORY=['homicide','sexual','violence','financial','property','reputation','civil','family','professional','public'];
@@ -53,7 +54,7 @@ worlds.did/didnt/reason 각각 act,motive,cause,timeline:[{at:"HH:MM",what}],rec
 witnesses:{각 증인id:"해당 세계 직접 관찰"}를 작성.
 realism에 timelineMechanics,physicalScene,evidenceProvenance,witnessObservability,
 alternativeHypotheses,aftermathConsequences,sensitiveDetailPolicy:"non-graphic",
-그리고 분야별 사실 검증 설명을 작성.
+그리고 해당 분류 ${seed.category}의 분야별 필수 인과검증 필드 ${TYPES[seed.category].join(', ')}를 모두 20자 이상으로 작성.
 성범죄면 sexualRealism {scenarioType,interaction,consentContext,capacityContext,forceOrPressure,
 medicalFindings,medicalLimits,evidenceLimits,aftermath,
 worlds:{did:{mechanism,observations,alternativeExplanation},didnt:{...},reason:{...}}} 필수.
