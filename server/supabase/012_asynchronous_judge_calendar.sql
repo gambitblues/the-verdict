@@ -77,6 +77,7 @@ returns table(previous_day integer,world_day integer,lag_days integer,
               protected_until_day integer,rescheduled_hearings integer)
 language plpgsql security definer set search_path=public as $$
 declare now_day integer; last_day integer; until_day integer; shifted integer:=0;
+        first_pending_day integer;
         old public.shared_judge_progress%rowtype;
 begin
  if current_setting('request.jwt.claim.role',true) is distinct from 'service_role'
@@ -92,9 +93,14 @@ begin
   last_day:=old.last_seen_world_day;
   until_day:=old.protected_until_day;
  else
-  -- First-ever login is a clean baseline, not a retroactive backlog.
-  last_day:=now_day;
-  until_day:=now_day;
+  -- A judge with no progress record may still have an old assigned hearing.
+  -- Treat its earliest outstanding day as the baseline so absence never
+  -- produces an automatic missed hearing just because the cursor is missing.
+  select min(h.due_game_day) into first_pending_day
+  from public.shared_judge_hearings h
+  where h.judge_id=p_judge and h.state='scheduled';
+  last_day:=least(now_day,coalesce(first_pending_day,now_day));
+  until_day:=last_day;
  end if;
  if last_day<now_day then
   until_day:=least(200000,now_day+2);
