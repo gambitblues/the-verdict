@@ -1448,8 +1448,13 @@ function verdictPage(c,st){
  const t=st.trial4,canVerdict=t.daysDone>=t.minDays,cur=curOf(c),v=vstate(c),crim=isCriminal(c);
  partialOption(c);
  const opt=c.verdicts.find(o=>o.id===v.opt),dir=opt&&T.direction(opt,c.kind),sp=opt&&sentenceSpec(c,dir);
- const closing=cur?`<div class="t4-closing"><b>${esc(sideWord(c,'p'))} 최종 ${crim?'논고':'변론'}</b><p>"${esc(tell(c,t,cur.closing))}"</p>${crim?`<p class="small">구형: <b>${esc(demandText(c))}</b></p>`:(cur.decision?`<p class="small">신청: <b>${esc(tell(c,t,cur.decision.what))}</b></p>`:`<p class="small">청구: <b>${won(cur.claim?.amount||0)}</b> · ${esc(cur.claim?.what||'')}</p>`)}</div>
-  <div class="t4-closing d"><b>${esc(sideWord(c,'d'))} 최종 변론</b><p>"${esc(tell(c,t,cur.claims?.[1]||''))}"</p></div>`:'';
+ const first=cur?tell(c,t,cur.closing):'',second=cur?tell(c,t,cur.claims?.[1]||''):'';
+ const closingKey=c.id+':'+first+':'+second;
+ if(canVerdict&&first&&second)window.VerdictAI?.closing?.(c,t,first,second);
+ const aiClosing=t.aiClosing?.source===closingKey?t.aiClosing:null;
+ const closing=cur?`<div class="t4-subhead"><h4>최종 변론 · 양측 입장</h4><span class="t4-tag">${aiClosing?'AI 문장 검증 완료':'사건 기록 원문'}</span></div>
+  <div class="t4-closing"><b>${esc(sideWord(c,'p'))} 최종 ${crim?'논고':'변론'}</b><p>"${esc(aiClosing?.openingA||first)}"</p>${crim?`<p class="small">구형: <b>${esc(demandText(c))}</b></p>`:(cur.decision?`<p class="small">신청: <b>${esc(tell(c,t,cur.decision.what))}</b></p>`:`<p class="small">청구: <b>${won(cur.claim?.amount||0)}</b> · ${esc(cur.claim?.what||'')}</p>`)}</div>
+  <div class="t4-closing d"><b>${esc(sideWord(c,'d'))} 최종 변론</b><p>"${esc(aiClosing?.openingB||second)}"</p></div>`:'';
  claimNotes(c);const optBtns=c.verdicts.map(o=>`<button class="choice ${v.opt===o.id?'on':''}" data-action="t4verdict" data-id="${esc(o.id)}" ${canVerdict?'':'disabled'}><span class="choice-index">${v.opt===o.id?'✔':'⚖'}</span><span><strong>${esc(plainLabel(o))}</strong><small>${esc(plainNote(o))}</small></span></button>`).join('');
  /* the sentence or amount: only what the law allows for this case (v8.2) */
  let sentence='';
