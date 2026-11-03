@@ -34,7 +34,9 @@ async function produce({seed,root,fetcher,apiKey,model='gpt-6.1-terra'}){
   qa=evaluate({...candidate,status:'review'},worldSheet);
  }
  if(!qa.ok)return {ok:false,stage:qa.stage,errors:qa.errors,repairs};
- fs.mkdirSync(folder,{recursive:true,mode:0o700});
+ fs.mkdirSync(path.dirname(folder),{recursive:true,mode:0o700});
+ // Atomic reservation: two concurrent jobs must never write into the same ID folder.
+ fs.mkdirSync(folder,{recursive:false,mode:0o700});
  try{
   const files=[['candidate.json',candidate],['world-sheet.json',worldSheet],
    ['qa-result.json',{stage:qa.stage,trial:qa.trial,candidateHash:qa.candidateHash,sheetHash:qa.sheetHash,
