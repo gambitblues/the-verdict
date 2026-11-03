@@ -87,3 +87,21 @@ test('P4 objective NPC: both judges see one biography, death irreversible, memor
  assert.equal(Number((await put('npc:test-001',{name:'김가람',profession:'은퇴'},'dead',100,1)).rows[0].version),2);
  await assert.rejects(put('npc:test-001',{name:'김가람'},'alive',101,2),/npc_temporal_conflict/);
 });
+
+test('P4 global case stock: a case cannot be assigned twice to different judges',async()=>{
+ const makeCase=(id,fp)=>svc(
+ 'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification) values ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb)',
+ [id,'civil',HASH,HASH,fp,JSON.stringify({id}),JSON.stringify({passed:true})]);
+ await makeCase('case-new-a','fingerprint-new-a');
+ await makeCase('case-new-b','fingerprint-new-b');
+ // case-p4 already belongs to judge A; simultaneous requests must take distinct stock.
+ const [ra,rb]=await Promise.all([
+  svc('select case_id from public.case_stock_assign($1::uuid,$2)',[A,'civil']),
+  svc('select case_id from public.case_stock_assign($1::uuid,$2)',[B,'civil'])
+ ]);
+ assert.equal(ra.rows.length,1);
+ assert.equal(rb.rows.length,1);
+ assert.notEqual(ra.rows[0].case_id,rb.rows[0].case_id);
+ assert.equal((await svc(`select count(*)::int as n from public.case_stock where state='assigned'`)).rows[0].n,3);
+ await assert.rejects(pa('select * from public.case_stock_assign($1::uuid,$2)',[A,'civil']),/permission denied/);
+});
