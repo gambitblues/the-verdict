@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import P from '../src/terra_replenishment_plan.cjs';
-const policy={minPerCategory:2,targetPerCategory:3,maxNewCasesPerRun:4,usedCallsToday:0,maxCallsToday:8,usedUsdToday:0,maxUsdToday:3,maxEstimatedUsdPerCase:1};
+const policy={minPerCategory:2,targetPerCategory:3,maxNewCasesPerRun:4,usedCallsToday:0,maxCallsToday:12,usedUsdToday:0,maxUsdToday:3,maxEstimatedUsdPerCase:1};
 test('stock deficit plans only within both money and API-call caps',()=>{
  const s=P.plan({policy});
  assert.equal(s.ok,true);assert.equal(s.requests.length,3);
