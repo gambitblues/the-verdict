@@ -25,7 +25,8 @@ function plan({inventory=[],inFlight=[],policy={}}={}){
   seen.add(item.id);counts[item.category][kind]++;
  }
  if(errors.length)return {ok:false,errors,requests:[]};
- const capacity=Math.max(0,Math.min(limit,Math.floor((budget-todayUsd+1e-9)/est),Math.floor((capCalls-todayCalls)/2)));
+ // Two generation calls plus up to two constrained repair calls per case.
+ const capacity=Math.max(0,Math.min(limit,Math.floor((budget-todayUsd+1e-9)/est),Math.floor((capCalls-todayCalls)/4)));
  const shortages=CATEGORIES.map(category=>{
   const c=counts[category],available=c.stock+c.working;
   return {category,stock:c.stock,inFlight:c.working,available,missing:available<min?Math.max(0,Math.min(max,TARGETS[category])-available):0};
