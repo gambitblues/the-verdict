@@ -4,6 +4,14 @@ on:
     branches: [develop]
     paths:
       - 'server/worker/**'
+      - 'game_runtime.js'
+      - 'npc_life_justice.js'
+      - 'npc_court_memory.js'
+      - 'story_engine.js'
+      - 'continuity_engine.js'
+      - 'trial_play.js'
+      - 'auth_gate.js'
+      - 'ai_bridge.js'
       - '.github/workflows/worker-regression.yml'
   pull_request:
     branches: [develop]
@@ -24,4 +32,4 @@ jobs:
           node-version: '22'
       - name: Run offline Worker regression tests (no external API calls)
         working-directory: server/worker
-        run: npm test
+        run: npm run check
