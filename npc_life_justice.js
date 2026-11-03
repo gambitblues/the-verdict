@@ -176,6 +176,13 @@ window.LifeJustice=(()=>{
  }
  /* A short, sourced life moment for a character's profile; not a claim about
   * the new case or a judgment about an individual's character. */
+ /* The earlier life change must precede even the earliest possible incident date
+  * (new incidents are drawn 7–22 weeks before filing). Incarcerated/deceased NPCs
+  * cannot be selected as fresh, active civil plaintiffs. */
+ function eligibleLifeTrigger(event,p,week){
+  return !!event&&!!p&&p.alive!==false&&!event.consumed&&Number.isFinite(event.week)
+   &&week-event.week>=23&&week-event.week<312&&isFree(p,week);
+ }
  function latestLifeMoment(p,w){
   const events=(p?.historyEvents||[]).filter(e=>e&&Number.isFinite(e.week)&&e.week<=w&&e.change);
   if(!events.length)return null;
@@ -187,5 +194,5 @@ window.LifeJustice=(()=>{
  function sibText(p){const f=/여/.test(p?.gender||'');let s=String(p?.siblings||p?.family||'미상');
   return f?s.replace(/^형 /,'오빠 ').replace(/^누나 /,'언니 '):s.replace(/^오빠 /,'형 ').replace(/^언니 /,'누나 ')}
  function summary(p,yr,w){return [`${p.gender||'미상'} · ${p.bornYear?yr-p.bornYear+'세':'연령 미상'}`,`학위 ${p.degree||'미상'} (${p.educationField||'전공 미상'})`,`부모 경제수준 ${p.parentWealth??'?'} / 100`,`형제 ${sibText(p)}`,`혼인 ${p.maritalStatus||'미상'} · 자녀 ${p.children??0}명`,`MBTI ${p.mbti||'-'} / 혈액형 ${p.blood||'-'}`,`생활 ${p.legalStatus||'일반 생활'}`].join(' · ')}
- return {sibText,enrich,hydrate,isFree,currentSentence,applyVerdict,weekTick,annualLifeTick,recordAnnualEvent,latestLifeMoment,summary,custodySummary};
+ return {sibText,enrich,hydrate,isFree,currentSentence,applyVerdict,weekTick,annualLifeTick,recordAnnualEvent,latestLifeMoment,eligibleLifeTrigger,summary,custodySummary};
 })();
