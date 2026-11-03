@@ -21,7 +21,6 @@ jobs:
       - name: Worker and sealed courtroom tests
         working-directory: server/worker
         run: |
-          npm ci
           npm run check
       - name: Supabase PGlite shared-world migrations
         working-directory: server/supabase
