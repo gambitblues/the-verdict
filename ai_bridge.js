@@ -39,6 +39,19 @@ async function opening(c,t,openingA,openingB){
  save();redraw();
 }
 
+/* P1: final pleas use one verified request for both original sides. */
+const closingAttempted=new Set();
+async function closing(c,t,openingA,openingB){
+ if(!on()||!c?.id||!openingA||!openingB)return;
+ const key=c.id+':'+openingA+':'+openingB;
+ if(t.aiClosing?.source===key||closingAttempted.has(key))return;
+ closingAttempted.add(key);
+ const res=await ask('closing',{openingA,openingB,names:namesOf(c,t)});
+ if(!res?.openingA||!res?.openingB)return;
+ t.aiClosing={source:key,openingA:res.openingA,openingB:res.openingB};
+ save();redraw();
+}
+
 /* P1 bench note: invoked only by the judge's button, never by tab navigation. */
 const benchBusy=new Set();
 async function bench(c,t,source){
@@ -76,5 +89,5 @@ async function judgment(c,t){
  if(res?.facts){t.final.judgmentAI={...j,facts:res.facts,issues:res.issues,conclusion:res.conclusion};save();redraw()}
 }
 
-window.VerdictAI={npc,article,articleKey,judgment,opening,bench,get on(){return on()}};
+window.VerdictAI={npc,article,articleKey,judgment,opening,closing,bench,get on(){return on()}};
 })();
