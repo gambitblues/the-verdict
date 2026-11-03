@@ -101,4 +101,18 @@ grant execute on function public.refill_lease_claim(text,text,int) to service_ro
 grant execute on function public.refill_budget_reserve(text,text,text,numeric,int,numeric,int) to service_role;
 grant execute on function public.refill_budget_close(bigint,text,text,numeric,int) to service_role;
 grant execute on function public.refill_lease_release(text,text) to service_role;
+create or replace function public.refill_budget_snapshot()
+returns table(used_usd numeric,used_calls bigint)
+language plpgsql security definer set search_path=public as $
+begin
+ if current_setting('request.jwt.claim.role',true) is distinct from 'service_role'
+ then raise exception 'service_only' using errcode='42501'; end if;
+ return query
+ select coalesce(sum(greatest(reserved_usd,coalesce(actual_usd,reserved_usd))),0),
+        coalesce(sum(greatest(reserved_calls,coalesce(actual_calls,reserved_calls))),0)
+ from public.case_refill_budget
+ where created_at >= (date_trunc('day',now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul');
+end $;
+revoke all on function public.refill_budget_snapshot() from public,anon,authenticated;
+grant execute on function public.refill_budget_snapshot() to service_role;
 commit;
