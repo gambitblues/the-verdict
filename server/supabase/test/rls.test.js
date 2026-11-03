@@ -21,7 +21,7 @@ await db.exec(`
  alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
  insert into auth.users values ('${A}','a@x.kr'),('${B}','b@x.kr'),('${X}','stranger@x.kr');`);
 await db.exec(await readFile(new URL('../001_init.sql',import.meta.url),'utf8'));
-await db.exec(`insert into public.players(email,name) values ('a@x.kr','A'),('b@x.kr','B');`);
+await db.exec(`insert into public.players(email,name) values ('a@x.kr','A'),('b@x.kr','TEST-B');`);
 
 /* run SQL as a role (and user), always back to the owner afterwards */
 async function as(role,uid,email,sql,params){
@@ -38,6 +38,10 @@ test('invite list: players claim their row, a stranger is refused, nobody can re
  assert.equal((await px('select public.claim_player() as ok')).rows[0].ok,false);
  await fails(pa('select * from public.players'),/permission denied/);
  await fails(anon('select public.claim_player()'),/permission denied/);
+ // only invite rows named TEST… count as test accounts for the live check
+ assert.equal((await pa('select public.is_test_player() as t')).rows[0].t,false);
+ assert.equal((await pb('select public.is_test_player() as t')).rows[0].t,true);
+ assert.equal((await px('select public.is_test_player() as t')).rows[0].t,false);
 });
 test('saves: own only, writes only through save_put, versions protect newer saves',async()=>{
  let r=(await pa(`select * from public.save_put('1','A-save-1',0,'8.7.1','phone')`)).rows[0];assert.deepEqual([r.ok,r.conflict,Number(r.rev)],[true,false,1]);

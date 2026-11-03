@@ -24,6 +24,13 @@ language sql stable security definer set search_path = public as $$
   select auth.uid() is not null and exists(select 1 from public.players where user_id = auth.uid())
 $$;
 
+-- test accounts for the live check (server/live) are invite rows whose name starts with 'TEST'. The check refuses to
+-- run on any account for which this is false, so a real player's career can never be touched by it.
+create or replace function public.is_test_player() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists(select 1 from public.players where user_id = auth.uid() and name like 'TEST%')
+$$;
+
 -- links the signed-in user to their invite row (first login) and says whether they are invited
 create or replace function public.claim_player() returns boolean
 language plpgsql security definer set search_path = public as $$
@@ -174,12 +181,14 @@ $$;
 -- 5. who may call which function ---------------------------------------------------------------------------
 revoke all on function public.is_player() from public, anon;
 revoke all on function public.claim_player() from public, anon;
+revoke all on function public.is_test_player() from public, anon;
 revoke all on function public.save_put(text,text,bigint,text,text,boolean) from public, anon;
 revoke all on function public.ai_reserve(uuid,text,text,numeric,int,numeric) from public, anon, authenticated;
 revoke all on function public.ai_finish(bigint,text,int,int,numeric,boolean,text,int) from public, anon, authenticated;
 revoke all on function public.ai_usage_today(uuid) from public, anon, authenticated;
 grant execute on function public.is_player() to authenticated;
 grant execute on function public.claim_player() to authenticated;
+grant execute on function public.is_test_player() to authenticated;
 grant execute on function public.save_put(text,text,bigint,text,text,boolean) to authenticated;
 grant execute on function public.ai_reserve(uuid,text,text,numeric,int,numeric) to service_role;
 grant execute on function public.ai_finish(bigint,text,int,int,numeric,boolean,text,int) to service_role;

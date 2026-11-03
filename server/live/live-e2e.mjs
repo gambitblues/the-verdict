@@ -4,7 +4,7 @@
  *
  *   cd server/live && npm i && npx playwright install chromium
  *   SUPABASE_URL=https://<project>.supabase.co SUPABASE_ANON_KEY=<anon public key> \
- *   VERDICT_API=https://the-verdict-api.<account>.workers.dev node live-e2e.mjs [--allow-overwrite]
+ *   VERDICT_API=https://the-verdict-api.<account>.workers.dev node live-e2e.mjs
  *
  * It starts the develop build locally (http://127.0.0.1:<port>/?auth=1) with these three public values and checks:
  *   1 two players sign in; wrong password and (optionally) an uninvited account are refused; each player's save is
@@ -15,8 +15,12 @@
  *     game's own text (API blocked in the browser; plus ALLOW_TEST_FAIL on the Worker if it is "1")
  *   4 over-rejection: 20 real witness answers from the game through the checks — how many are refused and why
  *   5 one full case in the game: a case on the bench → hearings → questions (AI answers) → verdict → AI judgment
- * The test careers are named "실검 …". Because step 1 starts new games, it stops if either player already has a cloud
- * save, unless --allow-overwrite is given. Results: out/<time>/report.md, report.json and screenshots. */
+ * SAFETY (v8.7.3): it runs only on TEST accounts — invite rows named 'TEST…' (checked by the server, is_test_player) —
+ * that have no save, no kept save and no AI use yet. Anything else stops it before a single write. There is no way to
+ * override this. Each run uses fresh browser profiles on a separate local address, so no browser save is touched.
+ * Clear test data for another run with server/supabase/cleanup_test_accounts.sql (TEST rows only).
+ * Reports and screenshots are made without emails, passwords, tokens or keys (masked on screen before every capture,
+ * and the written report is scanned for them). Results: out/<time>/report.md, report.json and screenshots. */
 import {chromium} from 'playwright';
 import http from 'node:http';
 import readline from 'node:readline';
@@ -29,7 +33,8 @@ import {courtUI} from '../../tests/lib/court-ui.mjs';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const {SUPABASE_URL,SUPABASE_ANON_KEY,VERDICT_API}=process.env;
 for(const [k,v] of Object.entries({SUPABASE_URL,SUPABASE_ANON_KEY,VERDICT_API}))if(!v){console.error('missing env '+k);process.exit(1)}
-const ALLOW=process.argv.includes('--allow-overwrite'),HEADED=process.argv.includes('--headed');
+const HEADED=process.argv.includes('--headed');
+if(process.argv.includes('--allow-overwrite')){console.error('--allow-overwrite was removed: this check runs only on empty TEST accounts.');process.exit(2)}
 const OUT=path.join(path.dirname(fileURLToPath(import.meta.url)),'out',new Date().toISOString().replace(/[:.]/g,'-'));await mkdir(OUT,{recursive:true});
 
 /* ---------- report ---------- */
@@ -38,7 +43,11 @@ const mask=e=>String(e).replace(/^(.).*?(@.*)$/,'$1***$2');
 function record(id,name,status,detail='',shots=[]){results.push({id,name,status,detail,shots});console.log(`${status==='pass'?'✓':status==='skip'?'–':'✗'} ${id} ${name}${detail?' — '+detail:''}`)}
 const ONLY=(process.env.ONLY||'').split(',').filter(Boolean);   // e.g. ONLY=1-3,5 to rerun parts (1-3 signs player 1 in)
 async function step(id,name,fn){if(ONLY.length&&!ONLY.some(x=>id.startsWith(x)))return record(id,name,'skip','ONLY');try{const r=await fn();record(id,name,r?.status||'pass',r?.detail||'',r?.shots||[])}catch(e){record(id,name,'fail',String(e.message||e).split('\n')[0]+' @'+((String(e.stack).match(/(live-e2e|court-ui)\.mjs:\d+/g)||[]).slice(0,3).join(',')))}}
-const shot=async(p,n)=>{const f=`${n}.png`;await p.screenshot({path:path.join(OUT,f)});return f};
+/* before every capture: empty password fields, mask e-mail addresses wherever they appear on screen */
+const hideSecrets=p=>p.evaluate(()=>{const m=e=>e.replace(/([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+)/g,'$1***@$2');
+ document.querySelectorAll('input[type=password]').forEach(i=>{i.value=''});document.querySelectorAll('input[type=email],input[name=email]').forEach(i=>{if(i.value)i.value=m(i.value)});
+ const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);for(let n;(n=w.nextNode());)if(n.nodeValue.includes('@'))n.nodeValue=m(n.nodeValue)}).catch(()=>{});
+const shot=async(p,n)=>{const f=`${n}.png`;await hideSecrets(p);await p.screenshot({path:path.join(OUT,f)});return f};
 
 /* ---------- inputs (hidden) ---------- */
 const piped=!process.stdin.isTTY,lines=[],waiters=[];
@@ -58,7 +67,16 @@ const rest=(t,p,o={})=>fetch(`${SUPABASE_URL}/rest/v1/${p}`,{...o,headers:{...H(
 const api=(t,p,b)=>fetch(VERDICT_API+p,{method:b?'POST':'GET',headers:{'content-type':'application/json',...(t?{authorization:`Bearer ${t}`}:{})},body:b?JSON.stringify(b):undefined}).then(async r=>({status:r.status,data:await r.json().catch(()=>({}))}));
 const A=await signIn(P1.email,P1pw),B=await signIn(P2.email,P2pw);
 const cloudOf=async(s,uid)=>(await rest(s.access_token,`saves?select=slot,rev,data,device,updated_at&user_id=eq.${uid}`)).data||[];
-if(!ALLOW&&((await cloudOf(A,A.user.id)).length||(await cloudOf(B,B.user.id)).length)){console.error('A player already has a cloud save. Run with --allow-overwrite to start test careers anyway (their current careers stay in save_backups only when overwritten from another device).');process.exit(2)}
+/* stop before any write unless both accounts are empty TEST accounts */
+for(const [who,s] of [['player 1',A],['player 2',B]]){
+ const test=await rest(s.access_token,'rpc/is_test_player',{method:'POST',body:'{}'});
+ if(!test.ok||test.data!==true){console.error(`${who} is not a TEST account (its invite name must start with 'TEST'). Nothing was changed.`);process.exit(2)}
+ const saves=(await rest(s.access_token,`saves?select=slot&user_id=eq.${s.user.id}`)).data||[],kept=(await rest(s.access_token,`save_backups?select=slot&user_id=eq.${s.user.id}`)).data||[];
+ const used=(await rest(s.access_token,`ai_usage?select=id&user_id=eq.${s.user.id}&limit=1`)).data||[];
+ if(saves.length||kept.length){console.error(`${who} already has saves (${saves.length}) or kept saves (${kept.length}). Use an empty TEST account or clear it with server/supabase/cleanup_test_accounts.sql. Nothing was changed.`);process.exit(2)}
+ if(used.length)console.log(`(${who}: earlier AI use is counted in today's limit)`);
+}
+if(A.user.id===B.user.id){console.error('player 1 and player 2 must be different accounts.');process.exit(2)}
 
 /* ---------- the develop build, served locally with the public config ---------- */
 const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
@@ -80,8 +98,7 @@ const visible=p=>p.evaluate(()=>{Object.defineProperty(document,'visibilityState
 const waitCloud=async(s,uid,pred,timeout=30000)=>{const t0=Date.now();while(Date.now()-t0<timeout){const rows=await cloudOf(s,uid);if(pred(rows))return rows;await new Promise(r=>setTimeout(r,1500))}throw new Error('cloud did not change in time')};
 const newGame=async(p,name)=>{if(await p.locator('#verdict-login [data-a="n"]').count())await p.locator('#verdict-login [data-a="n"]').click();   // a pre-login save on this test browser: keep it out
  await p.locator('#profile-continue').waitFor({timeout:60000});
- // a test browser starts empty; if the account already had a save, start over in this slot (allowed by --allow-overwrite)
- if(await p.evaluate(()=>!!S.name)){await p.locator('#profile-reset').click();await p.locator('#profile-reset').click();await p.waitForLoadState('networkidle');await p.locator('#profile-continue').waitFor()}
+ if(await p.evaluate(()=>!!S.name))throw new Error('this test account already has a career on screen — stopping');
  await p.locator('#profile-continue').click();await p.locator('#playerName').fill(name);await p.locator('[data-action="start"]').last().click();
  await p.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,null,{timeout:60000})};
 
@@ -221,6 +238,11 @@ try{
   '| 항목 | 내용 | 결과 | 세부 | 화면 |','|---|---|---|---|---|',...results.map(r=>`| ${r.id} | ${r.name} | ${r.status==='pass'?'통과':r.status==='skip'?'건너뜀':'실패'} | ${String(r.detail).replace(/\|/g,'/')} | ${r.shots.map(f=>`[${f}](${f})`).join(' ')} |`),
   '','## 과잉 거부 표본',...(facts.overReject||[]).map(r=>`- ${r.ok?'통과':'거부('+r.why+')'} · ${r.role} · 원문: ${r.answer}${r.text?` → ${r.text}`:''}`),
   '','## AI 호출 기록 (최근)',...(facts.usageRows||[]).slice(0,30).map(r=>`- ${r.kind} · ${r.model} · ${r.input_tokens}+${r.output_tokens} · $${r.cost_usd} · ${r.ok?'성공':'실패 '+(r.reason||'')}`)].join('\n');
- await writeFile(path.join(OUT,'report.md'),md);await writeFile(path.join(OUT,'report.json'),JSON.stringify({results,facts},null,1));
+ /* last guard: nothing secret may be written. Every password, token and key of this run (and the full e-mails) is searched for and replaced. */
+ const secrets=[P1pw,P2pw,SXpw,A.access_token,A.refresh_token,B.access_token,B.refresh_token,SUPABASE_ANON_KEY,P1.email,P2.email,SX.email].filter(x=>x&&String(x).length>=4);
+ let found=0;const clean=t=>{for(const x of secrets){const parts=String(t).split(x);if(parts.length>1){found+=parts.length-1;t=parts.join('[가림]')}}return t};
+ const jsonText=clean(JSON.stringify({results,facts},null,1)),mdText=clean(md);
+ await writeFile(path.join(OUT,'report.md'),mdText);await writeFile(path.join(OUT,'report.json'),jsonText);
+ if(found)console.log(`(report: ${found} secret value(s) found and replaced with [가림])`);
  console.log(`\nreport: ${path.join(OUT,'report.md')}`);process.exit(fail?1:0);
 }
