@@ -1,5 +1,48 @@
 # THE VERDICT — P0~P3 통합 QA (develop)
 
+## 후속 검수 — 2026-11-04 (기존 1차 판정 갱신)
+
+> **이 섹션의 증빙과 판정이 아래 1차 검수에서의 '해당 Actions 실행 결과 미확인/미실행' 문구보다 우선한다.** 다른 테스트나 실서버 동작에 자동으로 성공 판정을 확장하지 않는다.
+
+### A. GitHub Actions 성공 확인
+
+- 워크플로: **Develop runtime and mobile smoke QA**
+- 검증 대상 커밋: `0eb6254a2d6464841196c666ce0d5eaebbbfca9a` (2026-11-03, UTC).
+- Run ID: **41691697637** · Job: **126111643332** (`browser-smoke`).
+- URL: https://github.com/gambitblues/the-verdict/actions/runs/41691697637
+- **GitHub API의 job 결론 `success` 확인**, 모든 테스트 step `success`, 실제 job log 95,885자 열람. 이전 QA-02에서 해당 커밋의 CI 성공을 입증하지 못한 문제는 **해소**.
+- 특히 로그에 `PASS sheet cases in the normal courtroom`, `PASS: v8.2 courtroom and verdict`, `PASS: v8.3 ...`, `PASS: responsive` (390×844, 412×915, 884×1004, 1280×800 포함), `PASS (plain)` 및 `PASS (compressed)` (v5.7→v8.7.3), `PASS: long career (40 years)`가 기록됨.
+- 40년 마지막 체크포인트: **370건 사건, NPC 2,693명, issues 0**, 압축 저장 길이 1,654,051자. 단, `tests/long-career.mjs`는 사건별 직접 상태 구성과 빠른 선고를 이용하는 시뮬레이션이므로 모든 사건을 사람이 UI로 진행한 증거가 아님.
+- `PASS match engine · 10920 trials`, `PASS world sheets 100`, `PASS: 1800 generated trials`도 로그 확인.
+- 화면 QA 아티팩트: `graphical-qa` 63파일, artifact ID **13256669281**. URL: https://github.com/gambitblues/the-verdict/actions/runs/41691697637/artifacts/13256669281. 업로드 성공은 확인했지만 스크린샷을 사람이 육안으로 판독한 것은 아님.
+- **최신 HEAD 구분:** 후속 확인 직전 `develop` HEAD는 `bc2c47c278b9e7ecac80fa24f1e3c2c8b45d0526` (1차 QA 보고서만 추가한 커밋). 이 HEAD에 대한 `fetch_commit_workflow_runs` 및 combined status는 `[]`로 반환됨. 이 API는 PR 기반 실행 조회 제한이 있으므로 **새 HEAD의 성공·실패 모두 확정 불가**. `0eb6254` 성공을 `bc2c47c` 성공으로 표기하지 않는다.
+
+### B. 실제 서버 및 사용자 E2E — 이번 검수에서 실행 불가
+
+- 저장소에는 `server/live/live-e2e.mjs`가 존재하며 **테스트 전 서버 `is_test_player` 확인, TEST 이름, 기존 세이브/백업 0건** 조건을 검사하고, 두 계정 로그인·RLS·같은 계정 2기기 충돌·백업·AI 생성/실패·단일 사건 선고까지 검증하도록 설계됨. 운영 세이브 보호용 `--allow-overwrite` 옵션도 거부함.
+- 이 환경에는 독립 TEST 계정의 로그인 자격, 실 Supabase URL/공개 anon 키 및 Worker endpoint가 제공되지 않았고, 원격 소스 체크아웃도 DNS 실패. **실 Supabase/Worker/Playwright E2E 이번 실행 0회**. 운영 계정, 운영 세이브, Secret, 프로덕션 데이터에 접근하거나 변경하지 않음.
+- 특히 `tests/auth-gate.mjs`의 fake API, Worker/Supabase 로컬 단위 테스트 및 위 `0eb6254` workflow가 통과해도 **실 Supabase 두 계정의 격리·동시 수정·오프라인 복구** 성공으로 해석할 수 없음.
+- **AI 검증 미완료:** 실제 모델을 이용한 증인(`npc`), 검사·변호사 공방(`opening`, `exchange`, `closing`), 기사(`article`), 판결문(`judgment`) 각각의 정상 출력과 모델 실패·429·의미검증 거절·네트워크 단절 시 원본 fallback, 재진입 후 일관성의 실 API E2E 로그 없음. 기존 `live-e2e.mjs`가 모든 P1 공방 endpoint에 대해 전체 성공/실패 매트릭스를 검증하는 것으로 간주하지 말 것.
+- **NPC 시간 연속성 미완료:** 자동 40년 시뮬레이션 통과는 확인했으나, 실 로그인된 플레이에서 과거 기억→동일 NPC 재등장→법정 행위/판결→후속 민·형사 사건의 저장·재시작 연속성은 미검증.
+- **뉴스 시간 연속성 미완료:** 동일 사건의 사건 발생 뉴스→수사→기소·배당→재판→최종 선고→기사 링크와 인물 ID/사건 ID의 실 브라우저 완주 로그 없음. 미배당 종료·직접 배당 분기도 실제 플로우 미검증.
+
+### C. 남은 Release blocker만 (2026-11-04)
+
+| ID | Release blocker | 해제 증거 |
+|---|---|---|
+| RB-1 | **실 Supabase 독립 TEST 2계정 E2E 미완료** — 로그인 권한, 슬롯 격리, 2기기 저장 충돌, 원본/백업 복구, 오프라인→온라인 전환 | 테스트 전 `is_test_player=true`, 빈 TEST 계정 2개 확인; `server/live/live-e2e.mjs` 실연결 통과 보고서·백업/충돌 결과 |
+| RB-2 | **실 AI 성공/실패 매트릭스 미완료** — 증인·검사/변호사 opening/exchange/closing·기사·판결문 | 테스트 계정의 Worker 실제 요청, 의미변경/타임아웃/429/네트워크 오류 각각의 원본 유지, 저장/재열기, 사용량 로그 |
+| RB-3 | **NPC 다중 사건 실제 플레이 미완료** — 과거 판결/관계 기억, 재등장, 사건/인물 상태 시점 고정, 후속 판결과 생애 이력 | 격리 계정으로 2개 이상의 연결 사건 실제 화면 완주 + 저장·복원 후 NPC ID, 나이, 사망/수감/출소·직업 이력 비교 |
+| RB-4 | **뉴스→수사→배당→선고 실제 플레이 미완료** | 시점별 기사와 `pendingCases`·배당·판결의 동일 case ID/NPC ID, 비공개/중복·연대기 제약의 실 E2E 증빙 |
+| RB-5 | **최신 `develop` HEAD CI 결과 미확인** — `0eb6254` CI는 성공으로 확정, 이후 문서 커밋 `bc2c47c` 결과는 조회 불완전 | 최신 HEAD SHA에 직접 연결된 Actions run ID/job conclusion/log URL 확인; 문서만 변경된 경우에도 그 범위를 명시 |
+
+**수정 작업:** 이 QA 문서만 `develop`에 갱신. 신규 기능, 앱·DB·Worker 코드 변경 및 `main` 배포 없음.
+
+**P4 게이트 재판정: NO-GO (보류).** 기존 재판 엔진·브라우저 자동 회귀는 `0eb6254` CI 기준 성공을 확인했다. 하지만 핵심 P0~P3 **실 서버/계정·AI 실패복구·NPC/뉴스 다중 사건 E2E 증거**가 부족하다. 실패가 재현된 것으로 표현하지 않으며, 해당 실검증 완료 후에만 재판정한다.
+
+---
+
+
 - 검수일: 2026-11-04 (KST)
 - 대상: `gambitblues/the-verdict`, `develop` HEAD `0eb6254a2d6464841196c666ce0d5eaebbbfca9a` (검수 시점)
 - 범위: 기존 재판·AI 출력/원본 복구·NPC 생애·뉴스/사건 연결·2계정 세이브·40년·화면·CI
