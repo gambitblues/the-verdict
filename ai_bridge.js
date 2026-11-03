@@ -69,22 +69,6 @@ async function closing(c,t,openingA,openingB){
  save();redraw();
 }
 
-/* P1 bench note: invoked only by the judge's button, never by tab navigation. */
-const benchBusy=new Set();
-async function bench(c,t,source){
- if(!on()||!c?.id||!source)return false;
- const key=c.id+':'+source;
- if(t.aiBench?.source===source)return true;
- if(benchBusy.has(key))return false;
- benchBusy.add(key);
- try{
-  const res=await ask('bench',{source,names:namesOf(c,t)});
-  if(!res?.text)return false;
-  t.aiBench={source,text:res.text};
-  save();redraw();return true;
- }finally{benchBusy.delete(key)}
-}
-
 /* a reporter's article, asked for when the player opens it; kept in S.aiArticles by case, article and phase */
 async function article(a){
  if(!on()||!a?.caseId)return;const key=`${a.caseId}:${a.index}:${a.phase||''}`;
@@ -106,5 +90,5 @@ async function judgment(c,t){
  if(res?.facts){t.final.judgmentAI={...j,facts:res.facts,issues:res.issues,conclusion:res.conclusion};save();redraw()}
 }
 
-window.VerdictAI={npc,article,articleKey,judgment,opening,closing,exchange,bench,get on(){return on()}};
+window.VerdictAI={npc,article,articleKey,judgment,opening,closing,exchange,get on(){return on()}};
 })();
