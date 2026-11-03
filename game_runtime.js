@@ -382,10 +382,11 @@ function newsForIncident(c){
  const criminal=c.kind==='criminal';
  const shortTitle=String(c.name||'사건').split(' · ')[0];
  const place=String(c.name||'').match(/· (.+?) \(/)?.[1]||'지역';
- const headline=criminal?`${place} ${shortTitle} 발생`:`${place} ${shortTitle} 관련 분쟁 발생`;
+ const subject=String(c.tag||'').split('·').at(-1)||'사건';
+ const headline=criminal?`${place} ${subject} 사건 발생, 수사 착수`:`${place} ${subject} 분쟁 발생`;
  const body=criminal
-  ?`${place}에서 ${shortTitle} 관련 신고가 접수됐습니다. 수사기관이 경위를 확인하고 있으며, 관련자의 법적 책임은 확인되지 않았습니다.`
-  :`${place}에서 ${shortTitle} 관련 다툼이 발생했습니다. 양측의 주장은 확인 중이며 법적 책임은 아직 판단되지 않았습니다.`;
+  ?`${place}에서 ${subject} 관련 신고가 접수돼 수사가 시작됐습니다. 정확한 경위와 관련자 책임은 확인 중입니다.`
+  :`${place}에서 ${shortTitle} 관련 다툼이 발생했습니다. 당사자들이 경위를 확인하고 있으며 법적 책임은 아직 판단되지 않았습니다.`;
  news(headline,body,'지역 소식',{caseId:c.id,stage:'incident'});
 }
 function progressPendingCases(){
@@ -394,7 +395,7 @@ function progressPendingCases(){
   const c=pending.case;
   if(!pending.investigated&&S.week>=pending.investigationWeek&&S.week<pending.filingWeek){
    pending.investigated=true;
-   news(`${String(c.name).split(' · ')[0]} 수사 진행`,
+   news(`${String(c.name).split(' · ')[0]} ${c.kind==='criminal'?'수사 진행':'분쟁 경과 확인'}`,
     c.kind==='criminal'?'수사기관이 관련 진술과 자료를 확인하고 있습니다. 혐의나 범행 사실은 아직 법원에서 확정되지 않았습니다.'
     :'당사자들이 사건 경위와 자료를 확인하고 있습니다. 법원의 판단은 아직 이루어지지 않았습니다.',
     '지역 소식',{caseId:c.id,stage:'investigation'});
