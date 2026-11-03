@@ -108,6 +108,30 @@ export function checkOpening(p,out){
  return {ok:true,value:result,compare:[pairs.map(x=>x[0]).join('\n---\n'),pairs.map(x=>x[1]).join('\n---\n')]};
 }
 
+/* P1 bench clerk: rewrite only the disclosed issue-by-issue record. Never suggest a verdict. */
+export function benchPrompt(p){
+ const source=cap(p.source,1300);
+ if(source.length<15)return {error:'missing_text'};
+ return {instructions:`${COMMON}
+현재 할 일: 재판연구원으로서 재판장이 이미 열람한 쟁점 정리만 쉬운 한국어로 다시 써 줍니다.
+- 새 사실, 법률, 사람, 증거, 평가, 결론, 유죄·무죄 추천을 만들지 않습니다.
+- 기존 각 쟁점의 찬반 근거 수와 미확인 과제를 그대로 보존합니다.
+- 원문 순서와 수치를 유지하고, 최대 8문장으로 간결하게 작성합니다.
+- 재판장에게 판결 방향이나 형량을 권하지 않습니다.`,
+ input:source,
+ schema:{name:'bench_note',schema:{type:'object',additionalProperties:false,required:['text'],properties:{text:{type:'string'}}}}};
+}
+export function checkBench(p,out){
+ const src=S(p.source),text=S(out?.text);
+ if(!src||!text)return {ok:false,why:'empty'};
+ if(text.length>src.length*1.7+60||text.length<Math.min(src.length*0.45,24))return {ok:false,why:'length'};
+ if(!sameDates(src,text))return {ok:false,why:'dates'};
+ if(!sameNumbers(src,text))return {ok:false,why:'numbers'};
+ if(sentencesIn(text).length>8)return {ok:false,why:'sentences'};
+ const g=guard(src,text,{names:namesOf(p),keep:0.5});if(g)return {ok:false,why:g};
+ return {ok:true,value:{text},compare:[src,text]};
+}
+
 /* ---------- a reporter's article: title + 2~4 sentences, about 100~200 characters ---------- */
 export function articlePrompt(p){
  const body=cap(p.body,700),title=cap(p.title,80);
