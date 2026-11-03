@@ -15,6 +15,7 @@
  *                                 MODEL_CASE, MODEL_TALK, PRICES, DAILY_CALLS, DAILY_USD
  */
 import TerraCloud from './terra_cloud_staging.cjs';
+import {publicCaseSheet} from './public_case_projection.js';
 import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,exchangePrompt,checkExchange,verifyPrompt} from './prompts.js';
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8',...headers}});
@@ -165,6 +166,23 @@ export async function handle(req,env,fetcher=fetch){
   if(!Array.isArray(rows))return json({error:'docket_unavailable'},503,head);
   // Never return case_stock.sheet, verification, world_secrets, or hidden truth.
   return json(accept?{ok:true,assignment:rows[0]||null}:{ok:true,offers:rows},200,head);
+ }
+
+ // P4-5: project the assigned case's PUBLIC courtroom material, never the sealed sheet.
+ if(url.pathname==='/world/case'&&req.method==='GET'){
+  const id=url.searchParams.get('caseId')||'';
+  if(!/^[a-z][a-z0-9-]{3,79}$/.test(id))return json({error:'bad_case_id'},400,head);
+  const endpoint=`${env.SUPABASE_URL}/rest/v1/case_stock?select=case_id,assigned_to,state,sheet&case_id=eq.${encodeURIComponent(id)}&limit=1`;
+  let response;
+  try{response=await fetcher(endpoint,{headers:svc(env)})}
+  catch{return json({error:'case_unavailable'},503,head)}
+  if(!response.ok)return json({error:'case_unavailable'},503,head);
+  let rows;try{rows=await response.json()}catch{return json({error:'case_unavailable'},503,head)}
+  const row=Array.isArray(rows)?rows[0]:null;
+  // Return identical not-found responses for unknown cases and other judge's cases.
+  if(!row||row.state!=='assigned'||row.assigned_to!==uid)return json({error:'case_not_found'},404,head);
+  try{return json({ok:true,case:publicCaseSheet(row.sheet,id)},200,head)}
+  catch{return json({error:'case_unavailable'},503,head)}
  }
 
  // Read-only health check for the existing invited judges. Never returns
