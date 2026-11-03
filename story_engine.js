@@ -63,7 +63,7 @@ const StoryEngine = (()=>{
   const criminal=bp.kind==='criminal',title=bp.titles[index],base=bp.premises[index];
   const value=pick([350,900,1800,2800,5200,8400,12000,26000,53000],r),
    trigger=bp.packOrigin?.trigger||pick(TRIGGERS[bp.key]||TRIGGERS.contract,r), pattern=bp.packOrigin?.incident?.action||pick(PATTERNS,r), motive=bp.packOrigin?.motive||pick(MOTIVES,r);
-  const prev=oldCriminal&&r()<.20?oldCriminal:null;
+  const prev=criminal&&oldCriminal||null; // chosen once by the world; do not silently discard the repeat actor
   // A real earlier life event may bring the SAME person back in an unrelated civil dispute.
   // The incident and its truth are still generated independently of that person's history.
   const a=prev?.who?.[0]||(!criminal&&lifeActorId&&people[lifeActorId]?lifeActorId:null)||makeNPC(criminal?'피고인':'원고');
