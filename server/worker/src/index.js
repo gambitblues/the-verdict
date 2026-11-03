@@ -256,17 +256,18 @@ export async function handle(req,env,fetcher=fetch){
     const rows=await r.json();if(!Array.isArray(rows))throw Error('unavailable');
     return rows;
    };
-   const [cases,hearings,clocks]=await Promise.all([
+   const [cases,hearings,clocks,judgments]=await Promise.all([
     query(`case_stock?select=assigned_to,state&case_id=eq.${encodeURIComponent(id)}&limit=1`),
     query(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encodeURIComponent(id)}&judge_id=eq.${encodeURIComponent(uid)}&state=eq.completed&order=hearing_index.desc&limit=1`),
-    query('shared_world_clock?select=game_day&id=eq.main&limit=1')
+    query('shared_world_clock?select=game_day&id=eq.main&limit=1'),
+    query(`shared_case_judgments?select=case_id&case_id=eq.${encodeURIComponent(id)}&limit=1`)
    ]);
    if(cases[0]?.assigned_to!==uid||cases[0]?.state!=='assigned')
     return json({error:'case_not_found'},404,head);
    const day=clocks[0]?.game_day,hearing=hearings[0]||null;
    return json({ok:true,caseId:id,worldDay:day,
-     hearingIndex:hearing&&hearing.completed_game_day===day?hearing.hearing_index:null,
-     canAct:!!hearing&&hearing.completed_game_day===day},200,head);
+     hearingIndex:hearing&&hearing.completed_game_day===day&&!judgments.length?hearing.hearing_index:null,
+     canAct:!!hearing&&hearing.completed_game_day===day&&!judgments.length},200,head);
   }catch{return json({error:'court_unavailable'},503,head)}
  }
 
