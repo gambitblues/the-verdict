@@ -14,7 +14,7 @@
  * Vars (wrangler.toml):           SUPABASE_URL, SUPABASE_ANON_KEY, ALLOWED_ORIGINS, ALLOWED_EMAILS,
  *                                 MODEL_CASE, MODEL_TALK, PRICES, DAILY_CALLS, DAILY_USD
  */
-import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,verifyPrompt} from './prompts.js';
+import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,verifyPrompt} from './prompts.js';
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8',...headers}});
 
@@ -92,7 +92,8 @@ const KINDS={
  article:{model:env=>env.MODEL_TALK,build:articlePrompt,check:checkArticle,maxTokens:700},
  judgment:{model:env=>env.MODEL_TALK,build:judgmentPrompt,check:checkJudgment,maxTokens:2600},
  opening:{model:env=>env.MODEL_TALK,build:openingPrompt,check:checkOpening,maxTokens:700},
- bench:{model:env=>env.MODEL_TALK,build:benchPrompt,check:checkBench,maxTokens:550}
+ bench:{model:env=>env.MODEL_TALK,build:benchPrompt,check:checkBench,maxTokens:550},
+ closing:{model:env=>env.MODEL_TALK,build:closingPrompt,check:checkClosing,maxTokens:700}
 };
 
 export async function handle(req,env,fetcher=fetch){
@@ -113,7 +114,7 @@ export async function handle(req,env,fetcher=fetch){
  if(url.pathname==='/ai/usage'&&req.method==='GET'){
   const u=await usageToday(env,uid,fetcher);return json({today:u,limits:{calls:Number(env.DAILY_CALLS||300),usd:Number(env.DAILY_USD||1)}},200,head);
  }
- const kind=(url.pathname.match(/^\/ai\/(npc|article|judgment|opening|bench)$/)||[])[1];
+ const kind=(url.pathname.match(/^\/ai\/(npc|article|judgment|opening|bench|closing)$/)||[])[1];
  if(!kind||req.method!=='POST')return json({error:'not_found'},404,head);
 
  let payload;try{payload=await req.json()}catch{return json({error:'bad_json'},400,head)}
