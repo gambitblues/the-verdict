@@ -628,6 +628,7 @@ body.t4-court #toast{bottom:168px}
 .t4-oppcard{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:12px 0 4px;padding:9px 11px;border:1px solid #e5ddcf;border-radius:10px;background:#fff;font-size:13px}
 .t4-oppcard>span{font-size:11.5px;color:#7b715f;font-weight:700}.t4-oppcard small{flex:1 1 100%;color:#6b6458}
 .t4-oppcard .t4-said{flex:1 1 100%;margin:7px 0 0;border-left:3px solid #b88d58;background:#faf7f0;padding:10px 12px;line-height:1.65}
+.t4-counsel-reply{margin:8px 0 2px;padding:8px 11px;border-left:2px solid #baaa90;background:#f8f6f1;border-radius:0 8px 8px 0;color:#554f44;font-size:12.5px;line-height:1.55}.t4-counsel-reply b{font-weight:650;margin-right:5px}
 .t4-help{margin:6px 0 12px}
 .pm-select{display:block;width:100%;margin:0 0 10px;padding:10px 12px;border:1px solid #d9cdb8;border-radius:10px;background:#fffdf8;font:inherit;font-size:14px;color:#1d2b3a}
 .sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
