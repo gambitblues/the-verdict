@@ -47,12 +47,12 @@ async function stockCounts(env,fetcher){
  if(!Array.isArray(rows)||rows.length>=1000)throw Error('private stock scan incomplete');
  return rows.filter(x=>x.state==='stock').reduce((a,x)=>{a[x.category]=(a[x.category]||0)+1;return a},{});
 }
-async function runCloudStaging(env,{fetcher=fetch,now=()=>new Date(),random=()=>crypto.randomUUID()}={}){
+async function runCloudStaging(env,{fetcher=fetch,now=()=>new Date(),random=()=>crypto.randomUUID(),generateCase=generate}={}){
  const p=policy(env);
  if(!p)return {stage:'disabled',created:0};
  const runId='refill-'+random().replace(/[^a-z0-9-]/gi,'').toLowerCase().slice(0,40);
  const token=random()+random();
- let lease=false,charged=false,booking=null;
+ let lease=false,booking=null,closed=true;
  try{
   lease=await rpc(env,fetcher,'refill_lease_claim',{p_run:runId,p_token:token,p_seconds:1800});
   if(!lease)return {stage:'busy',created:0};
@@ -68,7 +68,7 @@ async function runCloudStaging(env,{fetcher=fetch,now=()=>new Date(),random=()=>
   booking=await rpc(env,fetcher,'refill_budget_reserve',{p_run:runId,p_token:token,
    p_category:category,p_usd:p.reserveUsd,p_calls:4,p_max_day_usd:p.maxUsd,p_max_day_calls:p.maxCalls});
   if(booking===null)return {stage:'budget-exhausted',created:0};
-  const result=await generate({id,category,premise:THEMES[category]+
+  const result=await generateCase({id,category,premise:THEMES[category]+
    ' — 증거 및 목격자의 관찰 범위를 구분하고 완전히 독립적인 가상 사실관계를 작성한다.'},{
    fetcher,apiKey:env.OPENAI_API_KEY,model:p.model});
   if(!result.ok||!result.candidate||!result.worldSheet)return {stage:'quarantine',created:0};
@@ -83,7 +83,7 @@ async function runCloudStaging(env,{fetcher=fetch,now=()=>new Date(),random=()=>
  }finally{
   if(booking!==null&&booking!==undefined&&lease){
    try{await rpc(env,fetcher,'refill_budget_close',{p_id:booking,p_run:runId,p_token:token,
-    p_actual_usd:p.reserveUsd,p_actual_calls:4});charged=true}catch{}
+    p_actual_usd:p.reserveUsd,p_actual_calls:4})}catch{closed=false}
   }
   if(lease){try{await rpc(env,fetcher,'refill_lease_release',{p_run:runId,p_token:token})}catch{}}
  }
