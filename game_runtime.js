@@ -282,6 +282,9 @@ function createGeneratedCase(selectedCandidate=null,planning=null){
  c.continuityAudit=continuity;
  if(!continuity.pass){S.caseSerial--;throw new Error(`사건 연속성 검증 실패: ${continuity.errors.join(', ')}`)};
  if(!c.qa.pass){S.caseSerial--;throw new Error(`사건 스토리 검증 실패: ${c.qa.errors.join(', ')}`)}
+ if(recidivist&&c.who?.[0]===recidivist.who?.[0]){
+  c.repeatDefendant={personId:c.who[0],priorCaseId:recidivist.id,priorCaseName:String(recidivist.name||recidivist.id).split(' · ')[0],priorClosedWeek:S.cases[recidivist.id]?.closedWeek};
+ }
  if(lifeSeed&&c.who?.[0]===lifeSeed.id)lifeSeed.consumed=true; // consume only after continuity & story QA pass
  // P3: freeze a complete case and its NPCs now, but do not assign it to the judge
  // until the filing week. Neither trial controls nor private proof appear in news.
@@ -301,7 +304,7 @@ function createGeneratedCase(selectedCandidate=null,planning=null){
  for(const id of c.who)remember(id,'새로운 사건',`${caseId} · ${c.name} 사건 당사자로 등장`,caseId);
  if(c.story.investigator)remember(c.story.investigator.detective,'수사 업무',`${caseId} 사건 수사자료 확보`,caseId);
  if(recidivist&&c.who?.[0]===recidivist.who?.[0]){
-  c.repeatDefendant={personId:c.who[0],priorCaseId:recidivist.id,priorCaseName:String(recidivist.name||recidivist.id).split(' · ')[0],priorClosedWeek:S.cases[recidivist.id]?.closedWeek};
+  
   remember(c.who[0],'다시 기소됨',`과거 ${recidivist.id} 판결 이후 별개 사건 ${caseId}에 새로 기소됨. 이번 사건의 유무죄는 증거로 독립 판단.`,caseId);
  }
  if(prior)remember(c.who[0],'참조할 과거 판결',`${prior.id}의 법적 쟁점을 참조하되 구속력·차이점 검토 필요`,caseId);
