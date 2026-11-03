@@ -25,7 +25,7 @@ export const sentencesIn=t=>S(t).split(/(?<=[.!?。])\s+/).filter(x=>x.length>1)
  * people: every listed name the source mentions must stay, and no listed name may appear that the source did not have.
  * polarity: a sentence that denied something must still deny it, and the other way round (않/안/못/없/아니/모르…).
  * content: most of the source's own words (2+ syllables, endings stripped) must still be there. */
-const NEG=/않|안 |안했|못|없|아니|모르|모릅|아뇨|부인/;
+/* Legal shorthand like '불성립' or '무죄' is a negative position too.\n * Keep this conservative: ambiguous rewrites still go through the separate meaning check. */\nconst NEG=/않|안 |안했|못|없|아니|모르|모릅|아뇨|부인|불성립|성립하지|해당하지|무죄|부정한다|부정했다|인정되지/;
 export const negated=t=>NEG.test(' '+S(t)+' ');
 const stem=w=>w.replace(/(으로|에게|에서|까지|부터|처럼|이라고|라고|이라는|라는|이에요|예요|입니다|습니다|했어요|어요|아요|해요|와|과|가|이|를|을|은|는|의|에|로|도|만|요|다)$/,'');
 export const words=t=>[...new Set((S(t).match(/[가-힣A-Za-z0-9]{2,}/g)||[]).map(stem).filter(w=>w.length>=2))];
@@ -83,7 +83,7 @@ export function openingPrompt(p){
  if(!a||!b)return {error:'missing_text'};
  return {instructions:`${COMMON}
 지금 할 일: 재판 첫 기일에 나온 양측 입장 두 개를 실제 법정에서 듣기 편한 한국어로 다듬습니다.
-- 첫 번째와 두 번째의 입장, 사람, 숫자, 금액, 시각, 확신 정도를 각각 그대로 유지합니다.
+- 첫 번째와 두 번째의 입장, 사람, 숫자, 금액, 시각, 확신 정도를 각각 그대로 유지합니다.\n- 성립·불성립, 인정·불인정 등 법률적 입장을 바꾸지 않습니다. 특히 '불성립'을 '성립하지 않는다'로 바꾸는 것은 같은 뜻이며 반대가 아닙니다.
 - 상대방의 주장이나 근거를 한쪽 발언에 옮기지 않습니다.
 - 원문에 없는 사실, 법령, 증거를 추가하지 않습니다.
 - 각 발언은 최대 3문장, 원래 주장보다 지나치게 길지 않게 작성합니다.`,
