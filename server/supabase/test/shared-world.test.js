@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -34,7 +34,7 @@ async function as(role,uid,sql,params=[]){
 const svc=(sql,p)=>as('service_role',null,sql,p),pa=(sql,p)=>as('authenticated',A,sql,p),pb=(sql,p)=>as('authenticated',B,sql,p),anon=(sql,p)=>as('anon',null,sql,p);
 const append=(key,owner=A,datum={title:'공개 사건'})=>
  svc('select public.shared_world_append($1,$2,$3,$4,$5::jsonb,$6::uuid) as id',
- [key,'case-p4','judgment_published',123,JSON.stringify(datum),owner]);
+ [key,'case-p4','hearing_opened',0,JSON.stringify(datum),owner]);
 
 test('service-only append, both invited players see same event, anonymous never sees it',async()=>{
  const id=(await append('p4-judgment-00001')).rows[0].id;
@@ -43,7 +43,7 @@ test('service-only append, both invited players see same event, anonymous never 
  assert.equal((await pb('select event_key from public.shared_world_events')).rows[0].event_key,'p4-judgment-00001');
  await assert.rejects(anon('select * from public.shared_world_events'),/permission denied/);
  await assert.rejects(pa('select public.shared_world_append($1,$2,$3,$4,$5::jsonb,$6::uuid)',
-  ['hack-event','case-p4','judgment_published',123,'{}',A]),/permission denied/);
+  ['hack-event','case-p4','hearing_opened',0,'{}',A]),/permission denied/);
  await assert.rejects(pa(`insert into public.shared_world_events(event_key,event_type,game_day)
  values('hack-event','npc_public_update',3)`),/permission denied/);
 });
@@ -84,8 +84,8 @@ test('P4 objective NPC: both judges see one biography, death irreversible, memor
  await assert.rejects(pa(`update public.shared_npc_public set life_status='dead'`),/permission denied/);
  await assert.rejects(put('npc:test-001',{name:'변조'},'alive',4,0),/npc_version_conflict/);
  await assert.rejects(put('npc:new-123',{truth:'secret'},'alive',4,0),/invalid_npc_public/);
- assert.equal(Number((await put('npc:test-001',{name:'김가람',profession:'은퇴'},'dead',100,1)).rows[0].version),2);
- await assert.rejects(put('npc:test-001',{name:'김가람'},'alive',101,2),/npc_temporal_conflict/);
+ assert.equal(Number((await put('npc:test-001',{name:'김가람',profession:'은퇴'},'dead',3,1)).rows[0].version),2);
+ await assert.rejects(put('npc:test-001',{name:'김가람'},'alive',3,2),/npc_temporal_conflict/);
 });
 
 test('P4 global case stock: a case cannot be assigned twice to different judges',async()=>{
@@ -253,4 +253,15 @@ test('P4 first login with pending old hearing gets grace even without progress r
  assert.deepEqual(after,{due_game_day:14,state:'scheduled'});
  assert.equal((await pb('select count(*)::int as n from public.shared_judge_hearings where judge_id=$1',[A])).rows[0].n,0,
   'B cannot inspect the other judge court schedule');
+});
+
+test('P4 world date is authoritative for news, NPC life and post-judgment hearings',async()=>{
+ const current=(await svc('select game_day from public.shared_world_clock')).rows[0].game_day;
+ const add=(key,id,type,day,judge)=>svc('select public.shared_world_append($1,$2,$3,$4,$5::jsonb,$6::uuid)',
+  [key,id,type,day,JSON.stringify({title:'사건 기록'}),judge]);
+ await assert.rejects(add('future-news-001','case-new-a','incident_reported',current+1,A),/future_world_event/);
+ await assert.rejects(add('faked-verdict-001','case-new-a','judgment_published',current,A),/unverified_judgment_event/);
+ await assert.rejects(add('after-judgment-hearing','case-opt-a','hearing_opened',current,A),/hearing_after_judgment/);
+ await assert.rejects(svc('select public.shared_npc_public_put($1,$2::jsonb,$3,$4,$5)',
+  ['npc:future-001',JSON.stringify({name:'미래 인물'}),'alive',current+1,0]),/future_npc_public_update/);
 });
