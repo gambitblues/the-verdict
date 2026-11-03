@@ -33,7 +33,7 @@ const fetchLocal=url=>{const f=path.join(root,url.replace(/^\.\//,''));let n=0;r
  const m=JSON.parse(fs.readFileSync(path.join(root,'case-data','manifest.json'),'utf8')).files;
  for(const f of fs.readdirSync(path.join(root,'case-data')).filter(f=>f!=='manifest.json'))assert.ok(m.includes(f),f+' missing from case-data/manifest.json (offline)');
  for(const f of m)assert.ok(fs.existsSync(path.join(root,'case-data',f)),f+' is listed for offline but does not exist (one missing file makes the worker cache nothing)');
- const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8'),html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+ const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8'),html=fs.readFileSync(path.join(root,'index.html'),'utf8')+fs.readFileSync(path.join(root,'auth_gate.js'),'utf8');   // v8.7: the game file list lives in auth_gate.js
  assert.ok(/curated_index\.js/.test(html)&&!/curated_cases\.js/.test(html),'the game loads the index, not the full file');
  assert.ok(/case-data\/manifest\.json/.test(sw),'the service worker keeps case data for offline play');
  console.log(`PASS case data on demand · start ${Math.round(start/1024)}KB (was ${Math.round(fullSize/1024)}KB) · ${Object.keys(V.cases).length} cases · ${fetched} files fetched once`);

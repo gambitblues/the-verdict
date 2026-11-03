@@ -674,7 +674,10 @@ function askQuestion(c,t,i,qid){
 }
 /* What just happened at the witness stand, so the screen can tell an ordinary answer from a changed story, a clash
  * between witnesses, a witness giving way to evidence or a face-off. Saved per witness as a short list (`moments`). */
-const heardText=(c,t,h)=>{if(!h)return '';if(h.text)return h.text;const q=qById(c,t,h.w,h.q);return q?answerOf(c,t,h.w,q).text:''};
+/* v8.7: the words shown for an answer — the AI wording when it came back (t.ai), otherwise the engine's own */
+const shownAnswer=(c,t,i,q)=>t.ai?.[i+':'+q.id]||answerOf(c,t,i,q).text;
+const aiAsk=(c,t,i,qid)=>{const q=qById(c,t,i,qid);if(q)window.VerdictAI?.npc(c,t,{w:i,q:qid,question:tell(c,t,q.q),answer:answerOf(c,t,i,q).text})};
+const heardText=(c,t,h)=>{if(!h)return '';if(h.text)return h.text;const q=qById(c,t,h.w,h.q);return q?shownAnswer(c,t,h.w,q):''};
 function momentOf(c,t,kind,id,pre){
  const fresh=t.heard.slice(pre.n),h=fresh[fresh.length-1];let moment=null,wi=null,note='';
  if(kind==='ask'&&h){wi=h.w;const w=t.witnesses[wi];
@@ -750,7 +753,7 @@ function act(kind,id,choice){
   const qOk=questionsOf(c,t,wi).some(v=>v.id===choice&&!(t.witnesses[wi]?.askedIds||[]).includes(v.id));
   if(live&&qOk&&liveWhen(live)==='before'){   // the other side objects to the question before the witness answers
    live.w=wi;live.q=choice;live.fired=true;addLog(t,'이의',`${cardText(live,t,c).title} — 질문 직후`);save();render();askRequests(true);return}
-  say=askQuestion(c,t,wi,choice);if(!say)return;
+  say=askQuestion(c,t,wi,choice);if(!say)return;aiAsk(c,t,wi,choice);
   if(live&&liveWhen(live)==='after'){live.w=wi;live.q=choice;live.fired=true;   // raised once the answer is out (hearsay) or on the follow-up (leading)
    save();const m=momentOf(c,t,kind,id,pre);window.VerdictVisuals?.record(c.id,kind,say+(m.note||''),m.actor,m.moment);toast(say);render();askRequests(true);return}
  }else if(kind==='confront'){say=confront(c,t,Number(id),choice);if(!say)return;
@@ -773,7 +776,7 @@ function act(kind,id,choice){
    const plain=card.otype==='relevance'||(card.otype==='lead'&&!card.valid),w=t.witnesses[card.w];
    if(card.live&&plain){   // ruled on before the answer: sustained = the question is withdrawn; overruled = the witness answers now
     if(choice==='accept'){if(card.q&&w){w.blocked??=[];if(!w.blocked.includes(card.q))w.blocked.push(card.q)}say=`✋ 이의를 받아들였어요 · 질문을 거뒀고 증인 ${wn}은 답하지 않았어요`}
-    else{say=t.qLeft>0?askQuestion(c,t,card.w,card.q):'';if(!say)say='✋ 이의를 받아들이지 않았어요 · 오늘 신문 시간이 끝나 다음 기일에 물을 수 있어요';}
+    else{say=t.qLeft>0?askQuestion(c,t,card.w,card.q):'';if(say)aiAsk(c,t,card.w,card.q);if(!say)say='✋ 이의를 받아들이지 않았어요 · 오늘 신문 시간이 끝나 다음 기일에 물을 수 있어요';}
     addLog(t,'이의',`${xt.title}: ${choice==='accept'?'받아들임':'받아들이지 않음'}`);
     save();if(say){const m=momentOf(c,t,choice==='reject'?'ask':'card',choice==='reject'?String(card.w):id,pre);window.VerdictVisuals?.record(c.id,choice==='reject'?'ask':'card',say+(m.note||''),m.actor,m.moment);toast(say)}
     if(t.cards.some(pend))return askRequests(true);ui.modal=null;render();return askNotices(false)}
@@ -1002,8 +1005,8 @@ function citables(c,t){
  t.heard.forEach((h,i)=>{if(h.struck||h.silent)return;
   if(h.tainted){out.push({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label} (이의가 있었던 말)`,text:h.said||'',side:h.side==='m'?'n':h.side||'p',issue:h.issue,weak:true,kind:'testimony',name:wName(t,h.w)});return}
   if(h.text){out.push({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label||'증언'}`,text:h.text,side:h.side==='m'?'n':h.side,issue:h.issue,kind:'testimony',name:wName(t,h.w)});return}
-  const q=qById(c,t,h.w,h.q);if(!q)return;const a=answerOf(c,t,h.w,q);
-  out.push({key:'h:'+i,label:`${wName(t,h.w)}의 증언`,text:a.text,side:h.side==='m'?'n':h.side,issue:h.issue,kind:'testimony',name:wName(t,h.w)})});
+  const q=qById(c,t,h.w,h.q);if(!q)return;
+  out.push({key:'h:'+i,label:`${wName(t,h.w)}의 증언`,text:shownAnswer(c,t,h.w,q),side:h.side==='m'?'n':h.side,issue:h.issue,kind:'testimony',name:wName(t,h.w)})});
  return out;
 }
 function addonOrders(c,v){
@@ -1099,7 +1102,7 @@ function finish(c,st,t,opt,dir,res,judgment,sentText){
  if(!st.verdict){toast('선고를 기록하지 못했습니다. 다시 시도해 주세요.');console.warn('v5 verdict blocked',c.id);return}
  st.grade=res.score;ui.t4v=null;
  for(const x of afterLines(c,st))if(x.id&&typeof remember==='function')remember(x.id,'판결 뒤 삶',x.text,c.id);
- after(c,st,t,opt,dir,res,{judgment,sentence:sentText});
+ after(c,st,t,opt,dir,res,{judgment,sentence:sentText});window.VerdictAI?.judgment(c,t);
 }
 /* The written judgment: what happened, what it rests on, each issue, and the sentence. Only cited material is quoted. */
 function writeJudgment(c,t,opt,dir,cites,sp,sent,fs){
@@ -1261,7 +1264,7 @@ function condBox(c,t,e,locked){
 }
 function witnessCard(w,t,locked,c){
  const i=t.witnesses.indexOf(w),p=NPC[w.id],qs=questionsOf(c,t,i),asked=w.askedIds||[],blocked=w.blocked||[];
- const heard=asked.map(id=>{const q=qById(c,t,i,id);if(!q)return '';const a=answerOf(c,t,i,q);
+ const heard=asked.map(id=>{const q=qById(c,t,i,id);if(!q)return '';const a={text:shownAnswer(c,t,i,q)};
   const back=t.heard.find(h=>h.w===i&&h.q===id)?.struck;
   return `<div class="t4-qa ${back?'struck':''}"><p class="q">문. ${esc(tell(c,t,q.q))}</p><p class="a">답. "${esc(a.text)}"</p>${back?'<small>⤺ 나중에 거둬들인 말</small>':''}</div>`}).join('');
  const left=qs.filter(q=>!asked.includes(q.id)&&!blocked.includes(q.id));
@@ -1298,7 +1301,7 @@ function issueFacts(c,t,is){
  for(const h of t.heard){if(h.issue!==is.id||h.struck||h.tainted)continue;
   if(h.text){const ev=shownTitle(t,h);items.push({kind:h.w==='party'?'진술':'증언',side:h.side||'n',who:wName(t,h.w),w:h.w,text:`"${h.text}"`,note:[h.label,ev?`${ev} 제시 뒤`:''].filter(Boolean).join(' · '),day:h.day});continue}
   const q=qById(c,t,h.w,h.q);if(!q)continue;
-  items.push({kind:'증언',side:h.side||'n',who:wName(t,h.w),w:h.w,text:`"${answerOf(c,t,h.w,q).text}"`,day:h.day})}
+  items.push({kind:'증언',side:h.side||'n',who:wName(t,h.w),w:h.w,text:`"${shownAnswer(c,t,h.w,q)}"`,day:h.day})}
  return items;
 }
 function issueStatus(c,t,is){
@@ -1514,7 +1517,7 @@ function resultPanel(c,st){
  return `<section class="panel t4"><h3>📰 선고 이후</h3>
  <div class="t4-stats"><span>판결 실력 <b>${f.skill}</b></span><span>여론과 맞은 정도 <b>${f.match}</b></span><span>판결 리뷰 <b>${reviewed?f.review:'공개 전'}</b></span></div>
  ${reviewed?`<p class="small">${f.evaluators.map(e=>`${esc(e.name)} ${e.score}점`).join(' · ')}</p>`:`<p class="muted small">판결 리뷰는 ${Math.max(1,Math.ceil((f.reviewAt-now())/HOUR))}시간 뒤 공개됩니다.</p>`}
- ${window.VerdictV6?.truthPanel?.(c,t)||''}${judgmentView(f.judgment)}${lifeAfter(st,c)}
+ ${window.VerdictV6?.truthPanel?.(c,t)||''}${judgmentView(f.judgmentAI||f.judgment)}${lifeAfter(st,c)}
  <!-- itemised self-check kept in the save (f.items) and in the score only; not shown (v6.9) -->
  ${dk?`<h4>📋 판결 요약</h4><div class="t4-summary">${dk.summary.map(l=>`<div>${esc(l)}</div>`).join('')}</div>
  <article class="t4-article"><small>${esc(dk.column.outlet)} · ${esc(dk.column.desk)} · ${esc(dk.column.writer)}</small><h4>${esc(dk.column.title)}</h4><p>${esc(dk.column.body)}</p></article>

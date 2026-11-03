@@ -1,0 +1,24 @@
+# THE VERDICT API — deploy with `npx wrangler deploy` from server/worker (develop only; nothing here ships to GitHub Pages)
+name = "the-verdict-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Supabase project "THE VERDICT" (Seoul). The anon key is public by design; the service role key is a secret.
+SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
+SUPABASE_ANON_KEY = "YOUR-ANON-KEY"
+# pages allowed to call this API (comma separated). localhost is always allowed for testing.
+ALLOWED_ORIGINS = "https://gambitblues.github.io"
+# the two invited players (must match Supabase Auth users)
+ALLOWED_EMAILS = "player1@example.com,player2@example.com"
+MODEL_CASE = "gpt-6.1-terra"
+MODEL_TALK = "gpt-6-luna"
+# USD per 1M tokens — check against OpenAI's price page and edit here; cost logging follows this table
+PRICES = '{"gpt-6.1-terra":{"in":1.0,"out":5.0},"gpt-6-luna":{"in":0.10,"out":0.50}}'
+# per player per day (KST)
+DAILY_CALLS = "300"
+DAILY_USD = "1.00"
+
+# secrets (not in this file):
+#   npx wrangler secret put OPENAI_API_KEY            (already set)
+#   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY

@@ -220,15 +220,16 @@ function articles(){
   for(const iv of t?.final?.interviews||[])out.push({caseId:c.id,outlet:iv.outlet,title:iv.title,body:iv.body,day:st?.closedWeek||c.week,index:'iv'+out.length,phase:'after',tone:iv.tone==='논란'?'blame':'praise',frame:'인터뷰 · ',lean:''});
   if(!TP.curOf(c))continue;
   const [rp,rd]=reporterPair(c);
-  for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r);
-   out.push({caseId:c.id,outlet:r.outlet,title:a.title,body:a.body,day:st?.closedWeek||c.week,index:idx,phase:a.phase,tone:a.tone||null,frame:(a.phase==='after'?(a.tone==='praise'?'판결 호평 · ':a.tone==='blame'?'판결 비판 · ':'판결 평가 · '):'재판 전망 · ')+(lean==='p'?(crim?'검찰 측 시각':'원고 측 시각'):(crim?'변호인 측 시각':'피고 측 시각')),reporter:r,lean})}
+  for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r),ai=S.aiArticles?.[`${c.id}:${idx}:${a.phase||''}`];   // v8.7: AI wording once it came back
+   out.push({caseId:c.id,outlet:r.outlet,title:ai?.title||a.title,body:ai?.body||a.body,base:{title:a.title,body:a.body},day:st?.closedWeek||c.week,index:idx,phase:a.phase,tone:a.tone||null,frame:(a.phase==='after'?(a.tone==='praise'?'판결 호평 · ':a.tone==='blame'?'판결 비판 · ':'판결 평가 · '):'재판 전망 · ')+(lean==='p'?(crim?'검찰 측 시각':'원고 측 시각'):(crim?'변호인 측 시각':'피고 측 시각')),reporter:r,lean})}
  }
  return out;
 }
 /* ---------- news with comments ---------- */
 /* articles open from their headline; which ones the reader opened is remembered for this visit only */
 const readOpen=new Set();
-document.addEventListener('toggle',e=>{const d=e.target;if(!d?.matches?.('details.wf-art'))return;d.open?readOpen.add(d.dataset.art):readOpen.delete(d.dataset.art)},true);
+document.addEventListener('toggle',e=>{const d=e.target;if(!d?.matches?.('details.wf-art'))return;d.open?readOpen.add(d.dataset.art):readOpen.delete(d.dataset.art);
+ if(d.open&&window.VerdictAI?.on){const [cid,key]=d.dataset.art.split(':art'),a=articles().find(x=>x.caseId===cid&&String(x.index)===key);if(a)window.VerdictAI.article(a)}},true);
 function newsFeed(limit=40){
  const list=articles().slice(0,limit);
  if(!list.length)return '<p class="muted">내가 맡은 사건이 생기면 재판 전 전망 기사부터 실려요.</p>';
