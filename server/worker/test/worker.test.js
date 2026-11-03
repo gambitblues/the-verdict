@@ -315,3 +315,21 @@ test('P4 catch-up is own-only and absent judge resumes without modifying other p
  assert.equal(after.lagDays,0);
  assert.equal((await handle(req('/world/resume',{},''),enabled,f)).status,401);
 });
+
+test('P4 first reconnect without progress row still detects overdue private hearing',async()=>{
+ const envOn={...env,P4_SHARED_DOCKET_ENABLED:'1'};
+ const ok=v=>new Response(JSON.stringify(v),{status:200,headers:{'content-type':'application/json'}});
+ const f=async(url)=>{
+  const u=String(url);
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/rest/v1/shared_world_clock'))return ok([{game_day:14,version:2}]);
+  if(u.includes('/rest/v1/shared_judge_progress'))return ok([]);
+  if(u.includes('/rest/v1/shared_judge_hearings'))return ok([{case_id:'case-p4',hearing_index:1,due_game_day:4,state:'scheduled'}]);
+  throw Error('unexpected '+u);
+ };
+ const d=await (await handle(req('/world/catchup'),envOn,f)).json();
+ assert.equal(d.ok,true);
+ assert.equal(d.previousDay,4);
+ assert.equal(d.lagDays,10);
+});
