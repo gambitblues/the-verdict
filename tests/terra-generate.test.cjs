@@ -4,7 +4,7 @@ const os=require('node:os');
 const path=require('node:path');
 const {safeFolder,produce}=require('./terra-generate.cjs');
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'verdict-cli-test-'));
-try{
+(async()=>{try{
  const dest=safeFolder(root,'terra-test-001');
  assert.equal(dest,path.join(root,'pending','terra-test-001'));
  assert.throws(()=>safeFolder(root,'../test-escape'),/unsafe/);
@@ -19,4 +19,4 @@ try{
  assert.equal(calls,0);
  assert.equal(fs.existsSync(path.join(root,'pending')),false);
  console.log('PASS Terra operator CLI path isolation and invalid-seed preflight');
-}finally{fs.rmSync(root,{recursive:true,force:true})}
+}finally{fs.rmSync(root,{recursive:true,force:true})}})().catch(e=>{console.error(e);process.exitCode=1});
