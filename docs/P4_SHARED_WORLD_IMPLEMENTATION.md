@@ -45,14 +45,25 @@
 - Worker `POST /world/resume`: 본인 판사 ID를 서버 JWT에서 결정하며 타 판사 기일을 건드리지 않는 복귀 RPC
 - `shared_world.js`: 비동기 판사 복귀 상태 표시·복귀 버튼(독립 QA 옵션을 켠 경우만)
 
+## P4 다음 단계: 봉인된 증인신문·증거 제출 명령 (개발 반영)
+
+- `015_shared_court_actions.sql`: 법정 신문 및 증거 제출 명령을 **사건별·액션별 한 번만** 확정 저장하는 불변 법정 원장. 다른 판사는 접근할 수 없고, 실제 서버에서 열린 공판 기일에만 기록 가능하며 판결 후 추가 행위를 거부.
+- `server/worker/src/shared_courtroom.js`: 사건 진실 `did/didnt/reason`을 서버에서만 읽고 해당 분기의 진술·주문 결과를 결정. 기일 전에는 봉인된 답이나 자료를 보내지 않음.
+- Worker `GET /world/court/status`, `GET /world/court/history`, `POST /world/court/action`: 판사 본인 소유권 검증, 서버 공판 기일 확인, 신문·증거 명령 요청 기록 및 재조회. 브라우저가 제출한 `answer`, `branch` 등은 무시하고 서버에서 만든 결과만 사용.
+- `shared_world.js`: 기존 게임 세이브와 독립된 공유 세계 미리보기 안에서 실제 서버가 승인한 공판인 경우에만 신문·주문 버튼을 표시. 본인 법정 기록만 표시.
+- Worker `P4_COURT_ACTIONS_ENABLED="0"`, 클라이언트 `p4CourtActions:false`: 기본 비활성화. 독립 QA 환경에서만 명시적으로 두 설정을 모두 활성화.
+- QA: `server/worker/test/shared-courtroom.test.js` 및 Worker/SQL 회귀 테스트로 분기별 답, 증거 선행조건, 접근 차단, 중복 액션, 기록 수정 금지 확인.
+
+**남은 게임 연동:** 현재 `trial_play.js`의 기존 재판 절차와 공유 서버 액션을 연결하지 않았음. 서버가 승인하는 최초/추가 공판 일정, 후속 자료가 이월되었을 때의 단계별 공개, 판결문 검증 및 선고 확정, AI 답변 후 검증, 개인 NPC 기억 반영을 마쳐야 실제 2인 P4 재판이 완성됨.
+
 ## 적용과 QA
 
 이 단계의 GitHub 코드 변경은 **운영 DB나 Worker에 적용되지 않았습니다**.
 
-1. 독립 QA 프로젝트에서 SQL `001 → 002 → 003 → 006 → 007 → 008 → 009 → 010 → 011 → 012 → 013 → 014` 순서로 적용. P3 Terra 기능이 필요한 QA DB라면 기존 `004 → 005`도 해당 절차에 포함.
+1. 독립 QA 프로젝트에서 SQL `001 → 002 → 003 → 006 → 007 → 008 → 009 → 010 → 011 → 012 → 013 → 014 → 015` 순서로 적용. P3 Terra 기능이 필요한 QA DB라면 기존 `004 → 005`도 해당 절차에 포함.
 2. `cd server/supabase && npm ci && npm test`; `cd server/worker && npm run check`.
-3. 개발 QA Worker 변수 `P4_SHARED_DOCKET_ENABLED="1"`은 데이터/권한/이벤트 검수 환경에서만 사용. **기존 운영 Worker와 wrangler.toml의 예시 값으로 재배포 금지.**
-4. 별도 QA 게임 설정에 `p4SharedWorld:true`, `p4SharedDocket:true`를 지정하고 UI 확인.
+3. 개발 QA Worker 변수 `P4_SHARED_DOCKET_ENABLED="1"`, `P4_COURT_ACTIONS_ENABLED="1"`은 데이터/권한/이벤트 검수 환경에서만 사용. **기존 운영 Worker와 wrangler.toml의 예시 값으로 재배포 금지.**
+4. 별도 QA 게임 설정에 `p4SharedWorld:true`, `p4SharedDocket:true`, `p4CourtActions:true`를 지정하고 UI 확인.
 5. 읽기 전용 실제 두 계정 검사: `SUPABASE_URL=... SUPABASE_ANON_KEY=... VERDICT_API=... node server/live/p4-read-e2e.mjs`. 값은 QA용 공개 설정, 비밀번호는 실행 중 직접 입력. 실계정/운영 데이터 사용 금지.
 6. 쓰기 테스트(배당 수락, 선고, NPC 갱신)는 QA DB의 별도 TEST 데이터에서만. 운영 계정 세이브/전역 사건에 쓰지 않음.
 
