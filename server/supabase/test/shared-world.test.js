@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -205,4 +205,34 @@ test('P4 asynchronous judges: eight hearings by A do not auto-try B; B rejoins w
  assert.equal(twice.lag_days,0);
  await assert.rejects(pa('select * from public.shared_judge_resume($1::uuid)',[A]),/permission denied/);
  await assert.rejects(svc('select public.shared_hearing_schedule($1,$2::uuid,$3,$4)',[ownA,B,2,12]),/hearing_case_not_owned/);
+});
+
+test('P4 calendar: eight hearings on one date count as one shared date, absent B stays pending',async()=>{
+ const dayBefore=(await svc('select game_day,version from public.shared_world_clock')).rows[0];
+ assert.equal(dayBefore.game_day,10);
+ const owner='case-opt-a';
+ for(let i=2;i<=9;i++){
+  await svc('select public.shared_hearing_schedule($1,$2::uuid,$3,$4)',[owner,A,i,10]);
+  const opened=(await svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,A,i])).rows[0];
+  assert.equal(opened.hearing_day,10);
+  assert.equal(opened.world_day,10);
+  assert.equal(opened.clock_version,dayBefore.version);
+  assert.equal(opened.already_opened,false);
+ }
+ const afterA=(await svc('select game_day,version from public.shared_world_clock')).rows[0];
+ assert.deepEqual(afterA,dayBefore,'eight hearings on one day must not advance clock eight times');
+ assert.equal((await svc(`select count(*)::int as n from public.shared_judge_hearings
+ where judge_id=$1 and state='completed' and completed_game_day=10`,[A])).rows[0].n,8);
+ const pending=(await pb('select due_game_day,state from public.shared_judge_hearings')).rows;
+ assert.deepEqual(pending,[{due_game_day:12,state:'scheduled'}],'B was inactive; no automatic hearing');
+ const duplicate=(await svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,A,2])).rows[0];
+ assert.equal(duplicate.already_opened,true,'same hearing is never counted twice');
+ await assert.rejects(svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,B,3]),/hearing_case_not_owned/);
+ await assert.rejects(pa('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,A,3]),/permission denied/);
+ const b=(await svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[
+  'case-new-b',B,1])).rows[0];
+ assert.equal(b.world_day,12,'a later scheduled B hearing advances one common date');
+ assert.equal(b.clock_version,Number(dayBefore.version)+1);
+ assert.equal((await pa('select game_day from public.shared_world_clock')).rows[0].game_day,12);
+ assert.equal((await pb('select game_day from public.shared_world_clock')).rows[0].game_day,12);
 });
