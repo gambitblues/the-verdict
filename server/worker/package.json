@@ -7,6 +7,6 @@
     "dev": "wrangler dev",
     "deploy": "npm run check && npx wrangler deploy",
     "smoke": "node scripts/smoke.mjs",
-    "check": "node --check src/prompts.js && node --check src/index.js && npm test"
+    "check": "node --check src/prompts.js && node --check src/index.js && node --check ../../trial_play.js && node --check ../../ai_bridge.js && npm test"
   }
 }
