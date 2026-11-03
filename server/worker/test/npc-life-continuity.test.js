@@ -7,7 +7,7 @@ import vm from 'node:vm';
 const filename=fileURLToPath(new URL('../../../npc_life_justice.js',import.meta.url));
 const context={window:{}};
 vm.runInNewContext(readFileSync(filename,'utf8'),context,{filename});
-const {recordAnnualEvent,latestLifeMoment}=context.window.LifeJustice;
+const {recordAnnualEvent,latestLifeMoment,eligibleLifeTrigger}=context.window.LifeJustice;
 const make=()=>({career:'회사원',maritalStatus:'미혼',children:0,wealth:50,jobHistory:[],financialHistory:[],relationshipHistory:[],historyEvents:[]});
 
 test('annual change persists one canonical job and dated timeline entry',()=>{
@@ -65,4 +65,15 @@ test('case snapshots freeze lived biography and ignore events from the future',(
  person.career='다른 직업';person.children=2;
  assert.equal(snap.career,'기술직');
  assert.equal(snap.children,1);
+});
+
+test('life-trigger civil participation needs chronology, a living person and freedom',()=>{
+ const e={week:70,type:'직업',change:'직업 변경',consumed:false},p={alive:true,custodyHistory:[]};
+ assert.equal(eligibleLifeTrigger(e,p,92),false,'too recent for incident at filing minus 22 weeks');
+ assert.equal(eligibleLifeTrigger(e,p,93),true,'event safely predates incident');
+ assert.equal(eligibleLifeTrigger({...e,consumed:true},p,93),false);
+ assert.equal(eligibleLifeTrigger(e,{alive:false},93),false);
+ assert.equal(eligibleLifeTrigger(e,null,93),false);
+ assert.equal(eligibleLifeTrigger(e,{alive:true,custodyHistory:[{kind:'징역형',startWeek:20,releaseWeek:140}]},93),false);
+ assert.equal(eligibleLifeTrigger(e,p,383),false,'expired life context');
 });
