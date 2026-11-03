@@ -259,11 +259,10 @@ function createGeneratedCase(selectedCandidate=null){
  const i=Math.floor(rand()*bp.premises.length), loc=choose(LOCATIONS);
  // Recurrence is a genuinely NEW incident, involving a previously tried individual.
  // Conviction/acquittal does not imply guilt in the new matter.
- const previous=completed().filter(c=>c.kind==='criminal'&&c.generated&&c.who?.[0]
-   &&NPC[c.who[0]]?.alive!==false
-   &&LifeJustice.isFree(NPC[c.who[0]],S.week)
-   &&year()-(NPC[c.who[0]].bornYear||year())<83
-   &&S.week-(S.cases[c.id]?.closedWeek||0)>(S.cases[c.id]?.verdict==='guilty'?(c.story?.deep?.key==='murder'?624:208):52)).slice(-60);
+ const previous=completed().filter(c=>c.generated&&c.who?.[0]
+   &&LifeJustice.repeatDefendant(c,S.cases[c.id],NPC[c.who[0]],S.week)
+   &&year()-(NPC[c.who[0]].bornYear||year())<83).slice(-60);
+ // Keep recurrence uncommon, but when chosen it must actually use that same person.
  const recidivist=bp.kind==='criminal'&&previous.length&&rand()<.18?choose(previous):null;
  const prior=getPriorByKey(bp.key),caseId=`proc-${year()}-${String(serial).padStart(6,'0')}`;
  const lifePool=(S.lifeTriggers||[]).filter(x=>LifeJustice.eligibleLifeTrigger(x,NPC[x.id],S.week));
@@ -290,7 +289,10 @@ function createGeneratedCase(selectedCandidate=null){
  c.participantSnapshots=ContinuityEngine.snapshots(c,NPC,S.week);
  for(const id of c.who)remember(id,'새로운 사건',`${caseId} · ${c.name} 사건 당사자로 등장`,caseId);
  if(c.story.investigator)remember(c.story.investigator.detective,'수사 업무',`${caseId} 사건 수사자료 확보`,caseId);
- if(recidivist)remember(c.who[0],'별개 사건',`과거 ${recidivist.id} 재판과 무관하게 새로운 사실관계를 심리함`,caseId);
+ if(recidivist&&c.who?.[0]===recidivist.who?.[0]){
+  c.repeatDefendant={personId:c.who[0],priorCaseId:recidivist.id,priorClosedWeek:S.cases[recidivist.id]?.closedWeek};
+  remember(c.who[0],'다시 기소됨',`과거 ${recidivist.id} 판결 이후 별개 사건 ${caseId}에 새로 기소됨. 이번 사건의 유무죄는 증거로 독립 판단.`,caseId);
+ }
  if(prior)remember(c.who[0],'참조할 과거 판결',`${prior.id}의 법적 쟁점을 참조하되 구속력·차이점 검토 필요`,caseId);
  const quality=c.story.evidenceDetails.map(e=>`${e.id}:${e.quality}`).join(', ');
  log('사건 배당',c.name,`${caseId} · 고유 사건 · 검증 ${c.qa.checks}항목 통과`);
