@@ -36,6 +36,28 @@ const said=x=>M.speak(x);
 const halfOf=(arr,first)=>{const k=Math.ceil(arr.length/2);return (first?arr.slice(0,k):arr.slice(k).length?arr.slice(k):arr).join(' ')};
 const sideOfBy=by=>/검찰|원고|신청/.test(by||'')?'p':'d';
 const FLAW=[[/영장|무단|몰래|동의 없이|임의제출 범위|규정 없이|알리지 않고/,'illegal'],[/사본|요약|복원|잘라|편집|캡처/,'source']];
+/* v8.6.3: the three standard questions follow who the witness is — a police officer is asked what was found on
+ * arrival, a doctor about the patient, an appraiser about the method, family about the household — instead of the
+ * same three lines for everyone. Order matters (형사 before 형, 감정인 before 사람). */
+const ASK=[
+ [/경찰|경관|순경|지구대|출동/,[['현장에 도착했을 때 무엇을 확인하셨습니까?','신고를 받은 때부터 현장 조치까지 순서대로 말해 주세요.','이 사건 사람들을 출동 전에 알고 있었습니까?']]],
+ [/수사관|포렌식|형사/,[['수사하면서 무엇을 확인하셨습니까?','어떤 자료를 언제, 어떤 순서로 살펴보셨습니까?','이 사건 사람들을 수사 전에 알고 있었습니까?']]],
+ [/감정|감식|기술사|기술자|분석|연구자|연구원|전문가|전문의|부검|건축사|평가|개발자|복원가|예보관/,[['무엇을 살펴보고 어떤 결론을 내리셨습니까?','어떤 자료를 어떤 순서와 방법으로 살펴보셨습니까?','이 일을 누가 맡겼고, 당사자와 따로 아는 사이입니까?'],['살펴본 결과를 쉽게 설명해 주세요.','확인하는 데 무엇을 썼고, 어디까지 확인할 수 있었습니까?','당사자 어느 쪽과 일로 얽힌 적이 있습니까?']]],
+ [/의사|주치의|간호사|요양보호사|구급|응급|위생사|수의사|상담사/,[['처음 봤을 때 상태가 어땠습니까?','진료하고 조치한 순서를 말해 주세요.','당사자를 진료 말고 따로 아는 사이입니까?']]],
+ [/교사|담임|조교|사감|교감|교수|학과|학생|동아리|부원|후배|선배|생활지도원/,[['그 무렵 학교에서 무엇을 보고 들으셨습니까?','그 일을 언제 처음 알았고, 그 뒤 어떻게 됐습니까?','당사자와 학교에서 어떤 사이였습니까?']]],
+ [/코치|선수|주심|심판|세컨드|관장/,[['그 경기(훈련) 때 무엇을 보셨습니까?','그 장면이 어떤 순서로 이어졌는지 말해 주세요.','당사자와 운동하며 어떤 사이였습니까?']]],
+ [/친구|동창|동기|지인|연인|주선자|일행|동행인?/,[['그 무렵 당사자에게서 무엇을 듣거나 보셨습니까?','그 이야기를 언제, 어떤 상황에서 들으셨습니까?','당사자와 얼마나 가까운 사이입니까?']]],
+ [/어머니|아버지|형제|자매|남매|누나|언니|오빠|동생|배우자|아내|남편|아들|딸|자녀|사촌|삼촌|이모|고모|조카|할머니|할아버지|가족|보호자|둘째|첫째|막내|맏이|^형$/,[['그 무렵 집안에서 어떤 일이 있었는지 말해 주세요.','그 일을 언제 처음 알게 됐고, 그 뒤 어떻게 됐습니까?','당사자들과 가족으로서 어떤 사이였습니까?']]],
+ [/은행|대출|보험|주무관|공무원|구청|시청|등기|중개사|세무사|회계사|법무사|변호사|공증|조사관|감독관|원무|역무원|사회복지사|상담원|위원|준법감시인|설계사/,[['맡아 처리한 서류나 기록에 무엇이 남아 있습니까?','언제, 어떤 절차로 처리하셨습니까?','당사자를 업무 말고 따로 아는 사이입니까?'],['그 일을 맡았을 때 무엇을 확인하셨습니까?','처리한 날짜와 순서를 말해 주세요.','당사자 어느 쪽과 따로 연락한 적이 있습니까?']]],
+ [/투자자|상대방|소유자|혐의자|채권자|참여자|관계인|받은 사람/,[['그 일과 관련해 직접 겪은 일을 말해 주세요.','그 일이 언제, 어떤 순서로 있었습니까?','당사자와 어떤 거래나 이해관계가 있었습니까?']]],
+ [/이웃|주민|목격|행인|손님|운전자|기사|승객|경비원?|관리인|편의점|투숙객|회원|구매자|고객|세입자|열람자|시청자|이장|감시원|등산객|선장|발견한 사람/,[['그날 무엇을 보고 들으셨습니까?','몇 시쯤, 어떤 순서로 일어났습니까?','당사자들을 그 전에 본 적이 있습니까?'],['그때 어디에 계셨고, 무엇이 눈에 들어왔습니까?','그 일이 얼마 동안, 어떤 순서로 벌어졌습니까?','당사자 중에 아는 사람이 있습니까?']]],
+ [/직원|동료|팀장|매니저|사장|대표|부장|과장|대리|반장|소장|점장|점주|원장|회계|경리|관리|담당|상사|작업자|영업|이사|운영자|편집자|책임자|스태프|실장|보조|활동가|미용사|국장/,[['그 일이 있을 때 일터에서 무엇을 보고 들으셨습니까?','그 업무가 어떤 순서로 처리됐는지 말해 주세요.','당사자와 일로 어떤 관계였습니까?'],['맡은 일을 하면서 무엇을 직접 확인하셨습니까?','그 무렵 일이 언제, 어떤 순서로 돌아갔습니까?','당사자와 같이 일하며 어떤 사이였습니까?']]]
+];
+/* match the head noun first ("아버지의 경로당 친구" is a friend, "피해자의 회사 동료" a coworker), then the whole role, then the job */
+const asksFor=(role,job)=>{const r=String(role||'').replace(/\([^)]*\)/g,'').trim(),head=r.split(/\s+/).pop()||'';
+ const hit=ASK.find(([re])=>re.test(head))||ASK.find(([re])=>re.test(r))||ASK.find(([re])=>re.test(String(job||'')));
+ if(!hit)return ['그날 직접 보고 들은 것을 말해 주세요.','시각과 순서를 자세히 말해 주세요.','사건 사람들과는 어떤 사이입니까?'];
+ let h=0;for(const ch of r)h=(h*31+ch.charCodeAt(0))>>>0;return hit[1][h%hit[1].length]};
 function toCurated(s){
  const cr=crim(s),dec=!!s.card.decision,ac=s.card.accused,W=s.people.filter(p=>/^W\d+$/.test(p.key));
  const issues=dec?[{id:'i1',title:'신청한 사정이 사실인가',open:'어느 쪽 말이 기록과 맞는지 아직 정해지지 않았습니다.'},{id:'i2',title:'어떤 결정이 더 나은가',open:'같은 사실이라도 무엇을 더 무겁게 볼지 다툼이 있습니다.'}]
@@ -57,9 +79,9 @@ function toCurated(s){
   const stake=p.stake&&!/^없음/.test(p.stake)?said(p.stake)[0]:'사건 사람들과 따로 아는 사이는 아닙니다.';
   const opening=per(t=>lines(t)[0]);
   return {role:p.role,story:p.job&&p.job!==p.role?p.job:'',stake:p.stake||'',says:typeof opening==='string'?opening:'제가 직접 본 것만 말씀드리겠습니다.',
-   q:[{id:'q1',q:'그날 직접 보고 들은 것을 말해 주세요.',issue:'i1',a:per(t=>halfOf(lines(t),true))},
-      {id:'q2',q:'시각과 순서를 자세히 말해 주세요.',issue:'i1',a:per(t=>halfOf(lines(t),false))},
-      {id:'q3',q:'사건 사람들과는 어떤 사이입니까?',issue:'i2',side:'n',a:`${p.role}입니다. ${stake}`}]};
+   q:(([q1,q2,q3])=>[{id:'q1',q:q1,issue:'i1',a:per(t=>halfOf(lines(t),true))},
+      {id:'q2',q:q2,issue:'i1',a:per(t=>halfOf(lines(t),false))},
+      {id:'q3',q:q3,issue:'i2',side:'n',a:`${p.role}입니다. ${stake}`}])(asksFor(p.role,p.job))};
  });
  for(const w of witnesses)for(const q of w.q)if(typeof q.a==='string'&&!q.side)q.side='n';
  const followUps=more.map((r,k)=>{const sd=sideOfBy(r.by),who=cr?(sd==='p'?'검찰':'변호인'):(sd==='p'?'원고 측':'피고 측');

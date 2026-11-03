@@ -15,7 +15,7 @@ window.FamilyEngine=(()=>{
   const baseFemale=/여/.test(base.gender||''),baseSur=VerdictNames.split(base.name)[0];
   const gender=kind==='parent'?(index===0?'남성':'여성'):kind==='spouse'?(baseFemale?'남성':'여성'):(r()<.5?'여성':'남성');
   const spouse=base.partnerId&&NPC[base.partnerId];
-  const sur=kind==='parent'&&index===0||kind==='sibling'?baseSur:kind==='child'?(baseFemale&&spouse?VerdictNames.split(spouse.name)[0]:baseSur):null;
+  const sur=kind==='parent'&&index===0||kind==='sibling'?baseSur:kind==='child'?base.childSurname?base.childSurname:(baseFemale&&spouse?VerdictNames.split(spouse.name)[0]:baseSur):null;
   const n={id,name:VerdictNames.make({seed:'name:'+id,gender,bornYear:by,surname:sur}),bornYear:by,gender,role:kind==='child'?'학생':'일반 시민',career:kind==='child'?'학생':'일반 시민',wealth:kind==='parent'?base.parentWealth:limit(Math.round((base.wealth||50)*(0.5+r()))),parentWealth:base.parentWealth,alive:true,maritalStatus:kind==='spouse'?'기혼':'미혼',familyIds:[],relationships:{},jobHistory:[{year,job:'일반 시민',reason:'가족 인물 생성'}],financialHistory:[],relationshipHistory:[],biographyVersion:2,origin:'family',familyAnchor:base.id};
   // relatives created late in a long career may be very old: an elder past 85 has usually passed away already
   const old=year-n.bornYear;if(old>=100||old>85&&r()<Math.min(.97,.35+(old-85)*.06)){n.alive=false;n.deathYear=Math.max(n.bornYear+70,year-Math.floor(r()*Math.max(1,old-75)));if(n.deathYear>year)n.deathYear=year}
@@ -23,8 +23,25 @@ window.FamilyEngine=(()=>{
  }
  function ensure(S,NPC,id,year){const p=NPC[id];if(!p||id==='self'||p.familyGraphVersion)return;p.id??=id;if(!p.relationships||typeof p.relationships!=='object'||Array.isArray(p.relationships))p.relationships={};p.familyIds??=[];p.bornYear??=year-40;const r=randFor('links-'+id);p.familyGraphVersion=1;
   if(!id.startsWith('family-')){
-   for(let i=0;i<2;i++)makeRelative(S,NPC,p,'parent',i,year);
-   const count=(p.siblings==='외동')?0:Math.floor(r()*3);for(let i=0;i<count;i++)makeRelative(S,NPC,p,'sibling',i,year);
+   /* v8.6.3: a story sibling shares the parents (and the other siblings) of the person they are tied to */
+   const sib=p.siblingOf&&NPC[p.siblingOf];
+   if(sib&&sib.id!==id){ensure(S,NPC,sib.id,year);
+    for(const [rid,rel] of Object.entries(sib.relationships||{}))if(NPC[rid]&&rid!==id&&(rel.kind==='parent'||rel.kind==='sibling'))addLink(p,NPC[rid],rel.kind);
+    addLink(p,sib,'sibling');
+    if(p.maritalStatus==='기혼'&&!(p.partnerId&&NPC[p.partnerId])){const spouse=makeRelative(S,NPC,p,'spouse',0,year);p.partnerId=spouse.id;spouse.partnerId=id;}
+    for(let i=0;i<Math.min(3,p.children||0);i++){const child=makeRelative(S,NPC,p,'child',i,year);child.parentIds=[id,...(p.partnerId?[p.partnerId]:[])];}
+    return}
+   /* a story parent (an NPC already in the case) takes the place of the generated parent of the same sex */
+   const pp=p.parentNpc&&NPC[p.parentNpc],ppi=pp?(/여/.test(pp.gender||'')?1:0):-1;
+   if(pp){ensure(S,NPC,pp.id,year);addLink(p,pp,'parent');p.parentIds??=[pp.id];
+    const sur=VerdictNames.split(p.name)[0],motherSide=/여/.test(pp.gender||'');
+    for(const [rid,rel] of Object.entries(pp.relationships||{}))if(rel.kind==='child'&&NPC[rid]&&rid!==id){const sb=NPC[rid];
+     // the mother's other children are this person's siblings: they carry the father's surname, as this person does
+     if(motherSide&&sb.familyAnchor===pp.id)sb.name=sur+VerdictNames.split(sb.name)[1];addLink(p,sb,'sibling')}}
+   for(let i=0;i<2;i++)if(i!==ppi)makeRelative(S,NPC,p,'parent',i,year);
+   if(p.parentDead){const f=NPC['family-'+id+'-parent-'+(p.parentDead==='mother'?1:0)];if(f&&f.alive!==false){f.alive=false;f.deathYear=year}}
+   if(p.parentAlive){const f=NPC['family-'+id+'-parent-'+(p.parentAlive==='mother'?1:0)];if(f){f.alive=true;delete f.deathYear}}
+   const count=(p.siblings==='외동'||p.noExtraSiblings||pp)?0:Math.floor(r()*3);for(let i=0;i<count;i++)makeRelative(S,NPC,p,'sibling',i,year);
    if(p.maritalStatus==='기혼'&&!(p.partnerId&&NPC[p.partnerId])){const spouse=makeRelative(S,NPC,p,'spouse',0,year);p.partnerId=spouse.id;spouse.partnerId=id;}
    for(let i=0;i<Math.min(3,p.children||0);i++){const child=makeRelative(S,NPC,p,'child',i,year);child.parentIds=[id,...(p.partnerId?[p.partnerId]:[])];}
   }
@@ -40,7 +57,10 @@ window.FamilyEngine=(()=>{
    // keep the whole circle when any relative has lived a story, so the family stays complete
    if(anchor&&(anchor.familyCaseImpact||(anchor.relationshipHistory||[]).length))continue;
    if(!list.every(p=>dormant(S,p,busy)&&!(p.partnerId&&p.partnerId!==anchorId)))continue;
-   for(const p of list){if(anchor){anchor.familyIds=(anchor.familyIds||[]).filter(x=>x!==p.id);if(anchor.relationships)delete anchor.relationships[p.id];if(anchor.partnerId===p.id)anchor.partnerId=null}delete NPC[p.id];if(S.npcDB)delete S.npcDB[p.id];removed++}
+   for(const p of list){if(anchor){anchor.familyIds=(anchor.familyIds||[]).filter(x=>x!==p.id);if(anchor.relationships)delete anchor.relationships[p.id];if(anchor.partnerId===p.id)anchor.partnerId=null}
+    // v8.6.3: a story sibling may be linked to the same relatives — drop those links too, and let it rebuild with the anchor
+    for(const o of p.familyIds||[]){const q=NPC[o];if(!q||q===anchor)continue;q.familyIds=(q.familyIds||[]).filter(x=>x!==p.id);if(q.relationships)delete q.relationships[p.id];if(q.siblingOf===anchorId)delete q.familyGraphVersion}
+    delete NPC[p.id];if(S.npcDB)delete S.npcDB[p.id];removed++}
    if(anchor)delete anchor.familyGraphVersion;
   }
   if(S.familyEvents?.length>400)S.familyEvents=S.familyEvents.slice(-400);
@@ -72,5 +92,5 @@ window.FamilyEngine=(()=>{
  }
  function weekTick(S,NPC,week,remember){/* Time-based family transitions are processed once per year, not every week. */}
  function audit(S,NPC){const errors=[];for(const [id,p] of Object.entries(NPC)){for(const rel of p.familyIds||[]){if(!NPC[rel])errors.push(`${id}: missing ${rel}`);else if(!(NPC[rel].familyIds||[]).includes(id))errors.push(`${id}: unreciprocated ${rel}`)}if(p.partnerId&&NPC[p.partnerId]?.partnerId!==id)errors.push(`${id}: spouse link mismatch`)}return {pass:!errors.length,errors,npcs:Object.keys(NPC).length,familyEvents:S.familyEvents?.length||0}}
- return {hydrate,ensure,prune,annualTick,onJudgment,weekTick,audit};
+ return {hydrate,ensure,prune,annualTick,onJudgment,weekTick,audit,link:addLink};
 })();
