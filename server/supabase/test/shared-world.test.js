@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -264,4 +264,26 @@ test('P4 world date is authoritative for news, NPC life and post-judgment hearin
  await assert.rejects(add('after-judgment-hearing','case-opt-a','hearing_opened',current,A),/hearing_after_judgment/);
  await assert.rejects(svc('select public.shared_npc_public_put($1,$2::jsonb,$3,$4,$5)',
   ['npc:future-001',JSON.stringify({name:'미래 인물'}),'alive',current+1,0]),/future_npc_public_update/);
+});
+
+test('P4 sealed courtroom journal: only owner, opened hearing, immutable answer',async()=>{
+ const id='case-new-b',response={status:'done',answer:'확인했습니다',witness:'W1'};
+ const put=(owner,key,data,hearing=1)=>svc(
+  'select public.shared_court_action_record($1,$2::uuid,$3,$4,$5,$6::jsonb) as response',
+  [id,owner,hearing,'question',key,JSON.stringify(data)]);
+ const first=(await put(B,'q1',response)).rows[0].response;
+ assert.deepEqual(first,response);
+ assert.deepEqual((await put(B,'q1',response)).rows[0].response,response,'same request is idempotent');
+ await assert.rejects(put(B,'q1',{...response,answer:'변조'}),/court_action_conflict/);
+ await assert.rejects(put(A,'q2',response),/court_case_not_owned/);
+ await assert.rejects(put(B,'q2',response,2),/hearing_not_open_today/);
+ await assert.rejects(pa('select * from public.shared_court_actions'),/permission denied/);
+ await assert.rejects(pb('select * from public.shared_court_actions'),/permission denied/);
+ await assert.rejects(pb('select public.shared_court_action_record($1,$2::uuid,$3,$4,$5,$6::jsonb)',
+  [id,B,1,'question','q2',JSON.stringify(response)]),/permission denied/);
+ await assert.rejects(svc('update public.shared_court_actions set response=$1::jsonb where case_id=$2',
+  [JSON.stringify({status:'done',answer:'fake'}),id]),/court_action_immutable/);
+ await assert.rejects(svc('delete from public.shared_court_actions where case_id=$1',[id]),/court_action_immutable/);
+ const count=(await svc('select count(*)::int as n from public.shared_court_actions where case_id=$1',[id])).rows[0].n;
+ assert.equal(count,1);
 });
