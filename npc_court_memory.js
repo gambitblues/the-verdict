@@ -85,6 +85,9 @@
  function chance(seed){
   let h=2166136261;
   for(const c of String(seed)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}
+  // Final avalanche prevents sequential day labels from clustering on one side
+  // of the threshold; the same case/day still produces exactly the same roll.
+  h^=h>>>16;h=Math.imul(h,0x85ebca6b);h^=h>>>13;h=Math.imul(h,0xc2b2ae35);h^=h>>>16;
   return (h>>>0)/4294967296;
  }
  function adaptCards(cards,memory,seed,day){
