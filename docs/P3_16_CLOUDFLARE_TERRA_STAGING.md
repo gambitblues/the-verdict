@@ -3,9 +3,9 @@
 ## 기존 서비스 활용
 기존 Cloudflare Worker `the-verdict-api`가 이미 보관한 `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`와 `SUPABASE_URL`, `MODEL_CASE`를 그대로 사용한다. 사용자 Mac으로 키를 옮기거나 새 API 키를 발급할 필요가 없다.
 
-**추가된 실제 코드:** `server/worker/src/terra_cloud_staging.cjs`. Cloudflare scheduled handler에서만 호출된다. 003/004의 재고·잠금·예산 RPC를 이용해 실행 잠금을 확보하고, 부족한 사건 유형의 신규 시트를 Terra로 두 단계 생성한다. 결과는 새 005의 private `terra_pending_drafts`에 **미승인 draft**로 저장한다. 플레이어 API, 게임 배당, 공개 인덱스에 노출하지 않는다.
+**추가된 실제 코드:** `server/worker/src/terra_cloud_staging.cjs`. Cloudflare scheduled handler에서만 호출된다. 003/004의 재고·잠금·예산 RPC를 이용해 실행 잠금을 확보하고, 부족한 사건 유형의 신규 시트를 Terra로 두 단계 생성하고 동일한 match 엔진으로 3세계 × 6시드 = 18회 인메모리 재판 QA를 통과시킨다. 결과는 새 005의 private `terra_pending_drafts`에 **미승인 draft**로 저장한다. 플레이어 API, 게임 배당, 공개 인덱스에 노출하지 않는다.
 
-**보안:** 테스트 없이 발행하지 않는다. Cloudflare Worker에서는 Playwright/Chromium 및 기존 `tests/terra-handoff-qa.cjs` 프로세스 기반 재판 QA를 실행할 수 없으므로 초안 저장까지만 자동화된다. 이후 격리된 실행 환경의 18회 재판 QA + 6메뉴 실제 브라우저 QA + 서버 해시 재검증이 필요하다. 이는 **아직 클라우드에서 자동 승인·등록되지 않는다**.
+**보안:** 테스트 없이 발행하지 않는다. Cloudflare Worker에서는 Playwright/Chromium 및 기존 `tests/terra-handoff-qa.cjs` 파일 검사기를 실행할 수 없다. 같은 엔진의 18회 재판은 Worker에서도 실행하지만, 실제 브라우저 6개 메뉴 QA와 전체 시트/법률 품질 검사를 통과한 것은 아니므로 초안 저장까지만 자동화된다. 이후 격리된 실행 환경의 18회 재판 QA + 6메뉴 실제 브라우저 QA + 서버 해시 재검증이 필요하다. 이는 **아직 클라우드에서 자동 승인·등록되지 않는다**.
 
 ## 적용 순서 — 기존 API/Supabase 재설정은 필요 없음
 
