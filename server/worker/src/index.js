@@ -106,6 +106,13 @@ export async function handle(req,env,fetcher=fetch){
  if(who.error)return json({error:who.error},who.status,head);
  const uid=who.user.id;
 
+ // Read-only health check for the existing invited judges. Never returns
+ // private case material, budget amounts, service credentials or model output.
+ if(url.pathname==='/terra/status'&&req.method==='GET'){
+  const state=await TerraCloud.readiness(env,{fetcher});
+  return json({ok:true,...state},200,head);
+ }
+
  // which models this key can use (run once after deploy; also tells whether the configured IDs exist)
  if(url.pathname==='/ai/check'&&req.method==='GET'){
   const out={};
