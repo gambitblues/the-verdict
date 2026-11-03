@@ -251,6 +251,8 @@ function remember(id,type,body,caseId){
  if(!S.memories[id].some(m=>m.caseId===caseId&&m.type===type&&m.body===body))S.memories[id].push({week:S.week,type,body,caseId});
 }
 function getPriorByKey(key){return completed().filter(c=>c.story?.deep?.key===key||(!c.story?.deep&&c.legal===key)).slice(-8).at(-1)}
+/* News is exceptional, not the default case-intake path. */
+function shouldPreReport(bp,roll){return Number(bp?.importance)>=4&&roll<.45}
 function createGeneratedCase(selectedCandidate=null,planning=null){
  if(age()>=75||openCases().length>=12)return null;
  const serial=++S.caseSerial;
@@ -258,7 +260,7 @@ function createGeneratedCase(selectedCandidate=null,planning=null){
  const bp=candidate?CasePackEngine.blueprint(candidate.pack,candidate.a):choose(CASE_BLUEPRINTS);
  // Only a minority of high-profile cases are first seen in the news.
  // Routine matters go directly to court without a synthetic breaking-news cycle.
- if(planning==='auto')planning=Number(bp.importance)>=4&&rand()<.45
+ if(planning==='auto')planning=shouldPreReport(bp,Number(bp.importance)>=4?rand():1)
   ?{incidentWeek:S.week,filingWeek:S.week+8}:null;
  const i=Math.floor(rand()*bp.premises.length), loc=choose(LOCATIONS);
  // Recurrence is a genuinely NEW incident, involving a previously tried individual.
