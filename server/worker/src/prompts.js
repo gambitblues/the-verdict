@@ -13,7 +13,7 @@ const quotesIn=t=>S(t).match(/"[^"]{2,}"|“[^”]{2,}”/g)||[];
  * Reject additions, omissions, or actual changes rather than weakening the meaning guard. */
 export const datesIn=t=>{
  const re=/(\d{4})\s*(?:년\s*|[.\/-]\s*)(\d{1,2})\s*(?:월\s*|[.\/-]\s*)(\d{1,2})\s*(?:일)?/g;
- return [...S(t).matchAll(re)].map(m=>m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0')).sort();
+ return [...new Set([...S(t).matchAll(re)].map(m=>m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0')))].sort();
 };
 const sameDates=(a,b)=>JSON.stringify(datesIn(a))===JSON.stringify(datesIn(b));
 const numbersWithoutDates=t=>numbersIn(S(t).replace(/\d{4}\s*(?:년\s*|[.\/-]\s*)\d{1,2}\s*(?:월\s*|[.\/-]\s*)\d{1,2}\s*(?:일)?/g,' '));
