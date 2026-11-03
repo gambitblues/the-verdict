@@ -14,7 +14,7 @@ create table if not exists public.terra_pending_drafts(
 create index if not exists terra_pending_state_idx on public.terra_pending_drafts(category,state);
 alter table public.terra_pending_drafts enable row level security;
 revoke all on public.terra_pending_drafts from public,anon,authenticated;
-grant select,insert,update to service_role on public.terra_pending_drafts;
+grant select,insert,update on public.terra_pending_drafts to service_role;
 
 create or replace function public.terra_pending_counts()
 returns jsonb language plpgsql security definer set search_path=public as $$
