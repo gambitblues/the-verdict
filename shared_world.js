@@ -4,10 +4,10 @@
 (()=>{'use strict';
 const LIMIT=50;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let events=[],cursor=0,loading=false,owner='',panel=null,button=null;
+let events=[],cursor=0,loading=false,owner='',panel=null,button=null,clock=null,npcs=[];
 const seen=new Set();
 function user(){const a=window.VerdictAuth;return a?.online&&a?.user?.id?a.user.id:null}
-function reset(next){owner=next;events=[];cursor=0;seen.clear();render()}
+function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];seen.clear();render()}
 function valid(ev){
  return ev&&Number.isSafeInteger(ev.event_id)&&ev.event_id>0&&
   typeof ev.event_key==='string'&&typeof ev.event_type==='string'&&
@@ -26,6 +26,8 @@ function text(ev){
 function render(){
  if(!panel)return;
  const list=panel.querySelector('[data-world-list]');if(!list)return;
+ const meta=panel.querySelector('[data-world-clock]');if(meta)meta.textContent=clock?'공통 세계 날짜: 게임 '+clock.game_day+'일 (동기화 버전 '+clock.version+')':'공통 세계 날짜: 서버 확인 전';
+ const people=panel.querySelector('[data-world-npcs]');if(people)people.innerHTML=npcs.length?'<strong>세계 공통 인물 '+npcs.length+'명</strong>'+npcs.slice(0,25).map(n=>'<p>'+esc(n.public_profile?.name||n.npc_id)+' · '+esc(n.public_profile?.profession||n.public_profile?.publicRole||'')+' · '+esc(n.life_status==='dead'?'사망':n.life_status==='alive'?'생존':'상태 미상')+'</p>').join(''):'';
  if(!events.length){list.innerHTML='<p class="vsw-empty">아직 공개된 세계 연혁이 없습니다.</p>';return}
  list.innerHTML=events.slice(-120).reverse().map(e=>{
   const x=text(e);
@@ -50,6 +52,9 @@ async function refresh(){
    if(result.events.length<LIMIT)break;
   }
   if(events.length>500){events=events.slice(-500);seen.clear();for(const e of events)seen.add(e.event_key)}
+  // Missing P4 tables on older QA deployments must not break local trials or the public log.
+  try{const c=await window.VerdictAuth.api('/world/clock',undefined,{timeout:8000});if(c?.ok&&c.clock)clock=c.clock}catch{}
+  try{const n=await window.VerdictAuth.api('/world/npcs',undefined,{timeout:8000});if(n?.ok&&Array.isArray(n.npcs))npcs=n.npcs.slice(0,50)}catch{}
   if(panel){panel.querySelector('[data-world-status]').textContent='공개 기록 '+events.length+'건';render()}
   return true;
  }catch(e){if(panel)panel.querySelector('[data-world-status]').textContent='세계 연결을 확인할 수 없습니다. 개인 재판은 계속할 수 있습니다.';return false}
@@ -64,7 +69,9 @@ function mount(){
   <header><strong>공유 세계</strong><button type="button" data-world-close aria-label="닫기">닫기</button></header>
   <p class="vsw-note">두 판사가 함께 보는 공개 사건·판결 연혁입니다. 개인 관계와 숨은 진실은 표시되지 않습니다.</p>
   <p data-world-status aria-live="polite">연결 확인 중</p>
+  <p data-world-clock></p>
   <div data-world-list></div>
+  <div data-world-npcs></div>
   <button type="button" data-world-refresh>새로고침</button>
  </section>`;
  document.body.appendChild(root);button=root.querySelector('.vsw-button');panel=root.querySelector('.vsw-panel');
@@ -87,5 +94,5 @@ function start(){
  setInterval(()=>{if(!document.hidden)refresh()},60000);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-window.VerdictSharedWorld={refresh,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor}};
+window.VerdictSharedWorld={refresh,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get clock(){return clock?{...clock}:null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
 })();
