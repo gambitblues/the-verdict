@@ -232,7 +232,7 @@ function ensure(c,st){
  rolled.witnesses.forEach((w,i)=>{w.story=witnesses[i]?.story||'';if(strict)behaviour(c,i,w,seed)});
  const opponent=opponentOf(c),style=styleOf(opponent);
  const heat=/살인|치사/.test(c.tag)?20:/연예|celebrity/.test(c.tag+(c.contentPack?.category||''))?25:/성/.test(c.tag)?10:0;
- const t={...rolled,v:5,seed,opponent,style,day:1,daysDone:0,minDays:isDecision(c)?1:Math.max(1,T.minDays(c.importance)-(isCriminal(c)?0:1)),qLeft:isCriminal(c)?QPD:6,qpd:isCriminal(c)?QPD:6,cards:[],nextAt:0,heard:[],notices:[],dates:{},nextDate:today()+7,
+ const t={...rolled,v:5,seed,opponent,style,opponentMemory:window.VerdictCourtMemory?.snapshot(S.cases,c.id,opponent)||null,day:1,daysDone:0,minDays:isDecision(c)?1:Math.max(1,T.minDays(c.importance)-(isCriminal(c)?0:1)),qLeft:isCriminal(c)?QPD:6,qpd:isCriminal(c)?QPD:6,cards:[],nextAt:0,heard:[],notices:[],dates:{},nextDate:today()+7,
   delayAccepted:false,twistUsed:false,log:[],media:T.pressStart(c.importance,{criminal:isCriminal(c),heatBonus:heat}),startedAt:now()};
  t.witnesses.forEach(w=>{w.askedIds=[];w.opened=[]});
  t.cards=dressCards(c,t,skilled(c,t,T.cards(t,1,seed),1));
@@ -1410,7 +1410,8 @@ function dayPage(c,st){
   <div class="t4-subhead"><h4>쟁점 한눈에</h4><button class="t4-link" data-action="t4tab" data-tab="verdict">자세히 ›</button></div>${issueView(c,t,true)}${outside}${recent}</section>`;
  }
  const act=(()=>{if(!cur?.acts?.length)return '';const i=Math.min(cur.acts.length-1,Math.floor(t.daysDone*cur.acts.length/Math.max(1,t.minDays)));const a=cur.acts[i];return `<div class="t4-act"><small>오늘의 법정 · ${esc(a.title)}</small><p>${esc(tell(c,t,a.text))}</p></div>`})();
- const opponentLine=`<div class="t4-oppcard"><span>상대 ${esc(sideWord(c,'d'))}</span>${nameBtn(t.opponent,opp?.name||'변호인')}<small>${esc(T.LABEL.style[t.style])} · ${prepWord(t.opponent)}${rec&&(rec.win+rec.lose)?` · 내 법정 ${rec.win}승 ${rec.lose}패`:''}</small></div>`;
+ const memoryLine=t.daysDone===0&&sessionOpen(t)&&t.opponentMemory?window.VerdictCourtMemory?.greeting(t.opponentMemory):'';
+ const opponentLine=`<div class="t4-oppcard"><span>상대 ${esc(sideWord(c,'d'))}</span>${nameBtn(t.opponent,opp?.name||'변호인')}<small>${esc(T.LABEL.style[t.style])} · ${prepWord(t.opponent)}${rec&&(rec.win+rec.lose)?` · 내 법정 ${rec.win}승 ${rec.lose}패`:''}</small>${memoryLine?`<p class="t4-said">“${esc(memoryLine)}”</p>`:''}</div>`;
  return `<section class="panel t4 t4-day"><div class="t4-head"><h3>${esc(session(c,t.day))}</h3><span class="t4-tag">${esc(dlabel(dateOf(t)))} · ${t.daysDone+1}/${t.minDays}회</span></div>
  ${act}
  ${openingStatements(c,t,cur)}
