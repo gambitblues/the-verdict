@@ -176,7 +176,7 @@ test('P4 truth is sealed once at admission and never exposed to judges',async()=
 
 test('P4 asynchronous judges: eight hearings by A do not auto-try B; B rejoins with protection',async()=>{
  // World starts on day 3. B has a hearing on day 4 but does not sign in as A proceeds.
- const ownA='case-opt-a',ownB='case-new-b';
+ const ownA='case-new-a',ownB='case-new-b';
  assert.equal((await svc('select public.shared_judge_resume($1::uuid) as x',[B])).rows.length,1);
  await svc('select public.shared_hearing_schedule($1,$2::uuid,$3,$4)',[ownA,A,1,4]);
  await svc('select public.shared_hearing_schedule($1,$2::uuid,$3,$4)',[ownB,B,1,4]);
@@ -210,7 +210,7 @@ test('P4 asynchronous judges: eight hearings by A do not auto-try B; B rejoins w
 test('P4 calendar: eight hearings on one date count as one shared date, absent B stays pending',async()=>{
  const dayBefore=(await svc('select game_day,version from public.shared_world_clock')).rows[0];
  assert.equal(dayBefore.game_day,10);
- const owner='case-opt-a';
+ const owner='case-new-a';
  for(let i=2;i<=9;i++){
   await svc('select public.shared_hearing_schedule($1,$2::uuid,$3,$4)',[owner,A,i,10]);
   const opened=(await svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,A,i])).rows[0];
