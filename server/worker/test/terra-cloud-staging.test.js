@@ -56,3 +56,15 @@ test('cost policy missing blocks before API call',async()=>{
   fetcher:async()=>{n++}}),/unsafe policy/);
  assert.equal(n,0);
 });
+
+test('readiness reports missing private schema without model calls',async()=>{
+ const results=await Terra.readiness({...env,TERRA_REFILL_ENABLED:'0'},{
+  fetcher:async(url)=>{
+   if(url.includes('case_stock?'))return {ok:true,json:async()=>[]};
+   if(url.includes('/rpc/terra_pending_counts'))return {ok:false,status:404};
+   if(url.includes('/rpc/refill_budget_snapshot'))return {ok:true,json:async()=>[{used_usd:0,used_calls:0}]};
+   throw Error('unexpected network');
+  }
+ });
+ assert.deepEqual(results,{scheduled:false,privateStock:true,draftStorage:false,budgetLedger:true,modelConfigured:true});
+});
