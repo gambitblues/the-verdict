@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {publicCaseSheet} from '../src/public_case_projection.js';
+import {publicCaseSheet,initialEvidence} from '../src/public_case_projection.js';
 
 const sheet={
  format:'verdict-world-sheet/v1',id:'case-p4',status:'draft',
@@ -28,4 +28,18 @@ test('P4 assigned case projection exposes public courtroom fields only',()=>{
 test('P4 rejects malformed source and mismatched case identity',()=>{
  assert.throws(()=>publicCaseSheet({...sheet,id:'other-id'},'case-p4'),/invalid_sheet/);
  assert.throws(()=>publicCaseSheet({...sheet,format:'unknown'},'case-p4'),/invalid_sheet/);
+});
+
+test('P4 sealed case only reveals first-day evidence, not locked future records',()=>{
+ const full={...sheet,records:[...sheet.records,{id:'r2',title:'후속 자료',first:false}],
+  worlds:{did:{records:{r1:'첫날 제출됨',r2:'SEALED_FUTURE'}},
+          didnt:{records:{r1:'다른 세계 첫날 자료',r2:'ANOTHER_SECRET'}},
+          reason:{records:{r1:'세 번째 세계 자료',r2:'SECRET'}}}};
+ const first=initialEvidence(full,'case-p4','did');
+ assert.deepEqual(first,[{id:'r1',title:'제출된 계좌 내역',kind:'문서',text:'첫날 제출됨'}]);
+ assert.ok(!JSON.stringify(first).includes('SEALED_FUTURE'));
+ const other=initialEvidence(full,'case-p4','didnt');
+ assert.equal(other[0].text,'다른 세계 첫날 자료');
+ assert.ok(!Object.hasOwn(first[0],'branch'));
+ assert.throws(()=>initialEvidence(full,'case-p4','invalid'),/invalid_sealed_case/);
 });
