@@ -73,9 +73,6 @@ assert.ok(sk({cites:[{label:'a',side:'p',illegal:true}]})<sk({cites:[{label:'a',
 const fit=n=>Array.from({length:n},(_,i)=>({label:'g'+i,side:'p'}));
 assert.ok(Math.abs(sk({cites:fit(6)})-sk({cites:fit(3)}))<0.01,'more fitting grounds than three earn no extra');
 assert.ok(sk({cites:[...fit(6),{label:'x',side:'d'}]})<sk({cites:fit(6)}),'a wrong-way ground still costs');
-// conditional evidence: a checked condition is a full ground, an unchecked one earns nothing
-assert.ok(sk({cites:[{label:'c',side:'p',cond:{how:'check',ok:true}}]})>sk({cites:[{label:'c',side:'p',cond:{how:'check',ok:false}}]}));
-assert.ok(T.gauge({...base5,evidence:base5.evidence.map(e=>({...e,decision:'conditional',condOk:true}))}).P>=T.gauge({...base5,evidence:base5.evidence.map(e=>({...e,decision:'conditional',condOk:false}))}).P);
 assert.ok(sk({sentence:{what:'형량',value:30,lo:24,hi:36,mitig:0,aggr:0}})>sk({sentence:{what:'형량',value:80,lo:24,hi:36,mitig:0,aggr:0}}));
 assert.ok(sk({sentence:{what:'형량',value:80,lo:24,hi:36,mitig:0,aggr:2}})>sk({sentence:{what:'형량',value:80,lo:24,hi:36,mitig:0,aggr:0}}),'reasons justify leaving the range');
 

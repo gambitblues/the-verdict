@@ -343,7 +343,7 @@ const wName=(t,i)=>i==='party'?(NPC[t.party?.id]?.name||'당사자'):NPC[t.witne
 /* v8.6: the record shown to a witness ('cf:<evidence id>') */
 const shownTitle=(t,h)=>String(h.q||'').startsWith('cf:')?t.evidence.find(e=>e.id===String(h.q).slice(3))?.title||'':'';
 /* v8.6 조건부 채택: which lines of the record the judge uses, and on what condition.
- * e.cond={rows:null|[line index], how:'check'|'corrob'|'weight'} — plain object, saved with the evidence. */
+ * v8.6.4 (user): 조건부 채택 = use only some lines of the record. e.cond={rows:null|[line index]}, saved with the evidence. */
 const evRows=(c,t,e)=>{const d=evDetail(c,e);return d?.excerpt?String(tell(c,t,d.excerpt)).split(/\s+\/\s+/).filter(Boolean):[]};
 const CHECK_STOP=new Set(['기록','내역','자료','같은','비교해','맞춰','보세요','확인해','생각해','따져','함께','그날','증인','증인에게','사람','어떤','절차','이유','방법','부분','말한','직접','처방전','누가','어떻게','언제부터','먼저','나란히','놓고','구분해','물어보세요','있는지','없는지','실제','이것','그것','다른','처음']);
 /* what the bench note ('대조해 볼 것') points at: another record in this trial or a witness, by shared words */
@@ -357,35 +357,16 @@ function condLink(c,t,e){
  t.witnesses.forEach((w,i)=>{const n=score(w.role);if(n&&(!best||n>best.n))best={kind:'w',id:i,name:wName(t,i),n}});
  return best;
 }
-const condOf=(c,t,e)=>{if(!e.cond)e.cond={rows:null,how:condLink(c,t,e)?'check':'corrob'};return e.cond};
-function condHowLabel(c,t,e,how){const l=condLink(c,t,e);
- return how==='check'&&l?`${P(l.kind==='w'?l.name+'의 증언':l.name,'과')} 맞을 때만`:how==='weight'?'한계를 감안해 가볍게':'같은 쪽 다른 근거가 있을 때만'}
-/* is the condition met yet? */
-function condState(c,t,e){
- const k=condOf(c,t,e),d=evDetail(c,e),l=condLink(c,t,e);
- if(k.how==='weight')return {ok:true,text:'무게를 낮춰 참고로만 써요'};
- if(k.how==='check'&&l){
-  if(l.kind==='e'){const x=t.evidence.find(v=>v.id===l.id);const ok=x&&(x.decision==='use'||x.decision==='conditional');
-   return {ok,text:ok?`${P(l.name,'과')} 나란히 맞춰 봤어요`:`${P(l.name,'을')} 아직 쓰기로 정하지 않았어요`}}
-  const said=t.heard.filter(h=>h.w===l.id&&!h.struck&&!h.tainted),ok=said.some(h=>h.issue===d?.issue)||said.length>0;
-  return {ok,text:ok?`${P(l.name,'의')} 증언과 맞춰 봤어요`:`${l.name}에게 아직 묻지 않았어요`}}
- const side=d?.side,same=x=>side!=='p'&&side!=='d'||x===side;
- const ev=t.evidence.find(x=>x.id!==e.id&&(x.decision==='use'||x.decision==='conditional')&&evDetail(c,x)?.issue===d?.issue&&same(evDetail(c,x)?.side));
- const hw=t.heard.find(h=>h.issue===d?.issue&&!h.struck&&!h.tainted&&h.w!=='party'&&same(h.side));
- return ev?{ok:true,text:`${P(ev.title,'이')} 같은 쪽을 뒷받침해요`}:hw?{ok:true,text:`${P(wName(t,hw.w),'의')} 증언이 같은 쪽을 뒷받침해요`}:{ok:false,text:'같은 쪽을 뒷받침하는 다른 근거가 아직 없어요'};
-}
-/* v8.6.1: the proof gauge (trial_core) reads e.condOk — checked condition true, unchecked false, 'weight' or none: absent */
-function syncCond(c,t){for(const e of t.evidence){if(e.decision==='conditional'&&e.cond&&e.cond.how!=='weight')e.condOk=condState(c,t,e).ok;else delete e.condOk}}
+const condOf=(c,t,e)=>{if(!e.cond||e.cond.how)e.cond={rows:e.cond?.rows||null};return e.cond};
 /* the lines the judge chose to use (all of them unless some were left out) */
 function condUsed(c,t,e){const rows=evRows(c,t,e),k=e.cond;return !k?.rows?rows:rows.filter((_,i)=>k.rows.includes(i))}
 function condSet(c,t,e,choice){
- const k=condOf(c,t,e),rows=evRows(c,t,e);
- if(choice.startsWith('row:')){const i=Number(choice.slice(4));if(!(i>=0&&i<rows.length))return;
-  const on=k.rows?[...k.rows]:rows.map((_,j)=>j),at=on.indexOf(i);
-  if(at>=0){if(on.length<=1){toast('쓸 부분을 한 줄 이상 남겨야 해요.');return}on.splice(at,1)}else on.push(i);
-  k.rows=on.length===rows.length?null:on.sort((a,b)=>a-b);
- }else if(choice.startsWith('how:')){const h=choice.slice(4);if(!['check','corrob','weight'].includes(h)||(h==='check'&&!condLink(c,t,e)))return;k.how=h}
- addLog(t,'증거',`${e.title}: 조건 — ${condHowLabel(c,t,e,k.how)}${k.rows?` · ${rows.length}줄 중 ${k.rows.length}줄만`:''}`);
+ const k=condOf(c,t,e),rows=evRows(c,t,e);if(!choice.startsWith('row:'))return;
+ const i=Number(choice.slice(4));if(!(i>=0&&i<rows.length))return;
+ const on=k.rows?[...k.rows]:rows.map((_,j)=>j),at=on.indexOf(i);
+ if(at>=0){if(on.length<=1){toast('쓸 부분을 한 줄 이상 남겨야 해요.');return}on.splice(at,1)}else on.push(i);
+ k.rows=on.length===rows.length?null:on.sort((a,b)=>a-b);
+ addLog(t,'증거',`${e.title}: ${k.rows?`${rows.length}줄 중 ${k.rows.length}줄만 씀`:'모든 줄을 씀'}`);
 }
 const short=(s,n=46)=>{s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s};
 const P=(name,p)=>window.VerdictCurated?VerdictCurated.particle(name,p):name+p;
@@ -680,7 +661,7 @@ function askQuestion(c,t,i,qid){
  const w=t.witnesses[i];if(!w||t.qLeft<=0)return '';
  const q=questionsOf(c,t,i).find(v=>v.id===qid);if(!q||w.askedIds.includes(q.id)||(w.blocked||[]).includes(q.id))return '';
  t.qLeft--;w.askedIds.push(q.id);w.asked=(w.asked||0)+1;w.revealed=T.reveal(w.revealed);
- if(w.attitude==='flip'&&w.asked>=2&&!w.flipped){w.flipped=true;addLog(t,'번복',`${P(wName(t,i),'이')} 앞서 한 말을 바꾸기 시작했다`)}
+ if(w.attitude==='flip'&&w.asked>=2&&!w.flipped){w.flipped=true;w.flipAt=t.heard.length-1;addLog(t,'번복',`${P(wName(t,i),'이')} 앞서 한 말을 바꾸기 시작했다`)}
  const a=answerOf(c,t,i,q);
  t.heard.push({w:i,q:q.id,side:a.side,issue:q.issue,day:t.day});
  for(const n of q.next||[])if(!w.opened.includes(n))w.opened.push(n);
@@ -690,13 +671,19 @@ function askQuestion(c,t,i,qid){
 }
 /* What just happened at the witness stand, so the screen can tell an ordinary answer from a changed story, a clash
  * between witnesses, a witness giving way to evidence or a face-off. Saved per witness as a short list (`moments`). */
+const heardText=(c,t,h)=>{if(!h)return '';if(h.text)return h.text;const q=qById(c,t,h.w,h.q);return q?answerOf(c,t,h.w,q).text:''};
 function momentOf(c,t,kind,id,pre){
- const fresh=t.heard.slice(pre.n),h=fresh[fresh.length-1];let moment=null,wi=null;
+ const fresh=t.heard.slice(pre.n),h=fresh[fresh.length-1];let moment=null,wi=null,note='';
  if(kind==='ask'&&h){wi=h.w;const w=t.witnesses[wi];
-  const earlier=t.heard.slice(0,pre.n).filter(x=>x.issue===h.issue&&!x.struck&&!x.tainted&&(x.side==='p'||x.side==='d'));
+  const earlier=t.heard.slice(0,pre.n).filter(x=>x.issue===h.issue&&!x.struck&&!x.tainted&&x.w!=='party'&&(x.side==='p'||x.side==='d'));
+  /* v8.6.4: "own words" only when the witness has really changed story (a flip) and now says the opposite of what was
+   * said before it; "another witness" names that witness and quotes both, so the player sees what does not fit */
+  const before=x=>w?.flipAt!=null&&t.heard.indexOf(x)<w.flipAt;
+  const mine=(h.side==='p'||h.side==='d')&&w?.flipped?earlier.filter(x=>x.w===wi&&x.side!==h.side&&before(x)).pop():null;
+  const other=(h.side==='p'||h.side==='d')?earlier.filter(x=>x.w!==wi&&x.side!==h.side).pop():null;
   if(w?.flipped&&!pre.flip[wi])moment='flip';
-  else if((h.side==='p'||h.side==='d')&&earlier.some(x=>x.w===wi&&x.side!==h.side))moment='shift';
-  else if((h.side==='p'||h.side==='d')&&earlier.some(x=>x.w!==wi&&x.side!==h.side))moment='clash';
+  else if(mine){moment='shift';note=` — 앞서 한 말: "${short(heardText(c,t,mine),40)}"`}
+  else if(other){moment='clash';note=` — ${P(wName(t,other.w),'은')} "${short(heardText(c,t,other),40)}"라고 했어요`}
   else moment=String(h.q).includes('.')?'recall':'answer'}
  else if(kind==='confront'&&h){wi=h.w;moment=/바꾸지 않은/.test(h.label)?'hold':/정정/.test(h.label)?'correct':/처음 진술/.test(h.label)?'revert':'admit'}
  else if(kind==='face'&&h){wi=h.w;moment=/물러선/.test(h.label)?'yield':'standoff'}
@@ -704,7 +691,7 @@ function momentOf(c,t,kind,id,pre){
   return {moment,actor:card?.type==='delay'?(card.by==='p'?c.side?.[0]:t.opponent):t.opponent}}
  const w=wi!=null?t.witnesses[wi]:null;
  if(w&&moment&&!['answer','recall','objection'].includes(moment)){w.moments=[...new Set([...(w.moments||[]),moment])].slice(-6);save()}
- return {moment,actor:w?.id||(['ask','confront'].includes(kind)?t.witnesses[Number(id)]?.id:null)};
+ return {moment,note,actor:w?.id||(['ask','confront'].includes(kind)?t.witnesses[Number(id)]?.id:null)};
 }
 /* ---------- v6.9: questioning the accused / a party ----------
  * Written per case (curated `party`). The accused in a criminal trial may decline any question; declining is
@@ -752,7 +739,7 @@ function act(kind,id,choice){
   if((choice==='exclude'||choice==='conditional')&&e.flawType!=='none')e.publicFlaw=true;
   addLog(t,'증거',`${e.title}: ${T.LABEL.decision[choice]}`);
   const iss=issuesOf(c).find(i=>i.id===evDetail(c,e)?.issue);
-  say=choice==='exclude'?`📁 ${e.title} — 판단 자료에서 뺐어요`:choice==='conditional'?`📁 ${e.title} — 조건 붙여 쓴다 · 카드 아래에서 쓸 부분과 조건을 정하세요`:`📁 ${e.title} — ${T.LABEL.decision[choice]}${iss?` · 재판 현황 '${iss.title}'에 반영`:''}`;
+  say=choice==='exclude'?`📁 ${e.title} — 판단 자료에서 뺐어요`:choice==='conditional'?`📁 ${e.title} — 조건 붙여 쓴다 · 카드 아래에서 쓸 부분을 고르세요`:`📁 ${e.title} — ${T.LABEL.decision[choice]}${iss?` · 재판 현황 '${iss.title}'에 반영`:''}`;
  }else if(kind==='ask'){
   if(t.qLeft<=0){toast('오늘 신문 시간이 끝났어요. 다음 기일에 이어서 물을 수 있어요.');return}
   const wi=Number(id),nth=t.heard.filter(h=>h.day===t.day&&!h.tainted&&h.w!=='party').length+1;
@@ -762,7 +749,7 @@ function act(kind,id,choice){
    live.w=wi;live.q=choice;live.fired=true;addLog(t,'이의',`${cardText(live,t,c).title} — 질문 직후`);save();render();askRequests(true);return}
   say=askQuestion(c,t,wi,choice);if(!say)return;
   if(live&&liveWhen(live)==='after'){live.w=wi;live.q=choice;live.fired=true;   // raised once the answer is out (hearsay) or on the follow-up (leading)
-   save();const m=momentOf(c,t,kind,id,pre);window.VerdictVisuals?.record(c.id,kind,say,m.actor,m.moment);toast(say);render();askRequests(true);return}
+   save();const m=momentOf(c,t,kind,id,pre);window.VerdictVisuals?.record(c.id,kind,say+(m.note||''),m.actor,m.moment);toast(say);render();askRequests(true);return}
  }else if(kind==='confront'){say=confront(c,t,Number(id),choice);if(!say)return;
  }else if(kind==='face'){say=faceOff(c,t,id);if(!say)return;
  }else if(kind==='party'){if(t.qLeft<=0){toast('오늘 신문 시간이 끝났어요.');return}say=askParty(c,t,id);if(!say)return;
@@ -785,7 +772,7 @@ function act(kind,id,choice){
     if(choice==='accept'){if(card.q&&w){w.blocked??=[];if(!w.blocked.includes(card.q))w.blocked.push(card.q)}say=`✋ 이의를 받아들였어요 · 질문을 거뒀고 증인 ${wn}은 답하지 않았어요`}
     else{say=t.qLeft>0?askQuestion(c,t,card.w,card.q):'';if(!say)say='✋ 이의를 받아들이지 않았어요 · 오늘 신문 시간이 끝나 다음 기일에 물을 수 있어요';}
     addLog(t,'이의',`${xt.title}: ${choice==='accept'?'받아들임':'받아들이지 않음'}`);
-    save();if(say){const m=momentOf(c,t,choice==='reject'?'ask':'card',choice==='reject'?String(card.w):id,pre);window.VerdictVisuals?.record(c.id,choice==='reject'?'ask':'card',say,m.actor,m.moment);toast(say)}
+    save();if(say){const m=momentOf(c,t,choice==='reject'?'ask':'card',choice==='reject'?String(card.w):id,pre);window.VerdictVisuals?.record(c.id,choice==='reject'?'ask':'card',say+(m.note||''),m.actor,m.moment);toast(say)}
     if(t.cards.some(pend))return askRequests(true);ui.modal=null;render();return askNotices(false)}
    if(card.live&&card.otype==='lead'&&choice==='accept'&&w){w.objections??=[];w.objections.push({id:card.id,ask:xt.ask,answer:null,by:xt.askBy,kind:OBJ[card.otype],kept:false,day:t.day})}
    if(xt.answer&&w&&!(plain&&choice!=='accept')){w.objections??=[];w.objections.push({id:card.id,ask:xt.ask,answer:xt.answer,by:xt.askBy,kind:OBJ[card.otype],kept:choice!=='accept',day:t.day})}
@@ -804,7 +791,7 @@ function act(kind,id,choice){
   addLog(t,card.type==='objection'?'이의':'연기',`${cardText(card,t,c).title}: ${choice==='accept'?'받아들임':'기각'}`);
  }
  save();
- if(say){const m=momentOf(c,t,kind,id,pre);window.VerdictVisuals?.record(c.id,kind,say,m.actor,m.moment);toast(say)}
+ if(say){const m=momentOf(c,t,kind,id,pre);window.VerdictVisuals?.record(c.id,kind,say+(m.note||''),m.actor,m.moment);toast(say)}
  if(kind==='card'){if(t.cards.some(pend))return askRequests(true);ui.modal=null;render();return askNotices(false)}
  render();
 }
@@ -884,7 +871,7 @@ function endDay(){
  if(!t.twistUsed&&t.day>=2&&T.unit(t.seed+':twist:'+t.day)<T.twistChance(c.importance)){
   t.twistUsed=true;
   const flip=t.witnesses.findIndex(w=>w.attitude==='flip'&&!w.flipped);
-  if(flip>=0){t.witnesses[flip].flipped=true;twist=`${P(wName(t,flip),'이')} 다음 기일에 진술을 바꾸겠다고 알려 왔다`;t.notices.push({type:'flip',w:flip,day:t.day+1})}
+  if(flip>=0){t.witnesses[flip].flipped=true;t.witnesses[flip].flipAt=t.heard.length;twist=`${P(wName(t,flip),'이')} 다음 기일에 진술을 바꾸겠다고 알려 왔다`;t.notices.push({type:'flip',w:flip,day:t.day+1})}
   else if(curOf(c)?.late&&!t.lateDone)t.lateDue=true;
   if(twist)addLog(t,'반전',twist);
  }
@@ -1003,10 +990,10 @@ function tweak(c,k,val){
  *    those never reach this list, the gauge or the judgment.
  *  - how far can it be trusted (신빙성)? A leading answer or hearsay kept over an objection is usable but `weak`. */
 function citables(c,t){
- syncCond(c,t);const out=[];
+ const out=[];
  t.evidence.forEach(e=>{if(e.decision!=='use'&&e.decision!=='conditional')return;const d=evDetail(c,e);
-  const cd=e.decision==='conditional'?{how:condOf(c,t,e).how,link:condLink(c,t,e),ok:condState(c,t,e).ok}:null;
-  out.push({key:'e:'+e.id,label:e.title,text:cd&&e.cond.rows?condUsed(c,t,e).join(', '):e.scope||'',cond:cd,side:d?.side==='p'||d?.side==='d'?d.side:'n',issue:d?.issue,illegal:e.flawType==='illegal',kind:'evidence'})});
+  const part=e.decision==='conditional'&&condOf(c,t,e).rows?condUsed(c,t,e):null;
+  out.push({key:'e:'+e.id,label:e.title,text:part?part.join(', '):e.scope||'',part:!!part,cond:e.decision==='conditional',side:d?.side==='p'||d?.side==='d'?d.side:'n',issue:d?.issue,illegal:e.flawType==='illegal',kind:'evidence'})});
  t.heard.forEach((h,i)=>{if(h.struck||h.silent)return;
   if(h.tainted){out.push({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label} (이의가 있었던 말)`,text:h.said||'',side:h.side==='m'?'n':h.side||'p',issue:h.issue,weak:true,kind:'testimony',name:wName(t,h.w)});return}
   if(h.text){out.push({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label||'증언'}`,text:h.text,side:h.side==='m'?'n':h.side,issue:h.issue,kind:'testimony',name:wName(t,h.w)});return}
@@ -1086,7 +1073,7 @@ function confirmVerdict(){
  const dir=T.direction(opt,c.kind),sp=sentenceSpec(c,dir),sent=sentenceOf(c,sp,v);
  const fs=(v.factors||[]).map(f=>(sp?.mode==='civil'?CIVIL_FACTORS:CRIM_FACTORS).find(x=>x[0]===f)).filter(Boolean);
  const score=sent?.score?{...sent.score,mitig:fs.filter(f=>f[2]<0).length,aggr:fs.filter(f=>f[2]>0).length}:null;
- const res=T.skill(t,{dir,criminal:isCriminal(c),cites:cites.map(i=>({label:i.label,side:i.side,illegal:i.illegal,weak:i.weak,cond:i.cond?{how:i.cond.how,ok:i.cond.ok}:null})),sentence:score,extra:extraScore(c,t,v,dir,sp)});
+ const res=T.skill(t,{dir,criminal:isCriminal(c),cites:cites.map(i=>({label:i.label,side:i.side,illegal:i.illegal,weak:i.weak})),sentence:score,extra:extraScore(c,t,v,dir,sp)});
  const judgment=writeJudgment(c,t,opt,dir,cites,sp,sent,fs);
  /* what was actually ordered, as plain data: the people's lives follow it (npc_life_justice.applyVerdict) */
  const side=T.sideOf(dir);
@@ -1112,8 +1099,7 @@ function finish(c,st,t,opt,dir,res,judgment,sentText){
 /* The written judgment: what happened, what it rests on, each issue, and the sentence. Only cited material is quoted. */
 function writeJudgment(c,t,opt,dir,cites,sp,sent,fs){
  const crim=isCriminal(c),side=T.sideOf(dir),who=crim?'피고인':'피고',accuser=crim?'검사':'원고';
- const condLine=k=>!k?'':` 다만 이 자료는 ${k.how==='check'&&k.link?`${P(k.link.kind==='w'?k.link.name+'의 증언':k.link.name,'과')} 맞는지 대조한다는`:k.how==='weight'?'한계를 감안해 무게를 낮춘다는':'다른 근거로 뒷받침될 때만 쓴다는'} 조건을 붙여 보았${k.ok||k.how==='weight'?'다':'으나, 그 조건은 법정에서 확인되지 않았다'}.`;
- const line=i=>i.kind==='evidence'?`${i.label}에 따르면 ${i.text.replace(/[.。]$/,'')}.${condLine(i.cond)}`:i.weak?(i.text?`${P(i.name,'은')} "${i.text}"라고 말했다. 다만 이 말에는 이의가 있어 다른 자료와 함께 보았다.`:`${i.label}이 기록에 남아 있다.`):`${P(i.name,'은')} "${i.text}"라고 진술했다.`;
+ const line=i=>i.kind==='evidence'?`${i.label}${i.part?' 가운데 재판부가 증거로 쓴 부분':''}에 따르면 ${i.text.replace(/[.。]$/,'')}.`:i.weak?(i.text?`${P(i.name,'은')} "${i.text}"라고 말했다. 다만 이 말에는 이의가 있어 다른 자료와 함께 보았다.`:`${i.label}이 기록에 남아 있다.`):`${P(i.name,'은')} "${i.text}"라고 진술했다.`;
  const dec=curOf(c)?.decision;
  const order=dec?tell(c,null,side>0?dec.yesOrder:dec.noOrder):side<=0?(crim?'피고인은 무죄.':'원고의 청구를 기각한다.'):(sent?.order||(crim?'피고인을 유죄로 인정한다.':'원고의 청구를 인용한다.'));
  const facts=side===1?[`재판부는 다음 사실을 인정한다.`,...cites.map(line)]:side===0.5?[`재판부는 ${accuser}의 주장 중 증명된 부분만 인정한다.`,...cites.map(line)]
@@ -1254,13 +1240,11 @@ function compareBox(c,t,e){
 /* v8.6: conditional adoption — pick the lines to use and the condition, then see whether it has been met */
 function condBox(c,t,e,locked){
  if(e.decision!=='conditional')return '';
- const k=condOf(c,t,e),rows=evRows(c,t,e),cs=condState(c,t,e),l=condLink(c,t,e),dis=locked?'disabled':'';
- const on=i=>!k.rows||k.rows.includes(i);
- const how=h=>`<button class="t4-chip ${k.how===h?'on':''}" data-action="t4" data-kind="cond" data-id="${esc(e.id)}" data-choice="how:${h}" ${dis||k.how===h?'disabled':''}>${esc(condHowLabel(c,t,e,h))}</button>`;
- return `<div class="t4-cond"><p class="t4-cond-h">조건 붙여 쓰기 · 쓸 부분과 조건을 정하세요</p>
- ${rows.length>1?`<p class="t4-cond-sub">쓸 부분 <small>${k.rows?`${rows.length}줄 중 ${k.rows.length}줄`:'모두'}</small></p><ul class="t4-cond-rows">${rows.map((r,i)=>`<li><button class="t4-crow ${on(i)?'on':''} ${warnRow(r)?'warn':''}" data-action="t4" data-kind="cond" data-id="${esc(e.id)}" data-choice="row:${i}" ${dis}><span>${on(i)?'☑':'☐'}</span>${esc(r)}</button></li>`).join('')}</ul>`:''}
- <p class="t4-cond-sub">붙일 조건</p><div class="t4-row t4-cond-how">${l?how('check'):''}${how('corrob')}${how('weight')}</div>
- <p class="t4-cond-st ${cs.ok?'ok':'wait'}">${cs.ok?'✔':'⏳'} ${esc(cs.text)}${cs.ok?'':' · 판결 전까지 확인하지 못하면 판결문에 그대로 적혀요'}</p></div>`;
+ const k=condOf(c,t,e),rows=evRows(c,t,e),dis=locked?'disabled':'',on=i=>!k.rows||k.rows.includes(i);
+ if(rows.length<=1)return `<div class="t4-cond"><p class="t4-cond-h">조건 붙여 쓰기</p><p class="t4-cond-sub">이 자료는 나눌 부분이 없어요. 전부 쓰되, '쓴다'보다 가볍게 판단에 넣어요.</p></div>`;
+ return `<div class="t4-cond"><p class="t4-cond-h">조건 붙여 쓰기 · 증거로 쓸 부분만 고르세요</p>
+ <p class="t4-cond-sub">쓸 부분 <small>${k.rows?`${rows.length}줄 중 ${k.rows.length}줄`:'아직 전부 · 뺄 줄을 누르세요'}</small></p><ul class="t4-cond-rows">${rows.map((r,i)=>`<li><button class="t4-crow ${on(i)?'on':''} ${warnRow(r)?'warn':''}" data-action="t4" data-kind="cond" data-id="${esc(e.id)}" data-choice="row:${i}" ${dis}><span>${on(i)?'☑':'☐'}</span>${esc(r)}</button></li>`).join('')}</ul>
+ <p class="t4-cond-st ${k.rows?'ok':'wait'}">${k.rows?'고른 줄만 판단과 판결문에 들어가요. 뺀 줄은 쓰지 않아요.':'줄을 빼지 않으면 자료 전체를 가볍게 판단에 넣어요.'}</p></div>`;
 }
 function witnessCard(w,t,locked,c){
  const i=t.witnesses.indexOf(w),p=NPC[w.id],qs=questionsOf(c,t,i),asked=w.askedIds||[],blocked=w.blocked||[];
@@ -1295,9 +1279,9 @@ function issueFacts(c,t,is){
  const items=[];
  for(const e of t.evidence){const d=evDetail(c,e);if(d?.issue!==is.id||!(e.decision==='use'||e.decision==='conditional'))continue;
   if(e.decision!=='conditional'){items.push({kind:'증거',side:d.side||'n',who:e.title,text:e.scope||''});continue}
-  const k=condOf(c,t,e),cs=condState(c,t,e),all=evRows(c,t,e).length;
+  const k=condOf(c,t,e),all=evRows(c,t,e).length;
   items.push({kind:'증거',side:d.side||'n',who:e.title,text:k.rows?condUsed(c,t,e).join(' · '):e.scope||'',
-   note:`조건부 · ${condHowLabel(c,t,e,k.how)}${k.rows?` · ${all}줄 중 ${k.rows.length}줄만 씀`:''} · ${cs.ok?'✔ ':'⏳ '}${cs.text}`})}
+   note:k.rows?`조건부 · ${all}줄 중 ${k.rows.length}줄만 씀`:'조건부 · 전체를 가볍게 씀'})}
  for(const h of t.heard){if(h.issue!==is.id||h.struck||h.tainted)continue;
   if(h.text){const ev=shownTitle(t,h);items.push({kind:h.w==='party'?'진술':'증언',side:h.side||'n',who:wName(t,h.w),w:h.w,text:`"${h.text}"`,note:[h.label,ev?`${ev} 제시 뒤`:''].filter(Boolean).join(' · '),day:h.day});continue}
   const q=qById(c,t,h.w,h.q);if(!q)continue;
@@ -1307,8 +1291,9 @@ function issueFacts(c,t,is){
 function issueStatus(c,t,is){
  const f=issueFacts(c,t,is),p=f.filter(x=>x.side==='p').length,d=f.filter(x=>x.side==='d').length;
  const wp=f.filter(x=>x.kind==='증언'&&x.side==='p'),wd=f.filter(x=>x.kind==='증언'&&x.side==='d');
- let clash=null;for(const x of wp){const y=wd.find(v=>v.w!==x.w);if(y){clash={a:x.who,b:y.who};break}}
- const self=clash?null:(wp.find(x=>wd.some(y=>y.w===x.w))?.who||null);
+ let clash=null;for(const x of wp){const y=wd.find(v=>v.w!==x.w);if(y){clash={a:x.who,b:y.who,at:x.text,bt:y.text};break}}
+ /* v8.6.4: one witness on both sides is only a changed story when that witness has actually flipped */
+ const self=clash?null:(wp.find(x=>wd.some(y=>y.w===x.w)&&t.witnesses[x.w]?.flipped)?.who||null);
  const undecided=t.evidence.filter(e=>!e.decision&&evDetail(c,e)?.issue===is.id).length;
  const unasked=t.witnesses.reduce((n,w,i)=>n+questionsOf(c,t,i).filter(q=>q.issue===is.id&&!(w.askedIds||[]).includes(q.id)&&!(w.blocked||[]).includes(q.id)).length,0);
  const lean=!f.length?'open':clash||(p&&d)?'clash':p?'p':d?'d':'some';
@@ -1316,14 +1301,14 @@ function issueStatus(c,t,is){
 }
 function faceList(c,t,locked){
  if(locked)return '';const can=issuesOf(c).filter(is=>!(t.faced||[]).includes(is.id)&&clashPair(t,is.id));
- return can.length?`<div class="t4-face">${can.map(is=>{const [a,b]=clashPair(t,is.id);return `<button class="t4-q face" data-action="t4" data-kind="face" data-id="${esc(is.id)}" ${t.qLeft>=2?'':'disabled'}>⚖ 대질 신문 · ${esc(wName(t,a))} ↔ ${esc(wName(t,b))}<small>'${esc(is.title)}'에서 말이 엇갈려요 · 신문 2번</small></button>`}).join('')}</div>`:'';
+ return can.length?`<div class="t4-face">${can.map(is=>{const [a,b]=clashPair(t,is.id);return `<button class="t4-q face" data-action="t4" data-kind="face" data-id="${esc(is.id)}" ${t.qLeft>=2?'':'disabled'}>⚖ 대질 신문 · ${esc(wName(t,a))} ↔ ${esc(wName(t,b))}<small>'${esc(is.title)}'에서 서로 반대쪽을 말해요 · 신문 2번</small></button>`}).join('')}</div>`:'';
 }
 function issueView(c,t,brief){
  const issues=issuesOf(c);if(!issues.length)return '';
  const P_=sideWord(c,'p')==='검사'?'검찰':'원고',D_=sideWord(c,'p')==='검사'?'변호인':'피고';
  const LEAN={open:'아직 근거 없음',clash:'양쪽 근거가 맞섬',p:`${P_} 쪽 근거만 있음`,d:`${D_} 쪽 근거만 있음`,some:'참고 사실만 있음'};
  if(brief)return `<div class="t4-iss-brief">${issues.map(is=>{const s=issueStatus(c,t,is);
-  return `<button class="t4-ib ${s.lean}" data-action="t4tab" data-tab="verdict"><b>${esc(is.title)}</b><span><i class="p">${P_} ${s.p}</i><i class="d">${D_} ${s.d}</i>${s.clash?'<i class="x">⚠ 엇갈림</i>':s.self?'<i class="x">⚠ 말 바뀜</i>':''}</span></button>`}).join('')}</div>`;
+  return `<button class="t4-ib ${s.lean}" data-action="t4tab" data-tab="verdict"><b>${esc(is.title)}</b><span><i class="p">${P_} ${s.p}</i><i class="d">${D_} ${s.d}</i>${s.clash?'<i class="x">⚠ 반대쪽 증언</i>':s.self?'<i class="x">⚠ 말 바뀜</i>':''}</span></button>`}).join('')}</div>`;
  const li=x=>`<li><span class="k ${x.kind==='증거'?'ev':'wt'}">${x.kind}</span><b>${esc(x.who)}</b> ${esc(x.text)}${x.note?`<small>${esc(x.note)}</small>`:''}</li>`;
  const group=(cls,label,list)=>list.length?`<div class="t4-side ${cls}"><p>${label}</p><ul>${list.sort((a,b)=>(a.kind==='증거'?0:1)-(b.kind==='증거'?0:1)).map(li).join('')}</ul></div>`:'';
  return `<div class="t4-issues">${issues.map((is,n)=>{const s=issueStatus(c,t,is),f=s.f;
@@ -1331,7 +1316,7 @@ function issueView(c,t,brief){
   return `<div class="t4-issue ${s.lean}"><div class="t4-ih"><span class="n">쟁점 ${n+1}</span><b>${esc(is.title)}</b><em>${LEAN[s.lean]}</em></div>
   ${f.length?group('p',`${P_} 주장을 뒷받침`,f.filter(x=>x.side==='p'))+group('d',`${D_} 주장을 뒷받침`,f.filter(x=>x.side==='d'))+group('m','판단을 어렵게 하는 사정',f.filter(x=>x.side==='m'))+group('n','양쪽 모두 다투지 않는 사실',f.filter(x=>x.side==='n'))
    :`<p class="t4-open">${esc(tell(c,t,is.open))}</p>`}
-  ${s.clash?`<p class="t4-clash">⚠ ${esc(P(s.clash.a,'과'))} ${esc(s.clash.b)}의 말이 엇갈려요. ${(t.faced||[]).includes(is.id)?'대질 신문을 마쳤어요.':sessionOpen(t)&&!waiting(t)&&!S.cases[c.id]?.verdict?'증인 탭에서 두 사람을 대질 신문할 수 있어요.':'누구 말을 믿을지가 이 쟁점의 열쇠예요.'}</p>`:s.self?`<p class="t4-clash">⚠ ${esc(s.self)}의 말이 앞뒤로 달라졌어요. 어느 쪽 말이 맞는지가 이 쟁점의 열쇠예요.</p>`:''}
+  ${s.clash?`<p class="t4-clash">⚠ ${esc(s.clash.a)}의 말은 ${P_} 쪽, ${esc(s.clash.b)}의 말은 ${D_} 쪽을 가리켜요.<small>${esc(s.clash.a)} ${esc(short(s.clash.at,46))} · ${esc(s.clash.b)} ${esc(short(s.clash.bt,46))}</small> ${(t.faced||[]).includes(is.id)?'대질 신문을 마쳤어요.':sessionOpen(t)&&!waiting(t)&&!S.cases[c.id]?.verdict?'증인 탭에서 두 사람을 대질 신문할 수 있어요.':'누구 말을 믿을지가 이 쟁점의 열쇠예요.'}</p>`:s.self?`<p class="t4-clash">⚠ ${esc(s.self)}의 말이 중간에 바뀌었어요. 처음 말과 바뀐 말 중 어느 쪽이 맞는지가 이 쟁점의 열쇠예요.</p>`:''}
   ${(()=>{const back=t.heard.filter(h=>h.issue===is.id&&h.struck&&!h.tainted).length;return back?`<p class="t4-gap">⤺ 증인이 스스로 거둬들인 말 ${back}개는 판단에서 뺐어요.</p>`:''})()}
   ${todo?`<p class="t4-gap">아직 확인할 것 · ${esc(todo)}</p>`:''}</div>`}).join('')}</div>`;
 }
@@ -1440,7 +1425,7 @@ function verdictPage(c,st){
   <p class="t4-ask-head">판단 사유</p><div class="t4-seg wrap t4-factors">${CIVIL_FACTORS.map(([k,l,d])=>`<button class="t4-chip ${v.factors.includes(k)?'on':''} ${d<0?'mit':'agg'}" data-action="t4v" data-k="factor" data-v="${k}">${d<0?'↓':'↑'} ${l}</button>`).join('')}</div>${remedyBlock(c,v)}`;
  }
  const items=citables(c,t);
- const citeList=items.length?items.map(i=>`<button class="t4-cite ${v.cites.includes(i.key)?'on':''} ${i.weak?'weak':''}" data-action="t4v" data-k="cite" data-v="${esc(i.key)}"><b>${v.cites.includes(i.key)?'☑':'☐'} ${esc(i.label)}</b>${i.text?`<small>${esc(short(i.text,70))}</small>`:''}${i.weak?'<small class="t4-weak">이의가 있었던 말 · 믿을 만한 정도가 낮아요</small>':''}${i.cond?(i.cond.how==='weight'?'<small class="t4-weak">가볍게 보기로 한 자료</small>':i.cond.ok?'<small class="t4-cond-ok">✔ 붙인 조건을 확인한 자료</small>':'<small class="t4-weak">⏳ 붙인 조건을 확인하지 못한 자료 · 근거로서 힘이 약해요</small>'):''}</button>`).join(''):'<p class="notice">쓰기로 정한 증거나 들은 증언이 없습니다. 창을 닫고 증거 탭과 증인 탭을 먼저 확인하세요.</p>';
+ const citeList=items.length?items.map(i=>`<button class="t4-cite ${v.cites.includes(i.key)?'on':''} ${i.weak?'weak':''}" data-action="t4v" data-k="cite" data-v="${esc(i.key)}"><b>${v.cites.includes(i.key)?'☑':'☐'} ${esc(i.label)}</b>${i.text?`<small>${esc(short(i.text,70))}</small>`:''}${i.weak?'<small class="t4-weak">이의가 있었던 말 · 믿을 만한 정도가 낮아요</small>':''}${i.cond?`<small class="t4-weak">${i.part?'조건부 · 고른 부분만 쓴 자료':'조건부 · 전체를 가볍게 쓴 자료'}</small>`:''}</button>`).join(''):'<p class="notice">쓰기로 정한 증거나 들은 증언이 없습니다. 창을 닫고 증거 탭과 증인 탭을 먼저 확인하세요.</p>';
  const pend_=(t.courtOrders||[]).filter(o=>o.status==='pending').length;
  const overview=`<section class="panel t4 t4-verdict-home"><h3>⚖ 판결</h3>${canVerdict?'':`<p class="notice">기일이 ${t.minDays-t.daysDone}번 더 필요해요.${waiting(t)?` ${esc(session(c,t.day))}은 ${esc(dlabel(Math.max(t.nextDate||0,today())))}에 열려요.`:''}</p>`}
  ${pend_?`<p class="notice">아직 결과가 오지 않은 재판장 주문이 ${pend_}건 있어요. 지금 선고해도 되지만, 그 결과는 판단에 들어가지 않아요.</p>`:''}
@@ -1545,7 +1530,7 @@ court=function(){
  const argsHtml=grab('.court-screen-arguments'),evidHtml=grab('.court-screen-evidence'),histHtml=grab('.court-screen-history');
  const header=tpl.content.querySelector('.court-play-header');
  const t=st.verdict?st.trial4:ensure(c,st);
- if(!st.verdict)syncCond(c,t);if(lastCaseId!==c.id){lastCaseId=c.id;ui.t4ev=null;ui.t4w=null;ui.t4tab=st.verdict?'result':(t.daysDone===0&&!t.log.length?'case':'day')}
+ if(lastCaseId!==c.id){lastCaseId=c.id;ui.t4ev=null;ui.t4w=null;ui.t4tab=st.verdict?'result':(t.daysDone===0&&!t.log.length?'case':'day')}
  const tabs=t?tabsFor(c,st):[['case','사건'],['log','기록']];
  if(!tabs.some(v=>v[0]===ui.t4tab))ui.t4tab=tabs[0][0];
  const status=header?.querySelector('.court-play-status');
