@@ -5,12 +5,12 @@ begin;
 create table if not exists public.shared_docket_offers (
  judge_id uuid not null references auth.users(id),
  slot text not null check(slot ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}$'),
- position smallint not null check(position in (0,1)),
+ option_index smallint not null check(option_index in (0,1)),
  case_id text not null references public.case_stock(case_id),
  state text not null default 'offered' check(state in ('offered','accepted','expired')),
  expires_at timestamptz not null,
  created_at timestamptz not null default now(),
- primary key(judge_id,slot,position)
+ primary key(judge_id,slot,option_index)
 );
 -- A case cannot be reserved for two judges during the same active window.
 create unique index if not exists shared_docket_unclaimed
@@ -33,7 +33,7 @@ grant execute on function public.shared_kst_slot() to service_role;
 -- Request is idempotent within one KST hour and uses DB clock rather than
 -- client time. Releasing expired reservations never releases ACCEPTED cases.
 create or replace function public.shared_docket_offer(p_judge uuid,p_slot text)
-returns table(case_id text,category text,position smallint,expires_at timestamptz)
+returns table(case_id text,category text,option_index smallint,expires_at timestamptz)
 language plpgsql security definer set search_path=public as $$
 declare
  current_slot text:=public.shared_kst_slot();
@@ -63,17 +63,17 @@ begin
    order by s.created_at,s.case_id
    for update of s skip locked limit 1;
    if found_id is null then exit; end if;
-   insert into public.shared_docket_offers(judge_id,slot,position,case_id,expires_at)
+   insert into public.shared_docket_offers(judge_id,slot,option_index,case_id,expires_at)
    values(p_judge,p_slot,i,found_id,now()+interval '45 minutes');
   end loop;
  end if;
  return query
- select o.case_id,s.category,o.position,o.expires_at
+ select o.case_id,s.category,o.option_index,o.expires_at
  from public.shared_docket_offers o join public.case_stock s on s.case_id=o.case_id
  where o.judge_id=p_judge and o.slot=p_slot
    and o.state in ('offered','accepted')
    and (o.state='accepted' or o.expires_at>now())
- order by o.position;
+ order by o.option_index;
 end $$;
 
 create or replace function public.shared_docket_accept(
