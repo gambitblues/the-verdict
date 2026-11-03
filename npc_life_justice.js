@@ -181,7 +181,9 @@ window.LifeJustice=(()=>{
   * cannot be selected as fresh, active civil plaintiffs. */
  function eligibleLifeTrigger(event,p,week){
   return !!event&&!!p&&p.alive!==false&&!event.consumed&&Number.isFinite(event.week)
-   &&week-event.week>=23&&week-event.week<312&&isFree(p,week);
+   &&week-event.week>=23&&week-event.week<312&&isFree(p,week)
+   // Do not cast one NPC as both a litigant and the assigned counsel/prosecutor.
+   &&!/검사|변호사|판사|법관|수사관|재판장/.test(String(p.role||''));
  }
  function latestLifeMoment(p,w){
   const events=(p?.historyEvents||[]).filter(e=>e&&Number.isFinite(e.week)&&e.week<=w&&e.change);
