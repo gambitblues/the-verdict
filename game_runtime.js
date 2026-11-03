@@ -317,7 +317,7 @@ function annualNPCLives(){
  S.lifeTriggers??=[];
  for(let i=0;i<Math.min(5,ids.length);i++){
   const id=choose(ids),p=NPC[id];if(!p||p.alive===false||p.lastLifeYear===year())continue;
-  p.lastLifeYear=year();p.life??={marital:'미혼',career:p.career,wealth:p.wealth,partner:null,children:0};
+  p.lastLifeYear=year();p.life??={marital:p.maritalStatus||'미혼',career:p.career,wealth:p.wealth,partner:p.partnerId||null,children:p.children||0};
   const life=p.life,roll=rand();let change='',type='일상';
   if(roll<.18&&life.marital==='미혼'&&year()-(p.bornYear||year())>=24){life.marital='기혼';life.partner='가상 배우자';type='혼인';change='혼인하여 새로운 가족 관계가 형성됨';}
   else if(roll<.29&&life.marital==='기혼'){life.marital='이혼';type='이혼';change='별거와 이혼을 경험하며 가족 관계가 변화함';}
@@ -325,8 +325,10 @@ function annualNPCLives(){
   else if(roll<.66){const sector=p.role.includes('수사')?'수사기관':p.role.includes('변호')?'법률서비스':p.role.includes('검사')?'검찰':null;const next=sector||choose(PROFESSIONS);p.career=next;life.career=next;type='직업';change=`근무·직업 환경이 ${next}(으)로 변경됨`;}
   else if(roll<.88){const delta=Math.round((rand()-.52)*28);p.wealth=clamp(p.wealth+delta,0,100);life.wealth=p.wealth;type='재산';change=`경제 상황이 ${delta<0?'악화':'변화'}되어 생활 선택이 달라짐`;}
   else{p.relationships=choose(RELATION_STYLES);type='관계';change='교우관계와 가족 교류 방식에 변화가 생김';}
-  const event={week:S.week,id,type,change,wealth:p.wealth,career:p.career,marital:life.marital};
-  p.historyEvents??=[];p.historyEvents.push(event);remember(id,'생활 변화',change,'life-'+year()+'-'+id);
+  const event={week:S.week,id,type,change,wealth:p.wealth,career:p.career,marital:life.marital,children:life.children};
+  // Keep the legacy life event and every canonical biography field consistent.
+  if(!LifeJustice.recordAnnualEvent(p,event,year()))continue;
+  remember(id,'생활 변화',change,'life-'+year()+'-'+id);
   if(['이혼','재산','직업'].includes(type)&&rand()<.38){S.lifeTriggers.push({...event,consumed:false});}
   if(rand()<.06)news('인물 근황',`${p.name}: ${change}`,'지역 소식');
  }
