@@ -96,7 +96,11 @@ try{
  await page.locator(`[data-action="t4verdict"][data-id="${part}"]`).click();await page.locator('.t4-steps li').nth(1).waitFor();
  if(await page.locator('[data-k="amount"]').count()){
   const a0=await page.evaluate(()=>ui.t4v.amount);await page.locator('[data-k="amount"][data-v="1"]').click();
-  assert.equal(await page.evaluate(()=>ui.t4v.amount),a0+10,'+100만 원');
+  // amounts are in 만 원: one step is 100만 원 (= 100), or 10만 원 for claims under 1,000만 원 (v8.6.5: was 10 by mistake)
+  const claim=await page.evaluate(()=>{const c=CASES.find(x=>x.id===ui.caseId);return VerdictCurated.cases[c.contentPack?.archetypeId||c.story?.packOrigin?.id]?.claim?.amount||0});
+  const unit=claim>=1000?100:10;
+  assert.equal(await page.evaluate(()=>ui.t4v.amount),Math.min(claim||Infinity,a0+unit),unit===100?'+100만 원':'+10만 원');
+  assert.match(await page.locator('[data-k="amount"][data-v="1"]').innerText(),unit===100?/100만/:/10만/,'the step button says what it adds');
   await page.locator('[data-t4input="setAmount"]').fill('1234');await page.locator('[data-t4input="setAmount"]').press('Enter');await page.waitForFunction(()=>ui.t4v.amount===1234);
   assert.equal(await page.evaluate(()=>ui.t4v.amount),1234,'typed amount (만 원)');
   await shot('verdict-amount');

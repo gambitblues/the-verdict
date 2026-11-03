@@ -310,7 +310,10 @@ const isDecision=c=>!!curOf(c)?.decision;
 /* v8.4: a sheet whose 'reason' world convicts of part of the charge must let the judge say so */
 function partialOption(c){if(!curOf(c)?.partial||!Array.isArray(c.verdicts)||c.verdicts.some(o=>o.id==='partial'))return;
  const i=c.verdicts.findIndex(o=>T.direction(o,c.kind)==='acquit');c.verdicts.splice(i<0?c.verdicts.length:i,0,{id:'partial',label:'일부만 유죄',note:'증거로 보여준 부분만 인정한다'})}
-function decisionVerdicts(c){partialOption(c);const d=curOf(c)?.decision;if(!d)return;c.verdicts=[{id:'full',label:tell(c,null,d.yes),note:tell(c,null,d.yesNote)},{id:'dismiss',label:tell(c,null,d.no),note:tell(c,null,d.noNote)}]}
+function decisionVerdicts(c){partialOption(c);claimNotes(c);const d=curOf(c)?.decision;if(!d)return;c.verdicts=[{id:'full',label:tell(c,null,d.yes),note:tell(c,null,d.yesNote)},{id:'dismiss',label:tell(c,null,d.no),note:tell(c,null,d.noNote)}]}
+/* v8.6.5: the civil options carry the amount the case itself claims (the generated story had its own figure) */
+function claimNotes(c){const cl=!isCriminal(c)&&claimOf(c);if(!cl||!c.verdicts)return;
+ for(const o of c.verdicts){if(o.id==='partial')o.note=`증거로 확인된 만큼만 인정한다 (청구 ${won(cl.amount)})`;else if(o.id==='full')o.note=`원고의 요구를 모두 인정한다 (청구 ${won(cl.amount)})`}}
 const session=(c,n)=>isCriminal(c)?`제${n}회 공판`:isDecision(c)?`제${n}회 심리기일`:`제${n}회 변론기일`;
 const clock=ms=>new Date(ms).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
 // 재판일 1은 / 재판일 2는: particle after a spoken Korean number
@@ -947,6 +950,8 @@ function sentenceSpec(c,dir){
  const cl=claimOf(c);if(!cl)return null;
  return {mode:'civil',cl,full:side===1,ref:{kind:'won',lo:cl.fair[0],hi:cl.fair[1]}};
 }
+/* amounts are kept in 만 원; the step is 100만 원 (10만 원 for claims under 1,000만 원) */
+const amountUnit=sp=>(sp?.cl?.amount||0)>=1000?100:10;
 function vstate(c){
  ui.t4v??={};if(ui.t4v.caseId!==c.id)ui.t4v={caseId:c.id,cites:[],factors:[]};
  return ui.t4v;
@@ -959,7 +964,7 @@ function setOption(c,optId){
   if(sp.ref.kind==='fine'){v.type='fine';v.fine=Math.round((sp.ref.lo+sp.ref.hi)/2/10)*10}
   else{v.type='prison';v.months=Math.max(6,Math.round((sp.ref.lo+sp.ref.hi)/2/6)*6);v.susp=2}
   v.withFine=sp.pen.both==='must';if(v.withFine)v.fine=v.fine||fineUnit(sp.pen.fineMax)*10;
- }else if(sp?.mode==='civil')v.amount=sp.full?sp.cl.amount:Math.round((sp.ref.lo+sp.ref.hi)/2/10)*10;
+ }else if(sp?.mode==='civil'){const u=amountUnit(sp);v.amount=sp.full?sp.cl.amount:Math.min(sp.cl.amount,Math.round((sp.ref.lo+sp.ref.hi)/2/u)*u)}
 }
 /* prison terms move in 6-month steps (v8.2); a mitigating reason lets the judge go down to half the statutory minimum */
 function legalMonths(sp,v){const mit=(v.factors||[]).some(f=>CRIM_FACTORS.find(x=>x[0]===f)?.[2]<0);
@@ -975,7 +980,7 @@ function tweak(c,k,val){
  else if(k==='withFine'&&crim&&sp.pen.both==='may'){v.withFine=!v.withFine;if(v.withFine&&!v.fine)v.fine=clampFine(unit*10)}
  else if(k==='fine'&&crim)v.fine=clampFine((v.fine||unit)+Number(val)*unit);
  else if(k==='setFine'&&crim){const n=Number(String(val).replace(/[^0-9]/g,''));if(n)v.fine=clampFine(n)}
- else if(k==='amount'&&sp?.mode==='civil'){v.amount=Math.max(0,Math.min(sp.cl.amount,Math.round(((v.amount||0)+Number(val)*10)/10)*10))}
+ else if(k==='amount'&&sp?.mode==='civil'){const u=amountUnit(sp);v.amount=Math.max(0,Math.min(sp.cl.amount,Math.round(((v.amount||0)+Number(val)*u)/u)*u))}
  else if(k==='setAmount'&&sp?.mode==='civil'){const n=Number(String(val).replace(/[^0-9]/g,''));if(!Number.isNaN(n))v.amount=Math.max(0,Math.min(sp.cl.amount,n))}
  else if(k==='factor'){v.factors=v.factors.includes(val)?v.factors.filter(f=>f!==val):[...v.factors,val];if(crim&&v.months){const L2=legalMonths(sp,v);v.months=Math.max(L2.min,v.months)}}
  else if(k==='addon'){const a=addonsOf(c).find(x=>x.id===val);if(a&&a.ok!==false&&!a.fixed){v.addons??={};if(v.addons[val]!=null)delete v.addons[val];else v.addons[val]=a.range?.[0]??1}}
@@ -1105,13 +1110,21 @@ function writeJudgment(c,t,opt,dir,cites,sp,sent,fs){
  const facts=side===1?[`재판부는 다음 사실을 인정한다.`,...cites.map(line)]:side===0.5?[`재판부는 ${accuser}의 주장 중 증명된 부분만 인정한다.`,...cites.map(line)]
   :[`재판부는 다음 이유로 ${crim?'공소사실':'원고의 청구'}을 인정하지 않는다.`,...cites.map(line)];
  const excluded=t.evidence.filter(e=>e.decision==='exclude').map(e=>`${e.title} — ${e.flawType==='illegal'?'위법하게 수집돼 증거로 쓸 수 없다':e.flawType!=='none'?'믿기 어려운 사정이 있어 판단에서 뺐다':'판단에 필요하지 않아 뺐다'}`);
+ /* v8.6.5: each issue is judged on the grounds the judge cited for it; when none were cited, on the material the judge
+  * chose to use on that issue (evidence kept, testimony heard) — so the reasoning matches what was picked in court */
+ const pool=citables(c,t),defense=crim?'변호인':'피고';
+ const say=i=>i.kind==='evidence'?`${i.label}(${short(String(i.text||'').replace(/[.。]$/,''),38)})`:`${P(i.name,'의')} 증언("${short(String(i.text||'').replace(/[.。]$/,''),34)}")`;
+ const list=a=>a.map(say).join(', ');
  const issues=issuesOf(c).map(is=>{
-  const mine=cites.filter(i=>i.issue===is.id),pro=mine.filter(i=>i.side==='p'),con=mine.filter(i=>i.side==='d');
+  let mine=cites.filter(i=>i.issue===is.id);const own=mine.length>0;if(!own)mine=pool.filter(i=>i.issue===is.id&&!i.illegal);
+  const pro=mine.filter(i=>i.side==='p'),con=mine.filter(i=>i.side==='d'),nn=mine.filter(i=>i.side!=='p'&&i.side!=='d');
+  const lead=own?'':'판결 이유로 따로 고르지는 않았지만, 재판부가 증거로 쓴 자료를 보면 ';
   let txt;
-  if(pro.length&&con.length)txt=`엇갈리는 자료가 있었다. 재판부는 ${(side>0?pro:con).map(i=>i.label).join(', ')} 쪽을 더 믿을 만하다고 보았다.`;
-  else if(pro.length)txt=side>0?`${pro.map(i=>i.label).join(', ')}에 비추어 ${accuser}의 주장이 인정된다.`:`${pro.map(i=>i.label).join(', ')}만으로는 의심을 지우기에 부족하다.`;
-  else if(con.length)txt=side>0?`${con.map(i=>i.label).join(', ')}이 있으나 결론을 바꿀 정도는 아니다.`:`${con.map(i=>i.label).join(', ')}에 비추어 ${accuser}의 주장을 그대로 믿기 어렵다.`;
-  else txt=side>0?'이 쟁점에 대해서는 판결 이유로 삼은 자료가 없다.':`${accuser}이(가) 이 점을 증명하지 못했다. ${tell(c,t,is.open)}`;
+  if(pro.length&&con.length)txt=`${lead}${accuser} 쪽에는 ${list(pro)}, ${defense} 쪽에는 ${list(con)} 자료가 있어 서로 엇갈렸다. ${side===0.5?'재판부는 양쪽 자료를 함께 보아 일부만 인정한다.':`재판부는 ${side>0?accuser:defense} 쪽 자료를 더 믿을 만하다고 보았다.`}`;
+  else if(pro.length)txt=side>0?`${lead}${list(pro)}에 비추어 ${accuser}의 주장이 인정된다.`:`${lead}${list(pro)}만으로는 의심을 지우기에 부족하다.`;
+  else if(con.length)txt=side>0?`${lead}${list(con)} 같은 자료가 있으나 결론을 바꿀 정도는 아니다.`:`${lead}${list(con)}에 비추어 ${accuser}의 주장을 그대로 믿기 어렵다.`;
+  else if(nn.length)txt=`${lead}${list(nn)} 자료가 있으나, 어느 한쪽 주장을 뒷받침하지는 않는다.${side>0?'':` ${accuser}이(가) 이 점을 증명하지 못했다.`}`;
+  else txt=side>0?'이 쟁점을 직접 다룬 자료는 법정에 나오지 않았으나, 다른 쟁점의 판단에 비추어 결론에 영향이 없다.':`${accuser}이(가) 이 점을 증명하지 못했다. ${tell(c,t,is.open)}`;
   return {title:is.title,text:txt};
  });
  let conclusion;
@@ -1394,7 +1407,7 @@ function verdictPage(c,st){
  const opt=c.verdicts.find(o=>o.id===v.opt),dir=opt&&T.direction(opt,c.kind),sp=opt&&sentenceSpec(c,dir);
  const closing=cur?`<div class="t4-closing"><b>${esc(sideWord(c,'p'))} 최종 ${crim?'논고':'변론'}</b><p>"${esc(tell(c,t,cur.closing))}"</p>${crim?`<p class="small">구형: <b>${esc(demandText(c))}</b></p>`:(cur.decision?`<p class="small">신청: <b>${esc(tell(c,t,cur.decision.what))}</b></p>`:`<p class="small">청구: <b>${won(cur.claim?.amount||0)}</b> · ${esc(cur.claim?.what||'')}</p>`)}</div>
   <div class="t4-closing d"><b>${esc(sideWord(c,'d'))} 최종 변론</b><p>"${esc(tell(c,t,cur.claims?.[1]||''))}"</p></div>`:'';
- const optBtns=c.verdicts.map(o=>`<button class="choice ${v.opt===o.id?'on':''}" data-action="t4verdict" data-id="${esc(o.id)}" ${canVerdict?'':'disabled'}><span class="choice-index">${v.opt===o.id?'✔':'⚖'}</span><span><strong>${esc(plainLabel(o))}</strong><small>${esc(plainNote(o))}</small></span></button>`).join('');
+ claimNotes(c);const optBtns=c.verdicts.map(o=>`<button class="choice ${v.opt===o.id?'on':''}" data-action="t4verdict" data-id="${esc(o.id)}" ${canVerdict?'':'disabled'}><span class="choice-index">${v.opt===o.id?'✔':'⚖'}</span><span><strong>${esc(plainLabel(o))}</strong><small>${esc(plainNote(o))}</small></span></button>`).join('');
  /* the sentence or amount: only what the law allows for this case (v8.2) */
  let sentence='';
  if(sp?.mode==='crim'){
@@ -1419,7 +1432,7 @@ function verdictPage(c,st){
   <p class="t4-ask-head">양형 사유</p><div class="t4-seg wrap t4-factors">${CRIM_FACTORS.filter(([k])=>!(curOf(c)?.victimless&&(k==='repair'||k==='vuln'))).map(([k,l,d])=>`<button class="t4-chip ${v.factors.includes(k)?'on':''} ${d<0?'mit':'agg'}" data-action="t4v" data-k="factor" data-v="${k}">${d<0?'↓':'↑'} ${l}</button>`).join('')}</div>${addonBlock(c,v)}`;
  }else if(sp?.mode==='civil'){
   sentence=`<p class="small">원고 청구 <b>${won(sp.cl.amount)}</b> · ${esc(sp.cl.what)}${sp.full?'':`<br>입증된 손해의 참고 범위 <b>${won(sp.ref.lo)}~${won(sp.ref.hi)}</b>`}</p>
-  ${sp.full?`<p class="small">전부 인용: <b>${won(sp.cl.amount)}</b> 지급</p>`:`<div class="t4-step"><span>배상액</span><button class="t4-chip" data-action="t4v" data-k="amount" data-v="-10">−1,000만</button><button class="t4-chip" data-action="t4v" data-k="amount" data-v="-1">−100만</button><b>${won(v.amount||0)}</b><button class="t4-chip" data-action="t4v" data-k="amount" data-v="1">+100만</button><button class="t4-chip" data-action="t4v" data-k="amount" data-v="10">+1,000만</button></div>
+  ${sp.full?`<p class="small">전부 인용: <b>${won(sp.cl.amount)}</b> 지급</p>`:`<div class="t4-step"><span>배상액</span>${(u=>{const big=u*10,lb=n=>won(n).replace(/ 원$/,'');return `<button class="t4-chip" data-action="t4v" data-k="amount" data-v="-10">−${lb(big)}</button><button class="t4-chip" data-action="t4v" data-k="amount" data-v="-1">−${lb(u)}</button><b>${won(v.amount||0)}</b><button class="t4-chip" data-action="t4v" data-k="amount" data-v="1">+${lb(u)}</button><button class="t4-chip" data-action="t4v" data-k="amount" data-v="10">+${lb(big)}</button>`})(amountUnit(sp))}</div>
    <label class="t4-direct">직접 입력 <input type="text" inputmode="numeric" data-t4input="setAmount" value="${v.amount||0}"> 만 원 <small class="muted">(청구한 ${won(sp.cl.amount)}까지)</small></label>
    <p class="muted small">${(v.amount||0)<sp.cl.amount?'일부만 인정하면 판결문에 "원고의 나머지 청구를 기각한다"가 붙어요.':'청구 금액 전부를 인정해요.'}</p>`}
   <p class="t4-ask-head">판단 사유</p><div class="t4-seg wrap t4-factors">${CIVIL_FACTORS.map(([k,l,d])=>`<button class="t4-chip ${v.factors.includes(k)?'on':''} ${d<0?'mit':'agg'}" data-action="t4v" data-k="factor" data-v="${k}">${d<0?'↓':'↑'} ${l}</button>`).join('')}</div>${remedyBlock(c,v)}`;
