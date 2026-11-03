@@ -164,11 +164,11 @@ window.LifeJustice=(()=>{
   if(p.historyEvents.some(e=>e.week===event.week&&e.type===event.type&&e.change===event.change))return false;
   p.jobHistory??=[];p.financialHistory??=[];p.relationshipHistory??=[];
   const reason=String(event.change||'생활 변화');
-  if(event.type==='직업'&&event.career){
+  if(['직업','출소','사회 복귀'].includes(event.type)&&event.career){
    p.career=event.career;
    if(p.jobHistory.at(-1)?.job!==event.career)p.jobHistory.push({year:yr,job:event.career,reason});
   }
-  if(event.type==='재산'&&Number.isFinite(event.wealth)){
+  if(['재산','출소'].includes(event.type)&&Number.isFinite(event.wealth)){
    p.wealth=limit(event.wealth,0,100);
    p.financialHistory.push({year:yr,wealth:p.wealth,reason});
   }
