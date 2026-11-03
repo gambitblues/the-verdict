@@ -256,6 +256,10 @@ function createGeneratedCase(selectedCandidate=null,planning=null){
  const serial=++S.caseSerial;
  const candidate=selectedCandidate||(CasePackEngine.pool(S).length&&(window.VerdictCurated?.active||rand()<.82)?CasePackEngine.choose(S,rand):null);
  const bp=candidate?CasePackEngine.blueprint(candidate.pack,candidate.a):choose(CASE_BLUEPRINTS);
+ // Only a minority of high-profile cases are first seen in the news.
+ // Routine matters go directly to court without a synthetic breaking-news cycle.
+ if(planning==='auto')planning=Number(bp.importance)>=4&&rand()<.45
+  ?{incidentWeek:S.week,filingWeek:S.week+8}:null;
  const i=Math.floor(rand()*bp.premises.length), loc=choose(LOCATIONS);
  // Recurrence is a genuinely NEW incident, involving a previously tried individual.
  // Conviction/acquittal does not imply guilt in the new matter.
@@ -289,6 +293,7 @@ function createGeneratedCase(selectedCandidate=null,planning=null){
  // P3: freeze a complete case and its NPCs now, but do not assign it to the judge
  // until the filing week. Neither trial controls nor private proof appear in news.
  if(planning){
+  c.newsLifecycle='reported';
   c.contentPack=c.story?.pack?{...c.story.pack}:null;
   S.pendingCases??=[];
   S.pendingCases.push({case:c,incidentWeek:planning.incidentWeek,investigationWeek:planning.incidentWeek+3,filingWeek:planning.filingWeek,investigated:false});
@@ -310,7 +315,7 @@ function createGeneratedCase(selectedCandidate=null,planning=null){
  if(prior)remember(c.who[0],'참조할 과거 판결',`${prior.id}의 법적 쟁점을 참조하되 구속력·차이점 검토 필요`,caseId);
  const quality=c.story.evidenceDetails.map(e=>`${e.id}:${e.quality}`).join(', ');
  log('사건 배당',c.name,`${caseId} · 고유 사건 · 검증 ${c.qa.checks}항목 통과`);
- news('새 사건 배당',`${c.name} · ${c.legal}`,'법원 접수',{caseId:c.id,stage:'filed'});
+ // Routine filings are visible in the court inbox, not automatically headline news.
  S.qaLog??=[];S.qaLog.push({id:caseId,week:S.week,pass:c.qa.pass,warnings:c.qa.warnings,proof:c.story.proofClass,evidenceQuality:quality,deepAudit:c.story.deep?.version||null});
  return c;
 }
@@ -428,8 +433,8 @@ function ensureGeneratedCases(){
  if(S.week<14||age()>=75)return;
  if(openCases().length>=4||(S.pendingCases||[]).length)return;
  if(S.week>=S.nextCaseWeek){
-  createGeneratedCase(null,{incidentWeek:S.week,filingWeek:S.week+8});
-  S.nextCaseWeek=S.week+8+Math.floor(rand()*4);
+  const c=createGeneratedCase(null,'auto');
+  S.nextCaseWeek=S.week+(c?.newsLifecycle==='reported'?8:0)+6+Math.floor(rand()*5);
  }
 }
 function finalizeCareer(){if(S.ended)return;
