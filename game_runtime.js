@@ -514,9 +514,9 @@ function log(type,title,body){S.journal.unshift({week:S.week,type,title,body});/
 /* P3: preserve publicly known source, never hidden case facts. */
 function news(title,body,category='법조일보',source=null){
  const item={week:S.week,title,body,category};
- if(source?.caseId&&CASES.some(c=>c.id===source.caseId)){
+ if(source?.caseId&&(CASES.some(c=>c.id===source.caseId)||(S.pendingCases||[]).some(x=>x.case?.id===source.caseId))){
   item.caseId=source.caseId;
-  if(['filed','verdict','reaction'].includes(source.stage))item.caseStage=source.stage;
+  if(['incident','investigation','filed','verdict','reaction'].includes(source.stage))item.caseStage=source.stage;
  }
  S.news.unshift(item);/* 과거 뉴스 보존 */
 }
