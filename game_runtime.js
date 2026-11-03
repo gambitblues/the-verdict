@@ -394,8 +394,8 @@ function moveOldCasesToOtherCourt(){
  * These outcomes are procedural/public: they do not resolve privateTruth. */
 function publicIncidentOutcome(kind,roll){
  if(roll>=.22)return 'court';
- if(kind==='criminal')return roll<.11?'investigation_closed':'not_prosecuted';
- return roll<.11?'settled':'withdrawn';
+ if(kind==='criminal')return roll<.07?'investigation_closed':roll<.15?'not_prosecuted':'other_court';
+ return roll<.07?'settled':roll<.15?'withdrawn':'other_court';
 }
 function publicOutcomeNews(c,outcome){
  const label=String(c.name||'사건').split(' · ')[0];
@@ -404,7 +404,8 @@ function publicOutcomeNews(c,outcome){
   investigation_closed:[`${label} 수사 종결`,'관계 기관은 현재까지 확보한 자료에 대한 검토를 마쳤습니다. 이 결과만으로 사건 관련자의 형사책임을 단정할 수 없습니다.'],
   not_prosecuted:[`${label} 불기소 처분`,'검찰은 이번 사건에 공소를 제기하지 않기로 했습니다. 관련 의혹이 법원에서 유죄로 판단된 것은 아닙니다.'],
   settled:[`${label} 당사자 간 합의`,'분쟁 당사자들이 재판을 거치지 않고 합의로 사건을 마무리했다고 밝혔습니다. 법원의 본안 판단은 없었습니다.'],
-  withdrawn:[`${label} 소 제기 없이 종결`,'당사자가 소송을 진행하지 않기로 해 이번 분쟁은 법원에 배당되지 않았습니다. 법적 책임이 확정된 것은 아닙니다.']
+  withdrawn:[`${label} 소 제기 없이 종결`,'당사자가 소송을 진행하지 않기로 해 이번 분쟁은 법원에 배당되지 않았습니다. 법적 책임이 확정된 것은 아닙니다.'],
+  other_court:[`${label} 다른 재판부 배당`,'이번 사건은 다른 재판부에 배당돼 심리가 진행될 예정입니다. 이 법원 판사의 담당 사건은 아니며 결론은 아직 정해지지 않았습니다.']
  };
  const [title,body]=outcomes[outcome]||[label,criminal?'수사가 진행 중입니다.':'분쟁이 진행 중입니다.'];
  news(title,body,criminal?'사회':'지역 소식',{caseId:c.id,stage:'closed'});
