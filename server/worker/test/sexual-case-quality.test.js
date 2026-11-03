@@ -1,5 +1,5 @@
-const assert=require('node:assert/strict');
-const Q=require('../src/sexual_case_quality.cjs');
+import assert from 'node:assert/strict';
+import Q from '../src/sexual_case_quality.cjs';
 const content='시각과 당사자의 서로 다른 진술 및 객관적 기록의 한계를 검토한다.';
 const fixture=()=>({
  scenarioType:'forcible',interaction:content,consentContext:content,capacityContext:content,
