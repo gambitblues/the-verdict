@@ -39,6 +39,23 @@ async function opening(c,t,openingA,openingB){
  save();redraw();
 }
 
+/* P1: on-demand wording of an already-filed objection and response.
+ * Keys include the original text so changed filings never reuse stale wording. */
+const exchangeBusy=new Set();
+async function exchange(c,t,id,openingA,openingB){
+ if(!on()||!c?.id||!id||!openingA||!openingB)return false;
+ const key=c.id+':'+id+':'+openingA+':'+openingB;
+ if(t.aiExchange?.[id]?.source===key)return true;
+ if(exchangeBusy.has(key))return false;
+ exchangeBusy.add(key);
+ try{
+  const res=await ask('exchange',{openingA,openingB,names:namesOf(c,t)});
+  if(!res?.openingA||!res?.openingB)return false;
+  (t.aiExchange??={})[id]={source:key,openingA:res.openingA,openingB:res.openingB};
+  save();redraw();return true;
+ }finally{exchangeBusy.delete(key)}
+}
+
 /* P1: final pleas use one verified request for both original sides. */
 const closingAttempted=new Set();
 async function closing(c,t,openingA,openingB){
@@ -89,5 +106,5 @@ async function judgment(c,t){
  if(res?.facts){t.final.judgmentAI={...j,facts:res.facts,issues:res.issues,conclusion:res.conclusion};save();redraw()}
 }
 
-window.VerdictAI={npc,article,articleKey,judgment,opening,closing,bench,get on(){return on()}};
+window.VerdictAI={npc,article,articleKey,judgment,opening,closing,exchange,bench,get on(){return on()}};
 })();
