@@ -54,7 +54,8 @@ async function serverSnapshot(c,fetcher,root){
  const inFlight=fs.existsSync(local)?fs.readdirSync(local,{withFileTypes:true})
   .filter(x=>x.isDirectory()&&/^terra-[a-z0-9-]+$/.test(x.name))
   .map(x=>{try{const a=read(path.join(local,x.name,'candidate.json'));return {id:a.id,category:a.card.category}}catch{return null}}).filter(Boolean):[];
- return {inventory:rows.map(x=>({id:x.case_id,category:x.category})),inFlight,budget:{
+ const stocked=new Set(rows.map(x=>x.case_id));
+ return {inventory:rows.map(x=>({id:x.case_id,category:x.category})),inFlight:inFlight.filter(x=>!stocked.has(x.id)),budget:{
   ...c.policy,usedCallsToday:Number(total.used_calls),usedUsdToday:Number(total.used_usd)}};
 }
 function makeOperations({c,fetcher=fetch,root=process.cwd()}){
