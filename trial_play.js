@@ -1422,6 +1422,28 @@ function dayPage(c,st){
  ${t.cards.some(v=>v.choice&&v.type!=='media')?`<details class="t4-more"><summary>오늘 답한 신청</summary>${t.cards.filter(v=>v.choice&&v.type!=='media').map(x=>cardBlock(x,t,c)).join('')}</details>`:''}
  ${recent}</section>`;
 }
+/* P1: research memo uses only evidence admitted and testimony heard in this trial.
+ * No hidden truth, score, verdict option or unasked testimony is read here. */
+function benchSource(c,t){
+ const issues=issuesOf(c).slice(0,5);
+ if(!issues.length)return '';
+ return issues.map(is=>{
+  const v=issueStatus(c,t,is);
+  const issuesText=v.f.slice(0,3).map(x=>x.kind+' '+x.who+': '+short(x.text,90)).join(' / ');
+  const todo=[v.undecided?'미결정 증거 '+v.undecided+'건':'',v.unasked?'미신문 질문 '+v.unasked+'개':''].filter(Boolean).join(', ');
+  return '쟁점 '+is.title+' — 검사·원고 측 자료 '+v.p+'건, 변호·피고 측 자료 '+v.d+'건. '+(issuesText||'채택된 자료 없음.')+'. '+(todo?'남은 확인: '+todo+'.':'추가 확인 과제 없음.');
+ }).join(' ').slice(0,1200);
+}
+function benchPanel(c,t){
+ const source=benchSource(c,t),ai=t.aiBench?.source===source?t.aiBench.text:null;
+ if(!source)return '';
+ return `<section class="t4-card t4-bench" aria-label="재판연구원 검토">
+  <div class="t4-subhead"><h4>재판연구원 · 쟁점 검토</h4><span class="t4-tag">${ai?'AI 문장 검증 완료':'공판 기록 자동 정리'}</span></div>
+  <p class="muted small">채택한 증거와 실제로 들은 증언만 반영합니다. AI는 결론·형량을 추천하지 않으며, 판결은 재판장이 결정합니다.</p>
+  <p class="small">${esc(ai||source)}</p>
+  <button class="btn outline mini" data-action="t4bench" ${!window.VerdictAI?.on||!!ai?'disabled':''}>${ai?'검토 완료':window.VerdictAI?.on?'AI 문장으로 정리하기':'AI 연결 시 사용 가능'}</button>
+ </section>`;
+}
 function verdictPage(c,st){
  const t=st.trial4,canVerdict=t.daysDone>=t.minDays,cur=curOf(c),v=vstate(c),crim=isCriminal(c);
  partialOption(c);
@@ -1463,7 +1485,7 @@ function verdictPage(c,st){
  const pend_=(t.courtOrders||[]).filter(o=>o.status==='pending').length;
  const overview=`<section class="panel t4 t4-verdict-home"><h3>⚖ 판결</h3>${canVerdict?'':`<p class="notice">기일이 ${t.minDays-t.daysDone}번 더 필요해요.${waiting(t)?` ${esc(session(c,t.day))}은 ${esc(dlabel(Math.max(t.nextDate||0,today())))}에 열려요.`:''}</p>`}
  ${pend_?`<p class="notice">아직 결과가 오지 않은 재판장 주문이 ${pend_}건 있어요. 지금 선고해도 되지만, 그 결과는 판단에 들어가지 않아요.</p>`:''}
- ${closing}<h4>재판 현황</h4>${issueView(c,t)}
+ ${closing}${benchPanel(c,t)}<h4>재판 현황</h4>${issueView(c,t)}
  <button class="btn primary full mt t4-sheet-open" data-action="t4sheet" data-v="open" ${canVerdict?'':'disabled'}>⚖ 판결하기</button></section>`;
  if(!ui.vsheet||ui.vsheet!==c.id||!canVerdict)return overview;
  /* the verdict window (v8.2): 결론 → 주문 → 판결 이유 → 판결문 미리보기 → 선고 */
@@ -1639,6 +1661,12 @@ const priorClick=clicker;
 clicker=function(e){
  const el=e.target.closest('[data-action]');
  const a=el?.dataset.action;
+
+ if(a==='t4bench'){e.preventDefault();const x=current();if(!x?.st?.trial4)return;const src=benchSource(x.c,x.st.trial4);
+  if(!src)return;
+  el.disabled=true;el.textContent='AI 검토 중…';
+  Promise.resolve(window.VerdictAI?.bench?.(x.c,x.st.trial4,src)).then(ok=>{if(!ok)toast('AI 검토를 적용하지 못했습니다. 기존 공판 기록을 그대로 보여줍니다.')}).catch(()=>toast('AI 연결에 실패했습니다. 원문 정리는 유지됩니다.')).finally(()=>render());
+  return}
  if(a==='t4hearing'&&el.dataset.id==='defendant_question'){e.preventDefault();const x=current();if(!x)return;ui.t4tab='witness';ui.partyOpen=x.c.id;render();document.querySelector('details.t4-party')?.scrollIntoView({block:'center'});return}
  if(a==='t4hearing'){e.preventDefault();const x=current();if(!x)return;try{const item=window.VerdictHearingEvents.apply(x.c,x.st,el.dataset.id,sessionOpen(x.st.trial4)&&!waiting(x.st.trial4),x.st.trial4?.seed||String(S.rng||0));save();render();toast('공판 기록에 반영했습니다.')}catch(err){toast(err.message)}return}
  if(a==='t4'){e.preventDefault();act(el.dataset.kind,el.dataset.id,el.dataset.choice);return}
