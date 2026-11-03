@@ -25,7 +25,9 @@ export const sentencesIn=t=>S(t).split(/(?<=[.!?。])\s+/).filter(x=>x.length>1)
  * people: every listed name the source mentions must stay, and no listed name may appear that the source did not have.
  * polarity: a sentence that denied something must still deny it, and the other way round (않/안/못/없/아니/모르…).
  * content: most of the source's own words (2+ syllables, endings stripped) must still be there. */
-/* Legal shorthand like '불성립' or '무죄' is a negative position too.\n * Keep this conservative: ambiguous rewrites still go through the separate meaning check. */\nconst NEG=/않|안 |안했|못|없|아니|모르|모릅|아뇨|부인|불성립|성립하지|해당하지|무죄|부정한다|부정했다|인정되지/;
+/* Legal shorthand like '불성립' or '무죄' is a negative position too.
+ * Keep this conservative: ambiguous rewrites still go through the separate meaning check. */
+const NEG=/않|안 |안했|못|없|아니|모르|모릅|아뇨|부인|불성립|성립하지|해당하지|무죄|부정한다|부정했다|인정되지/;
 export const negated=t=>NEG.test(' '+S(t)+' ');
 const stem=w=>w.replace(/(으로|에게|에서|까지|부터|처럼|이라고|라고|이라는|라는|이에요|예요|입니다|습니다|했어요|어요|아요|해요|와|과|가|이|를|을|은|는|의|에|로|도|만|요|다)$/,'');
 export const words=t=>[...new Set((S(t).match(/[가-힣A-Za-z0-9]{2,}/g)||[]).map(stem).filter(w=>w.length>=2))];
