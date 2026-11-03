@@ -336,7 +336,7 @@ test('P4 first reconnect without progress row still detects overdue private hear
 
 
 test('P4 sealed courtroom endpoint: only the assigned judge can obtain a server-derived answer',async()=>{
- const calls=[];let owner='u1',hearingState='completed';
+ const calls=[];let owner='u1',hearingState='completed',finalized=false;
  const sheet={id:'case-p4',questions:[
   {id:'q1',w:'W1',q:'누구를 보셨나요?',a:{did:'서버가 봉인한 증언',didnt:'다른 분기의 증언'}},
   {id:'q2',w:'W1',q:'다음 장면은?',after:'W1:q1',a:{did:'증언 후속'}},
@@ -355,7 +355,7 @@ test('P4 sealed courtroom endpoint: only the assigned judge can obtain a server-
   if(u.includes('/rest/v1/world_secrets'))return response([{truth:{branch:'did'}}]);
   if(u.includes('/rest/v1/shared_court_actions'))return response(journal);
   if(u.includes('/rest/v1/shared_world_clock'))return response([{game_day:5}]);
-  if(u.includes('/rest/v1/shared_case_judgments'))return response([]);
+  if(u.includes('/rest/v1/shared_case_judgments'))return response(finalized?[{case_id:'case-p4'}]:[]);
   if(u.includes('/rpc/shared_court_action_record')){
    assert.equal(opt.headers.authorization,'Bearer svc');
    const payload=JSON.parse(opt.body);
@@ -381,6 +381,10 @@ test('P4 sealed courtroom endpoint: only the assigned judge can obtain a server-
  assert.equal(out.response.answer,'녹화 자료 확인');
  const status=await (await handle(req('/world/court/status?caseId=case-p4'),enabled,f)).json();
  assert.deepEqual([status.canAct,status.hearingIndex],[true,1]);
+ finalized=true;
+ const finalizedStatus=await (await handle(req('/world/court/status?caseId=case-p4'),enabled,f)).json();
+ assert.deepEqual([finalizedStatus.canAct,finalizedStatus.hearingIndex],[false,null],'finished judgment locks courtroom');
+ finalized=false;
  const history=await (await handle(req('/world/court/history?caseId=case-p4'),enabled,f)).json();
  assert.equal(history.actions.length,3);
  owner='another-user';
