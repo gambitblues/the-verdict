@@ -143,6 +143,30 @@ export async function handle(req,env,fetcher=fetch){
   return json({ok:true,npcs:rows,next:rows.length?rows[rows.length-1].npc_id:after},200,head);
  }
 
+ // P4-4: globally reserved two-case docket. Disabled until the QA migration,
+ // server-side sheet adjudication and explicit release gate are complete.
+ if(url.pathname==='/world/offers'||url.pathname==='/world/accept'){
+  if(env.P4_SHARED_DOCKET_ENABLED!=='1')return json({error:'feature_disabled'},404,head);
+  if(req.method!=='POST')return json({error:'method_not_allowed'},405,head);
+  let input;try{input=await req.json()}catch{return json({error:'bad_json'},400,head)}
+  if(typeof input?.slot!=='string'||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}$/.test(input.slot))
+   return json({error:'bad_slot'},400,head);
+  const accept=url.pathname==='/world/accept';
+  if(accept&&(typeof input?.caseId!=='string'||!/^[a-z][a-z0-9-]{3,79}$/.test(input.caseId)))
+   return json({error:'bad_case_id'},400,head);
+  const rpc=accept?'shared_docket_accept':'shared_docket_offer';
+  const payload={p_judge:uid,p_slot:input.slot,...(accept?{p_case_id:input.caseId}:{})};
+  let response;
+  try{response=await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/${rpc}`,{
+    method:'POST',headers:svc(env),body:JSON.stringify(payload)})}
+  catch{return json({error:'docket_unavailable'},503,head)}
+  if(!response.ok)return json({error:response.status===403?'docket_forbidden':'docket_conflict'},response.status===403?403:409,head);
+  let rows;try{rows=await response.json()}catch{return json({error:'docket_unavailable'},503,head)}
+  if(!Array.isArray(rows))return json({error:'docket_unavailable'},503,head);
+  // Never return case_stock.sheet, verification, world_secrets, or hidden truth.
+  return json(accept?{ok:true,assignment:rows[0]||null}:{ok:true,offers:rows},200,head);
+ }
+
  // Read-only health check for the existing invited judges. Never returns
  // private case material, budget amounts, service credentials or model output.
  if(url.pathname==='/terra/status'&&req.method==='GET'){
