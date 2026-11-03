@@ -33,3 +33,6 @@ jobs:
       - name: Run offline Worker regression tests (no external API calls)
         working-directory: server/worker
         run: npm run check
+      - name: Bundle Cloudflare Worker without deploying
+        working-directory: server/worker
+        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/the-verdict-worker-bundle
