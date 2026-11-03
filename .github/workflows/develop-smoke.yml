@@ -50,6 +50,7 @@ jobs:
           node tests/advanced-pilot-integration.test.cjs
           node tests/advanced-world-schema.test.cjs
           node tests/terra-trial-qa.test.cjs
+          node tests/terra-generate.test.cjs
           node tests/case-afterlife.test.cjs
           node tests/advanced-production-ledger.test.cjs
           node tests/advanced-story-beats-99.test.cjs
