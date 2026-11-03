@@ -376,13 +376,56 @@ function moveOldCasesToOtherCourt(){
   }
  }
 }
+/* P3: incident reporting uses the allegation and known public timeline, NEVER
+ * privateTruth, proofStrength, suspect identity, or unavailable evidence. */
+function newsForIncident(c){
+ const criminal=c.kind==='criminal';
+ const shortTitle=String(c.name||'사건').split(' · ')[0];
+ const place=String(c.name||'').match(/· (.+?) \(/)?.[1]||'지역';
+ const headline=criminal?`${place} ${shortTitle} 발생`:`${place} ${shortTitle} 관련 분쟁 발생`;
+ const body=criminal
+  ?`${place}에서 ${shortTitle} 관련 신고가 접수됐습니다. 수사기관이 경위를 확인하고 있으며, 관련자의 법적 책임은 확인되지 않았습니다.`
+  :`${place}에서 ${shortTitle} 관련 다툼이 발생했습니다. 양측의 주장은 확인 중이며 법적 책임은 아직 판단되지 않았습니다.`;
+ news(headline,body,'지역 소식',{caseId:c.id,stage:'incident'});
+}
+function progressPendingCases(){
+ for(const pending of [...(S.pendingCases||[])]){
+  if(!pending?.case?.id)continue;
+  const c=pending.case;
+  if(!pending.investigated&&S.week>=pending.investigationWeek&&S.week<pending.filingWeek){
+   pending.investigated=true;
+   news(`${String(c.name).split(' · ')[0]} 수사 진행`,
+    c.kind==='criminal'?'수사기관이 관련 진술과 자료를 확인하고 있습니다. 혐의나 범행 사실은 아직 법원에서 확정되지 않았습니다.'
+    :'당사자들이 사건 경위와 자료를 확인하고 있습니다. 법원의 판단은 아직 이루어지지 않았습니다.',
+    '지역 소식',{caseId:c.id,stage:'investigation'});
+  }
+  if(S.week<pending.filingWeek)continue;
+  if(!CASES.some(x=>x.id===c.id)){
+   CASES.push(c);S.generatedCases.push(c);
+   S.cases[c.id]={phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null,positions:null,positionHistory:[],review:null};
+   c.participantSnapshots=ContinuityEngine.snapshots(c,NPC,S.week);
+   for(const id of c.who)remember(id,'법원 배당',`${c.id} · ${c.name}`,c.id);
+   if(c.story.investigator)remember(c.story.investigator.detective,'수사자료 제출',`${c.id} 관련 수사자료`,c.id);
+   log('사건 배당',c.name,`${c.id} · 사전 생성된 사건의 기록 검증 완료`);
+   news(c.kind==='criminal'?`${String(c.name).split(' · ')[0]} 기소·법원 배당`:`${String(c.name).split(' · ')[0]} 소장 접수·법원 배당`,
+    c.kind==='criminal'?'검찰이 공소를 제기해 법원에 사건이 배당됐습니다. 범죄 성립 여부는 재판에서 판단합니다.'
+    :'원고가 소장을 제출해 법원에 사건이 배당됐습니다. 청구의 성립 여부는 재판에서 판단합니다.',
+    '법원 접수',{caseId:c.id,stage:'filed'});
+  }
+  S.pendingCases=S.pendingCases.filter(x=>x.case?.id!==c.id);
+ }
+}
 function ensureGeneratedCases(){
  if(S.realtimeInbox?.enabled)return;
  moveOldCasesToOtherCourt();
- // Fixed introductory 6 cases coexist with unlimited-by-count, bounded-by-variety procedural cases.
+ progressPendingCases();
+ // Existing queued case must reach filing before the next incident is prepared.
  if(S.week<14||age()>=75)return;
- if(openCases().length>=4)return;
- if(!S.realtimeInbox?.enabled&&S.week>=S.nextCaseWeek){createGeneratedCase();S.nextCaseWeek=S.week+6+Math.floor(rand()*5);}
+ if(openCases().length>=4||(S.pendingCases||[]).length)return;
+ if(S.week>=S.nextCaseWeek){
+  createGeneratedCase(null,{incidentWeek:S.week,filingWeek:S.week+8});
+  S.nextCaseWeek=S.week+8+Math.floor(rand()*4);
+ }
 }
 function finalizeCareer(){if(S.ended)return;
  S.ended=true;const count=completed().length;log('은퇴','75세 · 법관 커리어 종료',`총 ${count}건 판결 · 최종 직위 ${currentPost()} · 판결은 기록으로 남습니다.`);
@@ -399,7 +442,7 @@ function worldTick(){
 const START=new Date(Date.UTC(2027,2,1));
 // Every new career gets its own world: cases, people and their lives start from a random seed.
 const freshSeed=()=>{try{const a=new Uint32Array(1);crypto.getRandomValues(a);return (a[0]>>>0)||37519}catch{return (Date.now()^Math.floor(Math.random()*4294967296))>>>0||37519}};
-const newState=()=>({version:5,casePacks:[],removedPackIds:[],lifeTriggers:[],qaLog:[],generatedCases:[],npcDB:{},memories:{},caseSerial:0,nextCaseWeek:14,lastYear:2027,post:'지방법원 판사',milestones:[],ended:false,name:'',style:0,week:0,actions:0,cash:1250,salary:340,notes:'',owned:[],equipped:{},romance:{person:null,stage:'single',lastYear:-1},market:Object.fromEntries(SECTORS.map(x=>[x.id,100])),holdings:{},traded:-1,rng:freshSeed(),relations:{hyun:66,senior:48,jiyu:39,seon:32,soo:39,jun:35,reporter:25,tenant:20,owner:18,builder:20,actor:10,singer:10,ceo:10},professional:50,publicity:12,cases:Object.fromEntries(CASES.map(c=>[c.id,{phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null}])),journal:[{week:0,type:'커리어',title:'신임 판사 발령',body:'법조인으로서 첫 커리어가 시작되었습니다.'}],news:[{week:0,title:'신임 법관 인사 발령 발표',body:'전국 각급 법원에서 신임 법관이 새로운 업무를 시작했다.',category:'법조일보'}],msgs:[{week:0,from:'hyun',body:'첫 발령 축하해! 서로 잘 버텨보자. 시간 나면 연락해.'}],events:[]});
+const newState=()=>({version:5,casePacks:[],removedPackIds:[],lifeTriggers:[],qaLog:[],generatedCases:[],pendingCases:[],npcDB:{},memories:{},caseSerial:0,nextCaseWeek:14,lastYear:2027,post:'지방법원 판사',milestones:[],ended:false,name:'',style:0,week:0,actions:0,cash:1250,salary:340,notes:'',owned:[],equipped:{},romance:{person:null,stage:'single',lastYear:-1},market:Object.fromEntries(SECTORS.map(x=>[x.id,100])),holdings:{},traded:-1,rng:freshSeed(),relations:{hyun:66,senior:48,jiyu:39,seon:32,soo:39,jun:35,reporter:25,tenant:20,owner:18,builder:20,actor:10,singer:10,ceo:10},professional:50,publicity:12,cases:Object.fromEntries(CASES.map(c=>[c.id,{phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null}])),journal:[{week:0,type:'커리어',title:'신임 판사 발령',body:'법조인으로서 첫 커리어가 시작되었습니다.'}],news:[{week:0,title:'신임 법관 인사 발령 발표',body:'전국 각급 법원에서 신임 법관이 새로운 업무를 시작했다.',category:'법조일보'}],msgs:[{week:0,from:'hyun',body:'첫 발령 축하해! 서로 잘 버텨보자. 시간 나면 연락해.'}],events:[]});
 let S;
 try{
  const loaded=VerdictStore.read(KEY);
@@ -418,7 +461,7 @@ for(const c of S.generatedCases||[]){
  if(!CASES.some(x=>x.id===c.id))CASES.push(c);
  if(!S.cases[c.id])S.cases[c.id]={phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null};
 }
-S.qaLog??=[];S.casePacks??=[];S.removedPackIds??=[];S.lifeTriggers??=[];S.version=5;S.memories??={};S.milestones??=[];S.equipped??={};S.romance??={person:null,stage:'single',lastYear:-1};S.relations.mina??=28;S.relations.taeo??=28;for(const cs of Object.values(S.cases||{})){if(cs.verdict&&cs.review&&cs.review.status!=='재판상 화해로 종결'){cs.review={status:'게임 내 최종 판결 · 즉시 확정',filingDeadline:null};if(cs.precedent)cs.precedent.authority='게임 세계의 확정 판결 기록';}} S.post??='지방법원 판사';S.nextCaseWeek??=14;S.caseSerial??=0;S.ended??=false;
+S.pendingCases??=[];S.qaLog??=[];S.casePacks??=[];S.removedPackIds??=[];S.lifeTriggers??=[];S.version=5;S.memories??={};S.milestones??=[];S.equipped??={};S.romance??={person:null,stage:'single',lastYear:-1};S.relations.mina??=28;S.relations.taeo??=28;for(const cs of Object.values(S.cases||{})){if(cs.verdict&&cs.review&&cs.review.status!=='재판상 화해로 종결'){cs.review={status:'게임 내 최종 판결 · 즉시 확정',filingDeadline:null};if(cs.precedent)cs.precedent.authority='게임 세계의 확정 판결 기록';}} S.post??='지방법원 판사';S.nextCaseWeek??=14;S.caseSerial??=0;S.ended??=false;
 
 const ui={archiveQuery:'',tab:'home',caseId:'deposit',shopCat:'집',assetTab:'shop',tabletTab:'news',npcId:'hyun',modal:null,lastResult:null};
 const money=n=>`${Math.round(n).toLocaleString('ko-KR')}만 원`;
