@@ -12,6 +12,7 @@ import path from 'node:path';
 import http from 'node:http';
 import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 
 const root=process.cwd(),args=process.argv.slice(2);
 if(args.length!==2||!['--sheet','--fixture'].includes(args[0]))throw Error('사용법: --sheet path/to/sheet.json 또는 --fixture clinic-001');
@@ -126,7 +127,7 @@ try{
   }finally{await context.close()}
  }
  assert.equal(results.length,3);
- console.log(JSON.stringify({ok:true,id:candidate.id,stage:'browser-courtroom-QA',results},null,2));
+ console.log(JSON.stringify({ok:true,id:candidate.id,stage:'browser-courtroom-QA',passed:true,sheetHash:createHash('sha256').update(JSON.stringify(candidate)).digest('hex'),results},null,2));
 }finally{
  if(browser)await browser.close();
  if(server)await new Promise(resolve=>server.close(resolve));
