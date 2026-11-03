@@ -3,7 +3,18 @@ name = "the-verdict-api"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 
+# Run at 03:00 KST (18:00 UTC), but NEVER spend unless TERRA_REFILL_ENABLED='1'.
+[triggers]
+crons = ["0 18 * * *"]
+
 [vars]
+TERRA_REFILL_ENABLED = "0"
+# These are conservative EXAMPLE caps, not live-spending authorization.
+TERRA_MAX_CALLS_DAY = "4"
+TERRA_MAX_USD_DAY = "0.30"
+TERRA_MAX_USD_CASE = "0.30"
+TERRA_TARGET_STOCK = "1"
+TERRA_MAX_BATCH = "1"
 # Supabase project "THE VERDICT" (Seoul). The anon key is public by design; the service role key is a secret.
 SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
 SUPABASE_ANON_KEY = "YOUR-ANON-KEY"
