@@ -13,7 +13,7 @@ async function runBatch({ops,policy={},runId}={}){
  if(!/^refill-[a-z0-9-]{6,80}$/.test(runId||''))return {ok:false,stage:'configuration',errors:['고유 실행 ID가 필요합니다.'],processed:[]};
  const lease=await ops.acquireLease(runId);
  if(!lease||lease.ok!==true||typeof lease.token!=='string'||!lease.token) return {ok:false,stage:'busy',errors:['단일 실행 잠금을 획득하지 못했습니다.'],processed:[]};
- const processed=[];
+ const processed=[];let accountingFailed=false;
  try{
   const snapshot=await ops.loadSnapshot(lease.token);
   if(!snapshot||!Array.isArray(snapshot.inventory)||!Array.isArray(snapshot.inFlight)||!snapshot.budget)
@@ -23,6 +23,7 @@ async function runBatch({ops,policy={},runId}={}){
   const planned=plan({inventory:snapshot.inventory,inFlight:snapshot.inFlight,policy:effective});
   if(!planned.ok)return {ok:false,stage:'planning',errors:planned.errors,processed};
   for(const [index,request] of planned.requests.entries()){
+   if(accountingFailed)break;
    let reservation;
    try{
     reservation=await ops.reserveBudget({runId,leaseToken:lease.token,request,ordinal:index,
@@ -57,7 +58,7 @@ async function runBatch({ops,policy={},runId}={}){
    }finally{
     if(reservation?.id&&typeof ops.closeReservation==='function'){
      try{await ops.closeReservation({reservation,runId,leaseToken:lease.token})}
-     catch{processed.push({category:request.category,decision:'reservation-close-failed'});}
+     catch{accountingFailed=true;processed.push({category:request.category,decision:'reservation-close-failed'});}
     }
    }
   }
