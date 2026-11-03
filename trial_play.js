@@ -1285,11 +1285,14 @@ function witnessCard(w,t,locked,c){
 }
 function cardBlock(card,t,c){
  const x=cardText(card,t,c);
+ const exchangeKey=c.id+':'+card.id+':'+x.reason+':'+x.opinion;
+ const exchange=t.aiExchange?.[card.id]?.source===exchangeKey?t.aiExchange[card.id]:null;
  if(card.type==='media')return `<div class="t4-event media"><b>📣 ${esc(x.title)}</b><p>${esc(x.body)}</p></div>`;
  const done=card.choice;
  return `<div class="t4-event ${done?'done':''}"><b>${card.type==='objection'?'✋':'⏳'} ${esc(x.title)}</b><p>${esc(x.body)}</p>
  ${x.target?`<p class="small"><b>대상</b> ${esc(x.target)}</p><blockquote class="t4-excerpt">${x.ask?`${x.prevQ?`<span class="t4-obj-line"><b>앞 질문</b> ${esc(x.askBy)}: "${esc(x.prevQ)}"</span><span class="t4-obj-line"><b>앞 답변</b> ${esc(x.wn)}: "${esc(x.prevA)}"</span>`:''}<span class="t4-obj-line"><b>${x.prevQ?'덧붙인 질문':'질문'}</b> ${esc(x.askBy)}: "${esc(x.ask)}"</span>${x.answer?`<span class="t4-obj-line"><b>답변</b> ${esc(x.wn)}: "${esc(x.answer)}"</span>`:`<span class="t4-obj-line muted small">${card.live?(card.choice==='accept'?'이의를 받아들여 증인은 답하지 않았습니다.':'증인이 답하기 전에 이의가 나왔습니다.'):'증인이 답하기 전에 이의가 나왔습니다. 받아들이지 않으면 증인 탭에서 이 질문을 할 수 있어요.'}</span>`}`:esc(x.quote)}</blockquote>`:''}
- <p class="small"><b>신청 이유</b> ${esc(x.reason)}</p>${x.opinion?`<p class="small"><b>상대방 의견</b> ${esc(x.opinion)}</p>`:''}
+ <p class="small"><b>신청 이유</b> ${esc(exchange?.openingA||x.reason)}</p>${x.opinion?`<p class="small"><b>상대방 의견</b> ${esc(exchange?.openingB||x.opinion)}</p>`:''}
+ ${x.reason&&x.opinion?`<div class="t4-row"><span class="t4-tag">${exchange?'AI 문장 검증 완료':'기존 신청 기록'}</span><button class="btn outline mini" data-action="t4exchange" data-id="${esc(card.id)}" ${exchange||!window.VerdictAI?.on?'disabled':''}>${exchange?'공방 검증 완료':'AI 법정 공방 듣기'}</button></div>`:''}
  ${done?`<p class="small">→ ${esc(done==='accept'?x.choices[0]:x.choices[1])}</p>`:`<div class="t4-stack"><button class="btn mini primary" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="accept">${esc(x.choices[0])}</button><button class="btn mini outline" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="reject">${esc(x.choices[1])}</button></div>`}</div>`;
 }
 /* Where the case stands, issue by issue, from what has been shown in court so far. Nothing hidden is used.
@@ -1671,6 +1674,13 @@ clicker=function(e){
  const el=e.target.closest('[data-action]');
  const a=el?.dataset.action;
 
+ if(a==='t4exchange'){e.preventDefault();const x=current(),t=x?.st?.trial4;if(!t)return;
+  const card=t.cards.find(v=>String(v.id)===el.dataset.id);if(!card)return;
+  const lines=cardText(card,t,x.c);
+  if(!lines.reason||!lines.opinion)return;
+  el.disabled=true;el.textContent='AI 공방 생성 중…';
+  Promise.resolve(window.VerdictAI?.exchange?.(x.c,t,card.id,lines.reason,lines.opinion)).then(ok=>{if(!ok)toast('AI 공방이 적용되지 않았습니다. 기존 신청·의견을 그대로 보여줍니다.')}).catch(()=>toast('AI 공방 연결 실패. 기존 공방 기록은 유지됩니다.')).finally(()=>render());
+  return}
  if(a==='t4bench'){e.preventDefault();const x=current();if(!x?.st?.trial4)return;const src=benchSource(x.c,x.st.trial4);
   if(!src)return;
   el.disabled=true;el.textContent='AI 검토 중…';
