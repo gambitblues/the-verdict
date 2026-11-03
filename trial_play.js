@@ -163,7 +163,30 @@ function witnessProfile(c,i,id){const cur=curOf(c),w=cur?.witnesses?.[i],p=NPC[i
  if(r&&r.every(Number.isFinite))setAge(c,id,r[0],r[1]);
  if(!/의 |배우자|동생|자녀|둘째|할머니|할아버지|친구/.test(role))setJob(p,role);
  sanityDegree(p,role)}
-window.VerdictSex={fix:c=>{fixSex(c);fixProfile(c);decisionVerdicts(c);window.VerdictMatchPlay?.fixParties(c)}};
+/* ---------- v8.6.3 family ties the story states ----------
+ * Siblings in a story share the family surname and the same parents; a child carries the father's surname.
+ * KIN lists the cases whose two parties are family; sibling and child witnesses are found by their role.
+ * The family graph (family_engine.js) reads siblingOf / parentNpc / parentDead when it builds relatives. */
+const KIN={'inherit-family-records':{AB:'sib',dead:'father',only:true},'v6-family-guardian-signature':{AB:'sib',only:true,alive:'father'},'beta-homicide-010':{AB:'childOf'}};
+const surOf=p=>VerdictNames.split(p?.name||'')[0];
+function setSurname(c,id,sur){const p=NPC[id];if(!p||!sur||surOf(p)===sur)return;const old=p.name;
+ p.name=VerdictNames.make({gender:p.gender,bornYear:p.bornYear,rand,people:NPC,surname:sur});swapName(c,p,old)}
+function tieSibling(id,to){const p=NPC[id],q=NPC[to];if(!p||!q||id===to)return;p.siblingOf=to;p.id??=id;q.id??=to;
+ if(p.familyGraphVersion||q.familyGraphVersion)window.FamilyEngine?.link?.(p,q,'sibling')}
+function fixKin(c){const k=KIN[archId(c)];if(!k||!c.who||c.kinFixed)return;c.kinFixed=true;
+ const [a,b]=c.who,A=NPC[a],B=NPC[b];if(!A||!B)return;
+ if(k.AB==='sib'){setSurname(c,b,surOf(A));tieSibling(b,a)}
+ else if(k.AB==='childOf'){if(!isF(B))setSurname(c,a,surOf(B));A.parentNpc=b;A.parentIds=[b];if(isF(B))B.childSurname=surOf(A);A.id??=a;B.id??=b;if(B.children)B.children=Math.max(0,B.children-1);if(A.familyGraphVersion)window.FamilyEngine?.link?.(A,B,'parent')}
+ if(k.dead)A.parentDead=k.dead;if(k.alive)A.parentAlive=k.alive;if(k.only)A.noExtraSiblings=true}
+/* a witness who is a party's sibling (or child of a male party) gets that family's surname and joins the family */
+function witnessKin(c,id,role){if(!c.who)return;const main=String(role||'').replace(/\([^)]*\)/g,'').trim();
+ const sib=/형제|자매|남매|동생|언니|오빠|누나|^둘째$|^첫째$|손위|^형$/.test(main)&&!/친구|동료|후배|선배/.test(main),child=/자녀|아들|딸/.test(main)&&!/의 (친구|동료)/.test(main);
+ if(!sib&&!child)return;
+ const crim=isCriminal(c),tok=main.match(/\{([AB])/),ref=tok?c.who[tok[1]==='A'?0:1]:/피고인/.test(main)?c.who[0]:/피해자/.test(main)?c.who[crim?1:0]:/원고/.test(main)?c.who[0]:/피고/.test(main)?c.who[1]:c.who[0];
+ const R=NPC[ref];if(!R)return;
+ if(sib){setSurname(c,id,surOf(R));tieSibling(id,ref)}
+ else if(!isF(R)){setSurname(c,id,surOf(R));const p=NPC[id];if(p)p.parentNpc=ref}}
+window.VerdictSex={fix:c=>{fixSex(c);fixProfile(c);decisionVerdicts(c);window.VerdictMatchPlay?.fixParties(c);fixKin(c)}};
 
 /* ---------- v6: people shape the trial ----------
  * A witness's attitude, reliability and memory come from who they are (honesty, stress control, impulsivity,
@@ -188,7 +211,7 @@ const prepWord=id=>{const s=lawyerSkill(id);return s>=78?'준비가 철저함':s
 function ensure(c,st){
  window.VerdictMatchPlay?.reset(st);   // a v8.0 match-screen trial without a verdict restarts in this courtroom
  if(st.trial4)return upgrade(c,st.trial4);
- fixSex(c);fixProfile(c);decisionVerdicts(c);window.VerdictMatchPlay?.fixParties(c);
+ fixSex(c);fixProfile(c);decisionVerdicts(c);window.VerdictMatchPlay?.fixParties(c);fixKin(c);
  const seed=c.id+':'+(S.rng||1);
  const strictCase=!!curOf(c);
  const witnesses=window.VerdictMatchPlay?.witnesses(c)||witnessSeeds(c).map((w,i)=>{
@@ -200,7 +223,7 @@ function ensure(c,st){
    const g0=NPC[id].gender;
    if(/할머니|어머니|딸|누나|언니|아내/.test(w.role))NPC[id].gender='여';else if(/할아버지|아버지|아들|형|오빠|남편/.test(w.role)&&!/형제/.test(w.role))NPC[id].gender='남';
    if(NPC[id].gender!==g0)NPC[id].name=VerdictNames.make({gender:NPC[id].gender,bornYear:NPC[id].bornYear,rand,people:NPC});
-   witnessSex(c,i,id);witnessProfile(c,i,id);window.VerdictV6?.registerExpert?.(id,w.role,c);
+   witnessSex(c,i,id);witnessProfile(c,i,id);witnessKin(c,id,wDetail(c,i)?.role);window.VerdictV6?.registerExpert?.(id,w.role,c);
    remember(id,'관련 사건',c.name+'의 증인으로 출석',c.id)}
   return {id,role:w.role,knowledge:w.knowledge,interest:w.interest,story:w.story||''};
  });
