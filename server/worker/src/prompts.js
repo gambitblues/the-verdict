@@ -108,6 +108,17 @@ export function checkOpening(p,out){
  return {ok:true,value:result,compare:[pairs.map(x=>x[0]).join('\n---\n'),pairs.map(x=>x[1]).join('\n---\n')]};
 }
 
+/* Evidence/witness objection exchange: only the already-filed reason and reply. */
+export function exchangePrompt(p){
+ const r=openingPrompt(p);
+ if(r.error)return r;
+ return {...r,
+  instructions:r.instructions.replace('재판 첫 기일에 나온 양측 입장 두 개','법정에서 제기된 이의 신청 이유와 상대방 의견 두 개')
+   .replace('상대방의 주장이나 근거를 한쪽 발언에 옮기지 않습니다.','신청 이유와 상대방 의견을 섞지 않습니다.'),
+  schema:{...r.schema,name:'objection_exchange'}};
+}
+export const checkExchange=checkOpening;
+
 /* Final pleadings are the disclosed closing and defense statements, not an AI judgment. */
 export function closingPrompt(p){
  const r=openingPrompt(p);
