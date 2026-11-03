@@ -57,7 +57,9 @@ begin
  if n=0 then
   for i in 0..1 loop
    select s.case_id into found_id from public.case_stock s
-   where s.state='stock' and not exists(
+   where s.state='stock' and exists(
+      select 1 from public.world_secrets w where w.case_id=s.case_id
+      and w.truth->>'branch' in ('did','didnt','reason')) and not exists(
       select 1 from public.shared_docket_offers o
       where o.case_id=s.case_id and o.state='offered' and o.expires_at>now())
    order by s.created_at,s.case_id
@@ -109,6 +111,9 @@ begin
  select * into existing from public.case_stock s
  where s.case_id=p_case_id for update;
  if not found or existing.state<>'stock' then raise exception 'case_already_assigned'; end if;
+ if not exists(select 1 from public.world_secrets w where w.case_id=p_case_id
+    and w.truth->>'branch' in ('did','didnt','reason'))
+ then raise exception 'case_truth_not_sealed'; end if;
  -- The assignment update also invokes the shared_case_assignment_event trigger.
  update public.case_stock s set state='assigned',assigned_to=p_judge,assigned_at=now()
  where s.case_id=p_case_id;
