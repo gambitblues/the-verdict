@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -60,4 +60,30 @@ test('private facts cannot be projected, other judge cannot publish a verdict',a
  await assert.rejects(append('p4-other-00001',B),/case_not_assigned_to_judge/);
  await assert.rejects(append('p4-missing-0001',null),/case_not_assigned_to_judge/);
  await assert.rejects(pa('select * from public.case_stock'),/permission denied/);
+});
+
+test('P4 global clock: invited judges read same day, only trusted server advances by CAS',async()=>{
+ const first=(await pa('select game_day,version from public.shared_world_clock')).rows[0];
+ assert.equal(first.game_day,0);
+ await assert.rejects(pa('select * from public.shared_clock_advance(0,3)'),/permission denied/);
+ const next=(await svc('select * from public.shared_clock_advance(0,3)')).rows[0];
+ assert.deepEqual([Number(next.game_day),Number(next.version)],[3,1]);
+ assert.equal((await pb('select game_day from public.shared_world_clock')).rows[0].game_day,3);
+ await assert.rejects(svc('select * from public.shared_clock_advance(0,6)'),/clock_conflict/);
+ await assert.rejects(svc('select * from public.shared_clock_advance(1,18)'),/invalid_world_day/);
+});
+test('P4 objective NPC: both judges see one biography, death irreversible, memories private',async()=>{
+ const profile=JSON.stringify({name:'김가람',birthYear:1990,profession:'변호사'});
+ const put=(id,p,status,day,version)=>svc(
+  'select public.shared_npc_public_put($1,$2::jsonb,$3,$4,$5) as version',
+  [id,JSON.stringify(p),status,day,version]);
+ const v1=(await put('npc:test-001',JSON.parse(profile),'alive',3,0)).rows[0].version;
+ assert.equal(Number(v1),1);
+ assert.equal((await pa('select public_profile from public.shared_npc_public')).rows[0].public_profile.name,'김가람');
+ assert.equal((await pb('select public_profile from public.shared_npc_public')).rows[0].public_profile.name,'김가람');
+ await assert.rejects(pa(`update public.shared_npc_public set life_status='dead'`),/permission denied/);
+ await assert.rejects(put('npc:test-001',{name:'변조'},'alive',4,0),/npc_version_conflict/);
+ await assert.rejects(put('npc:new-123',{truth:'secret'},'alive',4,0),/invalid_npc_public/);
+ assert.equal(Number((await put('npc:test-001',{name:'김가람',profession:'은퇴'},'dead',100,1)).rows[0].version),2);
+ await assert.rejects(put('npc:test-001',{name:'김가람'},'alive',101,2),/npc_temporal_conflict/);
 });
