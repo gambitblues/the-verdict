@@ -12,6 +12,7 @@ try{
   const page=await browser.newPage({viewport:{width:390,height:844}});
   await page.setContent('<!doctype html><html><head></head><body><main>기존 법정은 유지</main></body></html>');
   await page.evaluate(id=>{
+   window.VERDICT_CONFIG={p4SharedWorld:true};
    window.VerdictAuth={online:true,user:{id},
     async api(path){
      if(path.startsWith('/world/events'))return {ok:true,events:[{
