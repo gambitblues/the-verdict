@@ -14,7 +14,7 @@
  * Vars (wrangler.toml):           SUPABASE_URL, SUPABASE_ANON_KEY, ALLOWED_ORIGINS, ALLOWED_EMAILS,
  *                                 MODEL_CASE, MODEL_TALK, PRICES, DAILY_CALLS, DAILY_USD
  */
-import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment} from './prompts.js';
+import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,verifyPrompt} from './prompts.js';
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8',...headers}});
 
@@ -26,6 +26,7 @@ function cors(req,env){
  return ok?{'access-control-allow-origin':origin,'access-control-allow-headers':'authorization, content-type','access-control-allow-methods':'GET, POST, OPTIONS','vary':'origin'}:{};
 }
 
+const svc=env=>({apikey:env.SUPABASE_SERVICE_ROLE_KEY,authorization:`Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,'content-type':'application/json'});
 /* ---------- auth: Supabase access token → user, then the invite list ---------- */
 const userCache=new Map();   // token → {user, until}; a Worker instance lives briefly, so this only saves repeat lookups
 export async function authUser(req,env,fetcher=fetch){
@@ -36,6 +37,10 @@ export async function authUser(req,env,fetcher=fetch){
  const user=await r.json();
  const invited=String(env.ALLOWED_EMAILS||'').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
  if(!user?.id||!invited.includes(String(user.email||'').toLowerCase()))return {error:'not_invited',status:403};
+ // v8.7.1: the database invite list must agree too; if it cannot be checked, nothing is allowed
+ let row=null;try{const q=await fetcher(`${env.SUPABASE_URL}/rest/v1/players?select=email&user_id=eq.${encodeURIComponent(user.id)}`,{headers:svc(env)});
+  if(!q.ok)return {error:'invite_check_failed',status:503};row=(await q.json())?.[0]||null}catch{return {error:'invite_check_failed',status:503}}
+ if(!row)return {error:'not_invited',status:403};
  userCache.set(token,{user,until:Date.now()+60000});if(userCache.size>50)userCache.delete(userCache.keys().next().value);
  return {user,token};
 }
@@ -47,14 +52,23 @@ export function priceOf(env,model){
 }
 export function costOf(env,model,usage){const p=priceOf(env,model);return ((usage?.input_tokens||0)*p.in+(usage?.output_tokens||0)*p.out)/1e6}
 
-const svc=env=>({apikey:env.SUPABASE_SERVICE_ROLE_KEY,authorization:`Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,'content-type':'application/json'});
 async function usageToday(env,uid,fetcher){
  const r=await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/ai_usage_today`,{method:'POST',headers:svc(env),body:JSON.stringify({uid})});
  if(!r.ok)return null;const row=(await r.json())?.[0]||{};return {calls:Number(row.calls||0),usd:Number(row.usd||0)};
 }
-async function logUsage(env,row,fetcher){
- try{await fetcher(`${env.SUPABASE_URL}/rest/v1/ai_usage`,{method:'POST',headers:{...svc(env),prefer:'return=minimal'},body:JSON.stringify(row)})}catch{}
+/* v8.7.1: a call first reserves its place in today's limit, counted at its worst-case price, inside one database
+ * transaction per player — so parallel calls cannot pass the limit. undefined = the usage store could not be reached
+ * (then no AI call is made at all), null = over the limit. */
+export async function reserve(env,uid,kind,model,est,fetcher){
+ try{const r=await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/ai_reserve`,{method:'POST',headers:svc(env),
+   body:JSON.stringify({p_uid:uid,p_kind:kind,p_model:model,p_est:Number(est.toFixed(6)),p_max_calls:Number(env.DAILY_CALLS||300),p_max_usd:Number(env.DAILY_USD||1)})});
+  if(!r.ok)return undefined;const id=await r.json();return id==null?null:id}catch{return undefined}
 }
+async function finish(env,id,row,fetcher){
+ try{await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/ai_finish`,{method:'POST',headers:svc(env),body:JSON.stringify({p_id:id,...row})})}catch{}
+}
+/* worst case: the whole input at the input price and every allowed output token at the output price (×2 with the check) */
+export const estimate=(env,model,chars,maxTokens,verify)=>{const p=priceOf(env,model);const one=(chars*1.2*p.in+maxTokens*p.out)/1e6;return verify?one*2.2:one};
 
 /* ---------- OpenAI Responses API ---------- */
 export function outputText(res){
@@ -100,18 +114,26 @@ export async function handle(req,env,fetcher=fetch){
  const kind=(url.pathname.match(/^\/ai\/(npc|article|judgment)$/)||[])[1];
  if(!kind||req.method!=='POST')return json({error:'not_found'},404,head);
 
- const u=await usageToday(env,uid,fetcher);
- if(u&&(u.calls>=Number(env.DAILY_CALLS||300)||u.usd>=Number(env.DAILY_USD||1)))return json({error:'daily_limit',today:u},429,head);
  let payload;try{payload=await req.json()}catch{return json({error:'bad_json'},400,head)}
  const K=KINDS[kind],built=K.build(payload||{});
  if(built.error)return json({error:built.error},400,head);
- const model=K.model(env),started=Date.now();
+ const model=K.model(env),verify=env.VERIFY!=='0',started=Date.now();
+ const id=await reserve(env,uid,kind,model,estimate(env,model,built.input.length+built.instructions.length,K.maxTokens,verify),fetcher);
+ if(id===undefined)return json({error:'usage_unavailable'},503,head);      // cannot count it → do not call
+ if(id===null)return json({error:'daily_limit'},429,head);
+ // a deliberate failure for the live test of the fallback path (only when the deployment allows it)
+ if(payload?.test==='fail'&&env.ALLOW_TEST_FAIL==='1'){await finish(env,id,{p_model:model,p_in:0,p_out:0,p_cost:0,p_ok:false,p_reason:'test_fail',p_ms:0},fetcher);return json({ok:false,fallback:true,why:'test_fail'},200,head)}
  const r=await respond(env,{model,...built,maxTokens:K.maxTokens},fetcher);
- const verdict=r.ok?K.check(payload,r.data):{ok:false,why:r.error};
- const cost=costOf(env,model,r.usage);
- await logUsage(env,{user_id:uid,kind,model:r.model||model,input_tokens:r.usage?.input_tokens||0,output_tokens:r.usage?.output_tokens||0,
-  cost_usd:cost,ok:verdict.ok,reason:verdict.ok?null:String(verdict.why||'').slice(0,120),ms:Date.now()-started},fetcher);
+ let verdict=r.ok?K.check(payload,r.data):{ok:false,why:r.error},usage={input_tokens:r.usage?.input_tokens||0,output_tokens:r.usage?.output_tokens||0},cost=costOf(env,model,r.usage);
+ if(verdict.ok&&verify&&verdict.compare){   // second opinion on meaning (people, facts, yes/no, what the witness means)
+  const v=await respond(env,{model,...verifyPrompt(kind,...verdict.compare),maxTokens:200},fetcher);
+  usage.input_tokens+=v.usage?.input_tokens||0;usage.output_tokens+=v.usage?.output_tokens||0;cost+=costOf(env,model,v.usage);
+  if(!v.ok)verdict={ok:false,why:'verify_unavailable'};else if(!v.data.same)verdict={ok:false,why:'meaning: '+String(v.data.problem||'').slice(0,80)};
+ }
+ await finish(env,id,{p_model:r.model||model,p_in:usage.input_tokens,p_out:usage.output_tokens,p_cost:Number(cost.toFixed(6)),p_ok:verdict.ok,
+  p_reason:verdict.ok?null:String(verdict.why||'').slice(0,120),p_ms:Date.now()-started},fetcher);
  if(!verdict.ok)return json({ok:false,fallback:true,why:verdict.why},200,head);   // the browser keeps the engine's text
+ r.usage=usage;
  return json({ok:true,result:verdict.value,model:r.model||model,usage:r.usage,cost_usd:Number(cost.toFixed(6))},200,head);
 }
 

@@ -9,7 +9,7 @@ SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
 SUPABASE_ANON_KEY = "YOUR-ANON-KEY"
 # pages allowed to call this API (comma separated). localhost is always allowed for testing.
 ALLOWED_ORIGINS = "https://gambitblues.github.io"
-# the two invited players (must match Supabase Auth users)
+# the two invited players — must ALSO be in the Supabase table public.players (both lists are checked)
 ALLOWED_EMAILS = "player1@example.com,player2@example.com"
 MODEL_CASE = "gpt-6.1-terra"
 MODEL_TALK = "gpt-6-luna"
@@ -18,6 +18,10 @@ PRICES = '{"gpt-6.1-terra":{"in":1.0,"out":5.0},"gpt-6-luna":{"in":0.10,"out":0.
 # per player per day (KST)
 DAILY_CALLS = "300"
 DAILY_USD = "1.00"
+# second AI pass that compares meaning before a rewrite is accepted ("0" turns it off)
+VERIFY = "1"
+# "1" only while running scripts/smoke.mjs (lets it trigger a deliberate failure); keep "0" otherwise
+ALLOW_TEST_FAIL = "0"
 
 # secrets (not in this file):
 #   npx wrangler secret put OPENAI_API_KEY            (already set)

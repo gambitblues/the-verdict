@@ -1,5 +1,5 @@
 /* THE VERDICT service worker — network first, offline fallback. Bump CACHE on every release. */
-const CACHE='the-verdict-v8.7.0'; // v8.7 (develop): private login, per-user cloud saves, AI wording via the-verdict-api
+const CACHE='the-verdict-v8.7.1'; // v8.7.1 (develop): strict login checks, safe offline, versioned cloud saves, AI limits and meaning checks
 const FILES=['./','./index.html','./game.css','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png','./apple-touch-icon.png',
  './names.js','./deep_case_engine.js','./story_engine.js','./case_pack_engine.js','./curated_index.js','./continuity_engine.js','./npc_life_justice.js','./family_engine.js',
  './config.js','./auth_gate.js','./ai_bridge.js','./save_store.js','./avatar_system.js','./viewport_fix.js','./court_visuals.js','./court_visuals.css','./career_balance.js','./game_runtime.js','./game_hearings.js','./game_professions.js','./game_ui.js','./trial_core.js','./hearing_events.js','./media_desk.js','./match_engine.js','./world_sheets_index.js','./match_play.js','./trial_play.js','./world_feed.js','./people_map.js','./v6_world.js','./app_install.js',

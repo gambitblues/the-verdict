@@ -1,13 +1,15 @@
-/* v8.7 private login, per-user saves and the AI bridge — against fake Supabase and API servers (no network needed).
+/* v8.7.1 private login, per-user saves and the AI bridge — against fake Supabase and API servers (no network needed).
  * Run: node tests/auth-gate.mjs
  *  1. ?auth=1 shows the login screen first: the game (and its profile screen) is not loaded, there is no sign-up.
- *  2. A wrong password is refused with a plain message; an uninvited account is refused after sign-in.
- *  3. A save made before login is offered once to the first account; moving it keeps the career.
- *  4. The profile screen shows the account and a logout button; logging out puts that player's saves away.
+ *  2. Refused: wrong password, uninvited account, invite list that cannot be checked (server error).
+ *  3. A save made before login is backed up, then offered once to the first account; moving it keeps the career.
+ *  4. The profile screen shows the account and a logout button; logging out uploads and puts that player's saves away.
  *  5. The second player starts with their own empty career; the first player's career comes back on their next login.
- *  6. Saves go to the cloud under the player's own id; the cloud copy is restored on a fresh device.
- *  7. The AI bridge calls the API with the player's token and only the visible text, and shows the reworded answer.
- *  8. Without login (no session) no AI call is made. */
+ *  6. Same account on two devices: a newer save from the other device is never overwritten silently; the player picks,
+ *     and the side not picked is kept (this browser's backups / the server's save_backups).
+ *  7. Offline: only the player who owns this device's saves, confirmed online within 7 days; no cloud, no AI; when the
+ *     connection returns and the server refuses the account, it is signed out at once.
+ *  8. The AI bridge calls the API with the player's token and only visible text; without a confirmed login, no call. */
 import { chromium } from 'playwright';
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
@@ -21,23 +23,30 @@ const server=http.createServer(async(q,r)=>{const f=path.resolve(base,'.'+decode
 await new Promise(o=>server.listen(0,'127.0.0.1',o));
 const url='http://127.0.0.1:'+server.address().port+'/';
 
-/* fake Supabase: two invited players, one stranger; saves kept in memory */
+/* fake Supabase: two invited players, one stranger; saves with versions like save_put in 001_init.sql */
 const USERS={'a@x.kr':{id:'uid-a',pw:'pw-a'},'b@x.kr':{id:'uid-b',pw:'pw-b'},'c@x.kr':{id:'uid-c',pw:'pw-c',stranger:true}};
-const cloud=new Map(),aiCalls=[],cors={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'*'};
+const cloud=new Map(),serverBackups=[],aiCalls=[],cors={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'*'};
+const net={down:false,claimBroken:false,refuse:new Set()};
 const who=req=>{const t=(req.headers()['authorization']||'').replace('Bearer ','');return Object.entries(USERS).find(([,u])=>'tok-'+u.id===t)};
 async function routes(ctx){
  await ctx.route('https://sb.test/**',async route=>{const req=route.request(),u=new URL(req.url()),j=(d,s=200)=>route.fulfill({status:s,headers:{...cors,'content-type':'application/json'},body:JSON.stringify(d)});
+  if(net.down)return route.abort('internetdisconnected');
   if(req.method()==='OPTIONS')return route.fulfill({status:204,headers:cors});
   if(u.pathname==='/auth/v1/token'){const b=JSON.parse(req.postData()||'{}');
    if(u.searchParams.get('grant_type')==='password'){const x=USERS[b.email];if(!x||x.pw!==b.password)return j({error_description:'Invalid login credentials'},400);
     return j({access_token:'tok-'+x.id,refresh_token:'ref-'+x.id,expires_in:3600,user:{id:x.id,email:b.email}})}
    const id=String(b.refresh_token).replace('ref-',''),e=Object.keys(USERS).find(k=>USERS[k].id===id);return j({access_token:'tok-'+id,refresh_token:'ref-'+id,expires_in:3600,user:{id,email:e}})}
   if(u.pathname==='/auth/v1/logout')return route.fulfill({status:204,headers:cors});
-  const me=who(req);if(!me)return j({message:'JWT'},401);
-  if(u.pathname==='/rest/v1/rpc/claim_player')return j(!me[1].stranger);
-  if(u.pathname==='/rest/v1/saves'&&req.method()==='GET'){const id=u.searchParams.get('user_id').replace('eq.','');assert.equal(id,me[1].id,'a player only asks for their own saves');
-   return j([...cloud.values()].filter(r=>r.user_id===id))}
-  if(u.pathname==='/rest/v1/saves'&&req.method()==='POST'){const row=JSON.parse(req.postData());assert.equal(row.user_id,me[1].id,'saves are written under the player\'s own id');cloud.set(row.user_id+':'+row.slot,row);return route.fulfill({status:201,headers:cors})}
+  const me=who(req);if(!me)return j({message:'JWT'},401);const uid=me[1].id;
+  if(u.pathname==='/rest/v1/rpc/claim_player'){if(net.claimBroken)return j({message:'boom'},500);return j(!me[1].stranger&&!net.refuse.has(uid))}
+  if(u.pathname==='/rest/v1/saves'&&req.method()==='GET'){const id=u.searchParams.get('user_id').replace('eq.','');assert.equal(id,uid,'a player only asks for their own saves');
+   const slot=u.searchParams.get('slot')?.replace('eq.','');
+   return j([...cloud.values()].filter(r=>r.user_id===id&&(!slot||r.slot===slot)).map(r=>u.searchParams.get('select')==='data'?{data:r.data}:{slot:r.slot,rev:r.rev,device:r.device,updated_at:r.updated_at}))}
+  if(u.pathname==='/rest/v1/rpc/save_put'){const b=JSON.parse(req.postData()),k=uid+':'+b.p_slot,cur=cloud.get(k),now=new Date().toISOString();
+   if(!cur){cloud.set(k,{user_id:uid,slot:b.p_slot,data:b.p_data,rev:1,device:b.p_device,updated_at:now});return j([{ok:true,conflict:false,rev:1,updated_at:now,device:b.p_device}])}
+   if(cur.rev!==b.p_base_rev&&!b.p_force)return j([{ok:false,conflict:true,rev:cur.rev,updated_at:cur.updated_at,device:cur.device}]);
+   if(cur.rev!==b.p_base_rev)serverBackups.push({...cur});
+   Object.assign(cur,{data:b.p_data,rev:cur.rev+1,device:b.p_device,updated_at:now});return j([{ok:true,conflict:false,rev:cur.rev,updated_at:now,device:b.p_device}])}
   return j({},404)});
  await ctx.route('https://api.test/**',async route=>{const req=route.request();if(req.method()==='OPTIONS')return route.fulfill({status:204,headers:cors});
   const me=who(req),body=JSON.parse(req.postData()||'{}');aiCalls.push({path:new URL(req.url()).pathname,user:me?.[1].id,body});
@@ -47,81 +56,118 @@ async function routes(ctx){
 const browser=await chromium.launch({headless:true});
 const ctx=await browser.newContext({viewport:{width:390,height:844}});await routes(ctx);
 const page=await ctx.newPage();const errs=[];page.on('pageerror',e=>errs.push(e.message));
-const login=async(email,pw)=>{await page.locator('#verdict-login input[type=email]').fill(email);await page.locator('#verdict-login input[type=password]').fill(pw);await page.locator('#verdict-login button[type=submit]').click()};
+const login=async(p,email,pw)=>{await p.locator('#verdict-login input[type=email]').fill(email);await p.locator('#verdict-login input[type=password]').fill(pw);await p.locator('#verdict-login button[type=submit]').click()};
+const msg=(p,re)=>p.waitForFunction(r=>new RegExp(r).test(document.querySelector('.vl-msg')?.textContent||''),re.source);
+const loaded=(p,name)=>p.waitForFunction(n=>typeof S!=='undefined'&&(n==null||S.name===n),name??null,{timeout:30000});
+const backups=p=>p.evaluate(()=>new Promise(res=>{const r=indexedDB.open('verdict-backups',1);r.onupgradeneeded=()=>r.result.createObjectStore('b',{keyPath:'id'});r.onsuccess=()=>{const q=r.result.transaction('b').objectStore('b').getAll();q.onsuccess=()=>res(q.result.map(x=>({kind:x.kind,uid:x.uid,keys:Object.keys(x.keys)})))}}));
+const gameSave=p=>p.evaluate(()=>{save();VerdictStore.flush()});
 try{
  // a career started before login (test server, no gate)
  await page.goto(url,{waitUntil:'networkidle'});
  await page.locator('#profile-continue').click();await page.locator('#playerName').fill('옛 판사');await page.locator('[data-action="start"]').last().click();
- await page.waitForFunction(()=>typeof S!=='undefined'&&S.name==='옛 판사'&&S.legalWorld?.firstFour===true,null,{timeout:30000});
- await page.evaluate(()=>{save();VerdictStore.flush()});
+ await page.waitForFunction(()=>typeof S!=='undefined'&&S.name==='옛 판사'&&S.legalWorld?.firstFour===true,null,{timeout:30000});await gameSave(page);
 
  // 1. the gate comes first
- await page.goto(url+'?auth=1',{waitUntil:'networkidle'});
- await page.locator('#verdict-login form').waitFor();
+ await page.goto(url+'?auth=1',{waitUntil:'networkidle'});await page.locator('#verdict-login form').waitFor();
  assert.equal(await page.evaluate(()=>typeof S),'undefined','the game is not loaded before login');
  assert.equal(await page.locator('#verdict-entry').count(),0,'the profile screen waits for login');
- assert.ok(!/가입|회원가입|sign up/i.test(await page.locator('#verdict-login').innerText()),'no sign-up');
+ assert.ok(!/가입|sign up/i.test(await page.locator('#verdict-login').innerText()),'no sign-up');
  console.log('  ✓ login screen before the profile screen, game not loaded, no sign-up');
 
  // 2. refused
- await login('a@x.kr','wrong');await page.waitForFunction(()=>/맞지 않아요/.test(document.querySelector('.vl-msg')?.textContent||''));
- await login('c@x.kr','pw-c');await page.waitForFunction(()=>/초대된 계정이 아니에요/.test(document.querySelector('.vl-msg')?.textContent||''));
- assert.equal(await page.evaluate(()=>typeof S),'undefined');
- console.log('  ✓ wrong password and uninvited account are refused');
+ await login(page,'a@x.kr','wrong');await msg(page,/맞지 않아요/);
+ await login(page,'c@x.kr','pw-c');await msg(page,/초대된 계정이 아니에요/);
+ net.claimBroken=true;await login(page,'a@x.kr','pw-a');await msg(page,/서버에 연결하지 못했어요/);net.claimBroken=false;
+ net.down=true;await login(page,'a@x.kr','pw-a');await msg(page,/서버에 연결하지 못했어요/);net.down=false;
+ assert.equal(await page.evaluate(()=>typeof S),'undefined');assert.equal(await page.evaluate(()=>localStorage.getItem('vauth_session')),null,'no half-made session is kept');
+ console.log('  ✓ refused: wrong password, uninvited, invite check failing, no connection');
 
- // 3. first login: the old save is offered and moved
- await login('a@x.kr','pw-a');
+ // 3. first login: the old save is backed up, offered and moved
+ await login(page,'a@x.kr','pw-a');
  await page.locator('#verdict-login [data-a="y"]').waitFor();assert.match(await page.locator('#verdict-login').innerText(),/옛 판사/);
- await page.locator('#verdict-login [data-a="y"]').click();
- await page.waitForFunction(()=>typeof S!=='undefined'&&S.name==='옛 판사',null,{timeout:30000});
- console.log('  ✓ the save made before login moved into the first account');
+ assert.ok((await backups(page)).some(b=>b.kind==='legacy'&&b.keys.includes('the_verdict_alpha_1')),'the pre-login save is backed up before anything moves');
+ await page.locator('#verdict-login [data-a="y"]').click();await loaded(page,'옛 판사');
+ console.log('  ✓ the save made before login: backed up, then moved into the first account');
 
- // 4. account line and logout on the profile screen
+ // 8. AI bridge: token + visible text only; the reworded answer is shown
  await page.locator('#verdict-entry .vl-out').waitFor();assert.match(await page.locator('#verdict-entry .vl-out').innerText(),/a@x\.kr/);
- // 7. AI bridge: token + visible text only; the reworded answer is shown
  const ai=await page.evaluate(async()=>{await VerdictCurated.loadAll();for(const g of S.generatedCases)S.cases[g.id].referred=true;
   const cand=CasePackEngine.pool(S)[0],c=createGeneratedCase(cand);S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};
   const t=VerdictTrialPlay.ensure(c,S.cases[c.id]);VerdictTrialPlay.openSession(c,S.cases[c.id]);
   const q=VerdictTrialPlay.questions(c,t,0)[0];await VerdictAI.npc(c,t,{w:0,q:q.id,question:'그날 무엇을 보셨습니까?',answer:'창고 문이 열려 있었어요.'});
   return {shown:t.ai?.['0:'+q.id]}});
  assert.equal(ai.shown,'(AI) 창고 문이 열려 있었어요.');
- const call=aiCalls.at(-1);assert.equal(call.user,'uid-a');assert.equal(call.path,'/ai/npc');
- assert.ok(!/truth|did|didnt|reason/.test(Object.keys(call.body).join(',')),'no hidden truth in the request: '+Object.keys(call.body));
- console.log('  ✓ AI answer: called with the player\'s token and visible text only, shown in the game');
+ const call=aiCalls.at(-1);assert.equal(call.user,'uid-a');assert.equal(call.path,'/ai/npc');assert.ok(call.body.names.length>=2,'case names go along for the person check');
+ assert.ok(!/truth|did|didnt|reason|score/.test(Object.keys(call.body).join(',')),'no hidden truth in the request: '+Object.keys(call.body));
+ console.log('  ✓ AI answer: the player\'s token and visible text only, shown in the game');
 
- // 6. cloud save under the player's id
- await page.evaluate(()=>{save();VerdictStore.flush();document.dispatchEvent(new Event('visibilitychange'))});
- await page.evaluate(()=>Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'hidden'}));await page.evaluate(()=>window.dispatchEvent(new Event('visibilitychange')));
- await page.locator('#verdict-entry .vl-out button').click();   // logout pushes first
- await page.locator('#verdict-login form').waitFor();
- assert.ok(cloud.has('uid-a:1'),'player A\'s slot 1 is in the cloud');
- const keys=await page.evaluate(()=>Object.keys(localStorage));
+ // 4. logout uploads and puts away
+ await gameSave(page);await page.locator('#verdict-entry .vl-out button').click();await page.locator('#verdict-login form').waitFor();
+ assert.equal(cloud.get('uid-a:1')?.rev,1,'player A\'s slot 1 is in the cloud');
+ let keys=await page.evaluate(()=>Object.keys(localStorage));
  assert.ok(!keys.some(k=>/^(the_verdict|verdict_)/.test(k)),'nothing of player A is left in the game\'s working keys');
  assert.ok(keys.some(k=>k.startsWith('vu:uid-a:')),'player A\'s saves are kept on this device under A');
  console.log('  ✓ logout: cloud copy made, saves put away under the player');
 
- // 5. second player: own empty career; then A again
- await login('b@x.kr','pw-b');await page.waitForFunction(()=>typeof S!=='undefined',null,{timeout:30000});
+ // 5. second player, then A again
+ await login(page,'b@x.kr','pw-b');await loaded(page);
  assert.equal(await page.locator('#verdict-login [data-a="y"]').count(),0,'the old-save question is asked only once');
  assert.notEqual(await page.evaluate(()=>S.name),'옛 판사','player B does not see player A\'s career');
  await page.locator('#verdict-entry .vl-out button').click();await page.locator('#verdict-login form').waitFor();
- await login('a@x.kr','pw-a');await page.waitForFunction(()=>typeof S!=='undefined'&&S.name==='옛 판사',null,{timeout:30000});
+ await login(page,'a@x.kr','pw-a');await loaded(page,'옛 판사');
  console.log('  ✓ two players, separate careers on one device');
 
- // 6b. fresh device: the session and saves come from the cloud
+ // 6. same account on a second device
  const ctx2=await browser.newContext({viewport:{width:390,height:844}});await routes(ctx2);const p2=await ctx2.newPage();
- await p2.goto(url+'?auth=1',{waitUntil:'networkidle'});await p2.locator('#verdict-login input[type=email]').fill('a@x.kr');await p2.locator('#verdict-login input[type=password]').fill('pw-a');await p2.locator('#verdict-login button[type=submit]').click();
- await p2.waitForFunction(()=>typeof S!=='undefined'&&S.name==='옛 판사',null,{timeout:30000});
- // stays signed in after a reload
- await p2.reload({waitUntil:'networkidle'});await p2.waitForFunction(()=>typeof S!=='undefined'&&S.name==='옛 판사',null,{timeout:30000});
+ await p2.goto(url+'?auth=1',{waitUntil:'networkidle'});await login(p2,'a@x.kr','pw-a');await loaded(p2,'옛 판사');
+ await p2.reload({waitUntil:'networkidle'});await loaded(p2,'옛 판사');   // login kept after a reload
+ await p2.evaluate(()=>{S.name='태블릿 판사';save();VerdictStore.flush()});
+ await p2.evaluate(()=>window.dispatchEvent(new Event('focus')));
+ await p2.evaluate(async()=>{Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'hidden'});document.dispatchEvent(new Event('visibilitychange'))});
+ await p2.waitForFunction(()=>true);await new Promise(r=>setTimeout(r,800));
+ assert.equal(cloud.get('uid-a:1').rev,2,'the tablet\'s save went up as rev 2');
+ // the phone (page) still knows rev 1 and has its own change
+ await page.evaluate(()=>{S.name='휴대폰 판사';save();VerdictStore.flush()});
+ await page.locator('#verdict-login [data-a="y"]').waitFor({timeout:30000});
+ assert.match(await page.locator('#verdict-login').innerText(),/다른 기기/);
+ assert.equal(cloud.get('uid-a:1').rev,2,'the newer save was not overwritten while asking');
+ await page.locator('#verdict-login [data-a="y"]').click();   // continue from the other device
+ await page.waitForLoadState('networkidle');await loaded(page,'태블릿 판사');
+ assert.ok((await backups(page)).some(b=>b.kind==='replaced'&&b.uid==='uid-a'),'the phone\'s own record is kept in this browser before being replaced');
+ // and the other way: keep this device's record → the cloud's is kept on the server first
+ await p2.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'visible'})});
+ await page.evaluate(()=>{S.name='휴대폰 판사 2';save();VerdictStore.flush()});
+ await p2.evaluate(()=>{S.name='태블릿 판사 2';save();VerdictStore.flush()});
+ await p2.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'hidden'});document.dispatchEvent(new Event('visibilitychange'))});await new Promise(r=>setTimeout(r,800));
+ await page.locator('#verdict-login [data-a="n"]').waitFor({timeout:30000});await page.locator('#verdict-login [data-a="n"]').click();
+ await page.waitForFunction(()=>true);await new Promise(r=>setTimeout(r,800));
+ assert.ok(serverBackups.some(b=>/태블릿 판사 2/.test(b.data)),'the tablet\'s newer save was kept on the server before the phone\'s replaced it');
  await ctx2.close();
- console.log('  ✓ another device: career restored from the cloud, login kept after reload');
+ console.log('  ✓ two devices: no silent overwrite; the player picks; the other side is backed up');
 
- // 8. no login, no AI
- const before=aiCalls.length;const p3=await (await browser.newContext()).newPage();
- await p3.goto(url,{waitUntil:'networkidle'});const r=await p3.evaluate(async()=>{try{await VerdictAuth.api('/ai/npc',{});return 'called'}catch(e){return e.message}});
- assert.equal(r,'ai_unavailable');assert.equal(aiCalls.length,before);
+ // 7. offline rules
+ const ctx3=await browser.newContext({viewport:{width:390,height:844}});await routes(ctx3);const p3=await ctx3.newPage();const e3=[];p3.on('pageerror',e=>e3.push(e.message));
+ await p3.goto(url+'?auth=1',{waitUntil:'networkidle'});await login(p3,'b@x.kr','pw-b');await loaded(p3);
+ net.down=true;await p3.reload({waitUntil:'domcontentloaded'});await loaded(p3);
+ assert.equal(await p3.locator('#vl-offline').count(),1,'recently confirmed owner of this device: may play offline');
+ assert.equal(await p3.evaluate(async()=>{try{await VerdictAuth.api('/ai/npc',{});return 'called'}catch(e){return e.message}}),'ai_unavailable','no AI offline');
+ // the confirmation is too old → no offline play
+ await p3.evaluate(()=>{const v=JSON.parse(localStorage.getItem('vauth_verified'));v.at-=8*864e5;localStorage.setItem('vauth_verified',JSON.stringify(v))});
+ await p3.reload({waitUntil:'domcontentloaded'});await msg(p3,/서버에 연결하지 못했어요/);assert.equal(await p3.evaluate(()=>typeof S),'undefined');
+ // fresh confirmation, offline again, then the connection returns and the server refuses the account
+ net.down=false;await p3.reload({waitUntil:'networkidle'});await loaded(p3);
+ net.down=true;await p3.reload({waitUntil:'domcontentloaded'});await loaded(p3);
+ net.down=false;net.refuse.add('uid-b');await p3.evaluate(()=>window.dispatchEvent(new Event('online')));
+ await p3.locator('#verdict-login form').waitFor({timeout:15000});await msg(p3,/초대된 계정이 아니에요/);
+ keys=await p3.evaluate(()=>Object.keys(localStorage));assert.ok(!keys.some(k=>/^(the_verdict|verdict_)/.test(k))&&!keys.includes('vauth_session'),'signed out, saves put away');
+ net.refuse.clear();await ctx3.close();
+ console.log('  ✓ offline: only the recent owner, no AI, signed out at once when the server refuses');
+
+ // 8b. no login, no AI
+ const before=aiCalls.length;const p4=await (await browser.newContext()).newPage();
+ await p4.goto(url,{waitUntil:'networkidle'});assert.equal(await p4.evaluate(async()=>{try{await VerdictAuth.api('/ai/npc',{});return 'called'}catch(e){return e.message}}),'ai_unavailable');
+ assert.equal(aiCalls.length,before);
  console.log('  ✓ without login the AI is never called');
  assert.deepEqual(errs,[]);
- console.log('PASS: private login, per-user saves, AI bridge');
+ console.log('PASS: private login, per-user saves, conflicts, offline rules, AI bridge');
 }finally{await browser.close();server.close()}

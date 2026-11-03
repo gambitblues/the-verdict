@@ -1,0 +1,7 @@
+{
+  "name": "the-verdict-db-tests",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test test/*.test.js" },
+  "devDependencies": { "@electric-sql/pglite": "^0.3.0" }
+}

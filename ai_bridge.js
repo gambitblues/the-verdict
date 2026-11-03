@@ -7,7 +7,9 @@
 (()=>{
 'use strict';
 const CFG=window.VERDICT_CONFIG||{};
-const on=()=>CFG.ai!==false&&!!window.VerdictAuth?.user&&!!CFG.apiBase;
+const on=()=>CFG.ai!==false&&!!window.VerdictAuth?.user&&!!window.VerdictAuth?.online&&!!CFG.apiBase;
+/* the people of this case, so the server can check that nobody was added, dropped or swapped */
+const namesOf=(c,t)=>[...new Set([...(c?.who||[]),...(c?.side||[]),...(t?.witnesses||[]).map(w=>w.id),t?.opponent].map(id=>NPC[id]?.name).filter(n=>n&&n.length>=2))];
 const busy=new Set();
 const redraw=()=>{try{if(!ui.modal)render()}catch{}};
 async function ask(kind,body){
@@ -18,7 +20,7 @@ async function ask(kind,body){
 async function npc(c,t,x){
  if(!on())return;const key=x.w+':'+x.q;if(t.ai?.[key]||busy.has(c.id+key))return;busy.add(c.id+key);
  const w=t.witnesses[x.w];
- const res=await ask('npc',{role:w?.role||'증인',attitude:w?.attitude||'honest',question:x.question,answer:x.answer});
+ const res=await ask('npc',{role:w?.role||'증인',attitude:w?.attitude||'honest',names:namesOf(c,t),question:x.question,answer:x.answer});
  busy.delete(c.id+key);
  if(res?.text){(t.ai??={})[key]=res.text;save();redraw()}
 }
@@ -29,7 +31,7 @@ async function article(a){
  if(S.aiArticles?.[key]||busy.has(key))return;busy.add(key);
  const c=CASES.find(x=>x.id===a.caseId);
  const res=await ask('article',{outlet:a.outlet,reporter:a.reporter?.name||'',style:a.reporter?.style||'',lean:a.lean||'',phase:a.phase,tone:a.tone||'',
-  caseName:String(c?.name||'').split(' · ')[0],title:a.base?.title||a.title,body:a.base?.body||a.body});
+  caseName:String(c?.name||'').split(' · ')[0],names:namesOf(c,S.cases[a.caseId]?.trial4),title:a.base?.title||a.title,body:a.base?.body||a.body});
  busy.delete(key);
  if(res?.title&&res?.body){S.aiArticles??={};S.aiArticles[key]={title:res.title,body:res.body};
   const ks=Object.keys(S.aiArticles);if(ks.length>120)delete S.aiArticles[ks[0]];save();redraw()}
@@ -39,7 +41,7 @@ const articleKey=a=>`${a.caseId}:${a.index}:${a.phase||''}`;
 /* the written judgment after the sentence: the order (주문) and the excluded material are never sent or changed */
 async function judgment(c,t){
  const j=t?.final?.judgment;if(!on()||!j||t.final.judgmentAI||busy.has('j'+c.id))return;busy.add('j'+c.id);
- const res=await ask('judgment',{facts:j.facts,issues:j.issues,conclusion:j.conclusion});
+ const res=await ask('judgment',{names:namesOf(c,t),facts:j.facts,issues:j.issues,conclusion:j.conclusion});
  busy.delete('j'+c.id);
  if(res?.facts){t.final.judgmentAI={...j,facts:res.facts,issues:res.issues,conclusion:res.conclusion};save();redraw()}
 }

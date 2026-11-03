@@ -12,6 +12,31 @@ const quotesIn=t=>S(t).match(/"[^"]{2,}"|“[^”]{2,}”/g)||[];
 /* sentences end in 다/요/까 followed by a stop (Korean news and testimony) */
 export const sentencesIn=t=>S(t).split(/(?<=[.!?。])\s+/).filter(x=>x.length>1);
 
+/* ---------- meaning guards (no model needed) ----------
+ * people: every listed name the source mentions must stay, and no listed name may appear that the source did not have.
+ * polarity: a sentence that denied something must still deny it, and the other way round (않/안/못/없/아니/모르…).
+ * content: most of the source's own words (2+ syllables, endings stripped) must still be there. */
+const NEG=/않|안 |안했|못|없|아니|모르|모릅|아뇨|부인/;
+export const negated=t=>NEG.test(' '+S(t)+' ');
+const stem=w=>w.replace(/(으로|에게|에서|까지|부터|처럼|이라고|라고|이라는|라는|이에요|예요|입니다|습니다|했어요|어요|아요|해요|와|과|가|이|를|을|은|는|의|에|로|도|만|요|다)$/,'');
+export const words=t=>[...new Set((S(t).match(/[가-힣A-Za-z0-9]{2,}/g)||[]).map(stem).filter(w=>w.length>=2))];
+export function guard(src,out,{names=[],keep=0.5}={}){
+ for(const n of names){const a=S(src).includes(n),b=S(out).includes(n);if(a&&!b)return 'person_dropped';if(!a&&b)return 'person_added'}
+ if(negated(src)!==negated(out))return 'polarity';
+ const w=words(src);if(w.length>=4){const o=S(out);const kept=w.filter(x=>o.includes(x)).length/w.length;if(kept<keep)return 'content'}
+ return null;
+}
+const namesOf=p=>(Array.isArray(p.names)?p.names:[]).map(S).filter(n=>n.length>=2).slice(0,40);
+
+/* ---------- second opinion: a separate short call compares the two texts' meaning ---------- */
+export function verifyPrompt(kind,src,out){
+ return {instructions:`두 글을 비교하는 검사원입니다. B가 A의 표현만 바꾼 글인지 확인합니다.
+다음 중 하나라도 있으면 same=false입니다: B에 A에 없는 사실·사람·장소·시각·숫자가 있음, A의 사실이 빠지거나 바뀜, 인정과 부인(긍정·부정)이 뒤집힘, 누가 무엇을 했는지가 바뀜, 증언이라면 증인이 말하는 뜻이 달라짐, 확신의 정도가 크게 달라짐(“~였을 거예요”를 “~였습니다”로 단정 등).
+말투·어순·문장 나누기·같은 뜻의 다른 낱말은 괜찮습니다.`,
+  input:`종류: ${kind}\nA(원래 글): ${cap(src,3000)}\nB(바꾼 글): ${cap(out,3000)}`,
+  schema:{name:'meaning_check',schema:{type:'object',additionalProperties:false,required:['same','problem'],properties:{same:{type:'boolean'},problem:{type:'string'}}}}};
+}
+
 const COMMON=`당신은 한국 법정 시뮬레이션 게임 THE VERDICT의 문장 담당입니다.
 - 쓰는 말: 고등학생도 이해할 쉬운 한국어. 어려운 법률 용어, 영어, 이모지, 마크다운을 쓰지 않습니다.
 - 사실은 주어진 글에 있는 것만 씁니다. 사람·장소·시각·금액·숫자를 새로 만들거나 바꾸지 않습니다.
@@ -39,7 +64,8 @@ export function checkNpc(p,out){
  if(text.length>Math.max(60,src.length*1.8+20)||text.length<Math.min(src.length*0.5,12))return {ok:false,why:'length'};
  if(!sameNumbers(src,text))return {ok:false,why:'numbers'};
  if(sentencesIn(text).length>3)return {ok:false,why:'too_many_sentences'};
- return {ok:true,value:{text}};
+ const g=guard(src,text,{names:namesOf(p),keep:0.5});if(g)return {ok:false,why:g};
+ return {ok:true,value:{text},compare:[src,text]};
 }
 
 /* ---------- a reporter's article: title + 2~4 sentences, about 100~200 characters ---------- */
@@ -68,7 +94,9 @@ export function checkArticle(p,out){
  if(n<2||n>4)return {ok:false,why:'sentences'};
  if(body.length<80||body.length>240)return {ok:false,why:'length'};
  const b=numbersIn(title+' '+body),a=numbersIn(src);if(!b.every(x=>a.includes(x)))return {ok:false,why:'numbers'};
- return {ok:true,value:{title,body}};
+ for(const n of namesOf(p))if(!src.includes(n)&&(title+body).includes(n))return {ok:false,why:'person_added'};
+ if(negated(S(p.body))!==negated(body))return {ok:false,why:'polarity'};
+ return {ok:true,value:{title,body},compare:[src,title+' '+body]};
 }
 
 /* ---------- a judgment: the engine's order, sections and every number stay; only sentences change ---------- */
@@ -98,6 +126,7 @@ export function checkJudgment(p,out){
   if(!sameNumbers(a,b))return {ok:false,why:'numbers'};
   if(quotesIn(a).some(q=>!b.includes(q.slice(1,-1))))return {ok:false,why:'quotes'};
   if(b.length>a.length*1.6+40)return {ok:false,why:'length'};
+  const g=guard(a,b,{names:namesOf(p),keep:0.6});if(g)return {ok:false,why:g};
  }
- return {ok:true,value:{facts:of,issues:oi,conclusion:oc}};
+ return {ok:true,value:{facts:of,issues:oi,conclusion:oc},compare:[pairs.map(x=>x[0]).join('\n'),pairs.map(x=>x[1]).join('\n')]};
 }
