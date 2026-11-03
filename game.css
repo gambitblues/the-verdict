@@ -828,3 +828,6 @@ body.t4-court #toast{bottom:168px}
 .t4-addon.off{opacity:.65}
 .t4-addon .t4-step{margin-top:8px}
 .t4-addon-note{color:#5b6670;background:#f3f5f6;border-radius:10px;padding:8px 10px}
+
+/* P2: brief sourced life continuity, never a second case summary. */
+.npc-life-moment,.t4-life-thread{font-size:12.5px;line-height:1.6;color:#695f51;background:#faf8f4;border-left:2px solid #c1b199;border-radius:0 7px 7px 0;padding:7px 10px;margin:8px 0}
