@@ -93,7 +93,7 @@ async function generate(seed,{fetcher,apiKey,model='gpt-6.1-terra'}={}){
  if(!reviewed.ok)return {ok:false,stage:'review-readiness',errors:reviewed.errors,usage:[first.usage]};
  const second=await requestJSON({fetcher,apiKey,model,instructions:RULES,input:stageTwoInput(reviewedForStructure)});
  const checked=prepareWorldSheet(reviewedForStructure,second.object);
- if(!checked.ok)return {ok:false,stage:'world-sheet-handoff',errors:checked.errors,usage:[first.usage,second.usage]};
+ if(!checked.ok)return {ok:false,stage:'world-sheet-handoff',errors:checked.errors,candidate,unverifiedSheet:second.object,usage:[first.usage,second.usage]};
  return {ok:true,stage:'unreviewed-draft',candidate,worldSheet:checked.sheet,
    candidateHash:checked.candidateHash,sheetHash:checked.sheetHash,
    usage:[first.usage,second.usage],model:second.model,
