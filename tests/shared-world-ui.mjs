@@ -13,8 +13,11 @@ try{
   await page.setContent('<!doctype html><html><head></head><body><main>기존 법정은 유지</main></body></html>');
   await page.evaluate(id=>{
    window.VERDICT_CONFIG={p4SharedWorld:true,p4SharedDocket:true};
+   window.__p4_lag=id==='judge-b'?11:0;
    window.VerdictAuth={online:true,user:{id},
     async api(path){
+     if(path==='/world/catchup')return {ok:true,worldDay:33,previousDay:33-window.__p4_lag,lagDays:window.__p4_lag,protectedUntil:33,pending:[{case_id:'case-'+id,hearing_index:1,due_game_day:24,state:'scheduled'}]};
+     if(path==='/world/resume'){window.__p4_lag=0;return {ok:true,resume:{world_day:33,protected_until_day:35,rescheduled_hearings:1}}}
      if(path==='/world/offers')return {ok:true,offers:[{case_id:'case-'+id,category:'civil',option_index:0},{case_id:'alt-'+id,category:'public',option_index:1}]};
      if(path==='/world/accept')return {ok:true,assignment:{case_id:'case-'+id}};
      if(path.startsWith('/world/case/initial'))return {ok:true,caseId:'case-'+id,records:[{id:'r1',title:'제출된 계약서',kind:'문서',text:'첫날 공개된 계약 내용'}]};
@@ -53,6 +56,14 @@ try{
  }
  const a=await judge('judge-a'),b=await judge('judge-b');
  assert.deepEqual(a.event,b.event,'independent judges must see identical server facts');
+ assert.equal(await a.page.locator('[data-world-resume]:visible').count(),0,'active judge has no catchup button');
+ await b.page.waitForFunction(()=>window.VerdictSharedWorld.catchup?.lagDays===11);
+ assert.match(await b.page.locator('[data-world-lag]').innerText(),/11일/);
+ await b.page.locator('[data-world-resume]').click();
+ await b.page.waitForFunction(()=>window.VerdictSharedWorld.catchup?.lagDays===0);
+ assert.match(await b.page.locator('[data-world-lag]').innerText(),/35일/);
+ assert.equal(await b.page.locator('[data-world-resume]:visible').count(),0,'no infinite grace extension');
+ assert.equal(await a.page.locator('[data-world-resume]:visible').count(),0,'A progress unaffected');
  await a.page.close();await b.page.close();
  const anonymous=await browser.newPage();
  await anonymous.setContent('<html><head></head><body></body></html>');
