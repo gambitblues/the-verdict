@@ -35,7 +35,8 @@
     "composure": "높음",
     "honesty": "보통",
     "legalStance": "부인"
-   }
+   },
+   "sex": "남"
   },
   {
    "key": "B",
@@ -50,7 +51,8 @@
     "memoryAccuracy": "낮음(만취)",
     "confidence": "보통",
     "honesty": "높음"
-   }
+   },
+   "sex": "여"
   },
   {
    "key": "W1",

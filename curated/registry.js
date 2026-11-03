@@ -73,7 +73,8 @@ const SEX={
  'stalking-repeat-contact':{AB:'diff'},                      // met on a blind date
  'beta-reputation-004':{A:'여'},                             // a mom-cafe regular
  'beta-violence-003':{W:{1:'diffB'}},                        // the victim's spouse
- 'v6-family-two-journals':{AB:'diff'}                        // separated parents
+ 'v6-family-two-journals':{AB:'diff'},                       // separated parents
+ 'beta-sexual-014':{A:'여',B:'남'}                           // harassment damages: the accused senior is the defendant
 };
 for(const [id,s] of Object.entries(SEX))if(cases[id])cases[id].sex=s;
 /* Sex crimes, stalking, marriage, divorce, custody and affairs: the two parties are always of opposite sex.
@@ -81,6 +82,9 @@ for(const [id,s] of Object.entries(SEX))if(cases[id])cases[id].sex=s;
 const OPPOSITE=/sexual|stalking|affair|divorce|추행|강간|성폭력|성희롱|촬영물|스토킹|이혼|혼인|부부|불륜|외도|상간|면접교섭|양육|사실혼/;
 for(const c of Object.values(cases)){const text=[c.id,c.charge?.name,c.claim?.what,c.summary].join(' ');
  if(OPPOSITE.test(text)&&!c.sex?.AB)c.sex={...(c.sex||{}),AB:'diff'}}
+/* Sex crimes (기획자 확정 2026-11-03): the accused is always a man (and the complainant a woman). */
+const SEXCRIME=/추행|강간|성폭력|성희롱|촬영|허위영상|성매매|성착취/;
+for(const c of Object.values(cases))if(c.charge&&(SEXCRIME.test(c.charge.name||'')||/sexual/.test(c.id)))c.sex={...(c.sex||{}),A:'남',B:'여',AB:'diff'};
 /* Who the parties are, as the story describes them: job, age range, degree, marriage, children.
  * same:'A' = same age as A (roommates, classmates). Applied once when the case is created. */
 const PROFILE={

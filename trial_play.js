@@ -111,7 +111,9 @@ function swapName(c,p,old){if(!old||old===p.name)return;
 function setSex(c,id,g){const p=NPC[id];if(!p||!g||(g==='여')===isF(p))return;
  const old=p.name;p.gender=g==='여'?'여성':'남성';p.name=VerdictNames.make({gender:p.gender,bornYear:p.bornYear,rand,people:NPC});swapName(c,p,old)}
 const other=p=>isF(p)?'남':'여',same=p=>isF(p)?'여':'남';
-function fixSex(c){const s=curOf(c)?.sex;if(!s||c.sexFixed||!c.who)return;c.sexFixed=true;
+function fixSex(c){const s=curOf(c)?.sex;if(!s||!c.who||c.sexFixed===2)return;
+ if(c.sexFixed&&S.cases[c.id]?.trial4)return;   // v8.5.2: a case not yet opened is checked again (sex-crime rule); a trial in progress keeps its people
+ c.sexFixed=2;
  const [a,b]=c.who;setSex(c,a,s.A);setSex(c,b,s.B);
  if(s.AB==='same')setSex(c,b,same(NPC[a]));else if(s.AB==='diff')setSex(c,b,other(NPC[a]))}
 function witnessSex(c,i,id){const r=curOf(c)?.sex?.W?.[i];if(!r)return;const ref=NPC[c.who?.[r.endsWith('A')?0:1]];if(!ref)return;

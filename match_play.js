@@ -108,7 +108,9 @@ function toCurated(s){
   :`원고의 청구는 기록으로 충분히 뒷받침됩니다. ${plainLegal(s.worlds.did.legal).replace(/^[^—]*—\s*/,'')}. 청구를 받아들여 주십시오.`;
  if(cr){const ch=s.card.charge||{},min=ch.min||0,max=ch.max||5;
   cur.demand=s.card.demand??(ch.fine&&max<=3&&!min?{fine:Math.max(100,Math.round(ch.fine*0.3/50)*50)}:Math.max(1,Math.round((min+Math.min(max,min*2+3))/2*2)/2))}
- const sx={};for(const k of ['A','B'])if(person(s,k)?.sex)sx[k]=person(s,k).sex;if(Object.keys(sx).length)cur.sex=sx;
+ const sx={};for(const k of ['A','B'])if(person(s,k)?.sex)sx[k]=person(s,k).sex;
+ if(cr&&(s.card.category==='sexual'||/추행|강간|성폭력|성희롱|촬영|허위영상|성매매|성착취/.test(s.card.charge?.name||''))){sx.A='남';sx.B??='여'}   // sex crimes: the accused is a man
+ if(Object.keys(sx).length)cur.sex=sx;
  if(cr){const {orders,...ch}=s.card.charge||{};cur.charge={life:false,fine:0,...ch};if(orders)cur.addons=orders}
  else if(!dec){const {remedies,...cl}=s.card.claim||{};cur.claim=cl;if(remedies)cur.remedies=remedies}
  if(s.after)cur.after=s.after;   // v8.3: ancillary orders, remedies, the parties' lives after the judgment
