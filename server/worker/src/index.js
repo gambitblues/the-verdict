@@ -207,6 +207,40 @@ export async function handle(req,env,fetcher=fetch){
   }catch{return json({error:'case_unavailable'},503,head)}
  }
 
+ // P4: an inactive judge never automatically loses a hearing when the shared
+ // chronology advances. This is a PERSONAL, RLS-protected calendar read.
+ if(url.pathname==='/world/catchup'&&req.method==='GET'){
+  if(env.P4_SHARED_DOCKET_ENABLED!=='1')return json({error:'feature_disabled'},404,head);
+  const headers={apikey:env.SUPABASE_ANON_KEY,authorization:`Bearer ${who.token}`};
+  try{
+   const [clockResp,progressResp,hearingsResp]=await Promise.all([
+    fetcher(`${env.SUPABASE_URL}/rest/v1/shared_world_clock?select=game_day,version&id=eq.main&limit=1`,{headers}),
+    fetcher(`${env.SUPABASE_URL}/rest/v1/shared_judge_progress?select=last_seen_world_day,protected_until_day&judge_id=eq.${encodeURIComponent(uid)}&limit=1`,{headers}),
+    fetcher(`${env.SUPABASE_URL}/rest/v1/shared_judge_hearings?select=case_id,hearing_index,due_game_day,state,revised_by_catchup&judge_id=eq.${encodeURIComponent(uid)}&state=eq.scheduled&order=due_game_day.asc&limit=50`,{headers})
+   ]);
+   if(!clockResp.ok||!progressResp.ok||!hearingsResp.ok)return json({error:'calendar_unavailable'},503,head);
+   const [clocks,progresses,hearings]=await Promise.all([clockResp.json(),progressResp.json(),hearingsResp.json()]);
+   if(!Array.isArray(clocks)||!Array.isArray(progresses)||!Array.isArray(hearings))
+    return json({error:'calendar_unavailable'},503,head);
+   const today=Number(clocks[0]?.game_day??0),last=Number(progresses[0]?.last_seen_world_day??today);
+   if(!Number.isSafeInteger(today)||!Number.isSafeInteger(last))return json({error:'calendar_unavailable'},503,head);
+   return json({ok:true,worldDay:today,previousDay:last,lagDays:Math.max(0,today-last),
+    protectedUntil:progresses[0]?.protected_until_day??today,
+    pending:hearings},200,head);
+  }catch{return json({error:'calendar_unavailable'},503,head)}
+ }
+ if(url.pathname==='/world/resume'&&req.method==='POST'){
+  if(env.P4_SHARED_DOCKET_ENABLED!=='1')return json({error:'feature_disabled'},404,head);
+  let result;
+  try{result=await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/shared_judge_resume`,{
+   method:'POST',headers:svc(env),body:JSON.stringify({p_judge:uid})})}
+  catch{return json({error:'calendar_unavailable'},503,head)}
+  if(!result.ok)return json({error:'calendar_unavailable'},503,head);
+  let rows;try{rows=await result.json()}catch{return json({error:'calendar_unavailable'},503,head)}
+  if(!Array.isArray(rows))return json({error:'calendar_unavailable'},503,head);
+  return json({ok:true,resume:rows[0]||null},200,head);
+ }
+
  // Read-only health check for the existing invited judges. Never returns
  // private case material, budget amounts, service credentials or model output.
  if(url.pathname==='/terra/status'&&req.method==='GET'){
