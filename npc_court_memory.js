@@ -98,5 +98,40 @@
   if(existing.some(c=>c.type==='objection')||chance(seed+':p2:confident:'+day)>=0.3)return existing;
   return [...existing,{id:'d'+day+'-obj',type:'objection',choice:null}];
  }
- root.VerdictCourtMemory={snapshot,greeting,relationship,rulingReaction,strategy,adaptCards};
+ /* Role-specific previous court participation. A witness counts only if the
+  * judge actually heard their testimony; merely being assigned is not enough.
+  * The supplied case roster is the current player's roster, never a global NPC log. */
+ function participation(cases,roster,currentCaseId,personId,role){
+  if(!personId||!['prosecutor','witness'].includes(role)||!Array.isArray(roster))return null;
+  let count=0,heardCount=0;
+  for(const c of roster){
+   if(!c||c.id===currentCaseId)continue;
+   const st=cases?.[c.id],trial=st?.trial4;
+   if(!st?.verdict||!trial)continue;
+   if(role==='prosecutor'){
+    if(c.side?.[0]!==personId||!(c.kind==='criminal'||c.kind==='crim'||/형사/.test(String(c.kind||''))))continue;
+    count++;
+   }else{
+    const indices=[];
+    for(let i=0;i<(trial.witnesses||[]).length;i++)if(trial.witnesses[i]?.id===personId)indices.push(i);
+    if(!indices.length)continue;
+    const hearing=(trial.heard||[]).filter(h=>indices.includes(h.w)&&!h.struck&&!h.tainted);
+    if(!hearing.length)continue;
+    count++;
+    heardCount+=hearing.length;
+   }
+  }
+  return count?{role,cases:count,heard:heardCount}:null;
+ }
+ function participationLine(memory,style){
+  if(!memory?.cases)return '';
+  if(memory.role==='prosecutor')
+   return memory.cases>1?'검사: 재판장님, 이전 사건들에서도 뵈었습니다. 이번 사건의 공소사실과 증거를 말씀드리겠습니다.'
+    :'검사: 재판장님, 지난 사건에 이어 다시 뵙습니다. 이번 사건의 증거부터 말씀드리겠습니다.';
+  if(memory.role==='witness')
+   return memory.cases>1?'이전에도 이 법정에서 증언한 적이 있습니다. 오늘은 질문에 맞춰 답하겠습니다.'
+    :'지난 사건에서도 이 법정에서 증언했습니다. 오늘도 제가 아는 범위에서 답하겠습니다.';
+  return '';
+ }
+ root.VerdictCourtMemory={snapshot,greeting,relationship,rulingReaction,strategy,adaptCards,participation,participationLine};
 })(typeof window!=='undefined'?window:globalThis);
