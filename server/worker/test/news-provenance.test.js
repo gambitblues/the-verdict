@@ -32,9 +32,9 @@ test('old articles and unknown case identifiers have no navigation target',()=>{
  assert.equal(state.news[0].caseId,undefined);
  assert.equal(state.news[1].caseId,undefined);
 });
-test('news and community feeds link through existing court navigation',()=>{
- assert.match(runtime,/S\\.news\\.map\\(n=>/);
- assert.match(runtime,/S\\.news\\.filter\\(x=>x\\.category!==/);
+test('news and community feeds link through the existing court navigation',()=>{
+ assert.ok(runtime.includes('S.news.map(n=>'));
+ assert.ok(runtime.includes("S.news.filter(x=>x.category!=='법조일보')"));
  assert.ok(runtime.includes('data-action="openCase"'));
  assert.ok(runtime.includes("case'openCase':ui.caseId=el.dataset.id;changeTab('court')"));
 });
