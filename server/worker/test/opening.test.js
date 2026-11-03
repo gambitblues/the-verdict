@@ -28,3 +28,12 @@ test('missing one side never succeeds',()=>{
  assert.equal(openingPrompt({...p,openingB:''}).error,'missing_text');
  assert.equal(checkOpening(p,{openingA:p.openingA,openingB:''}).why,'empty');
 });
+
+test('legal shorthand negative stance stays negative when expanded',()=>{
+ const p={names:[],openingA:'특수상해 성립 — 맥주병을 깨뜨려 날카로운 쪽으로 팔을 그음.',
+  openingB:'특수상해 불성립 — 병은 피해자가 먼저 들었다가 떨어뜨려 깨졌고, 피해자는 넘어지며 바닥의 파편에 팔을 베임.'};
+ const out={openingA:p.openingA,openingB:p.openingB.replace('특수상해 불성립','특수상해는 성립하지 않음')};
+ assert.equal(checkOpening(p,out).ok,true,'불성립과 성립하지 않음은 같은 부정 주장');
+ assert.equal(checkOpening(p,{...out,openingB:out.openingB.replace('성립하지 않음','성립함')}).why,'polarity');
+ assert.equal(checkOpening(p,{...out,openingA:out.openingA.replace('특수상해 성립','특수상해 불성립')}).why,'polarity');
+});
