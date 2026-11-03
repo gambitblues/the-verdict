@@ -120,7 +120,22 @@ const StoryEngine = (()=>{
   fire:{location:'화재 현장',observed:'그을린 벽과 열에 변형된 집기들이 발견됐습니다. 바닥에는 소방 활동으로 젖은 물건이 흩어져 있었습니다.',uncertainty:'발화 지점과 원인, 누가 관여했는지는 감정 결과와 다른 자료를 대조해야 합니다.'},
   accident:{location:'충돌 지점',observed:'도로 위에는 차량 파편과 제동 흔적이 남았고, 충돌한 차체 일부가 찌그러져 있었습니다.',uncertainty:'사고 직전 속도와 신호 상태, 부상 발생의 직접 원인은 추가 확인이 필요합니다.'}
  };
- const scene=bp.packOrigin?.scene||builtinScenes[bp.key]||null;
+ const sceneVariants={
+  murder:[
+   builtinScenes.murder,
+   {location:'다세대주택 계단참',observed:'계단 아래에는 벗겨진 신발 한 짝과 휴대전화가 떨어져 있었고, 난간과 벽면에는 혈흔이 남아 있었습니다. 현장에 도착한 구급대가 피해자의 사망을 확인했습니다.',uncertainty:'추락·충돌 또는 다른 행동 중 무엇이 상처와 흔적을 만들었는지, 사망 직전 다른 사람이 함께 있었는지는 확인해야 합니다.'},
+   {location:'상가 뒤편 창고',observed:'창고 바닥에 피가 묻은 작업복과 끌린 듯한 자국이 남아 있었습니다. 출입문은 잠겨 있지 않았고 피해자는 안쪽 통로에서 발견됐습니다.',uncertainty:'자국이 만들어진 시점과 작업복의 소유자, 사망에 이르게 된 직접 경위는 감식 및 진술 대조가 필요합니다.'}
+  ],
+  assault:[builtinScenes.assault,
+   {location:'주차장 통로',observed:'바닥에 깨진 휴대전화 화면 조각과 옷의 단추가 떨어져 있었고, 현장을 떠난 한 사람의 얼굴에 부기가 확인됐습니다.',uncertainty:'어떤 접촉이 상해를 만들었는지와 정당방위 주장의 사실관계는 별도로 판단해야 합니다.'}],
+  fire:[builtinScenes.fire],
+  accident:[builtinScenes.accident]
+ };
+ // Scene selection must not consume the case RNG: physical staging must not
+ // secretly alter the truth, evidence support or proof distribution.
+ const variants=sceneVariants[bp.key]||[];
+ const sceneIndex=[...String(caseId)].reduce((h,c)=>Math.imul(h^c.charCodeAt(0),16777619)>>>0,2166136261)%(variants.length||1);
+ const scene=bp.packOrigin?.scene||variants[sceneIndex]||null;
  const sceneText=scene?` ${scene.observed} ${scene.uncertainty}`:'';
  const intro=(criminal?`검찰은 ${pa.name}을(를) ${bp.tag.replace('형사·','')} 관련 혐의로 기소했습니다. `:`${pa.name}이(가) ${pb.name}을(를) 상대로 ${bp.tag.replace(/.*·/,'')} 사건을 제기했습니다. `)+base+` ${trigger} 사건 시점은 ${loc} ${scene?.location||pick(PLACE[bp.key]||PLACE.contract,r)}에서 약 ${week-eventWeek}주 전입니다.`+sceneText;
   const relation=bp.packOrigin?.relationship||pick(['과거 일면식이 있는 사이','업무 또는 거래로 연결된 사이','가까운 사이였다가 갈등이 생김','사건 전 직접적 관계가 거의 없었음'],r);
