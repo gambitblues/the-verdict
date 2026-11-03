@@ -81,6 +81,25 @@ test('article: title and 2~4 sentences of about 100~200 characters, same facts',
  assert.equal(checkArticle(base,{...good,body:good.body.replace('7천만','8천만')}).why,'numbers');
  const f=fake({reply:good});const d=await (await handle(req('/ai/article',base),env,f)).json();assert.equal(d.ok,true);
 });
+test('opening: two sides share one verified and metered call',async()=>{
+ const base={openingA:'검사는 현장 출입 기록을 근거로 주장했다.',openingB:'변호인은 기록이 부정확하다고 반박했다.',names:[]};
+ const reply={openingA:base.openingA,openingB:base.openingB};
+ const f=fake({reply});
+ const d=await (await handle(req('/ai/opening',base),env,f)).json();
+ assert.equal(d.ok,true);
+ assert.deepEqual(d.result,reply);
+ assert.equal(f.openai,2,'one generation and one meaning verification for both sides');
+ assert.equal(f.usage[0].p_ok,true);
+});
+test('opening: changed side argument falls back without displaying AI output',async()=>{
+ const base={openingA:'검사는 10명이 현장에 있었다고 주장했다.',openingB:'변호인은 그 수가 확인되지 않았다고 반박했다.',names:[]};
+ const f=fake({reply:{openingA:'검사는 11명이 현장에 있었다고 주장했다.',openingB:base.openingB}});
+ const d=await (await handle(req('/ai/opening',base),env,f)).json();
+ assert.equal(d.ok,false);assert.equal(d.fallback,true);
+ assert.equal(d.why,'numbers');
+ assert.equal(f.usage[0].p_ok,false);
+});
+
 test('judgment: order is not sent, sections, numbers, quotes, people and yes/no stay',()=>{
  const p={names:['홍슬기','김혜진'],facts:['재판부는 다음 사실을 인정한다.','카페 통장 거래 내역에 따르면 투자금 중 7천만 원이 김혜진의 개인 빚 상환에 쓰였다.','홍슬기는 "3천만 원이 비어요"라고 진술했다.'],
   issues:[{title:'7천만 원은 어디에 쓰였나',text:'카페 통장 거래 내역에 비추어 검사의 주장이 인정된다.'}],conclusion:'피고인 김혜진에게 징역 2년 6개월을 선고한다.'};
