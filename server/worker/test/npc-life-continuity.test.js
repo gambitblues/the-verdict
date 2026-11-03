@@ -73,6 +73,7 @@ test('life-trigger civil participation needs chronology, a living person and fre
  assert.equal(eligibleLifeTrigger(e,p,93),true,'event safely predates incident');
  assert.equal(eligibleLifeTrigger({...e,consumed:true},p,93),false);
  assert.equal(eligibleLifeTrigger(e,{alive:false},93),false);
+ assert.equal(eligibleLifeTrigger(e,{alive:true,role:'변호사'},93),false,'one person cannot be both returning claimant and counsel');
  assert.equal(eligibleLifeTrigger(e,null,93),false);
  assert.equal(eligibleLifeTrigger(e,{alive:true,custodyHistory:[{kind:'징역형',startWeek:20,releaseWeek:140}]},93),false);
  assert.equal(eligibleLifeTrigger(e,p,383),false,'expired life context');
