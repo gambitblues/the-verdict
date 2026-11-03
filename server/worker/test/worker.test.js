@@ -333,3 +333,59 @@ test('P4 first reconnect without progress row still detects overdue private hear
  assert.equal(d.previousDay,4);
  assert.equal(d.lagDays,10);
 });
+
+
+test('P4 sealed courtroom endpoint: only the assigned judge can obtain a server-derived answer',async()=>{
+ const calls=[];let owner='u1',hearingState='completed';
+ const sheet={id:'case-p4',questions:[
+  {id:'q1',w:'W1',q:'누구를 보셨나요?',a:{did:'서버가 봉인한 증언',didnt:'다른 분기의 증언'}},
+  {id:'q2',w:'W1',q:'다음 장면은?',after:'W1:q1',a:{did:'증언 후속'}},
+  {id:'q3',w:'W2',q:'CCTV?',after:'r2',a:{did:'녹화 자료 확인'}}
+ ],orders:[{record:'r2',result:{did:'done',didnt:'declined'}}],
+ records:[{id:'r1',title:'초기 자료',first:true},{id:'r2',title:'미공개 CCTV',first:false}],
+ worlds:{did:{records:{r2:'녹화 자료 본문'}},didnt:{records:{r2:'OTHER_SECRET'}}}};
+ const journal=[];
+ const response=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'content-type':'application/json'}});
+ const f=async(url,opt={})=>{
+  const u=String(url);calls.push({u,opt});
+  if(u.endsWith('/auth/v1/user'))return response({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return response([{email:'a@x.kr'}]);
+  if(u.includes('/rest/v1/case_stock'))return response([{case_id:'case-p4',assigned_to:owner,state:'assigned',sheet}]);
+  if(u.includes('/rest/v1/shared_judge_hearings'))return response([{hearing_index:1,state:hearingState,completed_game_day:5}]);
+  if(u.includes('/rest/v1/world_secrets'))return response([{truth:{branch:'did'}}]);
+  if(u.includes('/rest/v1/shared_court_actions'))return response(journal);
+  if(u.includes('/rest/v1/shared_world_clock'))return response([{game_day:5}]);
+  if(u.includes('/rpc/shared_court_action_record')){
+   assert.equal(opt.headers.authorization,'Bearer svc');
+   const payload=JSON.parse(opt.body);
+   assert.equal(payload.p_judge,'u1');
+   assert.ok(!JSON.stringify(payload).includes('OTHER_SECRET'));
+   const record={action_type:payload.p_type,action_key:payload.p_key,response:payload.p_response};
+   journal.push(record);return response(payload.p_response);
+  }
+  throw Error('unexpected '+u);
+ };
+ const enabled={...env,P4_COURT_ACTIONS_ENABLED:'1'};
+ const request=(kind,key)=>req('/world/court/action',{caseId:'case-p4',kind,key,hearingIndex:1,
+  answer:'FORGED_CLIENT_ANSWER',branch:'didnt'});
+ assert.equal((await handle(request('question','q1'),env,f)).status,404,'feature must remain opt-in');
+ assert.equal((await handle(req('/world/court/action',{caseId:'case-p4',kind:'question',key:'bad key',hearingIndex:1}),enabled,f)).status,400);
+ let out=await (await handle(request('question','q1'),enabled,f)).json();
+ assert.equal(out.response.answer,'서버가 봉인한 증언');
+ assert.ok(!JSON.stringify(out).includes('FORGED_CLIENT_ANSWER'));
+ assert.equal((await handle(request('question','q3'),enabled,f)).status,409,'locked witness question');
+ out=await (await handle(request('order','r2'),enabled,f)).json();
+ assert.equal(out.response.text,'녹화 자료 본문');
+ out=await (await handle(request('question','q3'),enabled,f)).json();
+ assert.equal(out.response.answer,'녹화 자료 확인');
+ const status=await (await handle(req('/world/court/status?caseId=case-p4'),enabled,f)).json();
+ assert.deepEqual([status.canAct,status.hearingIndex],[true,1]);
+ const history=await (await handle(req('/world/court/history?caseId=case-p4'),enabled,f)).json();
+ assert.equal(history.actions.length,3);
+ owner='another-user';
+ assert.equal((await handle(request('question','q1'),enabled,f)).status,404);
+ assert.equal((await handle(req('/world/court/history?caseId=case-p4'),enabled,f)).status,404);
+ hearingState='scheduled';owner='u1';
+ assert.equal((await handle(request('question','q1'),enabled,f)).status,409);
+ assert.equal((await handle(request('question','q1'),enabled,fake({reply:GOOD}))).status,503);
+});
