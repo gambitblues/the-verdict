@@ -7,6 +7,6 @@
     "dev": "wrangler dev",
     "deploy": "node scripts/validate-deploy.mjs && npm run check && npx wrangler deploy",
     "smoke": "node scripts/smoke.mjs",
-    "check": "node --check src/prompts.js && node --check src/public_case_projection.js && node --check src/index.js && node --check ../../game_runtime.js && node --check ../../npc_life_justice.js && node --check ../../story_engine.js && node --check ../../continuity_engine.js && node --check ../../auth_gate.js && node --check ../../npc_court_memory.js && node --check ../../trial_play.js && node --check ../../ai_bridge.js && npm test"
+    "check": "node --check src/prompts.js && node --check src/public_case_projection.js && node --check src/shared_courtroom.js && node --check src/index.js && node --check ../../game_runtime.js && node --check ../../npc_life_justice.js && node --check ../../story_engine.js && node --check ../../continuity_engine.js && node --check ../../auth_gate.js && node --check ../../npc_court_memory.js && node --check ../../trial_play.js && node --check ../../ai_bridge.js && npm test"
   }
 }
