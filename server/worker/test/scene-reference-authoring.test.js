@@ -13,7 +13,7 @@ const Pack=load('case_pack_engine.js','CasePackEngine');
 const Story=load('story_engine.js','StoryEngine');
 function archetype(){
  return {id:'fictional-homicide-001',category:'homicide',baseKey:'murder',kind:'criminal',
-  tag:'형사·살인',icon:'⚖',importance:5,legal:'살인',title:'오래된 주택에서 발견된 사망자',
+  tag:'형사·살인',icon:'⚖',importance:5,legal:'살인죄 구성요건',title:'오래된 주택에서 발견된 사망자',
   premise:'오래된 다세대주택에서 사람이 숨진 채 발견됐다.',
   trigger:'새벽에 이웃이 이상한 소리를 듣고 신고했다.',
   motive:'금전 문제로 다툰 관계가 있었다.',relationship:'오래 알고 지낸 이웃',
