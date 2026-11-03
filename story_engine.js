@@ -59,7 +59,7 @@ const StoryEngine = (()=>{
  const fmt=(x)=>`${Math.round(x)}만 원`;
  function findEvidenceCategory(title){if(/계좌|송금|금융|매출|정산|지출|세금/.test(title))return PROOF_TYPES[1];if(/CCTV|영상|사진|블랙박스/.test(title))return PROOF_TYPES[3];if(/연락|통화|메시지|대화|메일/.test(title))return PROOF_TYPES[2];if(/진료|감정|부검|진단|검사/.test(title))return PROOF_TYPES[4];if(/진술|증언|목격/.test(title))return PROOF_TYPES[5];if(/로그|공문|행정|등록/.test(title))return PROOF_TYPES[6];return PROOF_TYPES[0]}
  function build(ctx){
-  const {caseId,blueprint:bp,instance:index,loc,now,week,r,makeNPC,oldCriminal,lifeActorId,priorDecision,prosecutorPool,counselPool,people}=ctx;
+  const {caseId,blueprint:bp,instance:index,loc,now,week,r,makeNPC,oldCriminal,lifeActorId,incidentWeekOverride,priorDecision,prosecutorPool,counselPool,people}=ctx;
   const criminal=bp.kind==='criminal',title=bp.titles[index],base=bp.premises[index];
   const value=pick([350,900,1800,2800,5200,8400,12000,26000,53000],r),
    trigger=bp.packOrigin?.trigger||pick(TRIGGERS[bp.key]||TRIGGERS.contract,r), pattern=bp.packOrigin?.incident?.action||pick(PATTERNS,r), motive=bp.packOrigin?.motive||pick(MOTIVES,r);
@@ -81,7 +81,7 @@ const StoryEngine = (()=>{
   const wealthA=pa.wealth??between(15,80,r),wealthB=pb.wealth??between(15,80,r);
   const lawyerA={id:ca,years:between(1,26,r),quality:criminal?prosecutor.trialSkill:cap(between(30,80,r)+Math.round(wealthA/8),25,95),funding:criminal?'공적 소추':wealthA>65?'사선 소송대리인':'일반 소송대리인'};
   const lawyerB={id:cb,years:between(1,26,r),quality:cap(between(29,77,r)+Math.round(wealthB/9),25,95),funding:wealthB<30&&criminal?'국선변호인 선임 가능성 검토':wealthB>70?'사선 변호인':'법률 지원·사선 혼재'};
-  const eventWeek=week-between(7,22,r),investigationWeek=week-between(4,6,r),claimWeek=week-between(1,2,r);
+  const eventWeek=Number.isInteger(incidentWeekOverride)?incidentWeekOverride:week-between(7,22,r),investigationWeek=week-between(4,6,r),claimWeek=week-between(1,2,r);
   const d=new Date(Date.UTC(2027,2,1)+eventWeek*604800000);const dateText=`${d.getUTCFullYear()}.${String(d.getUTCMonth()+1).padStart(2,'0')}.${String(d.getUTCDate()).padStart(2,'0')}`;
   // Separate facts (never edited after creation) from assertions and what the player may read.
   const timeline=[
