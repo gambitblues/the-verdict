@@ -127,3 +127,25 @@ test('model check endpoint reports each configured model',async()=>{
  const d=await (await handle(req('/ai/check'),env,fake())).json();
  assert.deepEqual(Object.keys(d.models),['gpt-6.1-terra','gpt-6-luna']);
 });
+
+test('closing: original two sides share one verified metered call',async()=>{
+ const base={openingA:'검사는 현장 출입 기록을 근거로 주장했다.',openingB:'변호인은 기록이 부정확하다고 반박했다.',names:[]};
+ const f=fake({reply:{openingA:base.openingA,openingB:base.openingB}});
+ const d=await (await handle(req('/ai/closing',base),env,f)).json();
+ assert.equal(d.ok,true);
+ assert.equal(f.openai,2);
+ assert.equal(f.usage[0].p_ok,true);
+});
+test('bench: factual memo is verified before it is returned',async()=>{
+ const source='쟁점 사고 경위 — 검사·원고 측 자료 1건, 변호·피고 측 자료 1건. 현장 기록은 2026.12.21에 작성됐다. 남은 확인: 미결정 증거 1건.';
+ const base={source,names:[]};
+ let f=fake({reply:{text:source}});
+ let d=await (await handle(req('/ai/bench',base),env,f)).json();
+ assert.equal(d.ok,true);
+ assert.equal(f.openai,2);
+ f=fake({reply:{text:source.replace('자료 1건','자료 2건')}});
+ d=await (await handle(req('/ai/bench',base),env,f)).json();
+ assert.equal(d.ok,false);
+ assert.equal(d.why,'numbers');
+ assert.equal(f.openai,1,'invalid response is rejected before paying for second verifier');
+});
