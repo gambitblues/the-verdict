@@ -210,10 +210,14 @@ test('P4 asynchronous judges: eight hearings by A do not auto-try B; B rejoins w
 test('P4 calendar: eight hearings on one date count as one shared date, absent B stays pending',async()=>{
  const dayBefore=(await svc('select game_day,version from public.shared_world_clock')).rows[0];
  assert.equal(dayBefore.game_day,10);
- const owner='case-new-a';
- for(let i=2;i<=9;i++){
-  await svc('select public.shared_hearing_schedule($1,$2::uuid,$3,$4)',[owner,A,i,10]);
-  const opened=(await svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,A,i])).rows[0];
+ const owner='case-fast-0';
+ for(let i=0;i<8;i++){
+  const id='case-fast-'+i;
+  await svc(
+   'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
+   [id,'civil',HASH,HASH,'fingerprint-fast-'+i,JSON.stringify({id}),JSON.stringify({passed:true}),A]);
+  await svc('select public.shared_hearing_schedule($1,$2::uuid,$3,$4)',[id,A,1,10]);
+  const opened=(await svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[id,A,1])).rows[0];
   assert.equal(opened.hearing_day,10);
   assert.equal(opened.world_day,10);
   assert.equal(opened.clock_version,dayBefore.version);
@@ -225,10 +229,10 @@ test('P4 calendar: eight hearings on one date count as one shared date, absent B
  where judge_id=$1 and state='completed' and completed_game_day=10`,[A])).rows[0].n,8);
  const pending=(await pb('select due_game_day,state from public.shared_judge_hearings')).rows;
  assert.deepEqual(pending,[{due_game_day:12,state:'scheduled'}],'B was inactive; no automatic hearing');
- const duplicate=(await svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,A,2])).rows[0];
+ const duplicate=(await svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,A,1])).rows[0];
  assert.equal(duplicate.already_opened,true,'same hearing is never counted twice');
- await assert.rejects(svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,B,3]),/hearing_case_not_owned/);
- await assert.rejects(pa('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,A,3]),/permission denied/);
+ await assert.rejects(svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,B,1]),/hearing_case_not_owned/);
+ await assert.rejects(pa('select * from public.shared_hearing_open($1,$2::uuid,$3)',[owner,A,1]),/permission denied/);
  const b=(await svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[
   'case-new-b',B,1])).rows[0];
  assert.equal(b.world_day,12,'a later scheduled B hearing advances one common date');
