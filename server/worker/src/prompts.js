@@ -9,6 +9,13 @@ const cap=(v,n)=>S(v).slice(0,n);
 export const numbersIn=t=>(S(t).match(/\d[\d,.:]*\d|\d/g)||[]).map(x=>x.replace(/,/g,'').replace(/[.:]$/,''));
 const sameNumbers=(src,out)=>{const a=numbersIn(src),b=numbersIn(out);return b.every(x=>a.includes(x))&&a.every(x=>b.includes(x))};
 const quotesIn=t=>S(t).match(/"[^"]{2,}"|“[^”]{2,}”/g)||[];
+/* Normalize complete dates so 2026.12.21 and 2026년 12월 21일 compare equally.
+ * Reject additions, omissions, or actual changes rather than weakening the meaning guard. */
+export const datesIn=t=>{
+ const re=/(\d{4})\s*(?:년\s*|[.\/-]\s*)(\d{1,2})\s*(?:월\s*|[.\/-]\s*)(\d{1,2})\s*(?:일)?/g;
+ return [...S(t).matchAll(re)].map(m=>m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0')).sort();
+};
+const sameDates=(a,b)=>JSON.stringify(datesIn(a))===JSON.stringify(datesIn(b));
 /* sentences end in 다/요/까 followed by a stop (Korean news and testimony) */
 export const sentencesIn=t=>S(t).split(/(?<=[.!?。])\s+/).filter(x=>x.length>1);
 
@@ -76,7 +83,7 @@ export function articlePrompt(p){
  return {instructions:`${COMMON}
 지금 할 일: 신문 기사 한 편을 다시 씁니다.
 - 제목 1개(40자 이내)와 본문 2~4문장, 본문 전체 100~200자.
-- 기자의 시각과 말투를 살리되, 바탕 기사에 있는 사실만 씁니다. 숫자는 바탕 기사에 있는 것만 씁니다.
+- 기자의 시각과 말투를 살리되, 바탕 기사에 있는 사실만 씁니다. 원문에 적힌 사건 날짜(연·월·일)는 반드시 모두 유지하며 추가하거나 변경하지 않습니다. 날짜 표기 방식만 바꿀 수 있습니다. 다른 숫자도 바꾸지 않습니다.
 - 기사 문체(~했다, ~이다)로 씁니다.`,
   input:`언론사: ${cap(p.outlet,30)}
 기자: ${cap(p.reporter,20)}${p.style?` · 문체: ${cap(p.style,60)}`:''}
@@ -93,6 +100,7 @@ export function checkArticle(p,out){
  const n=sentencesIn(body).length;
  if(n<2||n>4)return {ok:false,why:'sentences'};
  if(body.length<80||body.length>240)return {ok:false,why:'length'};
+ if(!sameDates(src,title+' '+body))return {ok:false,why:'dates'};
  const b=numbersIn(title+' '+body),a=numbersIn(src);if(!b.every(x=>a.includes(x)))return {ok:false,why:'numbers'};
  for(const n of namesOf(p))if(!src.includes(n)&&(title+body).includes(n))return {ok:false,why:'person_added'};
  if(negated(S(p.body))!==negated(body))return {ok:false,why:'polarity'};
