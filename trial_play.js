@@ -1602,7 +1602,13 @@ court=function(){
   ${cur.victimless?'':`<div class="t4-person">${nameBtn(who[1])}<span class="t4-tag">${crimRole?(cur.bRole||'피해자'):'피고'}</span><p>${esc(tell(c,t,cur.people.B))}</p></div>`}
   ${(t?.witnesses||[]).map(w=>`<div class="t4-person">${nameBtn(w.id)}<span class="t4-tag">증인 · ${esc(w.role)}</span>${w.story?`<p>${esc(w.story)}</p>`:''}</div>`).join('')}</div>`:'';
  const claims=cur?`<h4>양측의 주장</h4><div class="t4-claims"><p><b>${crimRole?'검찰':'원고'}</b> ${esc(tell(c,t,cur.claims[0]))}</p><p><b>${crimRole?'변호인':'피고'}</b> ${esc(tell(c,t,cur.claims[1]))}</p></div>`:'';
- const casePage=`<section class="panel t4 t4-case"><h3>무슨 사건인가?</h3>${!completed().length&&!st.verdict&&!(t?.daysDone)?HELP:''}${cur?`<p class="t4-logline">${esc(tell(c,t,cur.logline))}</p><p>${esc(tell(c,t,cur.summary))}</p>`:(overviewHtml||`<p>${esc(c.sub||'')}</p>`)}
+ const priorNews=(c.newsLifecycle==='reported'&&Array.isArray(S.news))
+  ?S.news.filter(n=>n.caseId===c.id&&['incident','investigation'].includes(n.caseStage)).slice().reverse():[];
+ const newsLink=priorNews.length
+  ?`<div class="t4-news-thread"><p><b>이전에 뉴스에서 봤던 사건입니다.</b> 당시 보도와 지금 법정에서 인정할 사실은 다를 수 있습니다.</p>
+  <details class="t4-more"><summary>이전 기사 ${priorNews.length}건 보기</summary>${priorNews.map(n=>`<p class="small"><b>${esc(n.title)}</b> · ${esc(day(n.week))}<span class="t4-article-line">${esc(n.body)}</span></p>`).join('')}</details></div>`
+  :'';
+ const casePage=`<section class="panel t4 t4-case"><h3>무슨 사건인가?</h3>${!completed().length&&!st.verdict&&!(t?.daysDone)?HELP:''}${cur?`<p class="t4-logline">${esc(tell(c,t,cur.logline))}</p><p>${esc(tell(c,t,cur.summary))}</p>`:(overviewHtml||`<p>${esc(c.sub||'')}</p>`)}${newsLink}
   ${c.lifeConnection?.npcId===c.who?.[0]&&c.lifeConnection.detail?`<p class="t4-life-thread"><b>다시 만난 인물</b> · ${esc(NPC[c.who[0]]?.name||'원고')} — ${esc(c.lifeConnection.detail)}. 현재 청구의 성립 여부는 별도로 판단합니다.</p>`:''}
   ${c.repeatDefendant?.personId===c.who?.[0]&&c.repeatDefendant.priorCaseId?`<p class="t4-life-thread"><b>다시 법정에 선 피고인</b> · ${esc(NPC[c.who[0]]?.name||'피고인')}은 과거 ${esc(c.repeatDefendant.priorCaseName||c.repeatDefendant.priorCaseId)} 사건에서 유죄 판결을 받았습니다. 이번은 별개의 공소사실이며, 이전 판결만으로 유죄를 판단할 수 없습니다.</p>`:''}
   <dl class="t4-facts">${facts.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
