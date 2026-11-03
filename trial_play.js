@@ -1236,11 +1236,6 @@ function evidenceCard(e,t,locked,c){
  ${d?.excerpt?(window.VerdictVisuals?.evidence(e,d,tell(c,t,d.excerpt),tell(c,t,d.when||''))||`<blockquote class="t4-excerpt">${esc(tell(c,t,d.excerpt))}</blockquote>`):''}
  ${d?.how?`<p class="small"><b>확보 경위</b> ${esc(tell(c,t,d.how))}</p>`:''}
  ${e.note?`<p class="small"><b>한계</b> ${esc(e.note)}</p>`:''}
- ${d?.check?`<p class="small t4-check"><b>대조해 볼 것</b> ${esc(tell(c,t,d.check))}</p>`:''}
- ${(e.note||d?.check)?`<details class="t4-compare t4-dispute"><summary>⚖ 이 증거의 다툼과 반박 포인트</summary>
-  ${e.note?`<p class="small"><b>증거의 한계</b> ${esc(e.note)}</p>`:''}
-  ${d?.check?`<p class="small"><b>반대 자료와 대조할 부분</b> ${esc(tell(c,t,d.check))}</p>`:''}
-  <p class="muted small">아직 반박이 입증된 것은 아닙니다. 원문을 대조한 뒤 사용할지 결정하세요.</p></details>`:''}
  ${compareBox(c,t,e)}
  ${iss?`<p class="t4-issue-tag">쟁점 · ${esc(iss.title)}</p>`:''}
  ${window.VerdictV6?.benchAdvice?.(c,t,e)||''}
