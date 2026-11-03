@@ -112,8 +112,8 @@ test('P4 global case stock: a case cannot be assigned twice to different judges'
 
 test('P4 two hourly options are globally reserved, immutable until one accepted',async()=>{
  // Only the in-memory TEST database gets a deterministic KST clock.
- await db.exec(`reset role; create or replace function public.shared_kst_slot() returns text language sql stable as $
-  select '2026-11-04T12'::text $;`);
+ await db.exec(`reset role; create or replace function public.shared_kst_slot() returns text language sql stable as $slot$
+  select '2026-11-04T12'::text $slot$;`);
  const batch=['case-opt-a','case-opt-b','case-opt-c','case-opt-d','case-opt-e'];
  for(const id of batch)await svc(
   'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb)',
