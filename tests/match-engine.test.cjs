@@ -6,7 +6,7 @@
 const assert=require('node:assert/strict'),fs=require('fs'),path=require('path');
 const M=require('../match_engine.js');
 const DIR=path.join(__dirname,'../world-sheets/cases');
-const sheets=fs.readdirSync(DIR).filter(f=>f.endsWith('.json')).map(f=>JSON.parse(fs.readFileSync(path.join(DIR,f),'utf8')));
+const sheets=fs.readdirSync(DIR).filter(f=>f.endsWith('.json')).map(f=>JSON.parse(fs.readFileSync(path.join(DIR,f),'utf8'))).filter(s=>['review','ready'].includes(s.status)); // drafts are not deployable or playable
 const play=(sheet,seed,truth)=>{const s=M.start(sheet,{seed,truth});for(let d=0;d<3;d++){let a;let n=0;while(s.actions>0&&(a=M.available(sheet,s)).length){
  const k=Math.floor((require('crypto').createHash('md5').update(seed+':'+d+':'+n++).digest()[0]/256)*a.length);M.act(sheet,s,a[k])}M.endDay(sheet,s)}return s};
 let games=0;
