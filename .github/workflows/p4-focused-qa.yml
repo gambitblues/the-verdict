@@ -1,0 +1,44 @@
+name: P4 shared-world focused QA
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'shared_world.js'
+      - 'tests/shared-world-ui.mjs'
+      - 'server/worker/**'
+      - 'server/supabase/**'
+      - '.github/workflows/p4-focused-qa.yml'
+  workflow_dispatch:
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Worker and sealed courtroom tests
+        working-directory: server/worker
+        run: |
+          npm ci
+          npm run check
+      - name: Supabase PGlite shared-world migrations
+        working-directory: server/supabase
+        run: |
+          npm ci
+          npm test
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser QA
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Two judge read and sealed action preview
+        run: node tests/shared-world-ui.mjs
