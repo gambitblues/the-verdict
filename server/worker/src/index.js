@@ -16,6 +16,7 @@
  */
 import TerraCloud from './terra_cloud_staging.cjs';
 import {publicCaseSheet,initialEvidence} from './public_case_projection.js';
+import {courtroomPlan} from './shared_courtroom.js';
 import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,exchangePrompt,checkExchange,verifyPrompt} from './prompts.js';
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8',...headers}});
@@ -241,6 +242,70 @@ export async function handle(req,env,fetcher=fetch){
   let rows;try{rows=await result.json()}catch{return json({error:'calendar_unavailable'},503,head)}
   if(!Array.isArray(rows))return json({error:'calendar_unavailable'},503,head);
   return json({ok:true,resume:rows[0]||null},200,head);
+ }
+
+ // P4: Witness / court order action is evaluated only against the sealed
+ // server sheet. No arbitrary witness answer, document text or truth is accepted
+ // from the browser. This endpoint is DISABLED unless independent QA opts in.
+ if(url.pathname==='/world/court/action'&&req.method==='POST'){
+  if(env.P4_COURT_ACTIONS_ENABLED!=='1')return json({error:'feature_disabled'},404,head);
+  let input;try{input=await req.json()}catch{return json({error:'bad_json'},400,head)}
+  const caseId=input?.caseId,kind=input?.kind,key=input?.key,hearing=input?.hearingIndex;
+  if(typeof caseId!=='string'||!/^[a-z][a-z0-9-]{3,79}$/.test(caseId)||
+     !['question','order'].includes(kind)||typeof key!=='string'||
+     !/^[a-zA-Z0-9:_-]{1,80}$/.test(key)||
+     !Number.isInteger(hearing)||hearing<1||hearing>200)
+   return json({error:'invalid_action'},400,head);
+  const encoded=encodeURIComponent(caseId);
+  const lookup=async path=>{
+   const r=await fetcher(`${env.SUPABASE_URL}/rest/v1/${path}`,{headers:svc(env)});
+   if(!r.ok)throw Error('store_unavailable');
+   const v=await r.json();if(!Array.isArray(v))throw Error('store_unavailable');
+   return v;
+  };
+  try{
+   const [cases,hearings]=await Promise.all([
+    lookup(`case_stock?select=case_id,assigned_to,state,sheet&case_id=eq.${encoded}&limit=1`),
+    lookup(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encoded}&judge_id=eq.${encodeURIComponent(uid)}&hearing_index=eq.${hearing}&limit=1`)
+   ]);
+   const row=cases[0],open=hearings[0];
+   if(!row||row.assigned_to!==uid||row.state!=='assigned')return json({error:'case_not_found'},404,head);
+   if(!open||open.state!=='completed')return json({error:'hearing_not_open'},409,head);
+   const [truth,actions]=await Promise.all([
+    lookup(`world_secrets?select=truth&case_id=eq.${encoded}&limit=1`),
+    lookup(`shared_court_actions?select=action_type,action_key,response&case_id=eq.${encoded}&order=created_at.asc&limit=250`)
+   ]);
+   const branch=truth[0]?.truth?.branch;
+   if(!['did','didnt','reason'].includes(branch))return json({error:'case_not_sealed'},409,head);
+   const plan=courtroomPlan(row.sheet,branch,actions,kind,key);
+   if(plan.error)return json({error:plan.error},409,head);
+   const saved=await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/shared_court_action_record`,{
+    method:'POST',headers:svc(env),
+    body:JSON.stringify({p_case:caseId,p_judge:uid,p_hearing:hearing,p_type:kind,
+      p_key:plan.key,p_response:plan.response})});
+   if(!saved.ok)return json({error:'court_action_conflict'},409,head);
+   const result=await saved.json();
+   if(!result||typeof result!=='object'||Array.isArray(result))
+    return json({error:'court_unavailable'},503,head);
+   return json({ok:true,caseId,kind,key,response:result},200,head);
+  }catch{return json({error:'court_unavailable'},503,head)}
+ }
+ // The player's prior courtroom results are isolated from the public news feed.
+ if(url.pathname==='/world/court/history'&&req.method==='GET'){
+  if(env.P4_COURT_ACTIONS_ENABLED!=='1')return json({error:'feature_disabled'},404,head);
+  const id=url.searchParams.get('caseId')||'';
+  if(!/^[a-z][a-z0-9-]{3,79}$/.test(id))return json({error:'bad_case_id'},400,head);
+  try{
+   const q=await fetcher(`${env.SUPABASE_URL}/rest/v1/case_stock?select=assigned_to,state&case_id=eq.${encodeURIComponent(id)}&limit=1`,{headers:svc(env)});
+   if(!q.ok)return json({error:'court_unavailable'},503,head);
+   const rows=await q.json();
+   if(!Array.isArray(rows)||rows[0]?.assigned_to!==uid||rows[0]?.state!=='assigned')
+    return json({error:'case_not_found'},404,head);
+   const r=await fetcher(`${env.SUPABASE_URL}/rest/v1/shared_court_actions?select=action_type,action_key,response,hearing_index,game_day&case_id=eq.${encodeURIComponent(id)}&order=created_at.asc&limit=250`,{headers:svc(env)});
+   if(!r.ok)return json({error:'court_unavailable'},503,head);
+   const actions=await r.json();if(!Array.isArray(actions))return json({error:'court_unavailable'},503,head);
+   return json({ok:true,caseId:id,actions},200,head);
+  }catch{return json({error:'court_unavailable'},503,head)}
  }
 
  // Read-only health check for the existing invited judges. Never returns
