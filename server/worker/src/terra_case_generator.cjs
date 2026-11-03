@@ -99,4 +99,27 @@ async function generate(seed,{fetcher,apiKey,model='gpt-6.1-terra'}={}){
    usage:[first.usage,second.usage],model:second.model,
    warning:'실제 운영자 승인·법률 검증·재판 시뮬레이션은 별도로 필요합니다.'};
 }
-module.exports={generate,parseOutput,requestJSON,seedPrompt,stageOneInput,stageTwoInput,RULES};
+
+/* Repair ONLY the supplementary world sheet. The locked original candidate is immutable.
+ * Reject any rewritten evidence, witness observations, or hidden worlds after each retry.
+ */
+async function repairWorldSheet(candidate,currentSheet,errors,{fetcher,apiKey,model='gpt-6.1-terra'}={}){
+ if(!candidate||candidate.status!=='draft'||!currentSheet||typeof currentSheet!=='object')throw Error('유효한 사건 초안과 세계 시트가 필요합니다.');
+ if(!Array.isArray(errors)||errors.length===0||errors.length>40||errors.some(x=>typeof x!=='string'))throw Error('수정 대상 오류가 필요합니다.');
+ const reviewed={...candidate,status:'review'};
+ const valid=validateDraft(reviewed);
+ if(!valid.ok)return {ok:false,stage:'candidate-QA',errors:valid.errors,usage:null};
+ // Model text is treated as data. It may explain a failure, but may not amend locked truths.
+ const message='다음 세계 시트의 누락된 법적·구조적 항목만 수정하라. 원래 후보의 did/didnt/reason 행위, 동기, 원인, 증거 원문과 증인 관찰은 절대로 변경하지 않는다. 사건과 무관한 사실을 새로 만들어 채우지 않는다. 최종 status는 draft.\n'
+  +'검증 실패 항목: '+JSON.stringify(errors.map(x=>x.slice(0,400)))+'\n'
+  +'원본 사건 후보: '+JSON.stringify(reviewed)+'\n'
+  +'이전 세계 시트: '+JSON.stringify(currentSheet)+'\n'
+  +'수정된 verdict-world-sheet/v1 JSON 객체만 반환하라.';
+ const response=await requestJSON({fetcher,apiKey,model,instructions:RULES,input:message,maxTokens:MAX_OUTPUT});
+ const checked=prepareWorldSheet(reviewed,response.object);
+ if(!checked.ok)return {ok:false,stage:'repair-rejected',errors:checked.errors,usage:response.usage};
+ return {ok:true,stage:'repaired-staged-draft',worldSheet:checked.sheet,usage:response.usage,
+  candidateHash:checked.candidateHash,sheetHash:checked.sheetHash};
+}
+
+module.exports={generate,repairWorldSheet,parseOutput,requestJSON,seedPrompt,stageOneInput,stageTwoInput,RULES};
