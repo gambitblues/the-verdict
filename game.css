@@ -831,3 +831,6 @@ body.t4-court #toast{bottom:168px}
 
 /* P2: brief sourced life continuity, never a second case summary. */
 .npc-life-moment,.t4-life-thread{font-size:12.5px;line-height:1.6;color:#695f51;background:#faf8f4;border-left:2px solid #c1b199;border-radius:0 7px 7px 0;padding:7px 10px;margin:8px 0}
+
+/* P3: previously reported incident, shown only when its case finally reaches court. */
+.t4-news-thread{margin:12px 0;padding:10px 12px;background:#faf8f4;border-left:2px solid #b9aa91;border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.6}.t4-news-thread p{margin:4px 0 8px}.t4-article-line{display:block;margin-top:3px;color:#675f54}
