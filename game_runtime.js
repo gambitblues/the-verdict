@@ -251,7 +251,7 @@ function remember(id,type,body,caseId){
  if(!S.memories[id].some(m=>m.caseId===caseId&&m.type===type&&m.body===body))S.memories[id].push({week:S.week,type,body,caseId});
 }
 function getPriorByKey(key){return completed().filter(c=>c.story?.deep?.key===key||(!c.story?.deep&&c.legal===key)).slice(-8).at(-1)}
-function createGeneratedCase(selectedCandidate=null){
+function createGeneratedCase(selectedCandidate=null,planning=null){
  if(age()>=75||openCases().length>=12)return null;
  const serial=++S.caseSerial;
  const candidate=selectedCandidate||(CasePackEngine.pool(S).length&&(window.VerdictCurated?.active||rand()<.82)?CasePackEngine.choose(S,rand):null);
@@ -268,7 +268,7 @@ function createGeneratedCase(selectedCandidate=null){
  const lifePool=(S.lifeTriggers||[]).filter(x=>LifeJustice.eligibleLifeTrigger(x,NPC[x.id],S.week));
  const appropriate=lifePool.filter(x=>(x.type==='이혼'&&['affair','inherit','contract','defamation'].includes(bp.key))||(x.type==='재산'&&['fraud','rent','contract','embezzle'].includes(bp.key))||(x.type==='직업'&&['harassment','contract','privacy','celebrity'].includes(bp.key)));
  const lifeSeed=bp.kind==='civil'&&appropriate.length&&rand()<.65?choose(appropriate):null;
- const c=StoryEngine.build({caseId,blueprint:bp,instance:i,loc,now:day(),week:S.week,r:rand,lifeActorId:lifeSeed?.id||null,
+ const c=StoryEngine.build({caseId,blueprint:bp,instance:i,loc,now:day(planning?.filingWeek??S.week),week:planning?.filingWeek??S.week,incidentWeekOverride:planning?.incidentWeek, r:rand,lifeActorId:lifeSeed?.id||null,
   makeNPC:(role)=>freshNPC(role,serial,bp.key),oldCriminal:recidivist,priorDecision:prior,
   prosecutorPool:livePool(['soo','jun'],'prosecutor','검사',serial),counselPool:livePool(['jiyu','seon'],'lawyer','변호사',serial),people:NPC});
  if(lifeSeed){
@@ -278,11 +278,22 @@ function createGeneratedCase(selectedCandidate=null){
   c.story.lifeRelated=true;
  }
  window.VerdictSex?.fix(c);
- const continuity=ContinuityEngine.audit(c,NPC,S.week,CASES);
+ const continuity=ContinuityEngine.audit(c,NPC,planning?.filingWeek??S.week,CASES);
  c.continuityAudit=continuity;
  if(!continuity.pass){S.caseSerial--;throw new Error(`사건 연속성 검증 실패: ${continuity.errors.join(', ')}`)};
  if(!c.qa.pass){S.caseSerial--;throw new Error(`사건 스토리 검증 실패: ${c.qa.errors.join(', ')}`)}
  if(lifeSeed&&c.who?.[0]===lifeSeed.id)lifeSeed.consumed=true; // consume only after continuity & story QA pass
+ // P3: freeze a complete case and its NPCs now, but do not assign it to the judge
+ // until the filing week. Neither trial controls nor private proof appear in news.
+ if(planning){
+  c.contentPack=c.story?.pack?{...c.story.pack}:null;
+  S.pendingCases??=[];
+  S.pendingCases.push({case:c,incidentWeek:planning.incidentWeek,investigationWeek:planning.incidentWeek+3,filingWeek:planning.filingWeek,investigated:false});
+  for(const id of c.who)remember(id,'사건 발생',`${c.id} · 별개의 사건 관계인`,c.id);
+  if(c.story.investigator)remember(c.story.investigator.detective,'수사 착수',`${c.id} 사건 수사`,c.id);
+  newsForIncident(c);
+  return c;
+ }
  c.contentPack=c.story?.pack?{...c.story.pack}:null;
  CASES.push(c);S.generatedCases.push(c);
  S.cases[caseId]={phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null,positions:null,positionHistory:[],review:null};
