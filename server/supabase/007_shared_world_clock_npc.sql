@@ -72,7 +72,7 @@ begin
     or p_status not in ('alive','dead','unknown') or p_day not between 0 and 200000
     or p_profile is null or jsonb_typeof(p_profile)<>'object'
     or octet_length(p_profile::text)>8192
-    or exists(select 1 from jsonb_object_keys(p_profile) key where not(key=any(allowed)))
+    or exists(select 1 from jsonb_object_keys(p_profile) k where not(k=any(allowed)))
  then raise exception 'invalid_npc_public'; end if;
  select * into old from public.shared_npc_public where npc_id=p_id for update;
  if found then
