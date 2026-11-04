@@ -10,6 +10,7 @@ window.VERDICT_CONFIG={
  p4FreeOrders:false,    // AI-interpreted open text orders; independent QA only
  p5JointPanel:false, // existing judges + one NPC; QA-only
  p4CourtActions:false,   // sealed witness and evidence-order actions; QA only
+ p4TrialParity:false, // native-score sentence pipeline; QA-only
  p4SharedVerdicts:false, // evidence-backed server verdict; QA only
  ai:true                // AI wording for witness answers, articles and judgments (falls back to the game's own text)
 };
