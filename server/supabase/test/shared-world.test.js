@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -458,4 +458,51 @@ test('P4 server publishes native-score review atomically and never permits rewri
  await assert.rejects(publish({method:'forged'}),/review_already_published/);
  await assert.rejects(pa('update public.shared_judgment_reviews set skill_score=99 where case_id=$1',[id]),/permission denied/);
  await assert.rejects(svc('update public.shared_judgment_reviews set skill_score=99 where case_id=$1',[id]),/shared_review_immutable/);
+});
+
+test('P5 sixth dedicated slot is automatic, exclusive and independent of personal docket',async()=>{
+ const pending='case-panel-pending';
+ const open=(who)=>svc('select public.shared_joint_slot($1::uuid) as slot',[who]);
+ let a=(await open(A)).rows[0].slot;
+ let b=(await open(B)).rows[0].slot;
+ assert.equal(a.caseId,pending);
+ assert.equal(a.occupied,true);
+ assert.equal(b.caseId,pending);
+ assert.equal(b.role,'peer');
+ const replay=(await svc('select public.shared_joint_auto_assign($1::uuid) as result',[A])).rows[0].result;
+ assert.equal(replay.existing,true);
+ assert.equal(replay.caseId,pending);
+ await svc('select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6)',
+  [pending,B,'peer','claim_denied',HASH,'']);
+ await svc('select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6)',
+  [pending,null,'npc','claim_denied',HASH,'']);
+ await svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5)',
+  [pending,A,'claim_denied','원고의 청구를 기각한다.','c'.repeat(64)]);
+ assert.equal((await open(B)).rows[0].slot.occupied,false);
+ const id='joint-auto-test';
+ await svc('insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb)',
+  [id,'civil',HASH,HASH,'fingerprint-joint-auto-test',
+   JSON.stringify({format:'verdict-world-sheet/v1',id,card:{kind:'civil',title:'자동 공동재판'},worlds:{did:{},didnt:{},reason:{}}}),
+   JSON.stringify({passed:true})]);
+ await svc('insert into public.world_secrets(case_id,truth) values($1,$2::jsonb)',
+  [id,JSON.stringify({branch:'did'})]);
+ const first=(await svc('select public.shared_joint_auto_assign($1::uuid) as result',[A])).rows[0].result;
+ assert.equal(first.ok,true);
+ assert.equal(first.caseId,id);
+ assert.equal(first.existing,false);
+ const second=(await svc('select public.shared_joint_auto_assign($1::uuid) as result',[A])).rows[0].result;
+ assert.equal(second.existing,true);
+ assert.equal(second.caseId,id);
+ assert.equal((await open(B)).rows[0].slot.role,'peer');
+ assert.equal((await svc('select count(*)::integer as n from public.shared_joint_panels where case_id=$1',[id])).rows[0].n,1);
+ assert.equal((await svc('select assigned_to from public.case_stock where case_id=$1',[id])).rows[0].assigned_to,A);
+});
+test('P4 shared career ledger records scored verdict once, without changing personal saves',async()=>{
+ const status=(await svc('select public.shared_judge_career_status($1::uuid) as career',[A])).rows[0].career;
+ assert.ok(status.cases>=1);
+ assert.equal(status.avgReview,74);
+ const rows=(await svc('select case_id,seat,skill_score,review_score from public.shared_judge_career_events where judge_id=$1',[A])).rows;
+ assert.ok(rows.some(x=>x.case_id==='case-native-review-001'&&x.seat==='solo'));
+ await assert.rejects(pa('update public.shared_judge_career_events set review_score=100'),/permission denied/);
+ await assert.rejects(svc('update public.shared_judge_career_events set review_score=100'),/career_event_immutable/);
 });
