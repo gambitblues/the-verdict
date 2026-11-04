@@ -19,7 +19,7 @@ language plpgsql set search_path=public as $$
 declare person jsonb; p_id text;p_key text;
 begin
  if jsonb_typeof(new.sheet->'people')<>'array' then return new; end if;
- for person in select value from jsonb_array_elements(new.sheet->'people') value loop
+ for person in select x.v from jsonb_array_elements(new.sheet->'people') as x(v) loop
   p_id:=person->>'publicNpcId';p_key:=person->>'key';
   if p_id is null or p_key is null or p_key !~ '^[A-Za-z0-9_-]{1,32}$' then continue; end if;
   if exists(select 1 from public.shared_npc_public where npc_id=p_id)
@@ -62,7 +62,8 @@ begin
  end loop;
  return new;
 end $$;
-drop trigger if exists p4_npc_verdict_effects on public.shared_case_judgments;
-create trigger p4_npc_verdict_effects after insert on public.shared_case_judgments
- for each row execute function public.shared_npc_verdict_effects();
+drop trigger if exists p4_npc_verdict_effects on public.shared_world_events;
+create trigger p4_npc_verdict_effects after insert on public.shared_world_events
+ for each row when (new.event_type='judgment_published')
+ execute function public.shared_npc_verdict_effects();
 commit;
