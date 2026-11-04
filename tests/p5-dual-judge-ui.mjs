@@ -12,9 +12,10 @@ try{
   await page.setContent('<!doctype html><html lang="ko"><body><main>개인 재판은 독립</main></body></html>');
   await page.evaluate(role=>{
    window.VERDICT_CONFIG={p4SharedWorld:true,p4SharedDocket:true,p4CourtActions:true,
-    p4SharedVerdicts:true,p5JointPanel:true};
+    p4SharedVerdicts:true,p5JointPanel:true,p4TrialParity:true};
    window.ui={tab:'courtList',p4NativeCourt:false};
    window.__majority=false;
+   window.__rulings=[];
    const uid=role==='chair'?'judge-a':'judge-b';
    const everyone=[
     {seat:'chair',kind:'human',role:'presiding',id:'judge-a',name:'A 판사'},
@@ -26,9 +27,16 @@ try{
     records:[{id:'r1',first:true,title:'계약서 원본'}],
     questions:[{id:'q1',w:'W1',q:'계약일은 언제입니까?'}],
     orders:[{record:'r2',ask:'계좌원본을 제출하시오'}]};
-   const history=[{action_type:'question',action_key:'q1',hearing_index:1,game_day:8,
+   const history=window.__courtHistory=[{action_type:'question',action_key:'q1',hearing_index:1,game_day:8,
     response:{status:'done',answer:'계약일은 1월 2일입니다.'}}];
-   window.VerdictAuth={online:true,user:{id:uid},async api(path){
+   window.VerdictAuth={online:true,user:{id:uid},async api(path,payload){
+    if(path==='/world/court/evidence/decide'){
+     if(role!=='chair')throw Error('associate may not rule');
+     const response={status:'done',recordId:payload.recordId,decision:payload.decision};
+     history.push({action_type:'evidence_decision',action_key:payload.recordId+':'+payload.hearingIndex,
+      hearing_index:payload.hearingIndex,game_day:8,response});
+     return {ok:true,ruling:response};
+    }
     if(path==='/world/panel/slot')return {ok:true,occupied:true,limit:1,caseId:'case-p5-together',role};
     if(path.startsWith('/world/panel/case?'))return {ok:true,case:caseSheet,
      records:[{id:'r1',title:'계약서 원본',kind:'문서',text:'계약서 공개 내용'}],
@@ -80,11 +88,18 @@ try{
   assert.match(await v.root.innerText(),/계약 위반 다툼/);
   await v.root.locator('[data-court-tab="evidence"]').click();
   assert.match(await v.root.innerText(),/계약서 공개 내용/);
+  if(v===a)assert.equal(await v.root.locator('[data-world-evidence="r1"]').count(),3,'chair can decide admissibility');
+  else assert.equal(await v.root.locator('[data-world-evidence="r1"]').count(),0,'associate observes without final evidentiary authority');
   await v.root.locator('[data-court-tab="witness"]').click();
   assert.match(await v.root.innerText(),/계약일은 1월 2일입니다/);
  }
  assert.equal(await a.root.locator('[data-court-kind="question"]').count(),1,'chair may question witness');
  assert.equal(await b.root.locator('[data-court-kind="question"]').count(),1,'human associate participates in witness questioning after chair opens hearing');
+ await a.root.locator('[data-court-tab="evidence"]').click();
+ await a.root.locator('[data-world-evidence="r1"][data-evidence-decision="conditional"]').click();
+ await a.page.waitForFunction(()=>document.querySelector('[data-world-native-root]')?.textContent?.includes('조건부 채택'));
+ assert.equal((await a.page.evaluate(()=>window.VerdictSharedWorld.courtSnapshot())).actions.length,2,
+  'admissibility ruling belongs to same immutable court log');
  await a.root.locator('[data-court-tab="day"]').click();
  await b.root.locator('[data-court-tab="day"]').click();
  assert.equal(await a.root.locator('[data-world-begin]').count(),1,'human chair opens the hearing');
