@@ -1,6 +1,6 @@
 import {panelStatus} from './p5_joint_panel.js';
 import {npcDeliberationPrompt,validateNpcOpinion,panelChoices} from './p5_npc_deliberation.js';
-import {validateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
+import {validateSharedJudgment,adjudicateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
 
 const validCase=x=>typeof x==='string'&&/^[a-z][a-z0-9-]{3,79}$/.test(x);
 const validUuid=x=>typeof x==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x);
@@ -152,17 +152,22 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    const votes=await read('shared_joint_votes?select=evidence_hash&case_id=eq.'+encodeURIComponent(caseId));
    if(votes.length!==3||votes.some(v=>v.evidence_hash!==evidenceHash))
     return response({error:'evidence_snapshot_changed'},409);
-   const decision=validateSharedJudgment(world[0].sheet,acts,{
-    result:status.majority,citations:input.citations
-   });
+   const scored=env.P4_TRIAL_PARITY_ENABLED==='1';
+   const submission={result:status.majority,citations:input.citations,
+    sentence:input.sentence};
+   const decision=scored?adjudicateSharedJudgment(world[0].sheet,acts,submission,caseId):
+    validateSharedJudgment(world[0].sheet,acts,submission);
    if(decision.error)return response({error:decision.error},400);
    const hash=await sharedJudgmentHash(caseId,uid,decision);
-   const published=await rpc('shared_judgment_publish',{
+   const published=await rpc(scored?'shared_judgment_publish_scored':'shared_judgment_publish',{
     p_case:caseId,p_judge:uid,p_result:decision.result,
-    p_order:decision.order,p_record_hash:hash
+    p_order:decision.order,p_record_hash:hash,
+    ...(scored?{p_score:decision.grade.score,p_review:decision.grade.review,
+      p_grade:decision.grade}:{})
    });
    return response({ok:true,published:published===true,judgment:{
-    result:decision.result,order:decision.order,citations:decision.citations,recordHash:hash
+    result:decision.result,order:decision.order,citations:decision.citations,recordHash:hash,
+    ...(scored?{sentence:decision.sentence,grade:decision.grade}:{})
    }});
   }
   return response({error:'method_not_allowed'},405);
