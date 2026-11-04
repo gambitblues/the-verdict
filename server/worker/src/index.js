@@ -20,7 +20,7 @@ import {courtroomPlan,resolveCourtOrder} from './shared_courtroom.js';
 import {validateSharedJudgment,adjudicateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
 import {freeOrderPrompt,verifyFreeOrderReply} from './free_order_intent.js';
 import {p5PanelRoute} from './p5_panel_routes.js';
-import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,exchangePrompt,checkExchange,verifyPrompt} from './prompts.js';
+import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,exchangePrompt,checkExchange,evidencePrompt,checkEvidence,verifyPrompt} from './prompts.js';
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8',...headers}});
 
@@ -100,7 +100,8 @@ const KINDS={
  opening:{model:env=>env.MODEL_TALK,build:openingPrompt,check:checkOpening,maxTokens:700},
  bench:{model:env=>env.MODEL_TALK,build:benchPrompt,check:checkBench,maxTokens:550},
  closing:{model:env=>env.MODEL_TALK,build:closingPrompt,check:checkClosing,maxTokens:700},
- exchange:{model:env=>env.MODEL_TALK,build:exchangePrompt,check:checkExchange,maxTokens:550}
+ exchange:{model:env=>env.MODEL_TALK,build:exchangePrompt,check:checkExchange,maxTokens:550},
+ evidence:{model:env=>env.MODEL_TALK,build:evidencePrompt,check:checkEvidence,maxTokens:650}
 };
 
 export async function handle(req,env,fetcher=fetch){
@@ -537,7 +538,7 @@ export async function handle(req,env,fetcher=fetch){
  if(url.pathname==='/ai/usage'&&req.method==='GET'){
   const u=await usageToday(env,uid,fetcher);return json({today:u,limits:{calls:Number(env.DAILY_CALLS||300),usd:Number(env.DAILY_USD||1)}},200,head);
  }
- const kind=(url.pathname.match(/^\/ai\/(npc|article|judgment|opening|bench|closing|exchange)$/)||[])[1];
+ const kind=(url.pathname.match(/^\/ai\/(npc|article|judgment|opening|bench|closing|exchange|evidence)$/)||[])[1];
  if(!kind||req.method!=='POST')return json({error:'not_found'},404,head);
 
  let payload;try{payload=await req.json()}catch{return json({error:'bad_json'},400,head)}
