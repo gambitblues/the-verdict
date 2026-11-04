@@ -5,7 +5,7 @@ const int=n=>Number.isInteger(n)&&Number.isFinite(n);
 const won=n=>n.toLocaleString('ko-KR')+'만 원';
 const ym=m=>(Math.floor(m/12)?Math.floor(m/12)+'년':'')+(m%12?m%12+'개월':'');
 const fineUnit=n=>n>=3000?100:n>=1000?50:10;
-export function adjudicateSentence(sheet,result,input){
+export function adjudicateSentence(sheet,result,input,citations=[]){
  const kind=sheet?.card?.kind;
  const yes=result==='guilty'||result==='partial'||result==='claim_granted';
  if(!yes)return {ok:true,kind:'none',order:'',sentence:null};
@@ -29,8 +29,9 @@ export function adjudicateSentence(sheet,result,input){
  }
  if(kind!=='criminal')return {error:'unsupported_sentence'};
  const charge=sheet.card?.charge;
- if(!charge||!int(charge.min)||!int(charge.max)||charge.max<=0||
-  charge.min<0||charge.min>charge.max)return {error:'charge_spec_missing'};
+ if(!charge||!int(charge.min)||!int(charge.max)||charge.max<0||
+  charge.min<0||charge.min>charge.max||
+  (charge.max===0&&(!int(charge.fine)||charge.fine<=0)))return {error:'charge_spec_missing'};
  const type=input.type;
  const canFine=int(charge.fine)&&charge.fine>0;
  const canLife=charge.life===true,canDeath=charge.death===true;
@@ -38,6 +39,8 @@ export function adjudicateSentence(sheet,result,input){
   (type==='fine'&&!canFine)||(type==='life'&&!canLife)||
   (type==='death'&&!canDeath))
   return {error:'sentence_type_not_allowed'};
+ if((type==='prison'||type==='suspend')&&charge.max<=0)return {error:'custody_not_allowed'};
+ if(input.withFine===true&&charge.both!=='may'&&charge.both!=='must')return {error:'additional_fine_not_allowed'};
  if(type==='death')return {ok:true,kind:'crim',sentence:{type},order:'피고인을 사형에 처한다.',
   score:{what:'형량',value:Infinity,lo:0,hi:charge.max*12,mitig:0,aggr:0}};
  if(type==='life')return {ok:true,kind:'crim',sentence:{type},order:'피고인을 무기징역에 처한다.',
@@ -50,7 +53,14 @@ export function adjudicateSentence(sheet,result,input){
   return {ok:true,kind:'crim',sentence:{type,fine},order:'피고인을 벌금 '+won(fine)+'에 처한다.',
    score:{what:'벌금',value:fine,lo:unit,hi:charge.fine,mitig:0,aggr:0}};
  }
- const months=input.months,hasMitigation=!!input.mitigating;
+ const months=input.months;
+ const grounds=Array.isArray(citations)?citations:[];
+ const mitigation=(charge.mitigationCitations||[]);
+ const aggravation=(charge.aggravationCitations||[]);
+ const hasMitigation=input.mitigating===true&&grounds.some(k=>mitigation.includes(k));
+ const hasAggravation=input.aggravating===true&&grounds.some(k=>aggravation.includes(k));
+ if(input.mitigating===true&&!hasMitigation)return {error:'mitigation_not_supported_by_evidence'};
+ if(input.aggravating===true&&!hasAggravation)return {error:'aggravation_not_supported_by_evidence'};
  const min=Math.max(6,Math.ceil(charge.min*12*(hasMitigation?0.5:1)/6)*6);
  const max=Math.max(min,Math.floor(charge.max*12/6)*6);
  if(!int(months)||months%6!==0||months<min||months>max)
@@ -70,9 +80,9 @@ export function adjudicateSentence(sheet,result,input){
  if(charge.both==='must'&&!fine)return {error:'mandatory_fine_missing'};
  const score={what:'형량',value:type==='suspend'?months*0.5:months,
   lo:Math.max(charge.min*12,Math.round(charge.max*12*0.2)),
-  hi:charge.max*12,mitig:hasMitigation?1:0,aggr:input.aggravating?1:0};
+  hi:charge.max*12,mitig:hasMitigation?1:0,aggr:hasAggravation?1:0};
  return {ok:true,kind:'crim',
   sentence:{type,months,...(type==='suspend'?{susp:input.susp}:{}),
-   ...(fine?{fine}:{}),mitigating:hasMitigation,aggravating:!!input.aggravating},
+   ...(fine?{fine}:{}),mitigating:hasMitigation,aggravating:hasAggravation},
   order:penalty,score};
 }
