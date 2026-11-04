@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {courtroomPlan,courtActionId,resolveCourtOrder} from '../src/shared_courtroom.js';
+import {courtroomPlan,courtActionId,resolveCourtOrder,sharedDeliberationReadiness} from '../src/shared_courtroom.js';
 
 const sheet={id:'case-p4',questions:[
  {id:'first',w:'W1',q:'무슨 일을 봤나요?',a:{did:'봤다',didnt:'안 봤다',reason:'잘 모르겠다'}},
@@ -49,4 +49,18 @@ test('bad action names or unavailable worlds fail closed',()=>{
  assert.equal(courtroomPlan(sheet,'did',[],'order','unknown').error,'action_not_found');
  assert.equal(courtroomPlan(sheet,'wrong',[],'order','r2').error,'sealed_case_invalid');
  assert.equal(courtroomPlan(sheet,'did',[],'delete','r2').error,'invalid_action');
+});
+
+test('shared cases obey the identical native minimum-day rule and wait for court orders',()=>{
+ const world={format:'verdict-world-sheet/v1',card:{kind:'civil',importance:5}};
+ const pending=[{action_type:'order',action_key:'r2',response:{status:'delayed'}}];
+ const before=sharedDeliberationReadiness(world,pending,3);
+ assert.equal(before.minimumHearings,4);
+ assert.equal(before.ready,false);
+ assert.deepEqual(before.pendingOrders,['r2']);
+ assert.equal(sharedDeliberationReadiness(world,pending,4).ready,false,'due order must be resolved');
+ const cleared=[...pending,{action_type:'order_result',action_key:'r2',response:{status:'declined'}}];
+ assert.equal(sharedDeliberationReadiness(world,cleared,4).ready,true);
+ assert.equal(sharedDeliberationReadiness(world,cleared,3).ready,false);
+ assert.equal(sharedDeliberationReadiness({format:'legacy-case',card:{}},[],1).ready,true,'old cases are not silently migrated');
 });
