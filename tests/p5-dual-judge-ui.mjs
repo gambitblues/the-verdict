@@ -14,6 +14,7 @@ try{
    window.VERDICT_CONFIG={p4SharedWorld:true,p4SharedDocket:true,p4CourtActions:true,
     p4SharedVerdicts:true,p5JointPanel:true};
    window.ui={tab:'courtList',p4NativeCourt:false};
+   window.__majority=false;
    const uid=role==='chair'?'judge-a':'judge-b';
    const everyone=[
     {seat:'chair',kind:'human',role:'presiding',id:'judge-a',name:'A 판사'},
@@ -36,7 +37,7 @@ try{
     if(path.startsWith('/world/panel/bench?'))return {ok:true,bench:{
      caseId:'case-p5-together',myRole:role==='chair'?'chair':'associate',
      canOpenHearing:role==='chair',canPublishJudgment:role==='chair',seats:everyone}};
-    if(path.startsWith('/world/panel/status?'))return {ok:true,state:'deliberating',votesCast:0,myVote:null,majority:null};
+    if(path.startsWith('/world/panel/status?'))return {ok:true,state:window.__majority?'majority_ready':'deliberating',votesCast:window.__majority?3:0,myVote:null,majority:window.__majority?'claim_granted':null};
     if(path.startsWith('/world/panel/partners?'))return {ok:true,players:[],npcs:[]};
     if(path.startsWith('/world/events'))return {ok:true,events:[{
      event_id:5,event_key:'joint-shared-case',case_id:'case-p5-together',
@@ -80,6 +81,10 @@ try{
  await b.root.locator('[data-court-tab="verdict"]').click();
  assert.equal(await b.root.locator('[data-p5-vote]').count(),1,'associate can submit an independent vote');
  assert.equal(await b.root.locator('[data-world-verdict]').count(),0,'associate cannot finalize judgment');
+ await b.page.evaluate(()=>window.__majority=true);
+ await b.root.locator('[data-p5-refresh]').click();
+ await b.page.waitForFunction(()=>document.querySelector('[data-world-native-root]')?.textContent?.includes('합의 결과가 확정됐습니다'));
+ assert.equal(await b.root.locator('[data-world-verdict]').count(),0,'associate may never publish even after majority');
  assert.equal(await a.page.locator('main').innerText().then(x=>x.includes('개인 재판은 독립')),false);
  await a.page.close();await b.page.close();
  console.log('PASS P4/P5 two judge UI: same court/evidence, human chair authority, NPC associate, peer vote only');
