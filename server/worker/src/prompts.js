@@ -59,15 +59,24 @@ const ATT={honest:'아는 대로 차분히 말한다',flip:'앞서 한 말과 �
 export function npcPrompt(p){
  const answer=cap(p.answer,400),question=cap(p.question,200);
  if(!answer||!question)return {error:'missing_text'};
+ const prior=(Array.isArray(p.previousAnswers)?p.previousAnswers:[]).slice(-2)
+   .map(x=>`- ${cap(x?.question,120)} / ${cap(x?.answer,180)}`).join('\n');
  return {instructions:`${COMMON}
-지금 할 일: 증인석에 선 사람의 답을, 그 사람이 실제로 법정에서 말하듯 자연스럽게 다시 씁니다.
-- 원래 답의 내용, 인정하거나 부인하는 방향, 숫자와 시각은 그대로 둡니다.
-- 존댓말 구어체로 1~3문장. 원래 답보다 너무 길게 쓰지 않습니다.
-- 질문에 없는 다른 이야기로 새지 않습니다.`,
-  input:`증인: ${cap(p.role,40)}${p.years?` (${cap(p.years,20)})`:''}
+지금 할 일: 지금 심리 중인 구체적인 사건과 이 증인의 관찰 범위를 이해하고, 질문에 대한 원래 답을 자연스러운 법정 진술로 다듬습니다.
+- 반드시 이번 질문이 묻는 사실에 직접 답합니다. 다른 질문에 했던 대답이나 일반적인 원칙을 복붙하지 않습니다.
+- 사건의 공개 쟁점과 증인의 관찰·이해관계는 표현의 맥락일 뿐, 원래 답에 없는 증거·사실·인정·부인을 만들 근거가 아닙니다.
+- 원래 답의 내용, 인정·부인 방향, 인물, 숫자, 시각, 확신 정도를 그대로 유지합니다.
+- 이전 질문과 진술이 있다면 연결은 하되 새로운 모순이나 일치 사실을 꾸미지 않습니다.
+- 존댓말 구어체 1~3문장, 원래 답과 비슷한 분량으로 말합니다.`,
+  input:`사건: ${cap(p.caseName,120)}
+공개된 사건 쟁점: ${cap(p.issue,240)}
+증인: ${cap(p.witnessName,50)} · ${cap(p.role,40)}${p.years?` (${cap(p.years,20)})`:''}
+증인이 알고 있다고 공개된 범위: ${cap(p.witnessKnowledge,220)}
+공개된 이해관계: ${cap(p.witnessInterest,160)}
+법정에서 앞서 한 진술(참고용): ${prior||'없음'}
 태도: ${ATT[p.attitude]||ATT.honest}
-질문: ${question}
-원래 답: ${answer}`,
+현재 질문: ${question}
+현재 질문의 원래 답(반드시 이 내용에 근거): ${answer}`,
   schema:{name:'witness_answer',schema:{type:'object',additionalProperties:false,required:['text'],properties:{text:{type:'string'}}}}};
 }
 export function checkNpc(p,out){
