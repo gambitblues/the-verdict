@@ -173,10 +173,10 @@ async function resetCareer(){
  resetting=true;
  const uid=session.user.id;
  try{
-  try{window.VerdictStore?.halt()}catch{}
   const r=await rest('rpc/reset_player_career',{method:'POST',body:'{}'});
   if(!r.ok){const detail=await r.json().catch(()=>({}));throw new Error(r.status===404?'서버에 초기화 기능(035 SQL)이 아직 설치되지 않았어요.':(detail.message||'서버 세이브 삭제에 실패했어요.'))}
   if(await r.json()!==true)throw new Error('서버가 초기화를 확인하지 않았어요.');
+  try{window.VerdictStore?.halt()}catch{}
   // Delete only this signed-in account's browser state, not the login token or other accounts.
   const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);
    if(WORK.test(k)||k.startsWith(stash(uid))||k.startsWith('vauth_rev:'+uid+':')||k.startsWith('vauth_fp:'+uid+':'))keys.push(k)}
