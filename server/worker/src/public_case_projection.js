@@ -10,7 +10,11 @@ export function publicCaseSheet(sheet,caseId){
  const card=pick(sheet.card,['kind','category','title','summary','accused','complainant']);
  const charge=pick(sheet.card?.charge,['name','law','min','max','life','fine','death','both']);
  card.charge=charge;
+ if(Array.isArray(sheet.card?.charge?.orders))charge.orders=sheet.card.charge.orders.slice(0,12)
+  .map(x=>pick(x,['id','kind','label','needs','range','step','unit','fixed','expected','ok','why','notice']));
  const claim=pick(sheet.card?.claim,['amount','fair','what']);
+ if(Array.isArray(sheet.card?.claim?.remedies))claim.remedies=sheet.card.claim.remedies.slice(0,12)
+  .map(x=>pick(x,['id','kind','label','note','ok']));
  if(Object.keys(claim).length)card.claim=claim;
  const people=(sheet.people||[]).slice(0,20).map(p=>pick(p,['key','name','role','age','job','edu','family','stake','leans']));
  const common={date:limited(sheet.common?.date||'',64),
