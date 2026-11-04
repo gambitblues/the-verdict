@@ -1,4 +1,5 @@
 import {publicCaseSheet,initialEvidence} from './public_case_projection.js';
+import {sharedDeliberationReadiness} from './shared_courtroom.js';
 import {panelStatus} from './p5_joint_panel.js';
 import {npcDeliberationPrompt,validateNpcOpinion,panelChoices} from './p5_npc_deliberation.js';
 import {validateSharedJudgment,adjudicateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
@@ -80,12 +81,15 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    const hearing=hearings[0],worldDay=clock[0]?.game_day;
    const canAct=!!hearing&&hearing.state==='completed'&&hearing.completed_game_day===worldDay&&!judgments.length;
    const isChair=bench.chair_id===uid;
+   const readiness=sharedDeliberationReadiness(row.sheet,actions,hearing?.hearing_index||0);
    const j=judgments[0];
    const publicJudgment=j?{result:j.result,order:j.public_order,worldDay:j.game_day,recordHash:j.record_hash}:null;
    return response({ok:true,case:publicCaseSheet(row.sheet,caseId),records:initialEvidence(row.sheet,caseId,branch),judgment:publicJudgment,
     actions,role:isChair?'chair':'associate',court:{
      worldDay,hearingIndex:canAct?hearing.hearing_index:null,
      canAct,canObserve:canAct,canOpenHearing:isChair,
+     canDeliberate:canAct&&readiness.ready,minimumHearings:readiness.minimumHearings,
+     pendingOrders:readiness.pendingOrders,
      judgmentPublished:judgments.length>0
     }});
   }
@@ -133,9 +137,22 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    const panels=await row.json();
    const seat=panels?.[0]?.chair_id===uid?'chair':panels?.[0]?.peer_id===uid?'peer':null;
    if(!seat)return response({error:'not_panel_member'},403);
-   // The hash is a server-generated commitment to the public court record,
-   // never supplied by the browser or derived from hidden world truth.
-   const {evidenceHash}=await record();
+   // The native court cannot enter deliberation before required hearings or
+   // while a judicial evidence order remains unresolved. Only the trusted
+   // shared clock determines whether this hearing is currently open.
+   const [cases,hearings,clock]=await Promise.all([
+    read('case_stock?select=state,sheet&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
+    read('shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.'+
+      encodeURIComponent(caseId)+'&judge_id=eq.'+encodeURIComponent(panels[0].chair_id)+
+      '&order=hearing_index.desc&limit=1'),
+    read('shared_world_clock?select=game_day&id=eq.main&limit=1')
+   ]);
+   const hearing=hearings[0];
+   const {acts,evidenceHash}=await record();
+   const readiness=sharedDeliberationReadiness(cases[0]?.sheet,acts,hearing?.hearing_index||0);
+   if(cases[0]?.state!=='assigned'||hearing?.state!=='completed'||
+    hearing.completed_game_day!==clock[0]?.game_day||!readiness.ready)
+    return response({error:'deliberation_not_ready',minimumHearings:readiness.minimumHearings},409);
    const created=await rpc('shared_joint_vote',{
     p_case:caseId,p_actor:uid,p_seat:seat,p_choice:input.choice,
     p_hash:evidenceHash,p_note:input.note
@@ -225,6 +242,10 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    if(!world[0]||world[0].assigned_to!==uid||world[0].state!=='assigned')
     return response({error:'case_not_found'},404);
    if(hearing[0]?.state!=='completed')return response({error:'hearing_incomplete'},409);
+   const hearingReadiness=sharedDeliberationReadiness(world[0].sheet,
+    (await record()).acts,hearing[0].hearing_index);
+   if(!hearingReadiness.ready)
+    return response({error:'deliberation_not_ready',minimumHearings:hearingReadiness.minimumHearings},409);
    const status=await rpc('shared_joint_status',{p_case:caseId,p_actor:uid});
    if(status.state!=='majority_ready'||!panelChoices(world[0].sheet?.card?.kind).includes(status.majority))
     return response({error:'joint_majority_not_ready'},409);
