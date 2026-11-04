@@ -436,6 +436,46 @@ export async function handle(req,env,fetcher=fetch){
    return json({ok:true,caseId,kind,key,response:result},200,head);
   }catch{return json({error:'court_unavailable'},503,head)}
  }
+ // P5: the human chair rules on admissibility of an exhibit already disclosed in court.
+ // A verdict's legal-skill engine consumes this immutable action alongside witness answers.
+ if(url.pathname==='/world/court/evidence/decide'&&req.method==='POST'){
+  if(env.P4_COURT_ACTIONS_ENABLED!=='1'||env.P4_TRIAL_PARITY_ENABLED!=='1')
+   return json({error:'feature_disabled'},404,head);
+  let input;try{input=await req.json()}catch{return json({error:'bad_json'},400,head)}
+  const id=input?.caseId,recordId=input?.recordId,decision=input?.decision,hearing=input?.hearingIndex;
+  if(typeof id!=='string'||!/^[a-z][a-z0-9-]{3,79}$/.test(id)||
+   typeof recordId!=='string'||!/^[a-zA-Z0-9_-]{1,65}$/.test(recordId)||
+   !['use','conditional','exclude'].includes(decision)||
+   !Number.isInteger(hearing)||hearing<1||hearing>200)
+   return json({error:'invalid_evidence_decision'},400,head);
+  const enc=encodeURIComponent(id);
+  const get=async path=>{
+   const q=await fetcher(env.SUPABASE_URL+'/rest/v1/'+path,{headers:svc(env)});
+   if(!q.ok)throw Error('store_unavailable');
+   const v=await q.json();if(!Array.isArray(v))throw Error('store_unavailable');return v;
+  };
+  try{
+   const [cases,actions]=await Promise.all([
+    get('case_stock?select=assigned_to,state,sheet&case_id=eq.'+enc+'&limit=1'),
+    get('shared_court_actions?select=action_type,action_key,response&case_id=eq.'+enc+'&limit=250')
+   ]);
+   const row=cases[0];
+   if(!row||row.state!=='assigned'||row.assigned_to!==uid)return json({error:'chair_required'},403,head);
+   const record=(row.sheet?.records||[]).find(r=>r.id===recordId);
+   if(!record)return json({error:'record_not_found'},404,head);
+   if(!record.first&&!actions.some(a=>a.action_type==='order_result'&&
+    a.action_key===recordId&&a.response?.status==='done'))
+    return json({error:'evidence_not_disclosed'},409,head);
+   const q=await fetcher(env.SUPABASE_URL+'/rest/v1/rpc/shared_evidence_decision_record',{
+    method:'POST',headers:svc(env),body:JSON.stringify({
+     p_case:id,p_judge:uid,p_hearing:hearing,p_record:recordId,p_decision:decision
+    })});
+   if(!q.ok)return json({error:'evidence_ruling_conflict'},409,head);
+   return json({ok:true,caseId:id,recordId,hearingIndex:hearing,
+    ruling:await q.json()},200,head);
+  }catch{return json({error:'evidence_ruling_unavailable'},503,head)}
+ }
+
  // Ordered evidence is released only after a SECOND server-confirmed hearing.
  if(url.pathname==='/world/court/order/resolve'&&req.method==='POST'){
   if(env.P4_COURT_ACTIONS_ENABLED!=='1')return json({error:'feature_disabled'},404,head);
