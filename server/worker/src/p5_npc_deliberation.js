@@ -6,11 +6,19 @@ const OPTIONS={
  decision:['decision_yes','decision_no']
 };
 export const panelChoices=kind=>OPTIONS[kind]||[];
-export function npcDeliberationPrompt(sheet,actions,npc){
+export function npcDeliberationPrompt(sheet,actions,npc,initialEvidence=[]){
  const choices=panelChoices(sheet?.card?.kind);
  if(!choices.length||!Array.isArray(actions))return {error:'invalid_case'};
+ const seen=new Map((Array.isArray(initialEvidence)?initialEvidence:[]).map(r=>[r.id,r]));
+ const rulings=new Map();
+ for(const a of actions)if(a.action_type==='evidence_decision'&&
+  ['use','conditional','exclude'].includes(a.response?.decision)&&a.response?.recordId&&
+  (!rulings.has(a.response.recordId)||Number(a.hearing_index||0)>=rulings.get(a.response.recordId).hearing))
+  rulings.set(a.response.recordId,{hearing:Number(a.hearing_index||0),decision:a.response.decision});
+ const treatment=id=>rulings.get(id)?.decision||'unreviewed';
  const disclosed=(sheet.records||[]).filter(r=>r.first===true)
-  .map(r=>({source:'initial',id:r.id,title:String(r.title||'').slice(0,120)}));
+  .map(r=>({source:'initial',id:r.id,title:String(r.title||'').slice(0,120),
+   content:String(seen.get(r.id)?.text||'').slice(0,1200),admissibility:treatment(r.id)}));
  for(const a of actions){
   if(a.response?.status!=='done')continue;
   if(a.action_type==='question'){
@@ -19,7 +27,7 @@ export function npcDeliberationPrompt(sheet,actions,npc){
   }else if(a.action_type==='order_result'){
    disclosed.push({source:'exhibit',id:a.action_key,
     title:String(a.response?.title||'').slice(0,120),
-    content:String(a.response?.text||'').slice(0,1200)});
+    content:String(a.response?.text||'').slice(0,1200),admissibility:treatment(a.action_key)});
   }
  }
  if(!disclosed.length)return {error:'no_court_record'};
@@ -27,6 +35,8 @@ export function npcDeliberationPrompt(sheet,actions,npc){
   instructions:[
    'You are an impartial Korean fictional courtroom NPC judge.',
    'Assess only the disclosed record. This is a fictional game, not legal advice.',
+   'A document marked exclude is part of procedure history but must not support a finding of fact.',
+   'An exhibit marked conditional has limited weight; do not treat it as unquestioned proof.',
    'Do not invent a fact, a witness, a document, a criminal charge, or a sentence.',
    'The human judges votes are intentionally hidden from you.',
    'Choose exactly one of the supplied allowed dispositions based on this record.',
