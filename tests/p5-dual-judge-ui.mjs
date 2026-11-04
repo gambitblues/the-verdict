@@ -33,7 +33,7 @@ try{
     if(path.startsWith('/world/panel/case?'))return {ok:true,case:caseSheet,
      records:[{id:'r1',title:'계약서 원본',kind:'문서',text:'계약서 공개 내용'}],
      actions:history,role:role==='chair'?'chair':'associate',
-     court:{worldDay:8,hearingIndex:1,canAct:role==='chair',canObserve:true}};
+     court:{worldDay:8,hearingIndex:1,canAct:true,canObserve:true,canOpenHearing:role==='chair'}};
     if(path.startsWith('/world/panel/bench?'))return {ok:true,bench:{
      caseId:'case-p5-together',myRole:role==='chair'?'chair':'associate',
      canOpenHearing:role==='chair',canPublishJudgment:role==='chair',seats:everyone}};
@@ -84,7 +84,7 @@ try{
   assert.match(await v.root.innerText(),/계약일은 1월 2일입니다/);
  }
  assert.equal(await a.root.locator('[data-court-kind="question"]').count(),1,'chair may question witness');
- assert.equal(await b.root.locator('[data-court-kind="question"]').count(),0,'associate cannot question witness directly');
+ assert.equal(await b.root.locator('[data-court-kind="question"]').count(),1,'human associate participates in witness questioning after chair opens hearing');
  await a.root.locator('[data-court-tab="day"]').click();
  await b.root.locator('[data-court-tab="day"]').click();
  assert.equal(await a.root.locator('[data-world-begin]').count(),1,'human chair opens the hearing');

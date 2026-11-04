@@ -85,7 +85,7 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    return response({ok:true,case:publicCaseSheet(row.sheet,caseId),records:initialEvidence(row.sheet,caseId,branch),judgment:publicJudgment,
     actions,role:isChair?'chair':'associate',court:{
      worldDay,hearingIndex:canAct?hearing.hearing_index:null,
-     canAct:canAct&&isChair,canObserve:canAct,canOpenHearing:isChair,
+     canAct,canObserve:canAct,canOpenHearing:isChair,
      judgmentPublished:judgments.length>0
     }});
   }

@@ -260,7 +260,7 @@ async function refreshCourt(){
    if(d?.ok&&d.case?.caseId===selectedCase.caseId){
     firstDocs=Array.isArray(d.records)?d.records:[];
     courtActions=Array.isArray(d.actions)?d.actions:[];
-    courtStatus={...d.court,canAct:d.role==='chair'&&d.court?.canAct===true};
+    courtStatus={...d.court,canAct:['chair','associate'].includes(d.role)&&d.court?.canAct===true};
     if(d.judgment)finalDecision={result:d.judgment.result,order:d.judgment.order,recordHash:d.judgment.recordHash};
     renderOffers();await refreshPanel();return;
    }
@@ -535,7 +535,7 @@ async function loadJointCase(){
    selectedCase=c.case;
    firstDocs=Array.isArray(c.records)?c.records:[];
    courtActions=Array.isArray(c.actions)?c.actions:[];
-   courtStatus={...(c.court||{}),canAct:c.role==='chair'&&c.court?.canAct===true};
+   courtStatus={...(c.court||{}),canAct:['chair','associate'].includes(c.role)&&c.court?.canAct===true};
    finalDecision=null;courtTab='case';panelState=null;panelFor=null;
   }
   jointSlotState=slot;

@@ -213,7 +213,8 @@ test('P5 associate observes identical public court actions, but cannot open the 
  assert.deepEqual(a.actions,b.actions);
  assert.deepEqual(a.records,b.records);
  assert.equal(a.court.canAct,true);
- assert.equal(b.court.canAct,false);
+ assert.equal(b.court.canAct,true,'human associate participates in opened hearing');
+  assert.equal(b.court.canOpenHearing,false,'only the chair opens a hearing');
  assert.equal(b.court.canObserve,true);
  assert.equal(b.role,'associate');
  assert.ok(!JSON.stringify(b).includes('worlds'),'sealed branches are not exposed');
