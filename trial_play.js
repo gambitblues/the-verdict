@@ -216,7 +216,7 @@ const prepWord=id=>{const s=lawyerSkill(id);return s>=78?'준비가 철저함':s
 
 function ensure(c,st){
  window.VerdictMatchPlay?.reset(st);   // a v8.0 match-screen trial without a verdict restarts in this courtroom
- if(st.trial4){const t=upgrade(c,st.trial4);t.cards=dressCards(c,t,t.cards||[]);return t;}
+ if(st.trial4){const t=upgrade(c,st.trial4);if(!t.filingMigration){t.cards=dressCards(c,t,t.cards||[]);t.filingMigration=true;}return t;}
  fixSex(c);fixProfile(c);decisionVerdicts(c);window.VerdictMatchPlay?.fixParties(c);fixKin(c);
  const seed=c.id+':'+(S.rng||1);
  const strictCase=!!curOf(c);
@@ -247,7 +247,7 @@ function ensure(c,st){
   witnesses:t.witnesses.map(w=>M?.participation(S.cases,CASES,c.id,w.id,'witness')||null)
  };
  t.witnesses.forEach(w=>{w.askedIds=[];w.opened=[]});
- t.cards=dressCards(c,t,skilled(c,t,opponentCards(t,1),1));
+ t.cards=dressCards(c,t,skilled(c,t,opponentCards(t,1),1));t.filingMigration=true;
  st.trial4=t;
  S.trial4History=[...history,{archetypeId:rolled.archetypeId,truth:rolled.truth,firstFlaw:rolled.firstFlaw}].slice(-60);
  save();
