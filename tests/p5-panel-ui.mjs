@@ -18,6 +18,8 @@ try{
   window.VerdictAuth={online:true,user:{id:'judge-chair'},async api(path,body){
    window.__p5.requests.push(path);
    const state=window.__p5;
+   if(path==='/world/panel/slot')return {ok:true,occupied:state.created,caseId:state.created?'case-p5':null,limit:1};
+   if(path==='/world/panel/auto-assign'){state.created=true;return {ok:true,caseId:'case-p5',existing:false}}
    if(path==='/world/offers')return {ok:true,offers:[
     {case_id:'case-p5',category:'civil'},{case_id:'case-extra',category:'civil'}
    ]};
@@ -90,11 +92,8 @@ try{
   }};
  });
  await page.addScriptTag({content:source});
- await page.getByRole('button',{name:'공유 세계 연혁 열기'}).click();
- await page.getByRole('button',{name:'사건 후보 2건 확인'}).click();
- await page.locator('[data-world-accept]').first().click();
- await page.waitForFunction(()=>window.VerdictSharedWorld?.selectedCase?.caseId==='case-p5');
- await page.locator('[data-world-close]').click();
+ // P5 auto assignment enters a dedicated sixth slot, not the personal 5 cases
+ // and not a manually accepted hourly offer.
  await page.evaluate(()=>{
   window.ui={tab:'courtList',p4NativeCourt:false};
   window.VerdictNativeCourtRender=()=>{
@@ -102,9 +101,9 @@ try{
   };
   window.VerdictSharedWorld.open();
  });
- await page.locator('main [data-court-tab="verdict"]').click();
+ await page.waitForFunction(()=>window.VerdictSharedWorld?.selectedCase?.caseId==='case-p5');
  const root=page.locator('main [data-world-native-root]');
- await root.locator('[data-p5-open]').click();
+ await root.locator('[data-court-tab="verdict"]').click();
  await root.locator('[data-p5-refresh]').waitFor();
  assert.match(await root.innerText(),/NPC · 재판장 권한 없음/);
  assert.match(await root.innerText(),/나는 재판장/);
