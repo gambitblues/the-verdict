@@ -840,3 +840,20 @@ body.t4-court #toast{bottom:168px}
 
 /* Read-only career chronicle, no immediate verdict grade. */
 .tv-career-summary,.tv-career-review{padding:20px;border:1px solid #d8c9ad;border-radius:14px;background:#faf5e9;margin-bottom:16px;line-height:1.7}.tv-career-summary h3,.tv-career-review h3{font-family:Georgia,'Noto Serif KR',serif;margin:0 0 10px}.tv-career-timeline{border-left:2px solid #a58b65;margin:12px 0 0 9px;padding-left:20px;display:grid;gap:14px}.tv-career-timeline article{position:relative;border:1px solid #e0d8c9;background:#fff;border-radius:12px;padding:15px;line-height:1.65;overflow-wrap:anywhere}.tv-career-timeline article:before{content:'';position:absolute;top:18px;left:-27px;width:10px;height:10px;background:#a58b65;border:2px solid #fff;border-radius:50%}.tv-career-timeline h4{margin:5px 0}.tv-career-timeline p{margin:6px 0 0}
+
+/* v8.7.4 재판연구원 의견 · 판결 작성 검토 */
+.t4-clerk{margin:10px 0;border:1px solid #dbe3ee;border-radius:12px;background:#f6f8fb}
+.t4-clerk-head{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:0;background:none;font:inherit;font-weight:800;color:#2e4a6b;text-align:left;cursor:pointer}
+.t4-clerk-head span{font-size:12px;font-weight:600;color:#6b7686}
+.t4-clerk-body{padding:0 12px 12px;font-size:13.5px;line-height:1.6}
+.t4-clerk-body p{margin:0 0 6px}
+.t4-clerk-body .t4-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.t4-clerk-body small{display:block;color:#6b7686;font-size:11.5px;margin-top:6px}
+.t4-clerk-list{margin:4px 0 0;padding-left:18px;font-size:13px}
+.t4-review{margin:8px 0 12px;padding:10px 12px;border-radius:12px;border:1px solid #e3d6b8;background:#fbf7ee;font-size:13px;line-height:1.55}
+.t4-review.ok{border-color:#cfe0cf;background:#f3f8f3}
+.t4-review.bad{border-color:#e6b8b0;background:#fbf1ef}
+.t4-review b{display:block;color:#2e4a6b;margin-bottom:4px}
+.t4-review ul{margin:4px 0;padding-left:18px}
+.t4-review-stop{margin:0;color:#9b3324;font-weight:700}
+.t4-review small{color:#6b7686;font-size:11.5px}

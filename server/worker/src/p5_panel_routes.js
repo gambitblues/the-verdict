@@ -4,6 +4,11 @@ import {panelStatus} from './p5_joint_panel.js';
 import {npcDeliberationPrompt,validateNpcOpinion,panelChoices} from './p5_npc_deliberation.js';
 import {validateSharedJudgment,adjudicateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
 
+/* v8.7.4: when the AI cannot give the NPC (or substitute) judge's opinion, the panel still finishes: the judge who
+ * cannot reach a conviction from the record decides against the side that must prove its case (in dubio pro reo /
+ * the plaintiff's burden). It never looks at the other judges' votes. */
+const FALLBACK={criminal:'acquittal',civil:'claim_denied',decision:'decision_no'};
+const FALLBACK_REASON='법정에 나온 기록만으로는 확신이 서지 않아, 증명할 책임이 있는 쪽에 불리하게 판단합니다.';
 const validCase=x=>typeof x==='string'&&/^[a-z][a-z0-9-]{3,79}$/.test(x);
 const validUuid=x=>typeof x==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x);
 const response=(data,status=200)=>new Response(JSON.stringify(data),{
@@ -147,6 +152,7 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
       '&order=hearing_index.desc&limit=1')
    ]);
    const hearing=hearings[0];
+   if(!panelChoices(cases[0]?.sheet?.card?.kind).includes(input.choice))return response({error:'invalid_vote'},400);   // v8.7.4: must fit the case
    const {acts,evidenceHash}=await record();
    const readiness=sharedDeliberationReadiness(cases[0]?.sheet,acts,hearing?.hearing_index||0);
    if(cases[0]?.state!=='assigned'||hearing?.state!=='completed'||
@@ -169,12 +175,23 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
     .map(p=>({id:p.user_id,name:String(p.name||'다른 판사').slice(0,80)})),
     npcs:npcs.map(n=>({id:n.npc_id,name:String(n.public_profile?.name||n.npc_id).slice(0,80)}))});
   }
+  /* v8.7.4 rounds, revision, absence */
+  if(url.pathname==='/world/panel/reopen'&&isPost){
+   const round=await rpc('shared_joint_reopen',{p_case:caseId,p_actor:uid});
+   return response({ok:true,caseId,round});
+  }
+  if(url.pathname==='/world/panel/abstain'&&isPost){
+   const done=await rpc('shared_joint_abstain',{p_case:caseId,p_actor:uid});
+   return response({ok:true,caseId,substituted:true,changed:done===true});
+  }
+  if(url.pathname==='/world/panel/substitute'&&isPost){
+   const hours=Math.max(24,Number(env.JOINT_WAIT_HOURS||72));
+   const done=await rpc('shared_joint_substitute',{p_case:caseId,p_actor:uid,p_wait_hours:hours});
+   return response({ok:true,caseId,substituted:true,changed:done===true});
+  }
   if(url.pathname==='/world/panel/npc/decide'&&isPost){
-   if(!ai.respond||!ai.reserve||!ai.finish||!ai.estimate||!ai.costOf)
-    return response({error:'npc_ai_not_configured'},503);
-   const [panels,votes,cases]=await Promise.all([
-    read('shared_joint_panels?select=chair_id,peer_id,npc_id&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
-    read('shared_joint_votes?select=seat,evidence_hash&case_id=eq.'+encodeURIComponent(caseId)+'&limit=3'),
+   const [panels,cases]=await Promise.all([
+    read('shared_joint_panels?select=chair_id,peer_id,npc_id,round,substituted&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
     read('case_stock?select=assigned_to,state,sheet&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1')
    ]);
    const panel=panels[0],world=cases[0];
@@ -182,9 +199,11 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
     return response({error:'not_panel_member'},403);
    if(!world||world.assigned_to!==panel.chair_id||world.state!=='assigned')
     return response({error:'case_not_found'},404);
-   if(votes.some(v=>v.seat==='npc'))return response({ok:true,alreadySubmitted:true});
-   if(votes.length!==2||!votes.some(v=>v.seat==='chair')||!votes.some(v=>v.seat==='peer'))
-    return response({error:'human_votes_pending'},409);
+   const round=Number(panel.round||1),kind=world.sheet?.card?.kind;
+   const votes=await read('shared_joint_votes?select=seat,evidence_hash&case_id=eq.'+encodeURIComponent(caseId)+'&round=eq.'+round+'&limit=3');
+   const has=s=>votes.some(v=>v.seat===s),subPeer=panel.substituted==='peer';
+   if(has('npc')&&has('peer'))return response({ok:true,alreadySubmitted:true});
+   if(!has('chair')||(!has('peer')&&!subPeer))return response({error:'human_votes_pending'},409);
    const {acts,evidenceHash}=await record();
    if(votes.some(v=>v.evidence_hash!==evidenceHash))
     return response({error:'evidence_snapshot_changed'},409);
@@ -201,37 +220,41 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    let initial;
    try{initial=initialEvidence(world.sheet,caseId,branch)}
    catch{return response({error:'initial_evidence_unavailable'},409)}
-   const built=npcDeliberationPrompt(world.sheet,acts,npc.public_profile,initial);
-   if(built.error)return response({error:built.error},409);
-   const model=env.MODEL_TALK,limit=360;
-   const ticket=await ai.reserve(env,uid,'npc',model,
-    ai.estimate(env,model,built.instructions.length+built.input.length,limit,false),fetcher);
-   if(ticket===undefined)return response({error:'usage_unavailable'},503);
-   if(ticket===null)return response({error:'daily_limit'},429);
-   const started=Date.now();
-   let modelResult;
-   try{modelResult=await ai.respond(env,{model,instructions:built.instructions,input:built.input,
-    schema:built.schema,maxTokens:limit},fetcher)}
-   catch{modelResult={ok:false,usage:{}}}
-   const opinion=modelResult?.ok?validateNpcOpinion(world.sheet.card.kind,modelResult.data)
-    :{error:'npc_ai_unavailable'};
-   const usage=modelResult?.usage||{};
-   await ai.finish(env,ticket,{p_model:modelResult.model||model,
-    p_in:usage.input_tokens||0,p_out:usage.output_tokens||0,
-    p_cost:Number(ai.costOf(env,model,usage).toFixed(6)),
-    p_ok:!opinion.error,p_reason:opinion.error||null,p_ms:Date.now()-started},fetcher);
-   if(opinion.error)return response({error:opinion.error},503);
-   const added=await rpc('shared_joint_vote',{
-    p_case:caseId,p_actor:null,p_seat:'npc',p_choice:opinion.choice,
-    p_hash:evidenceHash,p_note:opinion.reason
-   });
+   const fallback={choice:FALLBACK[kind],reason:FALLBACK_REASON,fallback:true};
+   if(!fallback.choice)return response({error:'invalid_case'},409);
+   /* one opinion: the AI's if it can give a valid one, otherwise the fallback — the panel never stalls on the AI */
+   const opinionOf=async profile=>{
+    const built=npcDeliberationPrompt(world.sheet,acts,profile,initial);
+    if(built.error||!ai.respond||!ai.reserve||!ai.finish||!ai.estimate||!ai.costOf)return fallback;
+    const model=env.MODEL_TALK,limit=360;
+    let ticket;try{ticket=await ai.reserve(env,uid,'npc',model,ai.estimate(env,model,built.instructions.length+built.input.length,limit,false),fetcher)}catch{ticket=undefined}
+    if(ticket==null)return fallback;
+    const started=Date.now();let modelResult;
+    try{modelResult=await ai.respond(env,{model,instructions:built.instructions,input:built.input,schema:built.schema,maxTokens:limit},fetcher)}
+    catch{modelResult={ok:false,usage:{}}}
+    const opinion=modelResult?.ok?validateNpcOpinion(kind,modelResult.data):{error:'npc_ai_unavailable'};
+    const usage=modelResult?.usage||{};
+    await ai.finish(env,ticket,{p_model:modelResult.model||model,p_in:usage.input_tokens||0,p_out:usage.output_tokens||0,
+     p_cost:Number(ai.costOf(env,model,usage).toFixed(6)),p_ok:!opinion.error,p_reason:opinion.error||null,p_ms:Date.now()-started},fetcher);
+    return opinion.error?fallback:opinion;
+   };
+   let usedFallback=false;
+   if(subPeer&&!has('peer')){
+    const sub=await opinionOf({name:'대리 배석판사'});usedFallback||=!!sub.fallback;
+    await rpc('shared_joint_vote',{p_case:caseId,p_actor:null,p_seat:'peer',p_choice:sub.choice,p_hash:evidenceHash,p_note:sub.reason});
+   }
+   let added=false;
+   if(!has('npc')){
+    const opinion=await opinionOf(npc.public_profile);usedFallback||=!!opinion.fallback;
+    added=await rpc('shared_joint_vote',{p_case:caseId,p_actor:null,p_seat:'npc',p_choice:opinion.choice,p_hash:evidenceHash,p_note:opinion.reason});
+   }
    const status=await rpc('shared_joint_status',{p_case:caseId,p_actor:uid});
-   return response({ok:true,submitted:added===true,status});
+   return response({ok:true,submitted:added===true,fallback:usedFallback,status});
   }
   if(url.pathname==='/world/panel/finalize'&&isPost){
    if(env.P4_JUDGMENTS_ENABLED!=='1')return response({error:'feature_disabled'},404);
    const [panels,world,hearing]=await Promise.all([
-    read('shared_joint_panels?select=chair_id&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
+    read('shared_joint_panels?select=chair_id,round&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
     read('case_stock?select=assigned_to,state,sheet&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
     read('shared_judge_hearings?select=state,hearing_index,completed_game_day&case_id=eq.'+
       encodeURIComponent(caseId)+'&judge_id=eq.'+encodeURIComponent(uid)+
@@ -250,7 +273,7 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    if(status.state!=='majority_ready'||!panelChoices(world[0].sheet?.card?.kind).includes(status.majority))
     return response({error:'joint_majority_not_ready'},409);
    const {acts,evidenceHash}=await record();
-   const votes=await read('shared_joint_votes?select=evidence_hash&case_id=eq.'+encodeURIComponent(caseId));
+   const votes=await read('shared_joint_votes?select=evidence_hash&case_id=eq.'+encodeURIComponent(caseId)+'&round=eq.'+Number(panels[0].round||1));
    if(votes.length!==3||votes.some(v=>v.evidence_hash!==evidenceHash))
     return response({error:'evidence_snapshot_changed'},409);
    const scored=env.P4_TRIAL_PARITY_ENABLED==='1';

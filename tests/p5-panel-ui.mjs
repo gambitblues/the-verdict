@@ -118,7 +118,7 @@ try{
  await root.locator('[data-p5-refresh]').click();
  await root.locator('[data-p5-decide]').click();
  await page.waitForFunction(()=>window.__p5.votes===3);
- assert.match(await root.innerText(),/다수 의견 성립/);
+ assert.match(await root.innerText(),/합의 결론/);
  assert.equal(await root.locator('button[data-world-verdict]').count(),1,'delayed bench may finalize after global clock moves');
  await root.locator('[data-cite="initial:r1"]').check();
  await root.locator('[data-v-amount]').fill('1000');

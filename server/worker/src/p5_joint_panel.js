@@ -5,6 +5,7 @@ const CHOICES={
  civil:['claim_granted','claim_denied','partial','settled'],
  decision:['decision_yes','decision_no']
 };
+export const RANK={acquittal:0,claim_denied:0,decision_no:0,settled:1,decision_yes:1,partial:2,guilty:3,claim_granted:3};
 export function validBallot(kind,ballot){
  return !!(ballot&&SEATS.includes(ballot.seat)&&
   CHOICES[kind]?.includes(ballot.choice)&&
@@ -27,9 +28,9 @@ export function panelStatus(kind,ballots,viewer){
  const counts=new Map();
  for(const b of votes.values())counts.set(b.choice,(counts.get(b.choice)||0)+1);
  const sorted=[...counts].sort((a,b)=>b[1]-a[1]);
- return {
-  state:sorted[0][1]>=2?'majority_ready':'further_deliberation',
-  votesCast:3,myVote:own,majority:sorted[0][1]>=2?sorted[0][0]:null,
-  tally:Object.fromEntries(sorted)
- };
+ if(sorted[0][1]>=2)return {state:'majority_ready',votesCast:3,myVote:own,majority:sorted[0][0],rule:'majority',tally:Object.fromEntries(sorted)};
+ /* v8.7.4 법원조직법 66②: three different opinions — add from the one most favourable to the defendant (civil: the
+  * smallest award) until two agree; the second one completes the majority. Same rule as SQL shared_joint_outcome. */
+ const middle=[...votes.values()].sort((a,b)=>RANK[a.choice]-RANK[b.choice]||a.seat.localeCompare(b.seat))[1].choice;
+ return {state:'majority_ready',votesCast:3,myVote:own,majority:middle,rule:'article66',tally:Object.fromEntries(sorted)};
 }

@@ -17,12 +17,14 @@ test('two judges + NPC: private ballots remain sealed until all 3 cast',()=>{
  assert.equal(result.majority,'guilty');
  assert.equal(result.tally.guilty,2);
 });
-test('three different positions cannot be forced to a majority',()=>{
+test('three different positions: 법원조직법 66② takes the middle opinion (v8.7.4), never the chair alone',()=>{
  const result=panelStatus('civil',[
   vote('chair','claim_granted'),vote('peer','claim_denied'),vote('npc','partial')
  ],'chair');
- assert.equal(result.state,'further_deliberation');
- assert.equal(result.majority,null);
+ assert.equal(result.state,'majority_ready');
+ assert.equal(result.majority,'partial');
+ assert.equal(result.rule,'article66');
+ assert.equal(panelStatus('criminal',[vote('chair','guilty'),vote('peer','acquittal'),vote('npc','partial')],'peer').majority,'partial');
 });
 test('duplicate seats, tampered hashes and outside viewers fail',()=>{
  assert.equal(validBallot('criminal',vote('npc','guilty')),true);

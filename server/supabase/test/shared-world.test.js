@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql','028_joint_associate_court_actions.sql','029_shared_career_nine_month.sql','030_shared_evidence_rulings.sql','031_shared_motion_decisions.sql','032_request_role_claims.sql','033_open_hearing_survives_shared_day.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql','028_joint_associate_court_actions.sql','029_shared_career_nine_month.sql','030_shared_evidence_rulings.sql','031_shared_motion_decisions.sql','032_request_role_claims.sql','033_open_hearing_survives_shared_day.sql','034_joint_panel_rules.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -386,7 +386,7 @@ test('P5 existing judges and public NPC: private votes until all 3, majority and
   [npc,JSON.stringify({name:'가상 합의부 재판관'}),'alive',day,0]);
  await svc(
   'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
-  [id,'civil',HASH,HASH,'fingerprint-panel-p5',JSON.stringify({id}),JSON.stringify({passed:true}),A]);
+  [id,'civil',HASH,HASH,'fingerprint-panel-p5',JSON.stringify({id,card:{kind:'civil'}}),JSON.stringify({passed:true}),A]);
  const open=()=>svc('select public.shared_joint_open($1,$2::uuid,$3::uuid,$4) as inserted',[id,A,B,npc]);
  assert.equal((await open()).rows[0].inserted,true);
  assert.equal((await open()).rows[0].inserted,false,'replay must not create another panel');
@@ -431,7 +431,7 @@ test('P5 verdict release requires complete consensus and correct majority, not a
  const pending='case-panel-pending',npc='npc:p5-bench';
  await svc(
   'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
-  [pending,'civil',HASH,HASH,'fingerprint-panel-pending',JSON.stringify({id:pending}),
+  [pending,'civil',HASH,HASH,'fingerprint-panel-pending',JSON.stringify({id:pending,card:{kind:'civil'}}),
    JSON.stringify({passed:true}),A]);
  await svc('select public.shared_joint_open($1,$2::uuid,$3::uuid,$4)',[pending,A,B,npc]);
  await svc('select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6)',
@@ -601,6 +601,8 @@ test('P4/P5 one joint trial links verdict, NPC public continuity and next-day ne
   npc,JSON.stringify({name:'공동재판 출석 목격자'}),'alive',day,0
  ]);
  await svc('insert into public.shared_case_npc_links(case_id,npc_id,person_key) values($1,$2,$3)',[id,npc,'W1']);
+ // stock fixtures here carry no card; a real world sheet always names its kind (ballots must fit it, v8.7.4)
+ await svc(`update public.case_stock set sheet=jsonb_set(sheet,'{card}',coalesce(sheet->'card','{}'::jsonb)||'{"kind":"civil"}'::jsonb) where case_id=$1`,[id]);
  const vote=(actor,seat,choice)=>svc(
   'select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6)',
   [id,actor,seat,choice,HASH,'법정에서 확인된 기록 검토']);
@@ -682,4 +684,65 @@ test('v8.7.4 another judge moving the shared date never locks this judge out of 
  const three=(await begin()).rows[0];assert.equal(three.hearing_index,3,'and can begin the next hearing');
  await assert.rejects(act(2,'lock-q2-late'),/hearing_not_open_today/,'an older hearing closes once a later one exists');
  await act(3,'lock-q3');
+});
+
+test('v8.7.4 P5 panel rules: case-fit ballots, record closes, art.66 on a three-way split, revision rounds, substitute',async()=>{
+ const npc='npc:p5-rules';
+ const day=(await svc('select game_day from public.shared_world_clock')).rows[0].game_day;
+ await svc('select public.shared_npc_public_put($1,$2::jsonb,$3,$4,$5)',[npc,JSON.stringify({name:'규칙 검증 재판관'}),'alive',day,0]);
+ const make=async(id,kind)=>{
+  await svc('insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
+   [id,kind==='criminal'?'violence':'civil',HASH,HASH,'fingerprint-'+id,JSON.stringify({id,card:{kind}}),JSON.stringify({passed:true}),A]);
+  // finish any open joint case of these judges first (one joint slot each)
+  await svc('select public.shared_joint_open($1,$2::uuid,$3::uuid,$4)',[id,A,B,npc]);
+ };
+ const vote=(id,actor,seat,choice,note='')=>svc('select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6) as ok',[id,actor,seat,choice,HASH,note]);
+ const view=(id,uid)=>svc('select public.shared_joint_status($1,$2::uuid) as s',[id,uid]).then(r=>r.rows[0].s);
+ // close the earlier joint cases of A/B so a new panel can open (one joint slot per judge)
+ for(const r of (await svc(`select p.case_id from public.shared_joint_panels p where not exists(select 1 from public.shared_case_judgments j where j.case_id=p.case_id)`)).rows){
+  const s=await view(r.case_id,A);if(s.state!=='majority_ready')continue;
+  await svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5)',[r.case_id,A,s.majority,'정리','d'.repeat(64)]);
+ }
+
+ const id='case-panel-rules-cr';await make(id,'criminal');
+ await assert.rejects(vote(id,A,'chair','claim_granted'),/invalid_joint_vote/,'a civil ballot in a criminal case is refused');
+ await vote(id,A,'chair','guilty','CCTV와 출입기록이 맞아요');
+ // 변론 종결: the record is closed once a ballot exists
+ await assert.rejects(svc('select public.shared_court_action_record($1,$2::uuid,$3,$4,$5,$6::jsonb)',[id,A,1,'question','late-q',JSON.stringify({status:'done',answer:'추가'})]),/deliberation_started|hearing_not_open_today/);
+ await assert.rejects(svc('insert into public.shared_judge_hearings(case_id,hearing_index,judge_id,state,due_game_day) values($1,1,$2,\'scheduled\',$3)',[id,A,day]),/deliberation_started/);
+ await vote(id,B,'peer','acquittal','증명이 모자라요');
+ await vote(id,null,'npc','partial','일부만 인정돼요');
+ let s=await view(id,A);
+ assert.equal(s.state,'majority_ready');assert.equal(s.rule,'article66');
+ assert.equal(s.majority,'partial','three different opinions: the middle one (from the most favourable to the defendant)');
+ assert.equal(s.opinions.length,3,'after all three, every opinion and its reasons are shown');
+ await assert.rejects(svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5)',[id,A,'guilty','유죄','a'.repeat(64)]),/joint_verdict_mismatch/,'the chair cannot pick their own opinion');
+ // revision: a new round, everyone resubmits; the earlier round is kept as the record
+ assert.equal((await svc('select public.shared_joint_reopen($1,$2::uuid) as r',[id,B])).rows[0].r,2);
+ s=await view(id,B);assert.equal(s.round,2);assert.equal(s.votesCast,0);assert.equal(s.previous.length,3);
+ await assert.rejects(svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5)',[id,A,'partial','일부 유죄','a'.repeat(64)]),/joint_votes_incomplete/);
+ await vote(id,A,'chair','guilty');await vote(id,B,'peer','guilty','다시 보니 출입기록이 결정적');await vote(id,null,'npc','partial');
+ s=await view(id,A);assert.equal(s.majority,'guilty');assert.equal(s.rule,'majority');
+ await assert.rejects(svc('select public.shared_joint_reopen($1,$2::uuid)',['case-panel-rules-cr','00000000-0000-0000-0000-00000000000f']),/not_panel_member/);
+ assert.equal((await svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5) as ok',[id,A,'guilty','피고인을 징역 2년에 처한다.','a'.repeat(64)])).rows[0].ok,true);
+
+ // absence: the chair cannot replace the associate before the waiting time; after it a substitute takes the seat
+ const id2='case-panel-rules-sub';await make(id2,'civil');
+ await vote(id2,A,'chair','claim_granted');
+ await assert.rejects(svc('select public.shared_joint_substitute($1,$2::uuid,$3)',[id2,B,1]),/chair_required/);
+ await assert.rejects(svc('select public.shared_joint_substitute($1,$2::uuid,$3)',[id2,A,1]),/waiting_time_not_over/,'at least 24 hours even if asked for less');
+ await svc(`update public.shared_joint_panels set round_started_at=now()-interval '80 hours' where case_id=$1`,[id2]);
+ assert.equal((await svc('select public.shared_joint_substitute($1,$2::uuid,$3) as ok',[id2,A,72])).rows[0].ok,true);
+ await assert.rejects(vote(id2,B,'peer','claim_denied'),/not_panel_member/,'the substituted judge can no longer vote');
+ await vote(id2,null,'peer','claim_denied','대리 재판관 의견');await vote(id2,null,'npc','claim_granted');
+ s=await view(id2,A);assert.equal(s.majority,'claim_granted');
+ await svc('select public.shared_judgment_publish_scored($1,$2::uuid,$3,$4,$5,$6,$7,$8::jsonb)',[id2,A,'claim_granted','원고의 청구를 인용한다.','b'.repeat(64),70,70,JSON.stringify({method:'VerdictTrialCore.skill/evaluate'})]);
+ const seats=(await svc('select seat from public.shared_judge_career_events where case_id=$1',[id2])).rows.map(x=>x.seat);
+ assert.deepEqual(seats,['chair'],'a substituted associate earns no career record for the case');
+
+ // abstain: only the associate, only before their vote
+ const id3='case-panel-rules-abs';await make(id3,'decision');
+ await assert.rejects(svc('select public.shared_joint_abstain($1,$2::uuid)',[id3,A]),/not_panel_member/);
+ assert.equal((await svc('select public.shared_joint_abstain($1,$2::uuid) as ok',[id3,B])).rows[0].ok,true);
+ assert.equal((await view(id3,A)).substituted,'peer');
 });

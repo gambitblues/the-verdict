@@ -66,3 +66,6 @@
 [data-world-native-root] .vsw-motion-actions button{min-height:44px;min-width:115px;padding:9px 13px;background:#f4f0e8;border:1px solid #8a765a;border-radius:9px;color:#253948;cursor:pointer}
 [data-world-native-root] .vsw-motion-actions button:focus-visible{outline:3px solid #bd965e;outline-offset:3px}
 @media(max-width:600px){[data-world-native-root] .vsw-motion-actions button{flex:1}}
+
+/* v8.7.4 합의실: every opinion and its reasons after all three are in */
+.vsw-opinions{margin:6px 0;padding-left:18px}.vsw-opinions li{margin:4px 0}.vsw-opinions small{display:block;color:#6b7686;font-size:12px}

@@ -259,3 +259,48 @@ test('P5 blocks premature or stale human ballots and unresolved ordered evidence
  assert.equal(response.status,200,'late returning judge may vote on an unchanged completed record');
  assert.equal(voted,1,'only one verified ballot reached SQL');
 });
+
+test('v8.7.4 P5: ballot must fit the case; AI failure never stalls the panel; substitute and waiting time',async()=>{
+ const caseId='case-p5';
+ const acts=[{action_type:'question',action_key:'q1',response:{status:'done',answer:'신호가 바뀌었습니다.'}}];
+ const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({caseId,journal:acts})));
+ const hash=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+ const sheet={format:'verdict-world-sheet/v1',id:caseId,card:{kind:'criminal',title:'폭행'},records:[{id:'r1',title:'진단서',first:true}],
+  questions:[{id:'q1',q:'보셨나요?'}],worlds:{did:{records:{r1:'공개 진단서'}}}};
+ let substituted=null,peerVoted=true;const votes=[];const rpcs=[];
+ const mock=async(url,opt={})=>{
+  const u=String(url);
+  if(u.includes('/shared_joint_panels?'))return json([{chair_id:A,peer_id:B,npc_id:'npc:p5',round:2,substituted}]);
+  if(u.includes('/shared_joint_votes?')){assert.match(u,/round=eq\.2/,'only the current round counts');
+   return json([{seat:'chair',evidence_hash:hash},...(peerVoted?[{seat:'peer',evidence_hash:hash}]:[])])}
+  if(u.includes('/case_stock?'))return json([{assigned_to:A,state:'assigned',sheet}]);
+  if(u.includes('/shared_judge_hearings?'))return json([{hearing_index:1,state:'completed'}]);
+  if(u.includes('/shared_court_actions?'))return json(acts);
+  if(u.includes('/world_secrets?'))return json([{truth:{branch:'did'}}]);
+  if(u.includes('/shared_npc_public?'))return json([{npc_id:'npc:p5',life_status:'alive',public_profile:{name:'NPC 재판관'}}]);
+  if(u.includes('/rpc/shared_joint_vote')){votes.push(JSON.parse(opt.body));return json(true)}
+  if(u.includes('/rpc/shared_joint_status'))return json({state:'majority_ready',majority:'acquittal'});
+  if(u.includes('/rpc/shared_joint_substitute')||u.includes('/rpc/shared_joint_reopen')||u.includes('/rpc/shared_joint_abstain')){rpcs.push({u,body:JSON.parse(opt.body)});return json(u.includes('reopen')?3:true)}
+  throw Error('unexpected '+u);
+ };
+ // a civil ballot in a criminal case
+ const bad=await p5PanelRoute(req('/world/panel/vote',{caseId,choice:'claim_granted',note:''}),env,mock,A,headers);
+ assert.equal(bad.status,400);
+ // AI down: the NPC still gives an opinion (the side that must prove loses), never reading the humans' votes
+ const failing={reserve:async()=>7,estimate:()=>0.001,costOf:()=>0,finish:async()=>{},respond:async()=>{throw Error('down')}};
+ const r=await (await p5PanelRoute(req('/world/panel/npc/decide',{caseId}),env,mock,A,headers,failing)).json();
+ assert.equal(r.ok,true);assert.equal(r.fallback,true);
+ assert.deepEqual(votes.map(v=>[v.p_seat,v.p_choice]),[['npc','acquittal']]);
+ // no AI configured at all: same
+ votes.length=0;
+ assert.equal((await (await p5PanelRoute(req('/world/panel/npc/decide',{caseId}),env,mock,A,headers,{})).json()).fallback,true);
+ // substituted associate: the substitute's opinion is given first, then the NPC's
+ votes.length=0;substituted='peer';peerVoted=false;
+ await p5PanelRoute(req('/world/panel/npc/decide',{caseId}),env,mock,A,headers,{});
+ assert.deepEqual(votes.map(v=>[v.p_seat,v.p_actor]),[['peer',null],['npc',null]]);
+ // the chair's substitute request carries at least 24 hours of waiting time
+ await p5PanelRoute(req('/world/panel/substitute',{caseId}),{...env,JOINT_WAIT_HOURS:'2'},mock,A,headers);
+ assert.equal(rpcs.at(-1).body.p_wait_hours,24);
+ const reo=await (await p5PanelRoute(req('/world/panel/reopen',{caseId}),env,mock,B,headers)).json();
+ assert.equal(reo.round,3);
+});

@@ -17,6 +17,7 @@ P4_TRIAL_PARITY_ENABLED = "0" # native verdict score+legal sentence; QA-only
 P4_JUDGMENTS_ENABLED = "0" # only enable in independent P4 QA
 P4_FREE_ORDERS_ENABLED = "0" # metered AI interpretation; QA-only
 P5_JOINT_PANEL_ENABLED = "0" # QA-only, no production panel votes
+JOINT_WAIT_HOURS = "72" # how long the presiding judge waits before seating a substitute associate (server minimum 24)
 P4_COURT_ACTIONS_ENABLED = "0" # never accept courtroom writes on an unverified deployment
 # These are conservative EXAMPLE caps, not live-spending authorization.
 TERRA_MAX_CALLS_DAY = "4"

@@ -156,10 +156,10 @@ function renderOffers(){
       '</select><button type="button" data-p5-open>3인 합의부 개설</button>'
     :'<p>공동 재판관 명단 확인이 필요합니다.</p><button type="button" data-p5-partners>판사·NPC 조회</button>')+
    '</section>'
-  :'<section class="vsw-p5"><h4>3인 합의부 · 비공개 심의</h4>'+
+  :'<section class="vsw-p5"><h4>3인 합의부 · 비공개 심의'+(panelState.round>1?' · '+esc(panelState.round)+'번째 심의':'')+'</h4>'+
    '<p>제출 '+esc(panelState.votesCast||0)+'/3 · '+
-     esc(panelState.state==='majority_ready'?'다수 의견 성립':
-       panelState.state==='further_deliberation'?'의견 불일치 · 추가 심의 필요':'다른 재판관 의견 대기')+'</p>'+
+     esc(panelState.state==='majority_ready'?'합의 결론이 나왔어요':'다른 재판관 의견 대기')+'</p>'+
+   (panelState.substituted==='peer'?'<p class="vsw-note">배석판사 자리는 대리 판사가 맡았어요.</p>':'')+
    '<p>내 의견: '+esc(panelState.myVote||'아직 제출하지 않음')+'</p>'+
    (!panelState.myVote&&courtActions.length>0&&
     (courtStatus?.minimumHearings==null||courtStatus.canDeliberate===true)
@@ -169,11 +169,20 @@ function renderOffers(){
       '<button type="button" data-p5-vote>내 의견 비공개 제출</button>':
      !panelState.myVote&&courtStatus?.canDeliberate===false
       ?'<p class="vsw-note">판결 합의는 최소 '+esc(courtStatus?.minimumHearings||2)+'회 기일을 마치고 미완료 제출명령이 없어야 시작할 수 있습니다.</p>':'')+
-   (panelState.votesCast===2?'<button type="button" data-p5-decide>NPC 재판관 의견 생성</button>':'')+
+   ((pend)=>panelState.state!=='majority_ready'&&pend&&pend.length&&!pend.includes('chair')&&
+     (!pend.includes('peer')||panelState.substituted==='peer')
+     ?'<button type="button" data-p5-decide>'+(pend.includes('peer')?'대리 판사와 NPC 재판관 의견 듣기':'NPC 재판관 의견 듣기')+'</button>':'')
+    (Array.isArray(panelState.pending)?panelState.pending:panelState.votesCast===2?['npc']:null)+
+   (panelState.state!=='majority_ready'&&jointBench?.myRole==='associate'&&!panelState.myVote&&panelState.substituted!=='peer'
+     ?'<button type="button" data-p5-abstain>이 사건 합의에서 빠지기</button>':'')+
+   (panelState.state!=='majority_ready'&&jointBench?.myRole==='chair'&&panelState.myVote&&panelState.substituted!=='peer'&&(panelState.pending||[]).includes('peer')
+     ?'<button type="button" data-p5-substitute>배석판사를 기다리지 않고 대리 판사 지정</button><p class="vsw-note">배석판사가 오래 의견을 내지 않을 때만 지정할 수 있어요.</p>':'')+
    (panelState.state==='majority_ready'
-     ?'<p><strong>3인 다수결: '+esc(panelState.majority||'')+'</strong></p>'
-     :panelState.state==='further_deliberation'
-      ?'<p>세 의견이 서로 다릅니다. 협의 후 재심의 규칙이 확정되기 전에는 선고하지 않습니다.</p>':'')+
+     ?'<p><strong>합의 결론: '+esc(p5Label(panelState.majority))+'</strong></p>'+
+      (panelState.rule==='article66'?'<p class="vsw-note">세 의견이 모두 달라, 법(법원조직법 제66조)에 따라 피고에게 가장 유리한 의견부터 더해 과반이 되는 의견으로 정했어요.</p>':'')+
+      (Array.isArray(panelState.opinions)?'<ul class="vsw-opinions">'+panelState.opinions.map(o=>'<li><b>'+esc(seatName(o.seat))+'</b> '+esc(p5Label(o.choice))+(o.note?'<small>'+esc(o.note)+'</small>':'')+'</li>').join('')+'</ul>':'')+
+      (panelState.canReopen?'<button type="button" data-p5-reopen>의견을 다시 모으기 ('+esc(panelState.round||1)+'/3)</button>':'')
+     :'')+
    '<button type="button" data-p5-refresh>합의 현황 새로고침</button></section>');
  const summary='<strong>'+esc(c.title||caseId)+'</strong><p>'+esc(c.summary||'')+'</p>';
  let body='';
@@ -357,6 +366,9 @@ async function refreshPanel(){
  }
  renderOffers();
 }
+const P5_LABEL={guilty:'유죄',acquittal:'무죄',partial:'일부만 인정',claim_granted:'청구 인용',claim_denied:'청구 기각',settled:'조정·화해',decision_yes:'인용 결정',decision_no:'기각 결정'};
+const p5Label=v=>P5_LABEL[v]||v||'';
+const seatName=s=>({chair:'재판장',peer:'배석판사',npc:'NPC 배석판사'})[s]||s;
 async function p5Action(kind){
  if(!selectedCase||window.VERDICT_CONFIG?.p5JointPanel!==true)return;
  const root=(typeof ui!=='undefined'&&ui.p4NativeCourt
@@ -375,6 +387,7 @@ async function p5Action(kind){
    caseId,choice:root.querySelector('[data-p5-choice]')?.value,
    note:root.querySelector('[data-p5-note]')?.value||''});
   else if(kind==='npc')data=await window.VerdictAuth.api('/world/panel/npc/decide',{caseId});
+  else if(kind==='reopen'||kind==='abstain'||kind==='substitute')data=await window.VerdictAuth.api('/world/panel/'+kind,{caseId});
   if(kind!=='refresh'&&!data?.ok)throw Error('p5_rejected');
   await refreshPanel();
   if(status)status.textContent='합의부 상태를 서버에서 갱신했습니다.';
@@ -713,6 +726,9 @@ function mount(){
  else if(target.hasAttribute('data-p5-vote'))p5Action('vote');
  else if(target.hasAttribute('data-p5-decide'))p5Action('npc');
  else if(target.hasAttribute('data-p5-refresh'))p5Action('refresh');
+ else if(target.hasAttribute('data-p5-reopen'))p5Action('reopen');
+ else if(target.hasAttribute('data-p5-abstain'))p5Action('abstain');
+ else if(target.hasAttribute('data-p5-substitute'))p5Action('substitute');
  else if(target.hasAttribute('data-p5-partners'))p5Action('partners');
  else if(target.hasAttribute('data-free-order-check'))interpretFreeOrder();
  else if(target.dataset.orderResult)resolveOrder(target.dataset.orderResult);
@@ -740,6 +756,9 @@ function mount(){
   if(target.hasAttribute('data-p5-vote'))return p5Action('vote');
   if(target.hasAttribute('data-p5-decide'))return p5Action('npc');
   if(target.hasAttribute('data-p5-refresh'))return p5Action('refresh');
+  if(target.hasAttribute('data-p5-reopen'))return p5Action('reopen');
+  if(target.hasAttribute('data-p5-abstain'))return p5Action('abstain');
+  if(target.hasAttribute('data-p5-substitute'))return p5Action('substitute');
   if(target.hasAttribute('data-p5-partners'))return p5Action('partners');
   if(target.hasAttribute('data-free-order-check'))return interpretFreeOrder();
   if(target.dataset.orderResult)return resolveOrder(target.dataset.orderResult);
