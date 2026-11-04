@@ -230,3 +230,35 @@ test('P5 associate observes identical public court actions, but cannot open the 
  assert.equal(outsider.status,403);
  assert.equal(calls.filter(u=>u.includes('/world_secrets?')).length,2,'nonmember is denied before reading truth');
 });
+
+test('P5 blocks premature or stale human ballots and unresolved ordered evidence',async()=>{
+ const sheet={format:'verdict-world-sheet/v1',card:{kind:'civil',importance:5}};
+ let day=8,index=2,completed=8;
+ let actions=[{action_type:'question',action_key:'q1',response:{status:'done',answer:'공개 진술'}}];
+ let voted=0;
+ const mock=async(url)=>{
+  const u=String(url);
+  if(u.includes('/shared_joint_panels?'))return json([{chair_id:A,peer_id:B}]);
+  if(u.includes('/case_stock?'))return json([{state:'assigned',sheet}]);
+  if(u.includes('/shared_judge_hearings?'))return json([{hearing_index:index,state:'completed',completed_game_day:completed}]);
+  if(u.includes('/shared_world_clock?'))return json([{game_day:day}]);
+  if(u.includes('/shared_court_actions?'))return json(actions);
+  if(u.includes('/rpc/shared_joint_vote')){voted++;return json(true)}
+  throw Error('unexpected '+u);
+ };
+ const body={caseId:'case-p5',choice:'claim_denied',note:'서버 공개 기록을 검토했습니다.'};
+ let response=await p5PanelRoute(req('/world/panel/vote',body),env,mock,A,headers);
+ assert.equal(response.status,409,'second hearing cannot satisfy four-hearing policy');
+ assert.equal((await response.json()).minimumHearings,4);
+ index=4;actions.push({action_type:'order',action_key:'r2',response:{status:'delayed'}});
+ response=await p5PanelRoute(req('/world/panel/vote',body),env,mock,A,headers);
+ assert.equal((await response.json()).error,'deliberation_not_ready','court order must be accounted for');
+ actions.push({action_type:'order_result',action_key:'r2',response:{status:'declined'}});
+ day=9;
+ response=await p5PanelRoute(req('/world/panel/vote',body),env,mock,A,headers);
+ assert.equal((await response.json()).error,'deliberation_not_ready','stale hearing cannot vote');
+ completed=9;
+ response=await p5PanelRoute(req('/world/panel/vote',body),env,mock,A,headers);
+ assert.equal(response.status,200,'after four hearings and resolution vote is permitted');
+ assert.equal(voted,1,'only one verified ballot reached SQL');
+});
