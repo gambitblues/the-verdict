@@ -231,17 +231,19 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
   }
   if(url.pathname==='/world/panel/finalize'&&isPost){
    if(env.P4_JUDGMENTS_ENABLED!=='1')return response({error:'feature_disabled'},404);
-   const [panels,world,hearing]=await Promise.all([
+   const [panels,world,hearing,clock]=await Promise.all([
     read('shared_joint_panels?select=chair_id&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
     read('case_stock?select=assigned_to,state,sheet&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
-    read('shared_judge_hearings?select=state,hearing_index&case_id=eq.'+
+    read('shared_judge_hearings?select=state,hearing_index,completed_game_day&case_id=eq.'+
       encodeURIComponent(caseId)+'&judge_id=eq.'+encodeURIComponent(uid)+
-      '&order=hearing_index.desc&limit=1')
+      '&order=hearing_index.desc&limit=1'),
+    read('shared_world_clock?select=game_day&id=eq.main&limit=1')
    ]);
    if(!panels[0]||panels[0].chair_id!==uid)return response({error:'chair_required'},403);
    if(!world[0]||world[0].assigned_to!==uid||world[0].state!=='assigned')
     return response({error:'case_not_found'},404);
-   if(hearing[0]?.state!=='completed')return response({error:'hearing_incomplete'},409);
+   if(hearing[0]?.state!=='completed'||hearing[0].completed_game_day!==clock[0]?.game_day)
+    return response({error:'hearing_incomplete'},409);
    const hearingReadiness=sharedDeliberationReadiness(world[0].sheet,
     (await record()).acts,hearing[0].hearing_index);
    if(!hearingReadiness.ready)
