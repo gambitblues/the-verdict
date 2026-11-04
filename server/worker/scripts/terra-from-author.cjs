@@ -54,10 +54,12 @@ async function main(args=process.argv.slice(2)){
  if(result.ok){
   const gate=verifyForAdmission(original,result.candidate,result.worldSheet);
   report.autoAdmissionQA={ok:gate.ok,errors:gate.errors,simulations:gate.trial.completed};
+  report.status=gate.ok?'qa_stock_ready':'quarantine';
   if(gate.ok)fs.writeFileSync(path.join(dir,name+'.admission.json'),JSON.stringify(gate.payload,null,2)+'\n');
  }
  fs.writeFileSync(path.join(dir,name+'.review.json'),JSON.stringify(report,null,2)+'\n');
  if(!result.ok){console.error('Terra 생성은 검토 대상:',result.stage);process.exitCode=3;return}
+ if(report.autoAdmissionQA?.ok!==true){console.error('자동 입고 QA 실패:',report.autoAdmissionQA?.errors?.join(' | '));process.exitCode=4;return}
  console.log('Terra 생성·자동 QA 종료:',path.join(dir,name+'.review.json'));
 }
 
@@ -80,6 +82,10 @@ async function publishOne(seed,dirArg){
  if(!response.ok)throw Error('QA 배당 재고 등록 실패 (HTTP '+response.status+')');
  const inserted=await response.json();
  if(typeof inserted!=='boolean')throw Error('QA 배당 재고 응답이 올바르지 않습니다.');
+ const reviewPath=path.join(dir,name+'.review.json');
+ const report=JSON.parse(fs.readFileSync(reviewPath,'utf8'));
+ report.status='qa_stock_admitted';report.autoAdmitted=true;report.admittedTo='qa';
+ fs.writeFileSync(reviewPath,JSON.stringify(report,null,2)+'\\n');
  console.log(inserted?'PASS: QA 사건 재고 등록 완료 — 다음 공유 배당부터 사용 가능':'PASS: 같은 사건이 이미 QA 재고에 있어 중복 등록하지 않음');
  return inserted;
 }
