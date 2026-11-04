@@ -12,7 +12,7 @@ try{
   const page=await browser.newPage({viewport:{width:390,height:844}});
   await page.setContent('<!doctype html><html><head></head><body><main>기존 법정은 유지</main></body></html>');
   await page.evaluate(id=>{
-   window.VERDICT_CONFIG={p4SharedWorld:true,p4SharedDocket:true,p4CourtActions:true,p4SharedVerdicts:true};
+   window.VERDICT_CONFIG={p4SharedWorld:true,p4SharedDocket:true,p4CourtActions:true,p4SharedVerdicts:true,p4FreeOrders:true};
    window.confirm=()=>true;window.__hearing=1;window.__verdict=false;
    window.__court_journal=[];
    window.__p4_lag=id==='judge-b'?11:0;
@@ -27,6 +27,10 @@ try{
      }
      if(path==='/world/court/verdict'){window.__verdict=true;return {ok:true,judgment:{order:'원고의 청구를 인용한다.'}}}
      if(path.startsWith('/world/court/history'))return {ok:true,caseId:'case-'+id,actions:window.__court_journal};
+     if(path==='/world/court/free-order'){
+      if(body.text.includes('CCTV'))return {ok:true,matched:true,recordId:'r2',confirmationRequired:true};
+      return {ok:true,matched:false,reason:'outside_scope',confirmationRequired:false};
+     }
      if(path==='/world/court/action'){
       body=body||{};
       const response=body.kind==='order'
@@ -74,8 +78,10 @@ try{
   await page.waitForFunction(()=>window.__court_journal.length===1);
   assert.match(await page.locator('[data-court-outcomes]').innerText(),/서버에서 봉인된 진술/);
   await page.locator('[data-court-tab="orders"]').click();
-  await page.getByRole('button',{name:/CCTV 원본을 제출/}).click();
+  await page.locator('[data-free-order]').fill('사고 장소 근처의 CCTV 원본을 제출하도록 명합니다.');
+  await page.locator('[data-free-order-check]').click();
   await page.waitForFunction(()=>window.__court_journal.length===2);
+  assert.equal(await page.locator('[data-free-order]').count(),1);
   assert.doesNotMatch(await page.locator('[data-court-outcomes]').innerText(),/새로운 녹화 기록/);
   await page.locator('[data-court-tab="day"]').click();
   await page.locator('[data-world-begin]').click();
