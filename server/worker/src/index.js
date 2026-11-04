@@ -119,6 +119,15 @@ export async function handle(req,env,fetcher=fetch){
   return new Response(result.body,{status:result.status,headers});
  }
 
+ if(url.pathname==='/world/career'&&req.method==='GET'){
+  if(env.P4_TRIAL_PARITY_ENABLED!=='1')return json({error:'feature_disabled'},404,head);
+  try{
+   const r=await fetcher(env.SUPABASE_URL+'/rest/v1/rpc/shared_judge_career_status',{
+    method:'POST',headers:svc(env),body:JSON.stringify({p_actor:uid})});
+   if(!r.ok)return json({error:'career_unavailable'},503,head);
+   return json({ok:true,...await r.json()},200,head);
+  }catch{return json({error:'career_unavailable'},503,head)}
+ }
  // P4-1: public-only, read-only shared chronology. Use the caller's JWT so
  // Supabase RLS verifies invitation; never read case_stock or world_secrets.
  if(url.pathname==='/world/events'&&req.method==='GET'){
