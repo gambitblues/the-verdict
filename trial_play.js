@@ -556,7 +556,7 @@ function availableOrders(c,t){
  const used=new Set((t.courtOrders||[]).map(o=>o.key)),out=[],iss=id=>issuesOf(c).find(x=>x.id===id),dec=isDecision(c),st=nodeState(t);
  // 1) the case's own follow-up nodes whose trigger has happened (late hearings: only clarifying, no new facts)
  for(const f of cur.followUps||[]){
-  if(!!f.now!==dec||used.has('f:'+f.id)||!T.nodeOpen(f,st))continue;
+  if(!!f.now!==dec||used.has('f:'+f.id)||!T.nodeOpen(f,st)||t.evidence.some(e=>e.follow===f.id))continue;
   if(t.day>=LATE_STAGE&&!['explain','recall'].includes(f.type))continue;
   if(f.type==='recall'&&!t.witnesses[f.recall?.w])continue;
   out.push({key:'f:'+f.id,follow:f.id,issue:f.issue,type:f.type,to:f.to,w:f.recall?.w,text:tell(c,t,f.ask),own:true});
@@ -1317,7 +1317,7 @@ function evidenceCard(e,t,locked,c){
  const d=evDetail(c,e),dis=locked?'disabled':'';
  const opt=(v,l)=>`<button class="t4-chip ${e.decision===v?'on':''}" data-action="t4" data-kind="decide" data-id="${esc(e.id)}" data-choice="${v}" ${dis||e.decision===v?'disabled':''}>${l}</button>`;
  const iss=issuesOf(c).find(i=>i.id===d?.issue);
- return `<article class="t4-card t4-ev"><header><b>${esc(e.title)}</b>${e.late?'<span class="t4-tag new">새로 제출됨</span>':''}</header>
+ return `<article class="t4-card t4-ev"><header><b>${esc(e.title)}</b>${e.late||e.filedEvent?'<span class="t4-tag new">새로 제출됨</span>':''}</header>
  ${d&&(!window.VerdictVisuals||!d.excerpt)?`<p class="t4-meta">${esc(d.kind||'')} · ${esc(byWord[d.by]||d.by||'')} · ${esc(tell(c,t,d.when||''))}</p>`:''}
  ${e.scope?`<p class="t4-shows">${esc(e.scope)}</p>`:''}
  ${d?.excerpt?(window.VerdictVisuals?.evidence(e,d,tell(c,t,d.excerpt),tell(c,t,d.when||''))||`<blockquote class="t4-excerpt">${esc(tell(c,t,d.excerpt))}</blockquote>`):''}
@@ -1452,7 +1452,7 @@ function pager(kind,items,render,label){
  let cur=ui[key];if(cur==null||cur<0||cur>=items.length)cur=ord[0];ui[key]=cur;const pos=ord.indexOf(cur);
  const isNew=kind==='evidence'?isNewEv:isNewW;
  const dots=ord.map((k,n)=>`<button class="t4-dot ${k===cur?'on':''} ${isNew(items[k])?'new':''}" data-action="t4page" data-kind="${kind}" data-i="${k}" aria-label="${n+1}번째${isNew(items[k])?' (새로 나옴)':''}"></button>`).join('');
- const it=items[cur],badge=isNew(it)?`<div class="t4-newflag">🆕 ${kind==='evidence'?(it.late?'새로 제출된 증거':'재판장 주문으로 들어온 증거'):'재판장 주문으로 새로 나온 증인'}${it.arrivedDay?` · ${esc(String(it.arrivedDay))}번째 기일`:''} — 먼저 확인하세요</div>`:'';
+ const it=items[cur],badge=isNew(it)?`<div class="t4-newflag">🆕 ${kind==='evidence'?(it.filedEvent?'당사자가 추가 제출한 증거':it.late?'새로 제출된 증거':'재판장 주문으로 들어온 증거'):'재판장 주문으로 새로 나온 증인'}${it.arrivedDay?` · ${esc(String(it.arrivedDay))}번째 기일`:''} — 먼저 확인하세요</div>`:'';
  const nNew=ord.filter(k=>isNew(items[k])).length;
  return `<div class="t4-pager" data-kind="${kind}" data-n="${items.length}">${nNew&&!isNew(it)?`<button class="t4-newjump" data-action="t4page" data-kind="${kind}" data-i="${ord[0]}">🆕 새로 나온 ${kind==='evidence'?'증거':'증인'} ${nNew}건 먼저 보기</button>`:''}${badge}${render(it)}
  <div class="t4-pagenav"><button class="t4-chip" data-action="t4page" data-kind="${kind}" data-i="${ord[pos-1]??cur}" ${pos<=0?'disabled':''}>‹ 이전</button><div class="t4-dots">${dots}<span>${pos+1} / ${items.length}</span></div><button class="t4-chip" data-action="t4page" data-kind="${kind}" data-i="${ord[pos+1]??cur}" ${pos>=items.length-1?'disabled':''}>다음 ›</button></div></div>`;
