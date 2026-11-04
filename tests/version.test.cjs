@@ -83,3 +83,13 @@ console.log('PASS: version',v);
    throw Error('last-loaded world article renderer must be compact, 1+2 lines and paged');
  console.log('PASS: final world-feed news UI is 1-line title + 2-line excerpt and 10/page');
 }
+
+{
+ const er=JSON.parse(fs.readFileSync(path.join(root,'case-data/sheet-adv-cr-037.json'),'utf8'));
+ const b=er.people.find(x=>x.key==='B'),w=er.people.find(x=>x.key==='W2');
+ if(!b||!w||!/자녀/.test(b.family||'')||!/피해자의 자녀/.test(w.role)||
+    /\{[A-Z][0-9]*\}/.test(w.role||'')||
+    !Object.values(er.worlds||{}).some(world=>JSON.stringify(world).includes('아버지')))
+  throw Error('ER witness W2 must be explicitly grounded as victim child with no leaked B placeholder');
+ console.log('PASS: ER companion witness relation matches disclosed case facts');
+}
