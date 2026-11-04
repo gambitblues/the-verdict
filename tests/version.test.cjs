@@ -71,3 +71,15 @@ console.log('PASS: version',v);
   throw Error('public evidence and heard testimony required for specific clarifications');
  console.log('PASS: no generic judicial order padding; public record grounded variants');
 }
+
+// Last-loaded world feed owns the visible article list. Regression: it must not restore an accordion.
+{
+ const feed=fs.readFileSync(path.join(root,'world_feed.js'),'utf8');
+ if(!feed.includes('const NEWS_PAGE_SIZE=10')||!feed.includes('setNewsPage(page)')||
+    !feed.includes('window.VerdictMedia.setNewsPage=setNewsPage')||
+    !feed.includes('class="tv-news-title"')||!feed.includes('class="tv-news-summary"')||
+    !feed.includes('data-action="newsPage"')||feed.includes('class="wf-art"')||
+    !feed.includes('-webkit-line-clamp:1!important')||!feed.includes('-webkit-line-clamp:2!important'))
+   throw Error('last-loaded world article renderer must be compact, 1+2 lines and paged');
+ console.log('PASS: final world-feed news UI is 1-line title + 2-line excerpt and 10/page');
+}

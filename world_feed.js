@@ -226,18 +226,26 @@ function articles(){
  return out;
 }
 /* ---------- news with comments ---------- */
-/* articles open from their headline; which ones the reader opened is remembered for this visit only */
-const readOpen=new Set();
-document.addEventListener('toggle',e=>{const d=e.target;if(!d?.matches?.('details.wf-art'))return;d.open?readOpen.add(d.dataset.art):readOpen.delete(d.dataset.art);
- if(d.open&&window.VerdictAI?.on){const [cid,key]=d.dataset.art.split(':art'),a=articles().find(x=>x.caseId===cid&&String(x.index)===key);if(a)window.VerdictAI.article(a)}},true);
-function newsFeed(limit=40){
- const list=articles().slice().sort((a,b)=>(Number(b.day)||0)-(Number(a.day)||0)|| (Number(b.index)||0)-(Number(a.index)||0)).slice(0,limit);
+/* Headlines and two-line article previews are visible without opening a disclosure.
+ * Page state is per browser visit and is never written into career saves. */
+const NEWS_PAGE_SIZE=10;
+let newsPage=0;
+function setNewsPage(page){if(Number.isSafeInteger(page))newsPage=Math.max(0,page)}
+function newsFeed(limit=60){
+ const list=articles().slice().sort((a,b)=>(Number(b.day)||0)-(Number(a.day)||0)||(Number(b.index)||0)-(Number(a.index)||0)).slice(0,limit);
+ const pages=Math.max(1,Math.ceil(list.length/NEWS_PAGE_SIZE));
+ newsPage=Math.max(0,Math.min(newsPage,pages-1));
  if(!list.length)return '<p class="muted">내가 맡은 사건이 생기면 재판 전 전망 기사부터 실려요.</p>';
- return '<div class="tv-news-list">'+list.map(a=>{
-  const c=CASES.find(x=>x.id===a.caseId),key='art'+a.index,id=a.caseId+':'+key,n=6+hash(id)%11;
-  return `<article class="tv-media-card"><details class="wf-art" data-art="${esc(id)}" ${readOpen.has(id)||open.has(id)?'open':''}><summary><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div><strong>${esc(a.title)}</strong><small class="wf-more">기사 펼치기</small></summary>${a.reporter?`<button class="tv-reporter" data-action="reporter" data-i="${REPORTERS.indexOf(a.reporter)}">✍ <b>${esc(a.reporter.name)} 기자</b> · ${esc(a.reporter.bio)}. ${esc(a.reporter.voice)}. <i>›</i></button>`:''}<p>${esc(a.body)}</p>
-  <button class="wf-link" data-action="wfopen" data-id="${esc(id)}">💬 ${open.has(id)?'댓글 접기':`댓글 ${n}개`}</button>${open.has(id)&&c?`<div class="wf-thread">${threadView(thread(c,key,n))}</div>`:''}</details></article>`;
- }).join('')+'</div>';
+ const page=list.slice(newsPage*NEWS_PAGE_SIZE,(newsPage+1)*NEWS_PAGE_SIZE);
+ return '<div class="tv-news-list">'+page.map(a=>{
+  const id=a.caseId+':art'+a.index,n=6+hash(id)%11,c=CASES.find(x=>x.id===a.caseId);
+  return `<article class="tv-media-card wf-news-compact"><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div>
+   <strong class="tv-news-title">${esc(a.title)}</strong><p class="tv-news-summary">${esc(a.body)}</p>
+   ${a.reporter?`<button class="tv-reporter" data-action="reporter" data-i="${REPORTERS.indexOf(a.reporter)}">✍ ${esc(a.reporter.name)} 기자</button>`:''}
+   <button class="wf-link" data-action="wfopen" data-id="${esc(id)}">💬 ${open.has(id)?'댓글 접기':`댓글 ${n}개`}</button>
+   ${open.has(id)&&c?`<div class="wf-thread">${threadView(thread(c,'art'+a.index,n))}</div>`:''}</article>`;
+ }).join('')+'</div>'+
+ (pages>1?`<nav class="tv-news-pagination" aria-label="기사 페이지"><button class="btn outline mini" data-action="newsPage" data-page="${newsPage-1}" ${newsPage===0?'disabled':''}>이전</button><span>${newsPage+1} / ${pages} · 전체 ${list.length}건</span><button class="btn outline mini" data-action="newsPage" data-page="${newsPage+1}" ${newsPage===pages-1?'disabled':''}>다음</button></nav>`:'');
 }
 /* ---------- public opinion, case by case ---------- */
 function opinionFeed(){
@@ -416,8 +424,14 @@ function messagesView(){
  ${old.length?`<details class="mt"><summary>알림 ${old.length}건</summary>${old.slice(0,30).map(m=>`<div class="feed"><b>${esc(NPC[m.from]?.name||'알림')}</b><p>${esc(m.body)}</p></div>`).join('')}</details>`:''}`;
 }
 
+
+// The same one-line title and two-line text in home and tablet news, regardless of older CSS.
+const articleStyle=document.createElement('style');
+articleStyle.textContent='.tv-news-title,.tv-headline .tv-news-title,.tv-media-card .tv-news-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:1!important;line-clamp:1!important;overflow:hidden!important;white-space:normal!important}.tv-news-summary,.tv-headline .tv-news-summary,.tv-media-card .tv-news-summary{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;line-clamp:2!important;overflow:hidden!important;white-space:normal!important;line-height:1.5!important;margin:5px 0 0}.wf-news-compact .tv-reporter{display:block;margin-top:7px}.tv-news-pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding:15px 0}';
+document.head.appendChild(articleStyle);
+
 /* ---------- hooks ---------- */
-if(window.VerdictMedia){window.VerdictMedia.articles=articles;window.VerdictMedia.newsFeed=newsFeed;window.VerdictMedia.socialFeed=()=>opinionFeed()}
+if(window.VerdictMedia){window.VerdictMedia.articles=articles;window.VerdictMedia.newsFeed=newsFeed;window.VerdictMedia.setNewsPage=setNewsPage;window.VerdictMedia.socialFeed=()=>opinionFeed()}
 /* Read-only P4 bridge: the native news tablet receives the same canonical
  * public chronology as the shared courtroom. Local personal articles are kept
  * separate and personal relations/saves never become shared world authority.
