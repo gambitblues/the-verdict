@@ -86,7 +86,7 @@ try{
   assert.match(await page.locator('[data-court-outcomes]').innerText(),/새로운 녹화 기록/);
   await page.locator('[data-court-tab="verdict"]').click();
   await page.locator('[data-cite="initial:r1"]').check();
-  await page.locator('[data-world-verdict]').click();
+  await page.locator('button[data-world-verdict]').click();
   await page.waitForFunction(()=>window.__verdict===true);
   assert.match(await page.locator('[data-world-offers-status]').innerText(),/원고의 청구를 인용한다/);
   assert.equal(await page.locator('[data-court-tab]').count(),6,'same six courtroom menu names');
