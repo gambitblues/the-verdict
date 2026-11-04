@@ -560,8 +560,24 @@ function availableOrders(c,t){
  t.witnesses.forEach((w,i)=>{if(w.detail)return;const d=wDetail(c,i);for(const is of issuesOf(c)){
   const hid=(d?.q||[]).filter(q=>q.hidden&&q.issue===is.id&&!(w.opened||[]).includes(q.id)&&!(w.askedIds||[]).includes(q.id));
   if(hid.length)out.push({key:`r:${i}:${is.id}`,issue:is.id,type:'recall',to:'both',w:i,own:true,text:`증인 ${P(wName(t,i),'을')} 다음 기일에 다시 불러 '${is.title}'에 대해 더 묻겠습니다. 양측은 증인이 출석하도록 협조해 주세요.`})}});
- // 3) a plain written summary of an issue, only while the case offers little of its own
- if(out.filter(o=>!used.has(o.key)).length<2)for(const is of issuesOf(c))out.push({key:'x:'+is.id,issue:is.id,type:'explain',to:'both',text:`양측은 '${is.title}'에 대한 주장과 근거를 다음 기일까지 서면으로 정리해 주세요.`});
+ // 3) Grounded clarifications only. Never pad the order list with identical generic summaries.
+ // Use evidence already revealed in this hearing and answers already heard, not sealed truth or future exhibits.
+ if(out.filter(o=>!used.has(o.key)).length<3){
+  for(const is of issuesOf(c)){
+   const disclosed=(t.evidence||[]).filter(e=>e.revealed>0&&evDetail(c,e)?.issue===is.id);
+   const testimony=(t.heard||[]).filter(h=>h.issue===is.id&&!h.struck&&!h.tainted&&h.w!=='party');
+   const e=disclosed[0],h=testimony[testimony.length-1];
+   if(e&&!used.has('x:e:'+is.id)){
+    out.push({key:'x:e:'+is.id,issue:is.id,type:'explain',to:'both',
+     text:`양측은 '${is.title}'에 관하여 이미 공개된 '${e.title}'의 어느 부분이 주장에 관련되는지, 서로 다른 해석과 그 근거를 특정해 주세요.`});
+   }
+   if(h&&!used.has('x:h:'+is.id)){
+    const witness=t.witnesses[h.w],name=witness?.id&&NPC[witness.id]?.name;
+    if(name)out.push({key:'x:h:'+is.id,issue:is.id,type:'explain',to:'both',
+     text:`양측은 '${is.title}'에 관한 ${name} 증인의 앞선 진술에서 직접 확인한 사실과 추정에 해당하는 부분을 구분해 설명해 주세요.`});
+   }
+  }
+ }
  return out.filter(o=>!used.has(o.key));
 }
 function issueOrder(c,t,key){
