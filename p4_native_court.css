@@ -1,0 +1,14 @@
+/* Native P4 court: use the same main app viewport and six navigation tabs. */
+[data-world-native-root] .vsw-court-head{padding:10px 0 4px}
+[data-world-native-root] .vsw-six-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:12px 0}
+[data-world-native-root] .vsw-six-tabs button{min-height:44px;padding:10px 5px;border-radius:9px;border:1px solid #bcc3c7}
+[data-world-native-root] .vsw-six-tabs button.on{background:#182e42;color:#fff;border-color:#182e42}
+[data-world-native-root] .vsw-court-page{min-height:220px;padding:12px 0;line-height:1.6}
+[data-world-native-root] button:focus-visible{outline:3px solid #a17841;outline-offset:2px}
+[data-world-native-root] textarea,[data-world-native-root] select{width:100%;max-width:100%;box-sizing:border-box;padding:11px;border-radius:9px}
+[data-world-native-root] [data-world-native-list]{max-width:900px;margin:auto}
+@media(max-width:600px){
+ [data-world-native-root] .vsw-six-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}
+ [data-world-native-root] .vsw-six-tabs button{min-height:48px}
+ [data-world-native-root] .vsw-court-page{padding:8px 0}
+}
