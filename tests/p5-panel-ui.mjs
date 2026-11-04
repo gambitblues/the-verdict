@@ -31,7 +31,7 @@ try{
     records:[{id:'r1',title:'계약서 원본',first:true}],
     questions:[{id:'q1',w:'W1',q:'계약을 보셨습니까?'}],orders:[]
    }};
-   if(path.startsWith('/world/court/status'))return {ok:true,canAct:!state.published,hearingIndex:1,worldDay:4};
+   if(path.startsWith('/world/court/status'))return {ok:true,canAct:false,hearingIndex:1,worldDay:8};
    if(path.startsWith('/world/court/history'))return {ok:true,actions:[
     {action_type:'question',action_key:'q1',hearing_index:1,
      response:{status:'done',answer:'계약 체결을 직접 봤습니다.'}}
@@ -101,6 +101,7 @@ try{
  await root.locator('[data-p5-decide]').click();
  await page.waitForFunction(()=>window.__p5.votes===3);
  assert.match(await root.innerText(),/다수 의견 성립/);
+ assert.equal(await root.locator('button[data-world-verdict]').count(),1,'delayed bench may finalize after global clock moves');
  await root.locator('[data-cite="initial:r1"]').check();
  await root.locator('[data-v-amount]').fill('1000');
  await root.locator('button[data-world-verdict]').click();
