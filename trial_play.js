@@ -1586,9 +1586,9 @@ window.VerdictCourtSurface=Object.freeze({
    ' aria-current="'+(key===active?'page':'false')+'">'+escText(label)+
    (badge?'<i>'+escText(badge)+'</i>':'')+'</button>').join('')+'</nav>';
  },
- frame(header,nav,content,source='local'){
+ frame(header,nav,content,source='local',footer=''){
   return '<div class="court-play t4app" data-court-source="'+source+'">'+(header||'')+nav+
-   '<div class="t4-page">'+(content||'')+'</div></div>';
+   '<div class="t4-page">'+(content||'')+'</div>'+(footer||'')+'</div>';
  }
 });
 /* ---------- court screen takeover ---------- */
@@ -1660,7 +1660,7 @@ court=function(){
  const nav=window.VerdictCourtSurface.navigation(tabs,ui.t4tab);
  return window.VerdictCourtSurface.frame((header?header.outerHTML:'')+
    (window.VerdictVisuals?.scene(c,t,ui.t4tab,st.verdict?'선고 완료':stage(c,st).short)||''),
-   nav,(window.VerdictVisuals?.event(c.id)||'')+page+(t?dock(c,st):''),'local');
+   nav,(window.VerdictVisuals?.event(c.id)||'')+page,'local',t?dock(c,st):'');
 };
 function swipeInit(){
  let sx=0,sy=0,box=null;
