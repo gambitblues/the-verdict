@@ -546,6 +546,15 @@ test('P5 presiding judge opens shared hearing, human associate can question and 
  const ruling=(judge,hearing,decision)=>svc(
   'select public.shared_evidence_decision_record($1,$2::uuid,$3,$4,$5) as ruling',
   [id,judge,hearing,'r1',decision]);
+ const motionResponse={status:'done',type:'objection',valid:true,choice:'accept'};
+ const motion=()=>svc('select public.shared_motion_decision_record($1,$2::uuid,$3,$4,$5::jsonb) as response',
+  [id,A,1,'d1-obj',JSON.stringify(motionResponse)]);
+ assert.deepEqual((await motion()).rows[0].response,motionResponse);
+ assert.deepEqual((await motion()).rows[0].response,motionResponse,'motion replay must not duplicate the ledger');
+ await assert.rejects(svc('select public.shared_motion_decision_record($1,$2::uuid,$3,$4,$5::jsonb)',
+  [id,A,1,'d1-obj',JSON.stringify({...motionResponse,choice:'reject'})]),/motion_conflict/);
+ await assert.rejects(svc('select public.shared_motion_decision_record($1,$2::uuid,$3,$4,$5::jsonb)',
+  [id,B,1,'d1-obj',JSON.stringify(motionResponse)]),/chair_required/);
  const firstRuling=await ruling(A,1,'conditional');
  assert.equal(firstRuling.rows[0].ruling.decision,'conditional');
  assert.equal((await ruling(A,1,'conditional')).rows[0].ruling.decision,'conditional','idempotent replay');
