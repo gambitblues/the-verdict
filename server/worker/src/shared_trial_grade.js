@@ -54,19 +54,22 @@ export function evaluateSharedTrial(sheet,actions,judgment,sentence,seed){
  const dir=DIRECTIONS[judgment.result];
  if(!dir)return {error:'evaluation_choice_invalid'};
  const trial={truth:'did',evidence,witnesses:[],heard,cards:[]};
+ const start=T.pressStart(Number(sheet.card?.importance)||2,{criminal:sheet.card.kind==='criminal'});
+ const media=T.pressDay(start,trial,{twist:false});
+ trial.media=media;
  const score=T.skill(trial,{
   dir,criminal:sheet.card.kind==='criminal',cites,
-  sentence:sentence?.score||null,extra:[]
+  sentence:sentence?.score||null,extra:sentence?.extraScore||[]
  });
  // Neutral audience pressure until public-opinion linkage is implemented.
  // The review explicitly records this projection instead of pretending its
  // underlying trial state is identical to a private career case.
- const audience=T.opinionMatch(0,dir);
+ const audience=T.opinionMatch(media.O,dir);
  const review=T.evaluate(score.score,audience,trial,dir,seed);
  return {ok:true,score:score.score,review:review.review,
   items:score.items,assessors:review.scores,
   method:'VerdictTrialCore.skill/evaluate',
   inputMode:'server_disclosed_court_record',
-  publicOpinion:'neutral',
+  publicOpinion:{H:media.H,O:media.O,S:media.S,match:audience},
   parityLimit:'native trial choices and media reactions not represented in shared schema'};
 }
