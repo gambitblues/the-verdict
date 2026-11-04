@@ -83,10 +83,17 @@ function comments(c,qty,offset=0){
  }
  return items;
 }
-const card=a=>'<article class="tv-media-card"><div class="tv-media-head"><b>'+esc(a.outlet)+'</b><span>'+esc(a.frame)+'</span></div><strong>'+esc(a.title)+'</strong><p>'+esc(a.body)+'</p></article>';
-function newsFeed(limit=30){
- const list=articles().slice(0,limit);
- return '<div class="tv-news-list">'+(list.length?list.map(card).join(''):'<p class="muted">진행 중 사건의 보도가 여기에 쌓입니다.</p>')+'</div>';
+const NEWS_SIZE=10;
+let newsPage=0;
+const card=a=>'<article class="tv-media-card"><div class="tv-media-head"><b>'+esc(a.outlet)+'</b><span>'+esc(a.frame)+'</span></div><strong class="tv-news-title">'+esc(a.title)+'</strong><p class="tv-news-summary">'+esc(a.body)+'</p></article>';
+function newsFeed(limit=70){
+ const list=articles().slice().sort((a,b)=>(Number(b.day)||0)-(Number(a.day)||0)).slice(0,limit);
+ const total=Math.max(1,Math.ceil(list.length/NEWS_SIZE));
+ newsPage=Math.max(0,Math.min(newsPage,total-1));
+ const start=newsPage*NEWS_SIZE;
+ const page=list.slice(start,start+NEWS_SIZE);
+ return '<div class="tv-news-list">'+(page.length?page.map(card).join(''):'<p class="muted">진행 중 사건의 보도가 여기에 쌓입니다.</p>')+'</div>'+
+ (total>1?'<nav class="tv-news-pagination" aria-label="기사 페이지"><button class="btn outline mini" data-action="newsPage" data-page="'+(newsPage-1)+'" '+(newsPage===0?'disabled':'')+'>이전</button><span>'+(newsPage+1)+' / '+total+' · 전체 '+list.length+'건</span><button class="btn outline mini" data-action="newsPage" data-page="'+(newsPage+1)+'" '+(newsPage===total-1?'disabled':'')+'>다음</button></nav>':'');
 }
 function socialFeed(limit=48){
  const cs=[...openCases(),...completed().slice(-6)].filter(c=>c.generated||c.contentPack).slice(0,10);
@@ -177,7 +184,7 @@ home=function(){
  '<section class="tv-open-cases"><div class="row between"><h3>⚖ 진행 중인 재판</h3><button class="btn ghost mini" data-action="tab" data-tab="courtList">전체 사건</button></div>'+
  (cases.length?cases.map(hearingCard).join(''):'<p class="muted">배당된 사건이 없습니다.</p>')+'</section>'+
  '<section class="tv-headlines"><div class="row between"><h3>📰 오늘의 기사</h3><button class="btn ghost mini" data-action="tablet" data-sub="news">기사 더보기</button></div>'+
- (articles.length?articles.map(a=>'<button class="tv-headline" data-action="tablet" data-sub="news"><small>'+esc(a.outlet)+'</small><b>'+esc(a.title)+'</b></button>').join(''):'<p class="muted small">사건이 발생하면 언론 보도가 기록됩니다.</p>')+'</section></div>';
+ (articles.length?articles.map(a=>'<article class="tv-headline"><small>'+esc(a.outlet)+'</small><b class="tv-news-title">'+esc(a.title)+'</b><p class="tv-news-summary">'+esc(a.body)+'</p></article>').join(''):'<p class="muted small">사건이 발생하면 언론 보도가 기록됩니다.</p>')+'</section></div>';
 };
 function ranking(){
  const ids=(S.legalWorld?.people||[]).filter(id=>NPC[id]?.legalCareer);
@@ -220,6 +227,11 @@ shell=function(content){
 };
 clicker=function(e){
  const el=e.target.closest('[data-action]');
+ if(el?.dataset.action==='newsPage'){
+   const p=Number(el.dataset.page);
+   if(Number.isSafeInteger(p)){newsPage=Math.max(0,p);render()}
+   return;
+ }
  if(el?.dataset.action==='saveHub'||el?.dataset.action==='snsHub'){
    ui.tabletTab=el.dataset.action==='saveHub'?'settings':'social';changeTab('tablet');return;
  }
@@ -302,3 +314,6 @@ court=function(){
  return text;
 };
 })();
+
+;/* v10.0 compact media feed: no collapsed headlines; two-line preview and 10-item pages. */
+(()=>{const css=document.createElement('style');css.textContent='.tv-media-card .tv-news-title,.tv-headline .tv-news-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;white-space:normal}.tv-media-card .tv-news-summary,.tv-headline .tv-news-summary{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;white-space:normal;margin:6px 0 0;line-height:1.5;font-weight:400}.tv-headline{display:block;text-align:left;width:100%}.tv-news-pagination{display:flex;justify-content:center;align-items:center;gap:14px;padding:16px 0}.tv-news-pagination span{font-size:13px;color:#617184}';document.head.appendChild(css)})();
