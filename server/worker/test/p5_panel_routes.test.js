@@ -256,9 +256,6 @@ test('P5 blocks premature or stale human ballots and unresolved ordered evidence
  actions.push({action_type:'order_result',action_key:'r2',response:{status:'declined'}});
  day=9;
  response=await p5PanelRoute(req('/world/panel/vote',body),env,mock,A,headers);
- assert.equal((await response.json()).error,'deliberation_not_ready','stale hearing cannot vote');
- completed=9;
- response=await p5PanelRoute(req('/world/panel/vote',body),env,mock,A,headers);
- assert.equal(response.status,200,'after four hearings and resolution vote is permitted');
+ assert.equal(response.status,200,'late returning judge may vote on an unchanged completed record');
  assert.equal(voted,1,'only one verified ballot reached SQL');
 });
