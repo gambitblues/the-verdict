@@ -381,6 +381,27 @@ function mount(){
  else if(target.dataset.orderResult)resolveOrder(target.dataset.orderResult);
  else if(target.dataset.courtKind&&target.dataset.courtKey)doCourtAction(target.dataset.courtKind,target.dataset.courtKey)})}
  document.addEventListener('click',e=>{if(e.target.closest?.('[data-world-open]')){e.preventDefault();openSharedCourt()}});
+ document.addEventListener('click',e=>{
+  const target=e.target.closest?.('button'),native=target?.closest('[data-world-native-root]');
+  if(!native)return;
+  if(target.hasAttribute('data-world-native-back')){
+   if(typeof ui!=='undefined'&&typeof render==='function'){
+    ui.p4NativeCourt=false;ui.tab='courtList';render();
+   }
+   return;
+  }
+  if(target.hasAttribute('data-world-offers'))return reserveOffers();
+  const id=target.dataset.worldAccept;
+  if(id)return acceptOffer(id);
+  if(target.dataset.courtTab){courtTab=target.dataset.courtTab;return renderOffers()}
+  if(target.hasAttribute('data-world-begin'))return beginCourt();
+  if(target.hasAttribute('data-world-verdict'))return confirmSharedVerdict();
+  if(target.hasAttribute('data-free-order-check'))return interpretFreeOrder();
+  if(target.dataset.orderResult)return resolveOrder(target.dataset.orderResult);
+  if(target.dataset.courtKind&&target.dataset.courtKey)
+   return doCourtAction(target.dataset.courtKind,target.dataset.courtKey);
+ });
+
  const style=document.createElement('style');style.textContent=
  '#verdict-shared-world{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:7500;font:inherit}' +
  '.vsw-button{padding:9px 13px;border-radius:22px;background:#182e42;color:#fff;border:1px solid #a8926c;box-shadow:0 2px 12px #0004;cursor:pointer}' +
