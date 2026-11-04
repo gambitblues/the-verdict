@@ -47,7 +47,7 @@ function stageOneInput(seed){
  return `다음 소재를 사실과 인물 식별정보 모두 가상으로 제작: ${JSON.stringify(seed)}
 입력 소재에 포함된 authorSeedFormat=verdict-author-seed/v1 의 immutableFacts는 id/text 전체를 글자 하나 바꾸지 말고 candidate.immutableFacts 배열에 보존하라. source evidenceLeads의 confirmed/possible/unavailable 구분을 어기지 마라. unknowns의 가설을 확정 사실로 만들지 마라.\n반드시 verdict-terra-candidate/v1 JSON으로 반환. status는 draft, source는 {type:"original",note:"..."};
 card {kind,category,title,summary}, premise {cause,action,aftermath},
-scene {location,observed,uncertainty}, records는 3건 이상(최소 1개 최초 제출, 최소 1개 추후 제출,
+scene {location,observed,uncertainty}, records는 3건 이상(최소 1개 최초 제출, 최소 1개 추후 제출,\n집필자 증거 단서와 대응하는 자료에는 authorLeadId:원래 e1/e2 식별자를 그대로 지정하고 확정 증거는 반드시 자료에 포함,
 각 record에 id,title,kind,how,limitation,first,by);
 witnesses는 2명 이상 각 {id:"W1",role,knowledgeLimit}.
 worlds.did/didnt/reason 각각 act,motive,cause,timeline:[{at:"HH:MM",what}],records:{각 기록id:"자료 원문"},
@@ -71,7 +71,7 @@ card는 후보 kind/category/title/summary 그대로, accused:"A",complainant:"B
 결정형 decision {what,yes,no};
 people A,B,W1... 각각 key,name,role,age,job,state,traits. 성범죄 형사 피고 A는 남성.
 places [{id,name}], devices 배열, common {date,timeline:[{at,what,who?,place?}],facts:[]}.
-records의 ID/제목/kind/by/how/first는 후보 그대로 보존하고 최초가 아닌 자료는 unlock을 붙인다.
+records의 ID/제목/kind/by/how/first 및 authorLeadId는 후보 그대로 보존하고 최초가 아닌 자료는 unlock을 붙인다.
 worlds.did/didnt/reason은 후보의 act,motive,cause,records 원문과 witnesses의 관찰을
 각 saw로 정확히 이관한다. 각 세계에 label,legal,timeline,knows:{A:"...",B:"..."},
 형사 sentencing:{means,degree,count,setting,harm,victim,planning,after}가 필요하다.
