@@ -79,6 +79,13 @@ function renderOffers(){
    ...courtActions.filter(a=>a.action_type==='order_result'&&a.response?.status==='done')
      .map(a=>({id:a.response?.recordId||a.action_key,title:a.response?.title,text:a.response?.text,source:'추가 제출'}))
  ];
+ const latestRulings=new Map();
+ for(const a of courtActions)if(a.action_type==='evidence_decision'&&a.response?.recordId&&
+  ['use','conditional','exclude'].includes(a.response?.decision)&&
+  (!latestRulings.has(a.response.recordId)||Number(a.hearing_index||0)>=latestRulings.get(a.response.recordId).hearing))
+  latestRulings.set(a.response.recordId,{decision:a.response.decision,hearing:Number(a.hearing_index||0)});
+ const rulingLabels={use:'채택',conditional:'조건부 채택',exclude:'배제'};
+ const canRule=ready&&(!window.VERDICT_CONFIG?.p5JointPanel||jointBench?.myRole==='chair');
  const choices=c.kind==='criminal'?[['guilty','유죄'],['acquittal','무죄'],['partial','일부 유죄']]
   :c.kind==='decision'?[['decision_yes','인용'],['decision_no','기각']]
   :[['claim_granted','청구 인용'],['claim_denied','청구 기각'],['partial','일부 인용'],['settled','화해']];
@@ -179,6 +186,10 @@ function renderOffers(){
     const note=evidenceNotes.get(key);
     return '<article class="vsw-event"><small>'+esc(r.source)+'</small><strong>'+
      esc(r.title)+'</strong><p>'+esc(r.text||'')+'</p>'+
+     (latestRulings.has(r.id)?'<p class="vsw-admissibility"><b>증거 판단: '+esc(rulingLabels[latestRulings.get(r.id).decision])+'</b> · 제'+esc(latestRulings.get(r.id).hearing)+'회 기일</p>':'<p class="vsw-admissibility">증거 채택 여부 검토 전</p>')+
+     (canRule&&latestRulings.get(r.id)?.hearing!==Number(courtStatus?.hearingIndex)?'<div class="vsw-evidence-decisions">'+
+      [['use','채택'],['conditional','조건부 채택'],['exclude','배제']].map(([decision,label])=>
+        '<button type="button" data-world-evidence="'+esc(r.id)+'" data-evidence-decision="'+decision+'">'+label+'</button>').join('')+'</div>':'')+
      (note?'<aside class="vsw-ai-note"><b>AI 증거 해설 · 참고용</b><p>'+esc(note)+'</p><small>원문 기록만 판결 근거로 사용</small></aside>':
        '<button type="button" data-world-explain="'+esc(r.id)+'">AI 해설 보기 · 원문은 유지</button>')+
      '</article>'
@@ -214,8 +225,16 @@ function renderOffers(){
        :'<select data-verdict-result>'+choices.map(([value,label])=>
         '<option value="'+esc(value)+'">'+esc(label)+'</option>').join('')+'</select>')+
       legalForm+ancillaryUi+
-      citations.map(r=>'<label style="display:block;margin:8px 0"><input type="checkbox" data-cite="'+
-        esc(r.key)+'"> '+esc(r.title)+'</label>').join('')+
+      '<fieldset class="vsw-verdict-reasons"><legend>판결 이유 · 법정 기록 근거</legend>'+
+       [['strong','핵심 증거가 믿을 만하다'],['flawed','핵심 증거에 흠이 있다'],
+        ['illegal','위법 수집 증거를 배제했다'],['discord','증언이 서로 엇갈린다'],
+        ['consistent','증언과 증거가 일치한다'],['doubt','합리적인 의문이 남는다']]
+       .map(([id,label])=>'<label><input type="checkbox" data-verdict-reason="'+id+'"> '+label+'</label>').join('')+
+       '</fieldset>'+
+       citations.filter(r=>!(['initial:','order:'].some(prefix=>r.key.startsWith(prefix))&&
+          latestRulings.get(r.key.split(':').slice(1).join(':'))?.decision==='exclude'))
+        .map(r=>'<label style="display:block;margin:8px 0"><input type="checkbox" data-cite="'+
+         esc(r.key)+'"> '+esc(r.title)+'</label>').join('')+
       ((panelState?.state==='majority_ready'&&jointBench?.myRole==='chair')||!panelState
        ?'<button type="button" data-world-verdict>⚖ '+(panelState?'합의 판결 선고':'공유 판결 확정')+'</button>'
        :panelState?.state==='majority_ready'?'<p class="vsw-note">합의 결과가 확정됐습니다. 재판장이 최종 선고합니다.</p>':'')+'</section>'
@@ -333,6 +352,7 @@ async function confirmSharedVerdict(){
  if(panelState&&panelState.state!=='majority_ready')return;
  const result=panelState?.majority||region.querySelector('[data-verdict-result]')?.value;
  const citations=[...region.querySelectorAll('input[data-cite]:checked')].map(x=>x.dataset.cite);
+ const reasons=[...region.querySelectorAll('input[data-verdict-reason]:checked')].map(x=>x.dataset.verdictReason);
  const sentence=window.VERDICT_CONFIG?.p4TrialParity===true&&selectedCase
   ?(selectedCase.card?.kind==='criminal'
    ?{type:region.querySelector('[data-v-type]')?.value||'prison',
@@ -359,11 +379,27 @@ async function confirmSharedVerdict(){
  if(!window.confirm('공유 세계에 판결을 확정할까요? 판결은 되돌릴 수 없습니다.'))return;
  if(status)status.textContent='서버 법정 기록과 판결을 확인 중…';
  try{
-  const d=await window.VerdictAuth.api(panelState?'/world/panel/finalize':'/world/court/verdict',{caseId:selectedCase.caseId,result,citations,...(sentence?{sentence}:{})});
+  const d=await window.VerdictAuth.api(panelState?'/world/panel/finalize':'/world/court/verdict',{caseId:selectedCase.caseId,result,citations,reasons,...(sentence?{sentence}:{})});
   if(!d?.ok)throw Error('verdict_invalid');
   finalDecision=d.judgment;await refreshCourt();await refreshCareer();await refresh();
   if(status)status.textContent='공유 판결 확정: '+d.judgment.order;
  }catch{if(status)status.textContent='서버에서 판결이 승인되지 않았습니다. 기일과 제출 증거를 확인하세요.'}
+}
+async function decideSharedEvidence(recordId,decision){
+ if(!selectedCase||courtStatus?.canAct!==true||
+  !['use','conditional','exclude'].includes(decision)||
+  (window.VERDICT_CONFIG?.p5JointPanel===true&&jointBench?.myRole!=='chair'))return;
+ const status=document.querySelector('[data-world-native-status]')||panel?.querySelector('[data-world-offers-status]');
+ if(status)status.textContent='서버에 증거 판단을 기록하는 중…';
+ try{
+  const r=await window.VerdictAuth.api('/world/court/evidence/decide',{
+   caseId:selectedCase.caseId,recordId,decision,hearingIndex:courtStatus.hearingIndex});
+  if(!r?.ok)throw Error('ruling_rejected');
+  await refreshCourt();
+  if(status)status.textContent='증거 판단이 서버 공판 기록에 반영됐습니다.';
+ }catch{
+  if(status)status.textContent='증거 판단을 승인하지 못했습니다. 개정 여부와 기존 결정을 확인하세요.';
+ }
 }
 async function beginCourt(){
  if(!selectedCase||!user()||window.VERDICT_CONFIG?.p4CourtActions!==true||
@@ -630,6 +666,7 @@ function mount(){
  else if(target.dataset.courtTab){courtTab=target.dataset.courtTab;renderOffers()}
  else if(target.hasAttribute('data-world-begin'))beginCourt();
  else if(target.hasAttribute('data-world-verdict'))confirmSharedVerdict();
+ else if(target.dataset.worldEvidence&&target.dataset.evidenceDecision)decideSharedEvidence(target.dataset.worldEvidence,target.dataset.evidenceDecision);
  else if(target.dataset.worldExplain)explainSharedEvidence(target.dataset.worldExplain);
  else if(target.hasAttribute('data-p5-open'))p5Action('open');
  else if(target.hasAttribute('data-p5-vote'))p5Action('vote');
@@ -655,6 +692,7 @@ function mount(){
   if(target.dataset.courtTab){courtTab=target.dataset.courtTab;return renderOffers()}
   if(target.hasAttribute('data-world-begin'))return beginCourt();
   if(target.hasAttribute('data-world-verdict'))return confirmSharedVerdict();
+  if(target.dataset.worldEvidence&&target.dataset.evidenceDecision)return decideSharedEvidence(target.dataset.worldEvidence,target.dataset.evidenceDecision);
   if(target.dataset.worldExplain)return explainSharedEvidence(target.dataset.worldExplain);
   if(target.hasAttribute('data-p5-open'))return p5Action('open');
   if(target.hasAttribute('data-p5-vote'))return p5Action('vote');
