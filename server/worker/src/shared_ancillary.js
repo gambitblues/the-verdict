@@ -23,6 +23,13 @@ export function adjudicateFullSentence(sheet,result,input,citations=[],branch){
   orders.push(spec.order.replace(/%n%/g,String(value)));
   if(!spec.fixed)extraScore.push({key:'addon:'+id,points:fit?1:-3,text:fit?'적합한 부수 명령':'근거 부족 부수 명령'});
  }
+ for(const spec of criminal?specs:[])if(spec.fixed&&!Object.hasOwn(addons,spec.id)){
+  if(spec.ok===false)return {error:'mandatory_ancillary_invalid'};
+  if(typeof spec.order!=='string')return {error:'mandatory_ancillary_text_missing'};
+  if(spec.fit&&!['did','didnt','reason'].includes(branch))return {error:'truth_context_required'};
+  const n=Array.isArray(spec.range)?spec.range[0]:null;
+  orders.push(spec.order.replace(/%n%/g,n==null?'':String(n)));
+ }
  for(const spec of criminal?specs:[])if(spec.expected&&!spec.fixed&&!Object.hasOwn(addons,spec.id))extraScore.push({key:'addon:'+spec.id,points:-2,text:'필요한 명령 누락'});
  for(const id of remedies){
   const spec=claims.find(x=>x.id===id);
