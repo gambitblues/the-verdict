@@ -1,0 +1,80 @@
+name: Author case intake QA
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'world-sheets/author-seeds/**'
+      - 'world-sheets/author-template.*'
+      - 'server/worker/src/terra_author_*.cjs'
+      - 'server/worker/scripts/terra-from-author.cjs'
+      - '.github/workflows/author-case-intake.yml'
+  workflow_dispatch:
+    inputs:
+      generate_case:
+        description: 'Path to one author seed inside world-sheets/author-seeds/ (leave blank for validation only)'
+        required: false
+        type: string
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate templates and every uploaded author seed
+        run: |
+          node server/worker/scripts/terra-from-author.cjs validate world-sheets/author-template.md
+          node server/worker/scripts/terra-from-author.cjs validate world-sheets/author-template.json
+          find world-sheets/author-seeds -maxdepth 1 -type f \( -name '*.md' -o -name '*.json' \) ! -name README.md -print0 |
+            while IFS= read -r -d '' f; do
+              node server/worker/scripts/terra-from-author.cjs validate "$f"
+            done
+      - name: Validate Terra author unit tests
+        run: node --test server/worker/test/terra-author-seed.test.js
+  terra_draft:
+    needs: validate
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.generate_case != '' || github.event_name == 'push' && vars.TERRA_AUTHOR_AUTO_ENABLED == '1' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate exactly one unapproved draft
+        env:
+          OPENAI_API_KEY: ${{ secrets.TERRA_AUTHOR_AI_KEY }}
+          MODEL_CASE: ${{ vars.TERRA_AUTHOR_MODEL }}
+          MANUAL_FILE: ${{ inputs.generate_case }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo 'TERRA_AUTHOR_AI_KEY is not configured; no paid model call made.'; exit 1
+          fi
+          if [ -n "$MANUAL_FILE" ]; then
+            FILE="$MANUAL_FILE"
+          else
+            # Only one newly edited author seed per push, to cap spend.
+            FILE="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" -- world-sheets/author-seeds/ |
+              grep -E '^world-sheets/author-seeds/[a-z0-9-]+\.(md|json)$' | head -n 1 || true)"
+          fi
+          if [[ ! "$FILE" =~ ^world-sheets/author-seeds/[a-z0-9-]+\.(md|json)$ ]] || [ ! -f "$FILE" ]; then
+            echo 'No valid new author seed; paid generation skipped.'; exit 0
+          fi
+          mkdir -p terra-author-drafts
+          node server/worker/scripts/terra-from-author.cjs generate "$FILE" terra-author-drafts
+      - name: Save drafts for human review, never commit or admit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terra-author-unapproved-drafts
+          path: terra-author-drafts/
+          if-no-files-found: ignore
+          retention-days: 14
