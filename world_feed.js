@@ -237,19 +237,18 @@ function articlePreview(a,c){
  const issue=facts.issues.find(x=>x.title)||null;
  const side=a.lean==='p'?(c.kind==='criminal'?'검찰':'원고'):(c.kind==='criminal'?'변호인':'피고');
  const name=compactCaseName(c);
- const stage=a.phase==='after'?'판결 이후':'재판 진행 중';
  const angle=issue?.title||e?.title||'핵심 쟁점';
  const headline=a.phase==='after'
-  ? `[판결] ${name} · ${facts.f?.label||'판결 평가'}`
+  ? `[판결] ${name} · ${facts.f?.label||'선고 결과'}`
   : `[전망] ${name} · ${angle}`;
- // Use a complete, verifiable case-grounded thought; no arbitrary character/line slicing.
+ // Summarize in full sentences from the public claims and courtroom record, not by cutting characters.
  const evidence=e?.shows?.replace(/[.。]$/,'')||'';
- const point=evidence?`${e.title}은(는) ${evidence}는 점과 관련된다.`:`${angle}에 대한 판단이 남아 있다.`;
- const sideStatement=a.lean==='p'?facts.claimP:facts.claimD;
+ const sideStatement=(a.lean==='p'?facts.claimP:facts.claimD)||'';
+ const context=sideStatement|| (evidence?`법정 자료 '${e.title}'의 내용은 ${evidence}.`:`'${angle}'에 대한 심리가 이어지고 있다.`);
  const summary=a.phase==='after'
-  ? `${side} 측 시각의 보도다. ${facts.f?.label||'선고'} 이후 ${angle}에 대한 재판부의 판단이 쟁점이다.`
-  : `${side} 측은 ${angle}을(를) 주요 쟁점으로 본다. ${sideStatement||point}`;
- return {headline,summary,full:source,stage};
+  ? `${facts.f?.label||'선고'} 판결이 나왔다. ${side} 측 보도는 '${angle}'에 대한 판단을 중심으로 평가한다.`
+  : `주요 쟁점은 '${angle}'이다. ${side} 측 입장: ${context}`;
+ return {headline,summary};
 }
 function opinionStats(c){
  const t=S.cases[c.id]?.trial4,mix=stanceMix(t),f=t?.final;
