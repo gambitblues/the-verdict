@@ -19,7 +19,7 @@ export function courtroomPlan(sheet,branch,actions,kind,key){
   // Either an exhibit id, or "witness:priorQuestionId" dependency.
   const exhibit=(sheet.records||[]).find(r=>r.id===dependency);
   if(exhibit){
-   if(!exhibit.first&&!done('order',dependency))return {error:'prerequisite_missing'};
+   if(!exhibit.first&&!done('order_result',dependency))return {error:'prerequisite_missing'};
   }else{
    const prior=(sheet.questions||[]).find((q,j)=>String(q.w||'')+':'+keyOf(q,j)===dependency);
    if(!prior||!done('question',keyOf(prior,sheet.questions.indexOf(prior))))return {error:'prerequisite_missing'};
@@ -32,18 +32,28 @@ export function courtroomPlan(sheet,branch,actions,kind,key){
    witness:String(item.w||'').slice(0,80)};
   return {key,response:reply};
  }
- const outcome=item.result?.[branch];
- if(!['done','declined','delayed'].includes(outcome))return {error:'order_outcome_unavailable'};
  const record=(sheet.records||[]).find(r=>r.id===item.record);
  if(!record||record.first===true)return {error:'order_not_applicable'};
- const response={status:outcome,recordId:record.id,title:String(record.title||'').slice(0,200)};
+ // Court orders take effect on the NEXT hearing; no result is disclosed now.
+ return {key,response:{status:'delayed',recordId:record.id,title:String(record.title||'').slice(0,200)}};
+}
+export function courtActionId(item,index,kind){
+ return kind==='question'?keyOf(item,index):String(item?.record||'');
+}
+
+export function resolveCourtOrder(sheet,branch,key){
+ if(!sheet||!['did','didnt','reason'].includes(branch))return {error:'sealed_case_invalid'};
+ const item=(sheet.orders||[]).find(o=>o.record===key);
+ const record=(sheet.records||[]).find(r=>r.id===key&&!r.first);
+ const world=sheet.worlds?.[branch];
+ if(!item||!record||!world)return {error:'order_not_found'};
+ const outcome=item.result?.[branch];
+ if(!['done','declined','delayed'].includes(outcome))return {error:'order_outcome_unavailable'};
+ const response={status:outcome,recordId:key,title:String(record.title||'').slice(0,200)};
  if(outcome==='done'){
-  const content=world.records?.[record.id];
+  const content=world.records?.[key];
   if(typeof content!=='string')return {error:'record_unavailable'};
   response.text=content.slice(0,5000);
  }
  return {key,response};
-}
-export function courtActionId(item,index,kind){
- return kind==='question'?keyOf(item,index):String(item?.record||'');
 }
