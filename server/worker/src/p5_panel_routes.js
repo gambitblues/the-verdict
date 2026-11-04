@@ -231,7 +231,7 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    if(usesFit&&!['did','didnt','reason'].includes(branch))
     return response({error:'truth_context_unavailable'},503);
    const submission={result:status.majority,citations:input.citations,
-    sentence:input.sentence};
+    reasons:input.reasons,sentence:input.sentence};
    const decision=scored?adjudicateSharedJudgment(world[0].sheet,acts,submission,caseId,{branch}):
     validateSharedJudgment(world[0].sheet,acts,submission);
    if(decision.error)return response({error:decision.error},400);
@@ -243,7 +243,7 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
       p_grade:decision.grade}:{})
    });
    return response({ok:true,published:published===true,judgment:{
-    result:decision.result,order:decision.order,citations:decision.citations,recordHash:hash,
+    result:decision.result,order:decision.order,citations:decision.citations,reasons:decision.reasons,recordHash:hash,
     ...(scored?{sentence:decision.sentence,grade:decision.grade}:{})
    }});
   }
