@@ -89,15 +89,16 @@ try{
  assert.ok(['acquit','respondent','partial'].includes(verdict.dir),'last verdict option should be a defence-side outcome: '+verdict.dir);
  await page.locator('#modal-root [data-action="dismiss"]').click();
  await page.locator('.bottom-nav [data-action="tab"][data-tab="tablet"]').click();
- await page.locator('[data-action="tablet"][data-sub="rank"]').click();
- await page.locator('.tv-ranking').waitFor();
+ assert.equal(await page.locator('[data-action="tablet"][data-sub="rank"]').count(),0,'ranking entry should remain hidden');
+ await page.locator('[data-action="tablet"][data-sub="career"]').click();
+ await page.locator('.tv-career-summary').waitFor();
  const conflicting=await page.evaluate(()=>S.generatedCases.some(c=>{
    const old=c.legalRepresentation?.originalSide||[];
    return (c.stages||[]).some(stage=>(stage.actions||[]).some(a=>old.includes(a.who)&&!c.side.includes(a.who)));
  }));
  assert.equal(conflicting,false,'a former prosecutor/attorney was misclassified as witness');
- await page.locator('[data-action="safeSave"]').first().click();
- await page.waitForFunction(()=>document.getElementById('verdict-save-status')?.textContent.includes('저장 완료'),null,{timeout:12000});
+ assert.equal(await page.locator('[data-action="safeSave"]').count(),0,'manual save button should stay hidden');
+ await page.evaluate(()=>VerdictStore.flush());
  await page.reload({waitUntil:'networkidle'});
  await page.locator('#verdict-entry').waitFor();
  await page.locator('#profile-continue').click();
