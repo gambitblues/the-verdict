@@ -61,6 +61,17 @@ try{
   return {page,root};
  };
  const a=await make('chair'),b=await make('associate');
+ const snapshotA=await a.page.evaluate(()=>window.VerdictSharedWorld.courtSnapshot());
+ const snapshotB=await b.page.evaluate(()=>window.VerdictSharedWorld.courtSnapshot());
+ assert.equal(snapshotA.caseId,snapshotB.caseId,'same server case');
+ assert.equal(snapshotA.hearingIndex,snapshotB.hearingIndex,'same hearing index');
+ assert.deepEqual(snapshotA.evidence,snapshotB.evidence,'same public evidence');
+ assert.deepEqual(snapshotA.actions,snapshotB.actions,'same immutable action ledger');
+ assert.equal(snapshotA.role,'chair');
+ assert.equal(snapshotB.role,'associate');
+ assert.equal(snapshotA.actions.length,1);
+ assert.equal(snapshotA.evidence[0].source,'initial');
+ assert.ok(!JSON.stringify(snapshotA).includes('worlds'),'no sealed truth in public projection');
  assert.match(await a.root.innerText(),/나는 재판장/);
  assert.match(await b.root.innerText(),/나는 배석판사/);
  for(const v of [a,b]){
