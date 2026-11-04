@@ -28,7 +28,7 @@ test('missing fixed truths, evidence provenance or confirmed status block Terra 
  assert.equal(validateAuthorSeed({...json,immutableFacts:[]}).ok,false);
  assert.equal(validateAuthorSeed({...json,status:'ready'}).ok,false);
  assert.equal(validateAuthorSeed({...json,evidenceLeads:[{...json.evidenceLeads[0],source:''},json.evidenceLeads[1]]}).ok,false);
- assert.throws(()=>seedToTerraInput({...json,immutableFacts:[]}),/고정 사실/);
+ assert.throws(()=>seedToTerraInput({...json,immutableFacts:[]}),/변하지 않는 사실/);
  assert.throws(()=>parseAuthorMarkdown(example.replace('고정 사실','완료 사실'),'bad.md'));
 });
 test('author-provided unknown details are not silently promoted to confirmed facts',()=>{
