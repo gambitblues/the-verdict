@@ -14,7 +14,7 @@ create or replace function public.shared_evidence_decision_record(
 language plpgsql security definer set search_path=public as $$
 declare owner_id uuid; today_day integer;
  heard public.shared_judge_hearings%rowtype; prior public.shared_court_actions%rowtype;
- action_key text; reply jsonb;
+ v_key text; reply jsonb;
 begin
  if current_setting('request.jwt.claim.role',true) is distinct from 'service_role'
  then raise exception 'service_only' using errcode='42501'; end if;
@@ -33,18 +33,18 @@ begin
   where case_id=p_case and hearing_index=p_hearing and judge_id=p_judge for share;
  if not found or heard.state<>'completed' or heard.completed_game_day is distinct from today_day
  then raise exception 'hearing_not_open_today' using errcode='42501'; end if;
- action_key:=p_record||':'||p_hearing;
+ v_key:=p_record||':'||p_hearing;
  reply:=jsonb_build_object('status','done','recordId',p_record,'decision',p_decision);
- perform pg_advisory_xact_lock(hashtextextended('evidence:'||p_case||':'||action_key,0));
+ perform pg_advisory_xact_lock(hashtextextended('evidence:'||p_case||':'||v_key,0));
  select * into prior from public.shared_court_actions
-  where case_id=p_case and action_type='evidence_decision' and action_key=action_key;
+  where case_id=p_case and action_type='evidence_decision' and action_key=v_key;
  if found then
   if prior.response is distinct from reply then
    raise exception 'evidence_ruling_conflict' using errcode='23505'; end if;
   return prior.response;
  end if;
  insert into public.shared_court_actions(case_id,judge_id,action_type,action_key,response,hearing_index,game_day)
- values(p_case,p_judge,'evidence_decision',action_key,reply,p_hearing,today_day);
+ values(p_case,p_judge,'evidence_decision',v_key,reply,p_hearing,today_day);
  return reply;
 end $$;
 revoke all on function public.shared_evidence_decision_record(text,uuid,integer,text,text) from public,anon,authenticated;
