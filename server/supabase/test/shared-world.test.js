@@ -508,9 +508,11 @@ test('P4 shared career ledger records scored verdict once, without changing pers
 });
 
 test('P5 human presides; second human and NPC always associate with immutable seats',async()=>{
- const caseId='joint-auto-test';
- const panel=(await svc('select chair_id,peer_id,npc_id from public.shared_joint_panels where case_id=$1',[caseId])).rows[0];
+ const panel=(await svc(`select p.case_id,p.chair_id,p.peer_id,p.npc_id from public.shared_joint_panels p
+ where p.chair_id=$1 and not exists(select 1 from public.shared_case_judgments j where j.case_id=p.case_id)
+ order by p.case_id limit 1`,[A])).rows[0];
  assert.ok(panel,'previous test assigned active joint case');
+ const caseId=panel.case_id;
  const bench=uid=>svc('select public.shared_joint_bench($1,$2::uuid) as bench',[caseId,uid]);
  const chair=(await bench(A)).rows[0].bench;
  const peer=(await bench(B)).rows[0].bench;
