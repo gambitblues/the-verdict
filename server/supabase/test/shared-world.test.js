@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -327,4 +327,32 @@ test('P4 verdict creates news the following world day, never before and never tw
  assert.equal((await pa('select count(*)::int as n from public.shared_world_events where event_key=$1',['aftermath:'+id])).rows[0].n,1);
  await assert.rejects(svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[id,A,1]),/case_already_decided/);
  await assert.rejects(pa('select * from public.shared_world_followups'),/permission denied/);
+});
+
+test('P4 order material cannot be delivered until the following real court hearing',async()=>{
+ const id='case-order-001';
+ await svc(
+  'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
+  [id,'civil',HASH,HASH,'fingerprint-order-001',JSON.stringify({id}),JSON.stringify({passed:true}),A]);
+ const begin=()=>svc('select * from public.shared_court_begin($1,$2::uuid)',[id,A]);
+ assert.equal((await begin()).rows[0].hearing_index,1);
+ await svc('select public.shared_court_action_record($1,$2::uuid,$3,$4,$5,$6::jsonb)',
+  [id,A,1,'order','r2',JSON.stringify({status:'delayed',recordId:'r2',title:'영상'})]);
+ const resolve=(judge,hearing,reply)=>svc(
+  'select public.shared_order_result_record($1,$2::uuid,$3,$4,$5::jsonb) as result',
+  [id,judge,hearing,'r2',JSON.stringify(reply)]);
+ const done={status:'done',recordId:'r2',title:'영상',text:'다음 기일에 공개된 영상'};
+ await assert.rejects(resolve(A,1,done),/order_not_due/);
+ const h=(await begin()).rows[0];
+ assert.equal(h.hearing_index,2);
+ assert.equal(h.world_day,16);
+ assert.deepEqual((await resolve(A,2,done)).rows[0].result,done);
+ assert.deepEqual((await resolve(A,2,done)).rows[0].result,done,'replay has same result');
+ await assert.rejects(resolve(A,2,{...done,text:'서버 기록 위조'}),/order_result_conflict/);
+ await assert.rejects(resolve(B,2,done),/court_case_not_owned/);
+ await assert.rejects(pa('select * from public.shared_order_result_record($1,$2::uuid,$3,$4,$5::jsonb)',
+ [id,A,2,'r2',JSON.stringify(done)]),/permission denied/);
+ await assert.rejects(svc('update public.shared_court_actions set response=$1::jsonb where case_id=$2',
+  [JSON.stringify({status:'declined'}),id]),/court_action_immutable/);
+ assert.equal((await svc('select count(*)::int as n from public.shared_court_actions where case_id=$1',[id])).rows[0].n,2);
 });
