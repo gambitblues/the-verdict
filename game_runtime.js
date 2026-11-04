@@ -1227,12 +1227,11 @@ clicker=function(e){const action=e.target.closest('[data-action]')?.dataset.acti
 function show(){
 if(document.getElementById('verdict-entry'))document.getElementById('verdict-entry').remove();
 release();
-const id=selected(),has=!!S.name,authenticated=!!window.VerdictAuth?.user;
+const has=!!S.name,authenticated=!!window.VerdictAuth?.user;
 const box=document.createElement('div');box.id='verdict-entry';
-box.innerHTML='<div class="entry-card"><div style="font-size:28px">⚖️</div><div class="entry-title">THE VERDICT</div><div class="entry-sub">40년 법관 커리어 · 판사 집무실</div><div class="entry-ver">v'+(window.VERDICT_VERSION||'')+' · '+(window.VERDICT_RELEASED||'')+' 업데이트</div><div class="entry-switch" '+(authenticated?'hidden':'')+'><button type="button" data-profile="1" class="entry-btn '+(id==='1'?'primary':'')+'">플레이어 1<small>'+escapeHtml(profileName('1'))+'</small></button><button type="button" data-profile="2" class="entry-btn '+(id==='2'?'primary':'')+'">플레이어 2<small>'+escapeHtml(profileName('2'))+'</small></button></div><button class="entry-btn primary" id="profile-continue">'+(has?'이어서 하기':'새로 시작하기')+'</button><button class="entry-btn" id="profile-reset">새로 하기</button><button class="entry-btn" id="profile-import" '+(authenticated?'hidden':'')+'>저장 파일 불러오기 (JSON)</button><div class="entry-info">'+(authenticated?'로그인한 판사의 경력이 자동 저장됩니다.':'이 기기의 기존 프로필과 기록을 관리합니다.')+'</div></div>';
+box.innerHTML='<div class="entry-card"><div style="font-size:28px">⚖️</div><div class="entry-title">THE VERDICT</div><div class="entry-sub">40년 법관 커리어 · 판사 집무실</div><div class="entry-ver">v'+(window.VERDICT_VERSION||'')+' · '+(window.VERDICT_RELEASED||'')+' 업데이트</div><button class="entry-btn primary" id="profile-continue"'+(has?'':' disabled')+'>이어하기</button><button class="entry-btn" id="profile-reset">새로하기</button><div class="entry-info">'+(authenticated?'로그인한 판사의 경력이 자동 저장됩니다.':(window.VERDICT_CONFIG?.supabaseUrl&&window.VERDICT_CONFIG?.supabaseAnonKey?'이 기기의 진행 기록을 사용합니다.':'현재는 서버 연결이 없어 로그인·AI 없이 이 기기에만 저장됩니다.'))+'</div></div>';
 document.body.appendChild(box);
 const scene=document.createElement('div');scene.className='verdict-brand-scene';scene.setAttribute('aria-label','일러스트 법정과 판사');scene.innerHTML='<span class="scene-flag">🇰🇷</span><span class="scene-seal">⚖</span><span class="scene-judge">👨🏻‍⚖️</span><span class="scene-bench"></span><span class="scene-caption">THE VERDICT · JUDICIAL LIFE</span>';const subtitle=box.querySelector('.entry-sub');if(subtitle)subtitle.insertAdjacentElement('afterend',scene);
-box.querySelectorAll('[data-profile]').forEach(b=>b.onclick=()=>change(b.dataset.profile));
 box.querySelector('#profile-continue').onclick=()=>box.remove();
 // no confirm(): some in-app browsers block it silently, which made this button do nothing. Ask with a second tap instead.
 const resetBtn=box.querySelector('#profile-reset');let armed=false;
@@ -1243,10 +1242,9 @@ resetBtn.onclick=()=>{if(box.querySelector('.entry-reset-dialog'))return;
  dialog.querySelector('[data-reset-cancel]').onclick=()=>{dialog.remove();resetBtn.focus()};
  dialog.querySelector('[data-reset-confirm]').onclick=()=>{dialog.querySelectorAll('button').forEach(b=>b.disabled=true);wipeGame()};
 };
-box.querySelector('#profile-import').onclick=()=>{box.remove();const inp=document.getElementById('importFile');if(inp)inp.click();else {ui.tabletTab='backup';changeTab('tablet');document.getElementById('importFile')?.click();}};
 }
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-const st=document.createElement('style');st.textContent='.entry-switch{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0 22px}.entry-switch .entry-btn{margin:0;padding:13px 5px}.entry-switch small{display:block;opacity:.8;font-size:11px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}';document.head.appendChild(st);
+
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',show);else show();
 })();
 
