@@ -103,6 +103,18 @@ try{
   await page.evaluate(html=>document.querySelector('main').insertAdjacentHTML('beforeend',html),bridge);
   await page.locator('main [data-world-open]').click();
   assert.equal(await page.locator('.vsw-panel').isVisible(),true);
+  await page.evaluate(()=>{
+   window.ui={tab:'courtList',p4NativeCourt:false};
+   window.render=()=>{document.querySelector('main').innerHTML=window.VerdictSharedWorld.nativeCourt()};
+   document.querySelector('main').insertAdjacentHTML('beforeend',window.VerdictSharedWorld.courtListEntry());
+  });
+  await page.locator('main [data-world-open]').click();
+  assert.equal(await page.evaluate(()=>window.ui.p4NativeCourt),true,'shared case enters native court mode');
+  assert.equal(await page.locator('main [data-world-native-root] [data-court-tab]').count(),6);
+  await page.locator('main [data-court-tab="evidence"]').click();
+  assert.match(await page.locator('main [data-world-native-list]').innerText(),/첫날 공개된 계약 내용/);
+  await page.locator('[data-world-native-back]').click();
+  assert.equal(await page.evaluate(()=>window.ui.p4NativeCourt),false,'return to original case list safely');
 
   const picked=await page.evaluate(()=>window.VerdictSharedWorld.selectedCase.caseId);
   assert.equal(picked,'case-'+id);
