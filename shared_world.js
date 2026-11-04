@@ -8,7 +8,7 @@ let events=[],cursor=0,loading=false,owner='',panel=null,button=null,clock=null,
 let sharedSlot='',offerCandidates=[],selectedCase=null,firstDocs=[],courtStatus=null,courtActions=[],catchup=null,resumeNotice='';
 const seen=new Set();
 function user(){const a=window.VerdictAuth;return a?.online&&a?.user?.id?a.user.id:null}
-function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
+function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;jointSlotState=null;jointSlotLoading=false;catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
 function valid(ev){
  return ev&&Number.isSafeInteger(ev.event_id)&&ev.event_id>0&&
   typeof ev.event_key==='string'&&typeof ev.event_type==='string'&&
@@ -42,7 +42,7 @@ function kstSlot(){
  const v=k=>parts.find(p=>p.type===k)?.value||'';
  return v('year')+'-'+v('month')+'-'+v('day')+'T'+v('hour');
 }
-let courtTab='case',finalDecision=null,panelState=null,panelPartners=null,panelFor=null;
+let courtTab='case',finalDecision=null,panelState=null,panelPartners=null,panelFor=null,jointSlotState=null,jointSlotLoading=false;
 const TABS=[['case','사건'],['day','기일'],['evidence','증거'],['witness','증인'],['orders','주문'],['verdict','판결']];
 function renderOffers(){
  const region=panel?.querySelector('[data-world-offers-list]');if(!region)return;
@@ -425,9 +425,45 @@ async function refresh(){
  }catch(e){if(panel)panel.querySelector('[data-world-status]').textContent='세계 연결을 확인할 수 없습니다. 개인 재판은 계속할 수 있습니다.';return false}
  finally{loading=false}
 }
+async function loadJointCase(){
+ if(jointSlotLoading||window.VERDICT_CONFIG?.p5JointPanel!==true||!user())return;
+ jointSlotLoading=true;
+ const notice=msg=>{
+  const status=document.querySelector('[data-joint-slot-status]');
+  if(status)status.textContent=msg;
+  const native=document.querySelector('[data-world-native-status]');
+  if(native)native.textContent=msg;
+ };
+ try{
+  let slot=await window.VerdictAuth.api('/world/panel/slot');
+  if(!slot?.ok)throw Error('joint_slot_offline');
+  if(!slot.occupied){
+   const assigned=await window.VerdictAuth.api('/world/panel/auto-assign',{});
+   if(!assigned?.ok){notice(assigned?.reason==='panel_members_unavailable'?
+    '다른 판사가 합류하면 공동재판이 자동 배당됩니다.':'공동재판 사건 재고를 확인할 수 없습니다.');
+    return}
+   slot={ok:true,occupied:true,caseId:assigned.caseId};
+  }
+  if(selectedCase?.caseId!==slot.caseId){
+   const c=await window.VerdictAuth.api('/world/panel/case?caseId='+encodeURIComponent(slot.caseId));
+   if(!c?.ok)throw Error('joint_case_unavailable');
+   selectedCase=c.case;
+   firstDocs=Array.isArray(c.records)?c.records:[];
+   courtActions=Array.isArray(c.actions)?c.actions:[];
+   courtStatus={canAct:false,hearingIndex:null};
+   finalDecision=null;courtTab='case';panelState=null;panelFor=null;
+  }
+  jointSlotState=slot;
+  notice('공동재판 1/1 · '+String(selectedCase?.card?.title||slot.caseId));
+  renderOffers();
+  await refreshPanel();
+ }catch{notice('공동재판 서버에 연결할 수 없습니다. 개인 사건 5건은 정상 이용 가능합니다.')}
+ finally{jointSlotLoading=false}
+}
 function openSharedCourt(){
  if(!user())return;
  mount();if(!panel)return;
+ if(window.VERDICT_CONFIG?.p5JointPanel===true&&!selectedCase)void loadJointCase();
  if(typeof ui!=='undefined'&&typeof window.VerdictNativeCourtRender==='function'){
   ui.p4NativeCourt=true;ui.tab='court';
   if(selectedCase)courtTab='case';
@@ -440,14 +476,17 @@ function openSharedCourt(){
 function nativeCourt(){
  if(!user())return '<section class="panel t4">공유 법정에 로그인해 주세요.</section>';
  mount();renderOffers();
- const list=panel?.querySelector('[data-world-offers-list]')?.innerHTML||'';
- const status=panel?.querySelector('[data-world-offers-status]')?.textContent||'공유 사건 동기화 중';
+ const isJoint=window.VERDICT_CONFIG?.p5JointPanel===true;
+ const list=isJoint&&!selectedCase?'<p>공동재판 전용 슬롯을 확인하는 중입니다. 배당 버튼을 누를 필요가 없습니다.</p>':
+  panel?.querySelector('[data-world-offers-list]')?.innerHTML||'';
+ const status=isJoint?'공동재판 '+(selectedCase?'1/1':'0/1')+' · 개인 재판 5건과 별도':
+  panel?.querySelector('[data-world-offers-status]')?.textContent||'공유 사건 동기화 중';
  return '<div class="court-play t4app" data-world-native-root>'+
   '<section class="panel t4"><div class="t4-head"><h3>🌐 공유 법정</h3>'+
   '<button class="btn outline" type="button" data-world-native-back>사건 목록</button></div>'+
   '<p class="muted small">기존 법정의 사건·기일·증거·증인·주문·판결 메뉴를 사용합니다. 개인 사건 세이브와는 분리됩니다.</p>'+
   '<p data-world-native-status aria-live="polite">'+esc(status)+'</p>'+
-  '<button class="btn outline" type="button" data-world-offers>사건 후보 확인</button>'+
+  (isJoint?'':'<button class="btn outline" type="button" data-world-offers>사건 후보 확인</button>')+
   '<div data-world-native-list>'+list+'</div></section></div>';
 }
 function courtListEntry(){
