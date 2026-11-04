@@ -8,7 +8,7 @@ let events=[],cursor=0,loading=false,owner='',panel=null,button=null,clock=null,
 let sharedSlot='',offerCandidates=[],selectedCase=null,firstDocs=[],courtStatus=null,courtActions=[],catchup=null,resumeNotice='';
 const seen=new Set();
 function user(){const a=window.VerdictAuth;return a?.online&&a?.user?.id?a.user.id:null}
-function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
+function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
 function valid(ev){
  return ev&&Number.isSafeInteger(ev.event_id)&&ev.event_id>0&&
   typeof ev.event_key==='string'&&typeof ev.event_type==='string'&&
@@ -42,7 +42,7 @@ function kstSlot(){
  const v=k=>parts.find(p=>p.type===k)?.value||'';
  return v('year')+'-'+v('month')+'-'+v('day')+'T'+v('hour');
 }
-let courtTab='case',finalDecision=null;
+let courtTab='case',finalDecision=null,panelState=null,panelPartners=null,panelFor=null;
 const TABS=[['case','사건'],['day','기일'],['evidence','증거'],['witness','증인'],['orders','주문'],['verdict','판결']];
 function renderOffers(){
  const region=panel?.querySelector('[data-world-offers-list]');if(!region)return;
@@ -86,6 +86,33 @@ function renderOffers(){
     title:a.response?.title||a.action_key
    }))
  ];
+ const p5on=window.VERDICT_CONFIG?.p5JointPanel===true;
+ const p5controls=!p5on?'':(!panelState
+  ?'<section class="vsw-p5"><h4>합의부 구성 · 판사 2명 + NPC 재판관</h4>'+
+   (panelPartners?.players?.length&&panelPartners?.npcs?.length
+    ?'<label>함께 심리할 판사</label><select data-p5-peer>'+
+      panelPartners.players.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('')+
+      '</select><label>NPC 재판관</label><select data-p5-npc-select>'+
+      panelPartners.npcs.map(n=>'<option value="'+esc(n.id)+'">'+esc(n.name)+'</option>').join('')+
+      '</select><button type="button" data-p5-open>3인 합의부 개설</button>'
+    :'<p>공동 재판관 명단 확인이 필요합니다.</p><button type="button" data-p5-partners>판사·NPC 조회</button>')+
+   '</section>'
+  :'<section class="vsw-p5"><h4>3인 합의부 · 비공개 심의</h4>'+
+   '<p>제출 '+esc(panelState.votesCast||0)+'/3 · '+
+     esc(panelState.state==='majority_ready'?'다수 의견 성립':
+       panelState.state==='further_deliberation'?'의견 불일치 · 추가 심의 필요':'다른 재판관 의견 대기')+'</p>'+
+   '<p>내 의견: '+esc(panelState.myVote||'아직 제출하지 않음')+'</p>'+
+   (!panelState.myVote&&ready
+    ?'<label>판단</label><select data-p5-choice>'+choices.map(([v,label])=>
+       '<option value="'+esc(v)+'">'+esc(label)+'</option>').join('')+'</select>'+
+      '<label>비공개 심의 의견</label><textarea data-p5-note rows="3" maxlength="1000" placeholder="법정 기록에 근거한 판단 이유를 적으세요"></textarea>'+
+      '<button type="button" data-p5-vote>내 의견 비공개 제출</button>':'')+
+   (panelState.votesCast===2?'<button type="button" data-p5-decide>NPC 재판관 의견 생성</button>':'')+
+   (panelState.state==='majority_ready'
+     ?'<p><strong>3인 다수결: '+esc(panelState.majority||'')+'</strong></p>'
+     :panelState.state==='further_deliberation'
+      ?'<p>세 의견이 서로 다릅니다. 협의 후 재심의 규칙이 확정되기 전에는 선고하지 않습니다.</p>':'')+
+   '<button type="button" data-p5-refresh>합의 현황 새로고침</button></section>');
  const summary='<strong>'+esc(c.title||caseId)+'</strong><p>'+esc(c.summary||'')+'</p>';
  let body='';
  if(courtTab==='case'){
@@ -122,15 +149,18 @@ function renderOffers(){
     '<div data-court-outcomes>'+courtActions.filter(a=>a.action_type.startsWith('order')).map(a=>
     '<p><b>'+esc(a.action_key)+'</b> · '+esc(a.response?.text||a.response?.status||'')+'</p>').join('')+'</div>';
  }else if(courtTab==='verdict'){
-  body='<h4>판결</h4>'+(finalDecision
+  body='<h4>판결</h4>'+p5controls+(finalDecision
    ?'<p><strong>확정 판결</strong> · '+esc(finalDecision.order||'')+'</p>'
    :window.VERDICT_CONFIG?.p4SharedVerdicts===true&&ready&&courtActions.length
     ?'<section data-world-verdict><p>법정에 실제 제출된 증거·증언에서 근거를 고르세요.</p>'+
-      '<select data-verdict-result>'+choices.map(([value,label])=>
-        '<option value="'+esc(value)+'">'+esc(label)+'</option>').join('')+'</select>'+
+      (panelState
+       ?'<p><strong>합의 결론: '+esc(panelState.majority||'심의 대기')+'</strong></p>'
+       :'<select data-verdict-result>'+choices.map(([value,label])=>
+        '<option value="'+esc(value)+'">'+esc(label)+'</option>').join('')+'</select>')+
       citations.map(r=>'<label style="display:block;margin:8px 0"><input type="checkbox" data-cite="'+
         esc(r.key)+'"> '+esc(r.title)+'</label>').join('')+
-      '<button type="button" data-world-verdict>⚖ 공유 판결 확정</button></section>'
+      (panelState?.state==='majority_ready'||!panelState
+       ?'<button type="button" data-world-verdict>⚖ '+(panelState?'합의 판결 선고':'공유 판결 확정')+'</button>':'')+'</section>'
     :'<p>공판 진행과 판결 원장이 확인된 후 서버에서 판결할 수 있습니다.</p>');
  }
  region.innerHTML='<div class="vsw-court-head">'+summary+'</div>'+nav+
@@ -144,7 +174,7 @@ async function reserveOffers(){
  sharedSlot=kstSlot();status.textContent='서버에서 사건 후보를 확인하는 중…';
  try{const d=await window.VerdictAuth.api('/world/offers',{slot:sharedSlot});
   if(!d?.ok||!Array.isArray(d.offers))throw Error('not_available');
-  selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;offerCandidates=d.offers.slice(0,2);
+  selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;offerCandidates=d.offers.slice(0,2);
   status.textContent='두 판사에게 같은 사건이 중복 예약되지 않습니다.';renderOffers();
  }catch{status.textContent='이 시간대에 공유 배당을 사용할 수 없습니다. 개인 재판에는 영향이 없습니다.'}
 }
@@ -160,18 +190,63 @@ async function refreshCourt(){
    courtStatus=status;courtActions=history.actions;renderOffers();
   }
  }catch{courtStatus=null;renderOffers()}
+ if(window.VERDICT_CONFIG?.p5JointPanel===true)await refreshPanel();
+}
+async function refreshPanel(){
+ if(!selectedCase||window.VERDICT_CONFIG?.p5JointPanel!==true)return;
+ const caseId=selectedCase.caseId;
+ if(panelFor!==caseId){panelFor=caseId;panelState=null;panelPartners=null}
+ try{
+  const status=await window.VerdictAuth.api('/world/panel/status?caseId='+encodeURIComponent(caseId));
+  if(selectedCase?.caseId===caseId&&status?.ok)panelState=status;
+ }catch{}
+ if(!panelState&&!panelPartners){
+  try{
+   const found=await window.VerdictAuth.api('/world/panel/partners?caseId='+encodeURIComponent(caseId));
+   if(selectedCase?.caseId===caseId&&found?.ok)panelPartners=found;
+  }catch{}
+ }
+ renderOffers();
+}
+async function p5Action(kind){
+ if(!selectedCase||window.VERDICT_CONFIG?.p5JointPanel!==true)return;
+ const root=(typeof ui!=='undefined'&&ui.p4NativeCourt
+  ?document.querySelector('[data-world-native-root]'):null)||panel;
+ if(!root)return;
+ const status=root.querySelector('[data-world-native-status]')||panel?.querySelector('[data-world-offers-status]');
+ const caseId=selectedCase.caseId;
+ try{
+  if(status)status.textContent='합의부 서버 처리 중…';
+  let data;
+  if(kind==='partners'){panelPartners=null;return refreshPanel()}
+  if(kind==='open')data=await window.VerdictAuth.api('/world/panel/open',{
+   caseId,peerId:root.querySelector('[data-p5-peer]')?.value,
+   npcId:root.querySelector('[data-p5-npc-select]')?.value});
+  else if(kind==='vote')data=await window.VerdictAuth.api('/world/panel/vote',{
+   caseId,choice:root.querySelector('[data-p5-choice]')?.value,
+   note:root.querySelector('[data-p5-note]')?.value||''});
+  else if(kind==='npc')data=await window.VerdictAuth.api('/world/panel/npc/decide',{caseId});
+  if(kind!=='refresh'&&!data?.ok)throw Error('p5_rejected');
+  await refreshPanel();
+  if(status)status.textContent='합의부 상태를 서버에서 갱신했습니다.';
+ }catch{
+  if(status)status.textContent='합의부 요청이 승인되지 않았습니다. 다른 재판관의 투표와 기일을 확인하세요.';
+ }
 }
 async function confirmSharedVerdict(){
  if(!selectedCase||!courtStatus?.canAct||window.VERDICT_CONFIG?.p4SharedVerdicts!==true)return;
- const region=panel?.querySelector('[data-world-verdict]');if(!region)return;
- const result=region.querySelector('[data-verdict-result]')?.value;
+ const region=(typeof ui!=='undefined'&&ui.p4NativeCourt?
+  document.querySelector('[data-world-native-root] [data-world-verdict]'):null)||
+  panel?.querySelector('[data-world-verdict]');if(!region)return;
+ if(panelState&&panelState.state!=='majority_ready')return;
+ const result=panelState?.majority||region.querySelector('[data-verdict-result]')?.value;
  const citations=[...region.querySelectorAll('input[data-cite]:checked')].map(x=>x.dataset.cite);
- const status=panel?.querySelector('[data-world-offers-status]');
+ const status=document.querySelector('[data-world-native-status]')||panel?.querySelector('[data-world-offers-status]');
  if(!citations.length){if(status)status.textContent='확인한 증거 또는 증언을 하나 이상 선택하세요.';return}
  if(!window.confirm('공유 세계에 판결을 확정할까요? 판결은 되돌릴 수 없습니다.'))return;
  if(status)status.textContent='서버 법정 기록과 판결을 확인 중…';
  try{
-  const d=await window.VerdictAuth.api('/world/court/verdict',{caseId:selectedCase.caseId,result,citations});
+  const d=await window.VerdictAuth.api(panelState?'/world/panel/finalize':'/world/court/verdict',{caseId:selectedCase.caseId,result,citations});
   if(!d?.ok)throw Error('verdict_invalid');
   finalDecision=d.judgment;await refreshCourt();await refresh();
   if(status)status.textContent='공유 판결 확정: '+d.judgment.order;
@@ -252,7 +327,7 @@ async function acceptOffer(id){
   const c=await window.VerdictAuth.api('/world/case?caseId='+encodeURIComponent(id));
   const r=await window.VerdictAuth.api('/world/case/initial?caseId='+encodeURIComponent(id));
   if(!c?.ok||!r?.ok||c.case?.caseId!==id)throw Error('case_unavailable');
-  selectedCase=c.case;firstDocs=Array.isArray(r.records)?r.records:[];courtTab='case';finalDecision=null;offerCandidates=[];
+  selectedCase=c.case;firstDocs=Array.isArray(r.records)?r.records:[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;offerCandidates=[];
   status.textContent='공통 사건 배당 완료 · 공개 초기 자료만 표시';renderOffers();await refreshCourt();refresh();
  }catch{status.textContent='배당 또는 사건 자료 조회에 실패했습니다. 서버 기록을 확인해 주세요.'}
 }
@@ -377,6 +452,11 @@ function mount(){
  else if(target.dataset.courtTab){courtTab=target.dataset.courtTab;renderOffers()}
  else if(target.hasAttribute('data-world-begin'))beginCourt();
  else if(target.hasAttribute('data-world-verdict'))confirmSharedVerdict();
+ else if(target.hasAttribute('data-p5-open'))p5Action('open');
+ else if(target.hasAttribute('data-p5-vote'))p5Action('vote');
+ else if(target.hasAttribute('data-p5-decide'))p5Action('npc');
+ else if(target.hasAttribute('data-p5-refresh'))p5Action('refresh');
+ else if(target.hasAttribute('data-p5-partners'))p5Action('partners');
  else if(target.hasAttribute('data-free-order-check'))interpretFreeOrder();
  else if(target.dataset.orderResult)resolveOrder(target.dataset.orderResult);
  else if(target.dataset.courtKind&&target.dataset.courtKey)doCourtAction(target.dataset.courtKind,target.dataset.courtKey)})}
@@ -396,6 +476,11 @@ function mount(){
   if(target.dataset.courtTab){courtTab=target.dataset.courtTab;return renderOffers()}
   if(target.hasAttribute('data-world-begin'))return beginCourt();
   if(target.hasAttribute('data-world-verdict'))return confirmSharedVerdict();
+  if(target.hasAttribute('data-p5-open'))return p5Action('open');
+  if(target.hasAttribute('data-p5-vote'))return p5Action('vote');
+  if(target.hasAttribute('data-p5-decide'))return p5Action('npc');
+  if(target.hasAttribute('data-p5-refresh'))return p5Action('refresh');
+  if(target.hasAttribute('data-p5-partners'))return p5Action('partners');
   if(target.hasAttribute('data-free-order-check'))return interpretFreeOrder();
   if(target.dataset.orderResult)return resolveOrder(target.dataset.orderResult);
   if(target.dataset.courtKind&&target.dataset.courtKey)
