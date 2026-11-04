@@ -19,6 +19,14 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    return response({ok:true,...await r.json()});
   } catch {return response({error:'slot_unavailable'},503)}
  }
+ if(url.pathname==='/world/panel/auto-assign'&&isPost){
+  try {
+   const r=await fetcher(env.SUPABASE_URL+'/rest/v1/rpc/shared_joint_auto_assign',{method:'POST',headers:serviceHeaders,body:JSON.stringify({p_actor:uid})});
+   if(!r.ok)return response({error:'joint_assignment_unavailable'},503);
+   const result=await r.json();
+   return response({ok:result.ok===true,...result},result.ok?200:409);
+  } catch {return response({error:'joint_assignment_unavailable'},503)}
+ }
  const caseId=isPost?input.caseId:url.searchParams.get('caseId');
  if(!validCase(caseId))return response({error:'invalid_case'},400);
  const read=async path=>{
