@@ -12,19 +12,27 @@ try{
   const page=await browser.newPage({viewport:{width:390,height:844}});
   await page.setContent('<!doctype html><html><head></head><body><main>기존 법정은 유지</main></body></html>');
   await page.evaluate(id=>{
-   window.VERDICT_CONFIG={p4SharedWorld:true,p4SharedDocket:true,p4CourtActions:true};
+   window.VERDICT_CONFIG={p4SharedWorld:true,p4SharedDocket:true,p4CourtActions:true,p4SharedVerdicts:true};
+   window.confirm=()=>true;window.__hearing=1;window.__verdict=false;
    window.__court_journal=[];
    window.__p4_lag=id==='judge-b'?11:0;
    window.VerdictAuth={online:true,user:{id},
     async api(path,body){
-     if(path.startsWith('/world/court/status'))return {ok:true,caseId:'case-'+id,worldDay:33,hearingIndex:1,canAct:true};
+     if(path.startsWith('/world/court/status'))return {ok:true,caseId:'case-'+id,worldDay:33,hearingIndex:window.__verdict?null:window.__hearing,canAct:!window.__verdict};
+     if(path==='/world/court/begin'){window.__hearing=2;return {ok:true,hearing:{hearing_index:2,world_day:34,already_opened:false}}}
+     if(path==='/world/court/order/resolve'){
+      const response={status:'done',recordId:'r2',title:'CCTV',text:'새로운 녹화 기록'};
+      window.__court_journal.push({action_type:'order_result',action_key:body.key,hearing_index:window.__hearing,response});
+      return {ok:true,response};
+     }
+     if(path==='/world/court/verdict'){window.__verdict=true;return {ok:true,judgment:{order:'원고의 청구를 인용한다.'}}}
      if(path.startsWith('/world/court/history'))return {ok:true,caseId:'case-'+id,actions:window.__court_journal};
      if(path==='/world/court/action'){
       body=body||{};
       const response=body.kind==='order'
-       ?{status:'done',recordId:'r2',title:'CCTV',text:'새로운 녹화 기록'}
+       ?{status:'delayed',recordId:'r2',title:'CCTV'}
        :{status:'done',answer:'서버에서 봉인된 진술',witness:'W1'};
-      window.__court_journal.push({action_type:body.kind,action_key:body.key,response});
+      window.__court_journal.push({action_type:body.kind,action_key:body.key,hearing_index:window.__hearing,response});
       return {ok:true,caseId:'case-'+id,response};
      }
      if(path==='/world/catchup')return {ok:true,worldDay:33,previousDay:33-window.__p4_lag,lagDays:window.__p4_lag,protectedUntil:33,pending:[{case_id:'case-'+id,hearing_index:1,due_game_day:24,state:'scheduled'}]};
@@ -32,7 +40,7 @@ try{
      if(path==='/world/offers')return {ok:true,offers:[{case_id:'case-'+id,category:'civil',option_index:0},{case_id:'alt-'+id,category:'public',option_index:1}]};
      if(path==='/world/accept')return {ok:true,assignment:{case_id:'case-'+id}};
      if(path.startsWith('/world/case/initial'))return {ok:true,caseId:'case-'+id,records:[{id:'r1',title:'제출된 계약서',kind:'문서',text:'첫날 공개된 계약 내용'}]};
-     if(path.startsWith('/world/case'))return {ok:true,case:{caseId:'case-'+id,card:{title:'법정의 계약 분쟁',summary:'원고의 계약 청구'},records:[{id:'r1',title:'제출된 계약서',first:true}],questions:[{id:'q1',w:'W1',q:'무엇을 보셨습니까?'}],orders:[{record:'r2',ask:'CCTV 원본을 제출하세요.'}]}};
+     if(path.startsWith('/world/case'))return {ok:true,case:{caseId:'case-'+id,card:{kind:'civil',title:'법정의 계약 분쟁',summary:'원고의 계약 청구'},records:[{id:'r1',title:'제출된 계약서',first:true}],questions:[{id:'q1',w:'W1',q:'무엇을 보셨습니까?'}],orders:[{record:'r2',ask:'CCTV 원본을 제출하세요.'}]}};
      if(path.startsWith('/world/events'))return {ok:true,events:[{
       event_id:19,event_key:'case-assigned:p4-case',case_id:'p4-case',
       event_type:'case_assigned',game_day:33,public_data:{
@@ -65,7 +73,16 @@ try{
   assert.match(await page.locator('[data-court-outcomes]').innerText(),/서버에서 봉인된 진술/);
   await page.getByRole('button',{name:/제출 명령 · CCTV/}).click();
   await page.waitForFunction(()=>window.__court_journal.length===2);
+  assert.doesNotMatch(await page.locator('[data-court-outcomes]').innerText(),/새로운 녹화 기록/);
+  await page.locator('[data-world-begin]').click();
+  await page.waitForFunction(()=>window.__hearing===2);
+  await page.getByRole('button',{name:/제출 결과 확인/}).click();
+  await page.waitForFunction(()=>window.__court_journal.length===3);
   assert.match(await page.locator('[data-court-outcomes]').innerText(),/새로운 녹화 기록/);
+  await page.locator('[data-cite="initial:r1"]').check();
+  await page.locator('[data-world-verdict]').click();
+  await page.waitForFunction(()=>window.__verdict===true);
+  assert.match(await page.locator('[data-world-offers-status]').innerText(),/원고의 청구를 인용한다/);
   const picked=await page.evaluate(()=>window.VerdictSharedWorld.selectedCase.caseId);
   assert.equal(picked,'case-'+id);
   const event=await page.evaluate(()=>window.VerdictSharedWorld.events[0]);
