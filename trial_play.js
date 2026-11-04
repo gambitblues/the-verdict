@@ -216,7 +216,7 @@ const prepWord=id=>{const s=lawyerSkill(id);return s>=78?'준비가 철저함':s
 
 function ensure(c,st){
  window.VerdictMatchPlay?.reset(st);   // a v8.0 match-screen trial without a verdict restarts in this courtroom
- if(st.trial4)return upgrade(c,st.trial4);
+ if(st.trial4){const t=upgrade(c,st.trial4);t.cards=dressCards(c,t,t.cards||[]);return t;}
  fixSex(c);fixProfile(c);decisionVerdicts(c);window.VerdictMatchPlay?.fixParties(c);fixKin(c);
  const seed=c.id+':'+(S.rng||1);
  const strictCase=!!curOf(c);
@@ -395,23 +395,17 @@ const pend=v=>!v.choice&&v.type!=='media'&&!(v.live&&!v.fired);
 const liveWhen=card=>card.otype==='hearsay'||(card.otype==='lead'&&card.valid)?'after':'before';
 const OBJ={lead:'유도신문',hearsay:'전문증거(남에게 들은 말)',relevance:'관련성 없음'};
 function dressCards(c,t,cards){
- return cards.map(card=>{
-  // a case that can be decided at its first hearing (one-hearing civil, decision cases) gets no delay requests from
-  // the parties: only the judge opens more hearings when the first one is not enough
-  if(card.type==='delay'&&!card.choice&&(isDecision(c)||(!isCriminal(c)&&t.minDays<=1))){card.void=true;return card}
-  if(card.dressed||card.type==='media')return card;
-  if(card.type==='objection'&&!t.witnesses.length){card.void=true;return card}
-  const h=T.hash(t.seed+':'+card.id),wi=h%Math.max(1,t.witnesses.length);
-  if(card.type==='objection'){
-   card.w=wi;card.live=true;card.at=1+(h>>>9)%3;   // comes up at the 1st~3rd question of the day
-   const open=(wDetail(c,wi)?.q||[]).filter(q=>!q.hidden);
-   if(card.valid)card.otype=(h>>>3)%3===0?'hearsay':'lead';
-   else{card.otype=(h>>>3)%2?'relevance':'lead';card.q=open.length?open[(h>>>5)%open.length].id:null}
-  }
-  if(card.type==='delay'){card.by=t.style==='delay'||(h>>>4)%3?'d':'p';card.weeks=card.valid?2:4;card.reasonKey=(h>>>6)%2}
-  card.dressed=true;return card;
- }).filter(card=>!card.void);
+ // Turn the existing procedural-event chance into a real, authored filing.
+ // No guessed or duplicate evidence is admitted to the case.
+ const late=curOf(c)?.late;
+ const canFile=!!late&&!t.lateDone&&!t.evidence?.some(e=>e.late);
+ const pending=(cards||[]).filter(card=>!card.choice&&(card.type==='objection'||card.type==='delay'));
+ const selected=canFile?pending[0]:null;
+ return (cards||[]).filter(card=>card.type!=='objection'&&card.type!=='delay').concat(
+  selected?[{id:selected.id,type:'filing',choice:null,by:/검찰|원고/.test(late.by||'')?'p':'d',dressed:true}]:[]
+ );
 }
+
 /* a witness's answer turned into the leading question that would have put it in the witness's mouth:
  * "제가 봤어요" → "증인이 봤지요?". Returns null when the sentence does not end in a form we can turn. */
 function leadOf(text){
@@ -868,6 +862,14 @@ function askRequests(force){
  if(!sessionOpen(t))return false;
  const card=t.cards.find(pend);if(!card)return askNotices(false);
  if(!force&&t.askedDay===t.day)return false;t.askedDay=t.day;
+ if(card.type==='filing'){
+  card.choice='filed';
+  if(!t.lateDone&&curOf(c)?.late){addLate(c,t);t.lateDue=false;}
+  save();
+  // The existing submission notice leads to the evidence tab; admission
+  // remains a judge decision, not an automatic bonus to either side.
+  return askNotices(false);
+ }
  const left=t.cards.filter(pend).length;
  modal(`${cardText(card,t,c).who}가 일어섭니다`,`<p class="muted small">${card.live?(liveWhen(card)==='before'?'증인이 답하기 전에 이의가 나왔습니다. 지금 정해 주세요.':'증인의 답을 두고 이의가 나왔습니다. 지금 정해 주세요.'):`${session(c,t.day)}을 시작하기 전에 신청${left>1?` ${left}건`:''}에 답해 주세요.`}</p>${cardBlock(card,t,c)}`,
   `<button class="btn outline full" data-action="dismiss">나중에 답하기</button>`);
