@@ -103,7 +103,7 @@ function socialFeed(limit=48){
   '<article class="tv-post"><div class="tv-user"><b>@'+esc(x.handle)+'</b><small>커뮤니티</small></div>'+
   '<p>'+esc(x.text)+'</p><small>공감 '+x.likes+' · 답글 '+x.reply+'</small></article>').join('')+'</div>';
 }
-window.VerdictMedia={outlets:OUTLETS,articles,comments,newsFeed,socialFeed};
+window.VerdictMedia={outlets:OUTLETS,articles,comments,newsFeed,socialFeed,setNewsPage(p){if(Number.isSafeInteger(p))newsPage=Math.max(0,p)}};
 })();
 
 ;/* ui_experience_v31.js */
@@ -229,7 +229,7 @@ clicker=function(e){
  const el=e.target.closest('[data-action]');
  if(el?.dataset.action==='newsPage'){
    const p=Number(el.dataset.page);
-   if(Number.isSafeInteger(p)){newsPage=Math.max(0,p);render()}
+   if(Number.isSafeInteger(p)){window.VerdictMedia?.setNewsPage(p);render()}
    return;
  }
  if(el?.dataset.action==='saveHub'||el?.dataset.action==='snsHub'){
