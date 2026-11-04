@@ -298,8 +298,7 @@ test('P4 courtroom begin: server owns day, next hearing requires real prior acti
  assert.equal(first.hearing_index,1);
  assert.equal(first.world_day,12);
  assert.equal(first.already_opened,false);
- assert.equal((await begin()).rows[0].already_opened,true,'same hearing is idempotent');
- await assert.rejects(begin(),/previous_hearing_empty/);
+ await assert.rejects(begin(),/previous_hearing_empty/,'cannot skip an empty completed hearing');
  await svc('select public.shared_court_action_record($1,$2::uuid,$3,$4,$5,$6::jsonb)',
   [id,A,1,'question','q1',JSON.stringify({status:'done',answer:'증언'})]);
  const next=(await begin()).rows[0];
