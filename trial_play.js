@@ -572,21 +572,29 @@ function availableOrders(c,t){
  // Use evidence already revealed in this hearing and answers already heard, not sealed truth or future exhibits.
  if(out.filter(o=>!used.has(o.key)).length<3){
   for(const is of issuesOf(c)){
-   const disclosed=(t.evidence||[]).filter(e=>e.revealed>0&&evDetail(c,e)?.issue===is.id);
-   const testimony=(t.heard||[]).filter(h=>h.issue===is.id&&!h.struck&&!h.tainted&&h.w!=='party');
-   const e=disclosed[0],h=testimony[testimony.length-1];
+   // A second generic clarification about the same issue is not a new order.
+   if([...(t.courtOrders||[]),...out].some(o=>o.issue===is.id&&o.type==='explain'))continue;
+   const e=(t.evidence||[]).find(e=>e.revealed>0&&evDetail(c,e)?.issue===is.id);
+   const h=(t.heard||[]).find(h=>h.issue===is.id&&!h.struck&&!h.tainted&&h.w!=='party');
    if(e&&!used.has('x:e:'+is.id)){
-    out.push({key:'x:e:'+is.id,issue:is.id,type:'explain',to:'both',
-     text:`양측은 '${is.title}'에 관하여 이미 공개된 '${e.title}'의 어느 부분이 주장에 관련되는지, 서로 다른 해석과 그 근거를 특정해 주세요.`});
-   }
-   if(h&&!used.has('x:h:'+is.id)){
-    const witness=t.witnesses[h.w],name=witness?.id&&NPC[witness.id]?.name;
-    if(name)out.push({key:'x:h:'+is.id,issue:is.id,type:'explain',to:'both',
-     text:`양측은 '${is.title}'에 관한 ${name} 증인의 앞선 진술에서 직접 확인한 사실과 추정에 해당하는 부분을 구분해 설명해 주세요.`});
+    const d=evDetail(c,e),content=d?.shows?short(tell(c,t,d.shows),90):short(e.scope||'',90);
+    out.push({key:'x:e:'+is.id,issue:is.id,type:'explain',to:'both',target:e.title,
+     text:`자료 '${e.title}'을 확인하세요. ${content?`자료 내용: ${content}. `:''}자료에서 직접 확인되는 사실과 아직 입증되지 않은 주장을 구분하고, 그 근거를 서면으로 제출하세요.`});
+   }else if(h&&!used.has('x:h:'+is.id)){
+    const name=wName(t,h.w),q=qById(c,t,h.w,h.q);
+    const words=h.text||h.said||(q?shownAnswer(c,t,h.w,q):'');
+    out.push({key:'x:h:'+is.id,issue:is.id,type:'explain',to:'both',target:name+' 증언',
+     text:`${name} 증언${words?` “${short(words,85)}”`:''}을 검토하세요. 직접 확인한 사실과 전해 듣거나 추측한 내용을 구분해 그 근거를 제출하세요.`});
    }
   }
  }
- return out.filter(o=>!used.has(o.key));
+ const seen=new Set();
+ return out.filter(o=>{
+  if(used.has(o.key))return false;
+  if(o.type!=='explain')return true;
+  if(seen.has(o.issue))return false;
+  seen.add(o.issue);return true;
+ });
 }
 function issueOrder(c,t,key){
  if(!canOrder(c,t))return '';
