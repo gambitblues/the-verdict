@@ -36,6 +36,22 @@ try{
     {action_type:'question',action_key:'q1',hearing_index:1,
      response:{status:'done',answer:'계약 체결을 직접 봤습니다.'}}
    ]};
+   if(path.startsWith('/world/panel/bench'))return {ok:true,bench:{
+    caseId:'case-p5',myRole:'chair',canOpenHearing:true,canPublishJudgment:true,
+    seats:[
+     {seat:'chair',kind:'human',role:'presiding',id:'judge-chair',name:'내 판사'},
+     {seat:'peer',kind:'human',role:'associate',id:'00000000-0000-0000-0000-00000000000b',name:'동료 판사'},
+     {seat:'npc',kind:'npc',role:'associate',id:'npc:test-01',name:'NPC 배석'}
+    ]}};
+   if(path.startsWith('/world/panel/case?'))return {ok:true,
+    role:'chair',court:{worldDay:8,hearingIndex:1,canAct:true,canObserve:true},
+    case:{caseId:'case-p5',card:{kind:'civil',title:'계약 불이행',summary:'계약상의 손해배상',claim:{amount:1000,fair:[500,850]}},
+     records:[{id:'r1',title:'계약서 원본',first:true}],
+     questions:[{id:'q1',w:'W1',q:'계약을 보셨습니까?'}],orders:[]},
+    records:[{id:'r1',title:'계약서 원본',text:'체결된 계약 내용',kind:'문서'}],
+    actions:[{action_type:'question',action_key:'q1',hearing_index:1,
+     response:{status:'done',answer:'계약 체결을 직접 봤습니다.'}}]
+   };
    if(path.startsWith('/world/panel/status')){
     if(!state.created)throw Error('panel_not_found');
     return {ok:true,state:state.votes===3?'majority_ready':'deliberating',
@@ -89,6 +105,9 @@ try{
  await page.locator('main [data-court-tab="verdict"]').click();
  const root=page.locator('main [data-world-native-root]');
  await root.locator('[data-p5-open]').click();
+ await root.locator('[data-p5-refresh]').waitFor();
+ assert.match(await root.innerText(),/NPC · 재판장 권한 없음/);
+ assert.match(await root.innerText(),/나는 재판장/);
  await page.waitForFunction(()=>window.__p5.created===true);
  await root.locator('[data-p5-choice]').selectOption('claim_granted');
  await root.locator('[data-p5-note]').fill('제출된 계약서와 증인의 진술을 검토했습니다.');
