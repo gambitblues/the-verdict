@@ -19,6 +19,7 @@ import {publicCaseSheet,initialEvidence} from './public_case_projection.js';
 import {courtroomPlan,resolveCourtOrder} from './shared_courtroom.js';
 import {validateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
 import {freeOrderPrompt,verifyFreeOrderReply} from './free_order_intent.js';
+import {p5PanelRoute} from './p5_panel_routes.js';
 import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,exchangePrompt,checkExchange,verifyPrompt} from './prompts.js';
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8',...headers}});
@@ -109,6 +110,8 @@ export async function handle(req,env,fetcher=fetch){
  const who=await authUser(req,env,fetcher);
  if(who.error)return json({error:who.error},who.status,head);
  const uid=who.user.id;
+ if(url.pathname.startsWith('/world/panel/'))
+  return p5PanelRoute(req,env,fetcher,uid,svc(env));
 
  // P4-1: public-only, read-only shared chronology. Use the caller's JWT so
  // Supabase RLS verifies invitation; never read case_stock or world_secrets.
