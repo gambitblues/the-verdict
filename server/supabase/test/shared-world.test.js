@@ -543,6 +543,14 @@ test('P5 presiding judge opens shared hearing, human associate can question and 
  const id=active.case_id;
  const opening=(await svc('select * from public.shared_court_begin($1,$2::uuid)',[id,A])).rows[0];
  assert.equal(opening.hearing_index,1);
+ const ruling=(judge,hearing,decision)=>svc(
+  'select public.shared_evidence_decision_record($1,$2::uuid,$3,$4,$5) as ruling',
+  [id,judge,hearing,'r1',decision]);
+ const firstRuling=await ruling(A,1,'conditional');
+ assert.equal(firstRuling.rows[0].ruling.decision,'conditional');
+ assert.equal((await ruling(A,1,'conditional')).rows[0].ruling.decision,'conditional','idempotent replay');
+ await assert.rejects(ruling(A,1,'exclude'),/evidence_ruling_conflict/);
+ await assert.rejects(ruling(B,1,'use'),/chair_required/);
  await assert.rejects(svc('select * from public.shared_court_begin($1,$2::uuid)',[id,B]),
   /court_case_not_owned/);
  const delayed={status:'delayed',recordId:'r-test',title:'감시영상 원본'};
@@ -558,6 +566,10 @@ test('P5 presiding judge opens shared hearing, human associate can question and 
   /court_case_not_owned/);
  const next=(await svc('select * from public.shared_court_begin($1,$2::uuid)',[id,A])).rows[0];
  assert.equal(next.hearing_index,2);
+ assert.equal((await ruling(A,2,'use')).rows[0].ruling.decision,'use',
+  'later open hearing may supersede an earlier evidence ruling');
+ const rulings=(await svc("select action_key,response from public.shared_court_actions where case_id=$1 and action_type='evidence_decision' order by hearing_index",[id])).rows;
+ assert.deepEqual(rulings.map(x=>x.action_key),['r1:1','r1:2']);
  const released={status:'done',recordId:'r-test',title:'감시영상 원본',text:'공개된 원본 자료'};
  const result=await svc('select public.shared_order_result_record($1,$2::uuid,$3,$4,$5::jsonb) as record',
   [id,B,2,'r-test',JSON.stringify(released)]);
