@@ -85,7 +85,8 @@ function renderOffers(){
   (!latestRulings.has(a.response.recordId)||Number(a.hearing_index||0)>=latestRulings.get(a.response.recordId).hearing))
   latestRulings.set(a.response.recordId,{decision:a.response.decision,hearing:Number(a.hearing_index||0)});
  const rulingLabels={use:'채택',conditional:'조건부 채택',exclude:'배제'};
- const canRule=ready&&(!window.VERDICT_CONFIG?.p5JointPanel||jointBench?.myRole==='chair');
+ const canRule=ready&&window.VERDICT_CONFIG?.p4TrialParity===true&&
+  (!window.VERDICT_CONFIG?.p5JointPanel||jointBench?.myRole==='chair');
  const choices=c.kind==='criminal'?[['guilty','유죄'],['acquittal','무죄'],['partial','일부 유죄']]
   :c.kind==='decision'?[['decision_yes','인용'],['decision_no','기각']]
   :[['claim_granted','청구 인용'],['claim_denied','청구 기각'],['partial','일부 인용'],['settled','화해']];
