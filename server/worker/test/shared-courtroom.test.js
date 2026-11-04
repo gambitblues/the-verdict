@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {courtroomPlan,courtActionId} from '../src/shared_courtroom.js';
+import {courtroomPlan,courtActionId,resolveCourtOrder} from '../src/shared_courtroom.js';
 
 const sheet={id:'case-p4',questions:[
  {id:'first',w:'W1',q:'무슨 일을 봤나요?',a:{did:'봤다',didnt:'안 봤다',reason:'잘 모르겠다'}},
@@ -28,14 +28,18 @@ test('prerequisite questions and court orders unlock only after successful resul
  assert.equal(courtroomPlan(sheet,'did',[],'question','follow').error,'prerequisite_missing');
  assert.equal(courtroomPlan(sheet,'did',[],'question','video-q').error,'prerequisite_missing');
  const ordered=courtroomPlan(sheet,'did',[],'order','r2');
- assert.deepEqual(ordered.response,{status:'done',recordId:'r2',title:'미공개 CCTV',text:'선택된 세계의 CCTV'});
+ assert.deepEqual(ordered.response,{status:'delayed',recordId:'r2',title:'미공개 CCTV'});
  const action=[{action_type:'order',action_key:'r2',response:ordered.response}];
+ assert.equal(courtroomPlan(sheet,'did',action,'question','video-q').error,'prerequisite_missing','pending order cannot open witness question');
+ const resolved=resolveCourtOrder(sheet,'did','r2');
+ assert.deepEqual(resolved.response,{status:'done',recordId:'r2',title:'미공개 CCTV',text:'선택된 세계의 CCTV'});
+ action.push({action_type:'order_result',action_key:'r2',response:resolved.response});
  assert.equal(courtroomPlan(sheet,'did',action,'question','video-q').response.answer,'영상 진술');
  assert.equal(courtroomPlan(sheet,'did',[{action_type:'question',action_key:'first',response:{status:'done'}}],'question','follow').response.answer,'후속 진술');
 });
 test('declined or delayed order never leaks locked evidence',()=>{
  for(const [branch,state] of [['didnt','declined'],['reason','delayed']]){
-  const out=courtroomPlan(sheet,branch,[],'order','r2');
+  const out=resolveCourtOrder(sheet,branch,'r2');
   assert.equal(out.response.status,state);
   assert.ok(!Object.hasOwn(out.response,'text'));
   assert.equal(courtroomPlan(sheet,branch,[{action_type:'order',action_key:'r2',response:out.response}],'question','video-q').error,'prerequisite_missing');
