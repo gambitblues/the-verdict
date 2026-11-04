@@ -6,11 +6,13 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path');
 const {validateAuthorSeed,seedToTerraInput}=require('../src/terra_author_seed.cjs');
+const {parseAuthorMarkdown}=require('../src/terra_author_markdown.cjs');
 const {generate}=require('../src/terra_case_generator.cjs');
 async function main(args=process.argv.slice(2)){
  const [action,input,outArg]=args;
  if(!['validate','generate'].includes(action)||!input)throw Error('Usage: validate|generate <author-seed.json> [output-directory]');
- const original=JSON.parse(fs.readFileSync(path.resolve(input),'utf8'));
+ const file=path.resolve(input),contents=fs.readFileSync(file,'utf8');
+ const original=/\.md$/i.test(input)?parseAuthorMarkdown(contents,input):JSON.parse(contents);
  const check=validateAuthorSeed(original);
  for(const w of check.warnings)console.warn('주의:',w);
  if(!check.ok){for(const e of check.errors)console.error('검증 실패:',e);process.exitCode=2;return}
