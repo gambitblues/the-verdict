@@ -1079,7 +1079,15 @@ function citables(c,t){
  const out=[];
  t.evidence.forEach(e=>{if(e.decision!=='use'&&e.decision!=='conditional')return;const d=evDetail(c,e);
   const part=e.decision==='conditional'&&condOf(c,t,e).rows?condUsed(c,t,e):null;
-  out.push({key:'e:'+e.id,label:e.title,text:part?part.join(', '):e.scope||'',part:!!part,cond:e.decision==='conditional',side:d?.side==='p'||d?.side==='d'?d.side:'n',issue:d?.issue,illegal:e.flawType==='illegal',kind:'evidence'})});
+  const order=e.follow?(t.courtOrders||[]).find(o=>o.follow===e.follow):null;
+  const origin=e.filedEvent?`${toWord(c,e.filedBy||'p')} · ${e.arrivedDay||t.day}회 공판 추가 제출`
+   :order?`재판장 ${ORDER_LABEL[order.type]||'자료 제출'} 주문에 따라 ${toWord(c,order.to)}이(가) ${e.arrivedDay||order.due}회 공판에 제출`
+   :e.late?`${d?.by||'당사자'} · ${e.arrivedDay||t.day}회 공판 추가 제출`
+   :`법정에 처음부터 나온 ${d?.kind||'자료'} · ${byWord[d?.by]||d?.by||'제출자 미상'}`;
+  out.push({key:'e:'+e.id,label:e.title,text:part?part.join(' · '):(d?.shows?tell(c,t,d.shows):e.scope||''),
+   origin,exhibitKind:d?.kind||'자료',excerpt:d?.excerpt?tell(c,t,d.excerpt):'',
+   how:d?.how?tell(c,t,d.how):'',part:!!part,cond:e.decision==='conditional',
+   side:d?.side==='p'||d?.side==='d'?d.side:'n',issue:d?.issue,illegal:e.flawType==='illegal',kind:'evidence'})});
  t.heard.forEach((h,i)=>{if(h.struck||h.silent)return;
   if(h.tainted){out.push({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label} (이의가 있었던 말)`,text:h.said||'',side:h.side==='m'?'n':h.side||'p',issue:h.issue,weak:true,kind:'testimony',name:wName(t,h.w)});return}
   if(h.text){out.push({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label||'증언'}`,text:h.text,side:h.side==='m'?'n':h.side,issue:h.issue,kind:'testimony',name:wName(t,h.w)});return}
@@ -1636,7 +1644,16 @@ function verdictPage(c,st){
   <p class="t4-ask-head">판단 사유</p><div class="t4-seg wrap t4-factors">${CIVIL_FACTORS.map(([k,l,d])=>`<button class="t4-chip ${v.factors.includes(k)?'on':''} ${d<0?'mit':'agg'}" data-action="t4v" data-k="factor" data-v="${k}">${d<0?'↓':'↑'} ${l}</button>`).join('')}</div>${remedyBlock(c,v)}`;
  }
  const items=citables(c,t);
- const citeList=items.length?items.map(i=>`<button class="t4-cite ${v.cites.includes(i.key)?'on':''} ${i.weak?'weak':''}" data-action="t4v" data-k="cite" data-v="${esc(i.key)}"><b>${v.cites.includes(i.key)?'☑':'☐'} ${esc(i.label)}</b>${i.text?`<small>${esc(short(i.text,70))}</small>`:''}${i.weak?'<small class="t4-weak">이의가 있었던 말 · 믿을 만한 정도가 낮아요</small>':''}${i.cond?`<small class="t4-weak">${i.part?'조건부 · 고른 부분만 쓴 자료':'조건부 · 전체를 가볍게 쓴 자료'}</small>`:''}</button>`).join(''):'<p class="notice">쓰기로 정한 증거나 들은 증언이 없습니다. 창을 닫고 증거 탭과 증인 탭을 먼저 확인하세요.</p>';
+ const citeList=items.length?items.map(i=>`<button class="t4-cite ${v.cites.includes(i.key)?'on':''} ${i.weak?'weak':''}" data-action="t4v" data-k="cite" data-v="${esc(i.key)}">
+  <b>${v.cites.includes(i.key)?'☑':'☐'} ${esc(i.label)}</b>
+  ${i.origin?`<small><strong>제출 경위</strong> · ${esc(i.origin)}</small>`:i.kind==='testimony'?'<small>법정에서 실제로 들은 증언</small>':''}
+  ${i.exhibitKind?`<small><strong>자료 종류</strong> · ${esc(i.exhibitKind)}</small>`:''}
+  ${i.text?`<small><strong>확인 내용</strong> · ${esc(i.text)}</small>`:''}
+  ${i.excerpt?`<small><strong>기록 발췌</strong> · ${esc(i.excerpt)}</small>`:''}
+  ${i.how?`<small><strong>확보 경위</strong> · ${esc(i.how)}</small>`:''}
+  ${i.weak?'<small class="t4-weak">이의가 있었던 말 · 믿을 만한 정도가 낮아요</small>':''}
+  ${i.cond?`<small class="t4-weak">${i.part?'조건부 · 고른 부분만 쓴 자료':'조건부 · 전체를 가볍게 쓴 자료'}</small>`:''}
+ </button>`).join(''):'<p class="notice">쓰기로 정한 증거나 들은 증언이 없습니다. 창을 닫고 증거 탭과 증인 탭을 먼저 확인하세요.</p>';
  const pend_=(t.courtOrders||[]).filter(o=>o.status==='pending').length;
  const overview=`<section class="panel t4 t4-verdict-home"><h3>⚖ 판결</h3>${canVerdict?'':`<p class="notice">기일이 ${t.minDays-t.daysDone}번 더 필요해요.${waiting(t)?` ${esc(session(c,t.day))}은 ${esc(dlabel(Math.max(t.nextDate||0,today())))}에 열려요.`:''}</p>`}
  ${pend_?`<p class="notice">아직 결과가 오지 않은 재판장 주문이 ${pend_}건 있어요. 지금 선고해도 되지만, 그 결과는 판단에 들어가지 않아요.</p>`:''}
