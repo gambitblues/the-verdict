@@ -41,3 +41,7 @@
  [data-world-native-root] .vsw-p5 button,
  [data-world-native-root] [data-world-verdict] button{width:100%}
 }
+
+.joint-court-slot{margin-top:20px;border:1px solid #a38d68;border-left:4px solid #a38d68;border-radius:12px}
+.t4-ai-evidence,.vsw-ai-note{margin:10px 0;padding:12px;border-left:3px solid #7d8f9d;background:rgba(100,120,140,.08)}
+.t4-ai-evidence p,.vsw-ai-note p{white-space:pre-wrap;line-height:1.6}
