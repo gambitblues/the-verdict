@@ -509,3 +509,38 @@ test('P4 free order: AI maps Korean open order to catalog but never writes evide
  assert.equal((await handle(req('/world/court/free-order',body),enabled,fakeFetch)).status,409);
  assert.equal((await handle(req('/world/court/free-order',body, ''),enabled,fakeFetch)).status,401);
 });
+
+test('P5 evidence ruling is sealed: chair + disclosed item only, no browser-supplied evidence text',async()=>{
+ const seen=[];const localEnv={...env,P4_COURT_ACTIONS_ENABLED:'1',P4_TRIAL_PARITY_ENABLED:'1'};
+ const base='case-p5-evidence';
+ const make=(assigned='u1')=>async(url,opt={})=>{
+  const u=String(url);seen.push({u,opt});
+  const ok=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json'}});
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/case_stock?'))return ok([{assigned_to:assigned,state:'assigned',
+   sheet:{records:[{id:'r1',first:true,title:'제출된 원본'},{id:'r2',first:false,title:'아직 미제출'}]}}]);
+  if(u.includes('/shared_court_actions?'))return ok([]);
+  if(u.includes('/rpc/shared_evidence_decision_record')){
+   const body=JSON.parse(opt.body);
+   assert.deepEqual(body,{p_case:base,p_judge:'u1',p_hearing:1,p_record:'r1',p_decision:'exclude'});
+   assert.ok(!JSON.stringify(body).includes('FORGED_FACT'));
+   return ok({status:'done',recordId:'r1',decision:'exclude'});
+  }
+  throw Error('unexpected '+u);
+ };
+ const body={caseId:base,recordId:'r1',hearingIndex:1,decision:'exclude',
+  answer:'FORGED_FACT',truth:'did'};
+ let d=await (await handle(req('/world/court/evidence/decide',body),localEnv,make())).json();
+ assert.equal(d.ok,true);
+ assert.equal(d.ruling.decision,'exclude');
+ assert.equal(seen.filter(x=>x.u.includes('/rpc/shared_evidence_decision_record')).length,1);
+ d=await (await handle(req('/world/court/evidence/decide',{...body,recordId:'r2'}),localEnv,make())).json();
+ assert.equal(d.error,'evidence_not_disclosed');
+ d=await (await handle(req('/world/court/evidence/decide',{...body,decision:'fake'}),localEnv,make())).json();
+ assert.equal(d.error,'invalid_evidence_decision');
+ const outsider=await handle(req('/world/court/evidence/decide',body),localEnv,make('another-judge'));
+ assert.equal(outsider.status,403);
+ const off=await handle(req('/world/court/evidence/decide',body),env,make());
+ assert.equal(off.status,404);
+});
