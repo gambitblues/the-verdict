@@ -1195,12 +1195,11 @@ function after(c,st,t,opt,dir,res,extra={}){
  save();render();
  modal('선고 완료',`<p><b>${esc(plainLabel(opt))}</b></p>
   ${extra.judgment?`<p class="t4-order"><b>주문</b> ${esc(extra.judgment.order)}</p>`:''}
-  <div class="t4-delta"><span>판결 실력</span><b>${res.score}</b></div>
-  <div class="t4-delta"><span>여론과 맞은 정도</span><b>${match}</b></div>
+  <p class="muted small">개별 사건의 채점 결과는 공개되지 않습니다. 정기 법관 평가에서 누적된 판결 기록을 종합합니다.</p>
   ${deskOut?`<h4>📋 판결 요약</h4><div class="t4-summary">${deskOut.summary.map(l=>`<div>${esc(l)}</div>`).join('')}</div>
   <h4>오늘의 1면</h4><p class="t4-headline"><small>${esc(deskOut.column.outlet)} · ${esc(deskOut.column.desk)}</small><br>${esc(deskOut.column.title)}</p><p class="t4-headline"><small>${esc(deskOut.beat.outlet)} · ${esc(deskOut.beat.desk)}</small><br>${esc(deskOut.beat.title)}</p>`:''}
   ${headlines.map(x=>`<p class="t4-headline"><small>${esc(x.outlet)} · ${esc(x.name)} 기자</small><br>${esc(x.text)}</p>`).join('')}
-  <p class="muted small">판결문 전문은 '선고 이후' 탭에서 볼 수 있어요. 판결 리뷰 점수는 약 9시간 뒤 공개됩니다.</p>`);
+  <p class="muted small">판결문 전문은 '선고 이후' 탭에서 볼 수 있어요. 평가는 9개월 정기 법관 평가에 반영됩니다.</p>`);
 }
 
 /* ---------- time-based events ---------- */
@@ -1219,7 +1218,7 @@ function tick(){
   if(!t.final.reviewShown&&t0>=t.final.reviewAt){
    t.final.reviewShown=true;changed=true;
    const d=desk();d.reviews.push({caseId:c.id,skill:t.final.skill,review:t.final.review,match:t.final.match,side:T.sideOf(t.final.dir)});d.reviews=d.reviews.slice(-60);
-   news(`판결 리뷰 · ${shortName(c)} ${t.final.review}점`,t.final.evaluators.map(e=>`${e.name} ${e.score}점`).join(' · '),'법조일보');
+   news(`판결 기록 검토 · ${shortName(c)}`,`법조계는 해당 판결의 논증과 증거 검토 과정을 살펴보고 있다. 개별 평가 점수는 공개하지 않고 정기 법관 평가에 누적한다.`,'법조일보');
    nickname();
   }
   if(!t.truthShown&&t.revealAt&&t0>=t.revealAt&&(window.VerdictV6?.yearsSince?.(t)??9)>=1){
@@ -1681,11 +1680,12 @@ if(typeof courtList==='function'){
  courtList=function(){
   let html=priorList();
   if(window.VerdictDockPanel){const k=html.indexOf('</h1>');if(k>0){const e=html.indexOf('</div></div>',k);const at=e>0?e+12:k+5;html=html.slice(0,at)+'<div class="mt">'+window.VerdictDockPanel()+'</div>'+html.slice(at)}}
-  const r=desk().reviews,avg=r.length?Math.round(r.reduce((n,x)=>n+x.review,0)/r.length)+'점':'-';
-  const line=`<p class="t4-sumline"><span>미완료 <b>${openCases().length}</b></span><span>완료 <b>${completed().length}</b></span><span>평점 <b>${avg}</b></span></p>`;
+  const reviews=(S.careerReviews||[]).filter(x=>x.endWeek<=S.week);
+  const latest=reviews.at(-1);
+  const line=`<p class="t4-sumline"><span>미완료 <b>${openCases().length}</b></span><span>완료 <b>${completed().length}</b></span><span>정기 평가 <b>${esc(latest?.rating||'예정')}</b></span></p>`;
   html=line+html;
   html=html.replace('접수된 사건을 확인하고 이번 주 심리할 사건을 선택하세요.','맡은 사건을 골라 재판을 이어가세요.')
-   .replace(/<div class="stat-card"><label>금주 심리 여력<\/label><strong>[^<]*<\/strong><\/div>/,`<div class="stat-card"><label>판결 리뷰 평균</label><strong>${(()=>{const r=desk().reviews;return r.length?Math.round(r.reduce((a,x)=>a+x.review,0)/r.length)+'점':'-'})()}</strong></div>`)
+   .replace(/<div class="stat-card"><label>금주 심리 여력<\/label><strong>[^<]*<\/strong><\/div>/,`<div class="stat-card"><label>9개월 정기 평가</label><strong>${esc(latest?.rating||'평가 예정')}</strong></div>`)
    .replace(/<div class="grid three mt2">(?:<div class="stat-card"><label>[^<]*<\/label><strong>[^<]*<\/strong><\/div>){3}<\/div>\s*/,'') // only the three stat cards: the summary line above replaces them
    .replace(/시간을 진행해 보세요\./,'새 사건은 매일 10시~22시에 들어옵니다.')
    .replace(/가상 시간이 진행되면/,'시간이 흐르면');
