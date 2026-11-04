@@ -75,7 +75,7 @@ records의 ID/제목/kind/by/how/first 및 authorLeadId는 후보 그대로 보�
 worlds.did/didnt/reason은 후보의 act,motive,cause,records 원문과 witnesses의 관찰을
 각 saw로 정확히 이관한다. 각 세계에 label,legal,timeline,knows:{A:"...",B:"..."},
 형사 sentencing:{means,degree,count,setting,harm,victim,planning,after}가 필요하다.
-traps,screen,open을 추가한다. 법률을 확인할 수 없으면 검증 필요를 open에 명시하고
+미공개 증거 각각에 대해 orders 배열에 {record:"r-...",ask:"구체적 제출 명령",result:{did:"done",didnt:"done",reason:"done"}}를 작성한다. 제출 거부·지연은 사건 사실에 근거가 있을 때만 사용한다. 질문이 가능한 사건은 questions 배열에 {id:"q1",w:"W1",q:"질문",a:{did:"진술",didnt:"진술",reason:"진술"}}를 추가하고 관찰 범위를 넘는 지식은 쓰지 않는다.\ntraps,screen,open을 추가한다. 법률을 확인할 수 없으면 검증 필요를 open에 명시하고
 최종 배당하지 않는다. 결정적 사실을 추측해 덮어쓰지 않는다.
 JSON 객체 하나로만 출력.`;
 }
