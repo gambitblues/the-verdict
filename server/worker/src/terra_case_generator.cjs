@@ -72,6 +72,13 @@ card는 후보 kind/category/title/summary 그대로, accused:"A",complainant:"B
 people A,B,W1... 각각 key,name,role,age,job,state,traits. 성범죄 형사 피고 A는 남성.
 places [{id,name}], devices 배열, common {date,timeline:[{at,what,who?,place?}],facts:[]}.
 records의 ID/제목/kind/by/how/first 및 authorLeadId는 후보 그대로 보존하고 최초가 아닌 자료는 unlock을 붙인다.
+기존 사건 평점 엔진과 같은 평가 규칙을 실행할 수 있도록 각 records 항목에 검증할 수 있는
+review:{strength:0~100 숫자,flawType:"none|source|timing|illegal",flaw:0~100 숫자,side:"p|d|n"}를 추가한다.
+strength/flaw/side는 실제 자료 내용과 출처 한계에 근거하여 보수적으로 작성하고 위법 수집은 입증된 경우만 illegal로 둔다.
+각 questions 항목에는 review:{side:"p|d|n",weak:boolean}를 추가하여 해당 증언의 입증 방향과 신빙성 한계를 표시한다.
+review는 플레이어에게 직접 공개되지 않는 평가 메타데이터이며 세 세계의 확정 사실과 모순되지 않아야 한다.
+형사 charge의 min,max,fine,life,death,both 및 민사 claim.amount/fair는 실제 확인 가능한 법률·청구 범위로 설정하고
+모르면 규칙을 발명해 채우지 말고 QA에서 차단되도록 기록한다.
 worlds.did/didnt/reason은 후보의 act,motive,cause,records 원문과 witnesses의 관찰을
 각 saw로 정확히 이관한다. 각 세계에 label,legal,timeline,knows:{A:"...",B:"..."},
 형사 sentencing:{means,degree,count,setting,harm,victim,planning,after}가 필요하다.
