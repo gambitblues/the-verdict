@@ -318,10 +318,10 @@ async function refresh(){
 function openSharedCourt(){
  if(!user())return;
  mount();if(!panel)return;
- if(typeof ui!=='undefined'&&typeof render==='function'){
+ if(typeof ui!=='undefined'&&typeof window.VerdictNativeCourtRender==='function'){
   ui.p4NativeCourt=true;ui.tab='court';
   if(selectedCase)courtTab='case';
-  renderOffers();render();refresh();
+  renderOffers();window.VerdictNativeCourtRender();refresh();
   return;
  }
  panel.hidden=false;button?.setAttribute('aria-expanded','true');
@@ -385,8 +385,8 @@ function mount(){
   const target=e.target.closest?.('button'),native=target?.closest('[data-world-native-root]');
   if(!native)return;
   if(target.hasAttribute('data-world-native-back')){
-   if(typeof ui!=='undefined'&&typeof render==='function'){
-    ui.p4NativeCourt=false;ui.tab='courtList';render();
+   if(typeof ui!=='undefined'&&typeof window.VerdictNativeCourtRender==='function'){
+    ui.p4NativeCourt=false;ui.tab='courtList';window.VerdictNativeCourtRender();
    }
    return;
   }
