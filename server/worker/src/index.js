@@ -18,6 +18,7 @@ import TerraCloud from './terra_cloud_staging.cjs';
 import {publicCaseSheet,initialEvidence} from './public_case_projection.js';
 import {courtroomPlan,resolveCourtOrder} from './shared_courtroom.js';
 import {validateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
+import {freeOrderPrompt,verifyFreeOrderReply} from './free_order_intent.js';
 import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,exchangePrompt,checkExchange,verifyPrompt} from './prompts.js';
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8',...headers}});
@@ -288,6 +289,61 @@ export async function handle(req,env,fetcher=fetch){
   let rows;try{rows=await response.json()}catch{return json({error:'court_unavailable'},503,head)}
   if(!Array.isArray(rows)||!rows[0])return json({error:'court_unavailable'},503,head);
   return json({ok:true,caseId:id,hearing:rows[0]},200,head);
+ }
+
+ // P4 dynamic judicial order / discovery intent, phase 1.
+ // AI may choose only an EXISTING authored evidence item. This is a read-only
+ // suggestion; the judge must confirm through the sealed court action path.
+ if(url.pathname==='/world/court/free-order'&&req.method==='POST'){
+  if(env.P4_COURT_ACTIONS_ENABLED!=='1'||env.P4_FREE_ORDERS_ENABLED!=='1')
+   return json({error:'feature_disabled'},404,head);
+  let input;try{input=await req.json()}catch{return json({error:'bad_json'},400,head)}
+  const caseId=input?.caseId,orderText=input?.text,hearing=input?.hearingIndex;
+  if(typeof caseId!=='string'||!/^[a-z][a-z0-9-]{3,79}$/.test(caseId)||
+    !Number.isInteger(hearing)||hearing<1||hearing>200||
+    typeof orderText!=='string'||orderText.trim().length<8||orderText.length>600)
+   return json({error:'bad_free_order'},400,head);
+  const query=async path=>{
+   const r=await fetcher(`${env.SUPABASE_URL}/rest/v1/${path}`,{headers:svc(env)});
+   if(!r.ok)throw Error('store_unavailable');
+   const rows=await r.json();if(!Array.isArray(rows))throw Error('store_unavailable');return rows;
+  };
+  try{
+   const [cases,hearings,clock,judgments]=await Promise.all([
+    query(`case_stock?select=assigned_to,state,sheet&case_id=eq.${encodeURIComponent(caseId)}&limit=1`),
+    query(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encodeURIComponent(caseId)}&judge_id=eq.${encodeURIComponent(uid)}&hearing_index=eq.${hearing}&limit=1`),
+    query('shared_world_clock?select=game_day&id=eq.main&limit=1'),
+    query(`shared_case_judgments?select=case_id&case_id=eq.${encodeURIComponent(caseId)}&limit=1`)
+   ]);
+   const row=cases[0],session=hearings[0],today=clock[0]?.game_day;
+   if(!row||row.assigned_to!==uid||row.state!=='assigned')return json({error:'case_not_found'},404,head);
+   if(!session||session.state!=='completed'||session.completed_game_day!==today||judgments.length)
+    return json({error:'hearing_not_open_today'},409,head);
+   const built=freeOrderPrompt(orderText,row.sheet);
+   if(built.error)return json({error:built.error},400,head);
+   const model=env.MODEL_TALK;
+   const est=estimate(env,model,built.instructions.length+built.input.length,220,false);
+   const reservation=await reserve(env,uid,'free_order',model,est,fetcher);
+   if(reservation===undefined)return json({error:'usage_unavailable'},503,head);
+   if(reservation===null)return json({error:'daily_limit'},429,head);
+   const started=Date.now();
+   let ai;
+   try{ai=await respond(env,{model,instructions:built.instructions,input:built.input,
+    schema:built.schema,maxTokens:220},fetcher)}
+   catch{ai={ok:false,error:'ai_unavailable',usage:{}}}
+   const reviewed=ai.ok?verifyFreeOrderReply(row.sheet,ai.data):{error:'ai_unavailable'};
+   const usage=ai.usage||{},cost=costOf(env,model,usage);
+   await finish(env,reservation,{p_model:ai.model||model,p_in:usage.input_tokens||0,
+    p_out:usage.output_tokens||0,p_cost:Number(cost.toFixed(6)),
+    p_ok:!!reviewed.ok,p_reason:reviewed.ok?null:String(reviewed.error||'invalid_intent').slice(0,120),
+    p_ms:Date.now()-started},fetcher);
+   if(!reviewed.ok)return json({error:'order_interpretation_unavailable'},503,head);
+   // No raw AI text or sealed sheet fields are returned. In particular a
+   // proposed recordId does not itself unlock an exhibit or mutate any save.
+   return json({ok:true,matched:reviewed.matched,
+    ...(reviewed.matched?{recordId:reviewed.recordId}:{reason:reviewed.reason}),
+    confirmationRequired:!!reviewed.matched},200,head);
+  }catch{return json({error:'free_order_unavailable'},503,head)}
  }
 
  // P4: Witness / court order action is evaluated only against the sealed
