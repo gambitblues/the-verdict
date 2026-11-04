@@ -415,3 +415,41 @@ test('P4 sealed courtroom endpoint: only the assigned judge can obtain a server-
  assert.equal((await handle(request('question','q1'),enabled,f)).status,409);
  assert.equal((await handle(request('question','q1'),enabled,fake({reply:GOOD}))).status,503);
 });
+
+test('P4 shared verdict requires owned case and genuine citation; refuses browser-authored order',async()=>{
+ const log=[];let owner='u1';
+ const ok=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'content-type':'application/json'}});
+ const mock=async(url,opt={})=>{
+  const u=String(url);log.push({u,opt});
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/rest/v1/case_stock'))return ok([{case_id:'case-p4',assigned_to:owner,state:'assigned',sheet:{
+   card:{kind:'civil'},records:[{id:'r1',first:true,title:'제출 계약서'},{id:'r2',first:false,title:'미제출 자료'}]}}]);
+  if(u.includes('/rest/v1/shared_judge_hearings'))return ok([{hearing_index:1,state:'completed',completed_game_day:9}]);
+  if(u.includes('/rest/v1/shared_court_actions'))return ok([{action_type:'question',action_key:'q1',
+   hearing_index:1,response:{status:'done',answer:'증인 진술'}}]);
+  if(u.includes('/rpc/shared_judgment_publish')){
+   assert.equal(opt.headers.authorization,'Bearer svc');
+   const b=JSON.parse(opt.body);
+   assert.equal(b.p_judge,'u1');
+   assert.equal(b.p_order,'원고의 청구를 인용한다.');
+   assert.match(b.p_record_hash,/^[a-f0-9]{64}$/);
+   assert.ok(!JSON.stringify(b).includes('CLIENT_FORGED'));
+   return ok(true);
+  }
+  throw Error('unexpected '+u);
+ };
+ const enabled={...env,P4_COURT_ACTIONS_ENABLED:'1',P4_JUDGMENTS_ENABLED:'1'};
+ const request=citations=>req('/world/court/verdict',{caseId:'case-p4',result:'claim_granted',citations,
+  order:'CLIENT_FORGED',worldDay:9999});
+ assert.equal((await handle(request(['initial:r1']),env,mock)).status,404);
+ const bad=await (await handle(request(['initial:r2']),enabled,mock)).json();
+ assert.equal(bad.error,'citation_not_in_record');
+ assert.equal(log.filter(x=>x.u.includes('/rpc/shared_judgment_publish')).length,0);
+ const result=await (await handle(request(['initial:r1','question:q1']),enabled,mock)).json();
+ assert.equal(result.ok,true);
+ assert.equal(result.published,true);
+ assert.equal(result.judgment.order,'원고의 청구를 인용한다.');
+ owner='other-judge';
+ assert.equal((await handle(request(['initial:r1']),enabled,mock)).status,404);
+});
