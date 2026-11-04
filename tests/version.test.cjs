@@ -8,3 +8,12 @@ console.log('PASS: version',v);
 {const fs=require('fs'),p=require('path');const html=fs.readFileSync(p.join(__dirname,'../index.html'),'utf8'),sw=fs.readFileSync(p.join(__dirname,'../sw.js'),'utf8');
  const miss=[...html.matchAll(/src="\.\/([^"]+\.js)"/g)].map(m=>m[1]).filter(f=>!sw.includes("'./"+f+"'"));
  if(miss.length)throw new Error('sw.js does not precache: '+miss.join(', '));}
+
+// Guard the agreed entry flow against the legacy local-slot launcher returning.
+{
+ const runtime=fs.readFileSync(path.join(root,'game_runtime.js'),'utf8');
+ const launcher=runtime.slice(runtime.indexOf('/* source: player_profiles_v20.js */'),runtime.indexOf('/* source: beta_narrative_v15.js */'));
+ for(const s of ['data-profile="1"','data-profile="2"','id="profile-import"'])if(launcher.includes(s))throw Error('old entry control: '+s);
+ if(!launcher.includes('>이어하기</button>')||!launcher.includes('>새로하기</button>'))throw Error('entry buttons missing');
+ console.log('PASS: entry has only 이어하기 and 새로하기');
+}
