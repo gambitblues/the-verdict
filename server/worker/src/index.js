@@ -110,8 +110,14 @@ export async function handle(req,env,fetcher=fetch){
  const who=await authUser(req,env,fetcher);
  if(who.error)return json({error:who.error},who.status,head);
  const uid=who.user.id;
- if(url.pathname.startsWith('/world/panel/'))
-  return p5PanelRoute(req,env,fetcher,uid,svc(env));
+ if(url.pathname.startsWith('/world/panel/')){
+  const result=await p5PanelRoute(req,env,fetcher,uid,svc(env),{
+   respond,reserve,finish,estimate,costOf
+  });
+  const headers=new Headers(result.headers);
+  for(const [key,value] of Object.entries(head))headers.set(key,value);
+  return new Response(result.body,{status:result.status,headers});
+ }
 
  // P4-1: public-only, read-only shared chronology. Use the caller's JWT so
  // Supabase RLS verifies invitation; never read case_stock or world_secrets.
