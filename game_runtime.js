@@ -1240,7 +1240,17 @@ resetBtn.onclick=()=>{if(box.querySelector('.entry-reset-dialog'))return;
  dialog.innerHTML='<p><b>새로운 판사 커리어를 시작할까요?</b></p><p>현재 진행 기록이 교체될 수 있습니다. 기존 기록은 백업 후 진행하는 것을 권장합니다.</p><button type="button" class="entry-btn" data-reset-cancel>닫기 · 이전으로</button><button type="button" class="entry-btn danger" data-reset-confirm>새로 시작</button>';
  resetBtn.insertAdjacentElement('afterend',dialog);
  dialog.querySelector('[data-reset-cancel]').onclick=()=>{dialog.remove();resetBtn.focus()};
- dialog.querySelector('[data-reset-confirm]').onclick=()=>{dialog.querySelectorAll('button').forEach(b=>b.disabled=true);wipeGame()};
+ dialog.querySelector('[data-reset-confirm]').onclick=async()=>{
+  const buttons=[...dialog.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);
+  if(window.VerdictAuth?.user){
+   try{await window.VerdictAuth.resetCareer()}catch(e){
+    let err=dialog.querySelector('.entry-reset-error');
+    if(!err){err=document.createElement('p');err.className='entry-reset-error';err.setAttribute('role','alert');dialog.appendChild(err)}
+    err.textContent=e.message||'초기화에 실패했어요. 기존 기록은 보존됩니다.';
+    buttons.forEach(b=>b.disabled=false);
+   }
+  }else wipeGame();
+ };
 };
 }
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}

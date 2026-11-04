@@ -144,7 +144,7 @@ async function pull(uid){
  }
  if(adoptedLive){adoptedLive=false;location.reload()}
 }
-let pushing=false,held=new Set();
+let pushing=false,held=new Set(),resetting=false;
 async function put(uid,s,force=false){
  const v=slotValue(s);if(v==null)return;
  const r=await rest('rpc/save_put',{method:'POST',body:JSON.stringify({p_slot:s,p_data:v,p_base_rev:Number(localStorage.getItem(REV(uid,s))||0),p_game_ver:window.VERDICT_VERSION||'',p_device:deviceId(),p_force:force})});
@@ -155,7 +155,7 @@ async function put(uid,s,force=false){
  if(row.conflict){held.add(s);return row}
 }
 async function push(uid,{ask:askNow=true}={}){
- if(pushing||!online||!session)return;pushing=true;
+ if(pushing||resetting||!online||!session)return;pushing=true;
  try{try{window.VerdictStore?.flush()}catch{}
   for(const s of ['1','2']){if(!dirty(uid,s)||held.has(s)&&!askNow)continue;
    const c=await put(uid,s);
@@ -165,6 +165,27 @@ async function push(uid,{ask:askNow=true}={}){
 let syncing=false;
 function sync(uid){if(syncing)return;syncing=true;setInterval(()=>push(uid),20000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')push(uid,{ask:false})})}
 
+/* Server-authoritative personal career reset. This RPC is introduced by 035_player_career_reset.sql.
+ * Never clear local data when the server has not confirmed its own delete. */
+async function resetCareer(){
+ if(solo||!session?.user?.id||!online)throw new Error('서버에 로그인된 상태에서만 초기화할 수 있어요.');
+ if(pushing||resetting)throw new Error('저장 동기화가 진행 중이에요. 잠시 후 다시 시도해 주세요.');
+ resetting=true;
+ const uid=session.user.id;
+ try{
+  const r=await rest('rpc/reset_player_career',{method:'POST',body:'{}'});
+  if(!r.ok){const detail=await r.json().catch(()=>({}));throw new Error(r.status===404?'서버에 초기화 기능(035 SQL)이 아직 설치되지 않았어요.':(detail.message||'서버 세이브 삭제에 실패했어요.'))}
+  if(await r.json()!==true)throw new Error('서버가 초기화를 확인하지 않았어요.');
+  try{window.VerdictStore?.halt()}catch{}
+  // Delete only this signed-in account's browser state, not the login token or other accounts.
+  const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);
+   if(WORK.test(k)||k.startsWith(stash(uid))||k.startsWith('vauth_rev:'+uid+':')||k.startsWith('vauth_fp:'+uid+':'))keys.push(k)}
+  for(const k of keys)localStorage.removeItem(k);
+  localStorage.setItem(ACTIVE,'1');
+  location.reload();
+  return true;
+ }catch(e){resetting=false;throw e}
+}
 /* ---------- screens ---------- */
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function card(html){let box=document.getElementById('verdict-login');if(!box){box=document.createElement('div');box.id='verdict-login';document.body.appendChild(box)}
@@ -267,6 +288,7 @@ document.head.appendChild(st);
 window.VerdictAuth={
  get user(){return solo?null:session?.user||null},
  get online(){return online},
+ resetCareer,
  /* call THE VERDICT API (Cloudflare Worker) as the signed-in player; only after this visit's online check */
  async api(path,body,{timeout=15000}={}){
   if(solo||!session||!online||!CFG.apiBase)throw new Error('ai_unavailable');
