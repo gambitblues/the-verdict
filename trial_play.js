@@ -1649,6 +1649,8 @@ function swipeInit(){
 swipeInit();
 const priorRender=render;
 render=function(){priorRender();preloadSave();document.body.classList.toggle('t4-court',ui.tab==='court');if(ui.tab==='courtList')document.querySelectorAll('.bottom-nav [data-tab="court"],.nav-stack [data-tab="court"]').forEach(b=>b.classList.add('active'));if(ui.tab==='court'&&ui.t4tab&&ui.t4tab!=='case'&&!ui.modal)setTimeout(()=>{if(!ui.modal&&ui.tab==='court'&&!askRequests(false))askNotices(false)},0)};
+// Expose the actual native court renderer to P4; shared_world.js has its own local render().
+window.VerdictNativeCourtRender=()=>render();
 
 /* Case list: plain words and the v4 trial-day counter. */
 if(typeof courtList==='function'){
