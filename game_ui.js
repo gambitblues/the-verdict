@@ -112,7 +112,7 @@ window.VerdictMedia={outlets:OUTLETS,articles,comments,newsFeed,socialFeed,setNe
 (()=>{
 const esc=x=>h(String(x??''));
 const tabletBase=tabletInner,baseShell=shell,priorClick=clicker;
-const APP=[['news','📰','기사'],['messages','💬','메시지'],['archives','⚖','판결 기록'],['career','🎖','나의 커리어'],['notes','📝','메모'],];
+const APP=[['news','📰','기사'],['social','＃','여론'],['messages','💬','메시지'],['archives','⚖','판결 기록'],['career','🎖','나의 커리어'],['notes','📝','메모'],];
 function clockData(){
  const d=new Date(),sharedDay=window.VERDICT_CONFIG?.p4SharedWorld===true?Number(window.VerdictSharedWorld?.clock?.game_day):NaN;
  const isSharedClock=Number.isSafeInteger(sharedDay)&&sharedDay>=0;
@@ -201,7 +201,6 @@ function ranking(){
 }
 tabletInner=function(){
  if(ui.tabletTab==='rank')ui.tabletTab='career';
-  if(ui.tabletTab==='social')ui.tabletTab='news';
  if(ui.tabletTab==='career')return careerChronicle();
  if(ui.tabletTab==='news')return '<h2>📰 법조·사회 뉴스 · 최신순</h2><p class="muted small">가상 언론사 20곳의 사건별 보도. 각 기사는 게임 내 사건에 기반합니다.</p>'+(window.VerdictMedia?.newsFeed(70)||'');
  if(ui.tabletTab==='social')return '<h2>＃ 시민광장 · 여론</h2><p class="muted small">가상 이용자들의 의견입니다. 댓글 수나 여론은 증거가 아닙니다.</p>'+(window.VerdictMedia?.socialFeed(90)||'');
@@ -234,7 +233,7 @@ clicker=function(e){
    return;
  }
  if(el?.dataset.action==='saveHub'||el?.dataset.action==='snsHub'){
-   ui.tabletTab=el.dataset.action==='saveHub'?'settings':'news';changeTab('tablet');return;
+   ui.tabletTab=el.dataset.action==='saveHub'?'settings':'social';changeTab('tablet');return;
  }
  return priorClick(e);
 };
