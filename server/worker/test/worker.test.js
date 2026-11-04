@@ -397,9 +397,9 @@ test('P4 sealed courtroom endpoint: only the assigned judge can obtain a server-
  assert.ok(!JSON.stringify(out).includes('FORGED_CLIENT_ANSWER'));
  assert.equal((await handle(request('question','q3'),enabled,f)).status,409,'locked witness question');
  out=await (await handle(request('order','r2'),enabled,f)).json();
- assert.equal(out.response.text,'녹화 자료 본문');
+ assert.equal(out.response.status,'delayed');
  out=await (await handle(request('question','q3'),enabled,f)).json();
- assert.equal(out.response.answer,'녹화 자료 확인');
+ assert.equal(out.error,'prerequisite_missing');
  const status=await (await handle(req('/world/court/status?caseId=case-p4'),enabled,f)).json();
  assert.deepEqual([status.canAct,status.hearingIndex],[true,1]);
  finalized=true;
@@ -407,7 +407,7 @@ test('P4 sealed courtroom endpoint: only the assigned judge can obtain a server-
  assert.deepEqual([finalizedStatus.canAct,finalizedStatus.hearingIndex],[false,null],'finished judgment locks courtroom');
  finalized=false;
  const history=await (await handle(req('/world/court/history?caseId=case-p4'),enabled,f)).json();
- assert.equal(history.actions.length,3);
+ assert.equal(history.actions.length,2);
  owner='another-user';
  assert.equal((await handle(request('question','q1'),enabled,f)).status,404);
  assert.equal((await handle(req('/world/court/history?caseId=case-p4'),enabled,f)).status,404);
