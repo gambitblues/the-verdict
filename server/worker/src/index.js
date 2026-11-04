@@ -138,7 +138,16 @@ export async function handle(req,env,fetcher=fetch){
    const r=await fetcher(env.SUPABASE_URL+'/rest/v1/rpc/shared_judge_career_status',{
     method:'POST',headers:svc(env),body:JSON.stringify({p_actor:uid})});
    if(!r.ok)return json({error:'career_unavailable'},503,head);
-   return json({ok:true,...await r.json()},200,head);
+   const status=await r.json();
+   let evaluations=[],reviewStatus='unavailable';
+   try{
+    const q=await fetcher(env.SUPABASE_URL+'/rest/v1/rpc/shared_career_nine_month',{
+     method:'POST',headers:svc(env),body:JSON.stringify({p_actor:uid})});
+    if(q.ok){const list=await q.json();
+     if(Array.isArray(list)){evaluations=list;reviewStatus='available'}
+    }
+   }catch{}
+   return json({ok:true,...status,evaluations,reviewStatus},200,head);
   }catch{return json({error:'career_unavailable'},503,head)}
  }
  // P4-1: public-only, read-only shared chronology. Use the caller's JWT so
