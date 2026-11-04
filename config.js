@@ -7,6 +7,7 @@ window.VERDICT_CONFIG={
  apiBase:'',            // https://the-verdict-api.<account>.workers.dev
  p4SharedWorld:false,     // enable only in isolated P4 QA with migrated backend
  p4SharedDocket:false,    // server case reservation/acceptance preview; QA only
+ p4FreeOrders:false,    // AI-interpreted open text orders; independent QA only
  p4CourtActions:false,   // sealed witness and evidence-order actions; QA only
  p4SharedVerdicts:false, // evidence-backed server verdict; QA only
  ai:true                // AI wording for witness answers, articles and judgments (falls back to the game's own text)
