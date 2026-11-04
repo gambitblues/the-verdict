@@ -8,7 +8,7 @@ let events=[],cursor=0,loading=false,owner='',panel=null,button=null,clock=null,
 let sharedSlot='',offerCandidates=[],selectedCase=null,firstDocs=[],courtStatus=null,courtActions=[],catchup=null,resumeNotice='';
 const seen=new Set();
 function user(){const a=window.VerdictAuth;return a?.online&&a?.user?.id?a.user.id:null}
-function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;jointSlotState=null;jointSlotLoading=false;catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
+function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;jointSlotState=null;jointSlotLoading=false;evidenceNotes.clear();evidenceBusy.clear();catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
 function valid(ev){
  return ev&&Number.isSafeInteger(ev.event_id)&&ev.event_id>0&&
   typeof ev.event_key==='string'&&typeof ev.event_type==='string'&&
@@ -43,6 +43,7 @@ function kstSlot(){
  return v('year')+'-'+v('month')+'-'+v('day')+'T'+v('hour');
 }
 let courtTab='case',finalDecision=null,panelState=null,panelPartners=null,panelFor=null,jointSlotState=null,jointSlotLoading=false;
+let evidenceNotes=new Map(),evidenceBusy=new Set();
 const TABS=[['case','사건'],['day','기일'],['evidence','증거'],['witness','증인'],['orders','주문'],['verdict','판결']];
 function renderOffers(){
  const region=panel?.querySelector('[data-world-offers-list]');if(!region)return;
@@ -72,9 +73,9 @@ function renderOffers(){
    Number(a.hearing_index)<Number(courtStatus?.hearingIndex||0)&&
    !courtActions.some(x=>x.action_type==='order_result'&&x.action_key===a.action_key));
  const evidenceNow=[
-   ...firstDocs.map(r=>({title:r.title,text:r.text,source:'최초 제출'})),
+   ...firstDocs.map(r=>({id:r.id,title:r.title,text:r.text,source:'최초 제출'})),
    ...courtActions.filter(a=>a.action_type==='order_result'&&a.response?.status==='done')
-     .map(a=>({title:a.response?.title,text:a.response?.text,source:'추가 제출'}))
+     .map(a=>({id:a.response?.recordId||a.action_key,title:a.response?.title,text:a.response?.text,source:'추가 제출'}))
  ];
  const choices=c.kind==='criminal'?[['guilty','유죄'],['acquittal','무죄'],['partial','일부 유죄']]
   :c.kind==='decision'?[['decision_yes','인용'],['decision_no','기각']]
@@ -148,8 +149,15 @@ function renderOffers(){
    (permitted?'<button type="button" data-world-begin>▶ 공판 개정 / 다음 기일 열기</button>':'')+
    '<div data-court-outcomes>'+actions+'</div>';
  }else if(courtTab==='evidence'){
-  body='<h4>증거</h4>'+evidenceNow.map(r=>'<article class="vsw-event"><small>'+esc(r.source)+'</small><strong>'+
-    esc(r.title)+'</strong><p>'+esc(r.text||'')+'</p></article>').join('')+
+  body='<h4>증거</h4>'+evidenceNow.map(r=>{
+    const key=caseId+':'+r.id+':'+r.text;
+    const note=evidenceNotes.get(key);
+    return '<article class="vsw-event"><small>'+esc(r.source)+'</small><strong>'+
+     esc(r.title)+'</strong><p>'+esc(r.text||'')+'</p>'+
+     (note?'<aside class="vsw-ai-note"><b>AI 증거 해설 · 참고용</b><p>'+esc(note)+'</p><small>원문 기록만 판결 근거로 사용</small></aside>':
+       '<button type="button" data-world-explain="'+esc(r.id)+'">AI 해설 보기 · 원문은 유지</button>')+
+     '</article>'
+   }).join('')+
    (evidenceNow.length?'':'<p>공개된 자료가 없습니다.</p>');
  }else if(courtTab==='witness'){
   body='<h4>증인신문</h4>'+(ready?questions.slice(0,40).map((q,i)=>
@@ -192,6 +200,22 @@ function renderOffers(){
  syncNative();
 }
 
+async function explainSharedEvidence(id){
+ if(!selectedCase||!id)return;
+ const rec=firstDocs.find(r=>r.id===id);
+ const extra=courtActions.find(a=>a.action_type==='order_result'&&
+   (a.response?.recordId||a.action_key)===id&&a.response?.status==='done');
+ const original=String(rec?.text||extra?.response?.text||'').slice(0,2400);
+ const title=String(rec?.title||extra?.response?.title||id);
+ const key=selectedCase.caseId+':'+id+':'+original;
+ if(original.length<15||evidenceNotes.has(key)||evidenceBusy.has(key))return;
+ evidenceBusy.add(key);
+ try{
+  const answer=await window.VerdictAuth.api('/ai/evidence',{title,original});
+  if(answer?.ok&&answer.result?.text)evidenceNotes.set(key,answer.result.text);
+ }catch{}
+ finally{evidenceBusy.delete(key);renderOffers()}
+}
 async function reserveOffers(){
  const status=panel?.querySelector('[data-world-offers-status]');
  if(!status||!user())return;
@@ -532,6 +556,7 @@ function mount(){
  else if(target.dataset.courtTab){courtTab=target.dataset.courtTab;renderOffers()}
  else if(target.hasAttribute('data-world-begin'))beginCourt();
  else if(target.hasAttribute('data-world-verdict'))confirmSharedVerdict();
+ else if(target.dataset.worldExplain)explainSharedEvidence(target.dataset.worldExplain);
  else if(target.hasAttribute('data-p5-open'))p5Action('open');
  else if(target.hasAttribute('data-p5-vote'))p5Action('vote');
  else if(target.hasAttribute('data-p5-decide'))p5Action('npc');
@@ -556,6 +581,7 @@ function mount(){
   if(target.dataset.courtTab){courtTab=target.dataset.courtTab;return renderOffers()}
   if(target.hasAttribute('data-world-begin'))return beginCourt();
   if(target.hasAttribute('data-world-verdict'))return confirmSharedVerdict();
+  if(target.dataset.worldExplain)return explainSharedEvidence(target.dataset.worldExplain);
   if(target.hasAttribute('data-p5-open'))return p5Action('open');
   if(target.hasAttribute('data-p5-vote'))return p5Action('vote');
   if(target.hasAttribute('data-p5-decide'))return p5Action('npc');
