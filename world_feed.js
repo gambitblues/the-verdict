@@ -17,7 +17,7 @@ const shortName=c=>String(c.name||'').split(' · ')[0];
 const open=new Set();
 
 /* ---------- comments that follow the trial ---------- */
-const NICK_A=['법정관찰자','동네주민','퇴근길독자','정의구현','팩트체크','조용한방청객','새벽시민','판결문러','현실주의자','오늘의독자','지나가던변호사','법알못','두아이부모','시민1','커피는아아'];
+const NICK_A=['법정관찰자','동네주민','퇴근길독자','정의구현','팩트체크','조용한방청객','새벽시민','판결문러','현실주의자','오늘의독자','지나가던변호사','법알못','두아이부모','시민1','커피는아아','법원앞편의점','기록읽는사람','가사사건경험자','동네사장','퇴직공무원','사회초년생','지방소식통','야간근무자','민사소송중','회의적인독자','판결문공부중','동네엄마','경제신문독자','퇴근후뉴스','검증먼저','중립독자','법학도','사회부애독자'];
 const NICK_B=['','87','_k','2027','33','99','_','7','01','J'];
 function nick(seed){const a=pick(NICK_A,seed+'a'),b=pick(NICK_B,seed+'b');return a+b}
 /* What the public knows: evidence shown in court, testimony heard, new evidence, the verdict. Nothing hidden. */
@@ -234,7 +234,7 @@ function newsFeed(limit=40){
  const list=articles().slice().sort((a,b)=>(Number(b.day)||0)-(Number(a.day)||0)|| (Number(b.index)||0)-(Number(a.index)||0)).slice(0,limit);
  if(!list.length)return '<p class="muted">내가 맡은 사건이 생기면 재판 전 전망 기사부터 실려요.</p>';
  return '<div class="tv-news-list">'+list.map(a=>{
-  const c=CASES.find(x=>x.id===a.caseId),key='art'+a.index,id=a.caseId+':'+key,n=3+hash(id)%3;
+  const c=CASES.find(x=>x.id===a.caseId),key='art'+a.index,id=a.caseId+':'+key,n=6+hash(id)%11;
   return `<article class="tv-media-card"><details class="wf-art" data-art="${esc(id)}" ${readOpen.has(id)||open.has(id)?'open':''}><summary><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div><strong>${esc(a.title)}</strong><small class="wf-more">기사 펼치기</small></summary>${a.reporter?`<button class="tv-reporter" data-action="reporter" data-i="${REPORTERS.indexOf(a.reporter)}">✍ <b>${esc(a.reporter.name)} 기자</b> · ${esc(a.reporter.bio)}. ${esc(a.reporter.voice)}. <i>›</i></button>`:''}<p>${esc(a.body)}</p>
   <button class="wf-link" data-action="wfopen" data-id="${esc(id)}">💬 ${open.has(id)?'댓글 접기':`댓글 ${n}개`}</button>${open.has(id)&&c?`<div class="wf-thread">${threadView(thread(c,key,n))}</div>`:''}</details></article>`;
  }).join('')+'</div>';
