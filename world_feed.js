@@ -401,11 +401,45 @@ function messagesView(){
 
 /* ---------- hooks ---------- */
 if(window.VerdictMedia){window.VerdictMedia.articles=articles;window.VerdictMedia.newsFeed=newsFeed;window.VerdictMedia.socialFeed=()=>opinionFeed()}
+/* Read-only P4 bridge: the native news tablet receives the same canonical
+ * public chronology as the shared courtroom. Local personal articles are kept
+ * separate and personal relations/saves never become shared world authority.
+ * Every field is escaped and every event came through the invited-player API.
+ */
+function sharedWorldTabletNews(){
+ if(window.VERDICT_CONFIG?.p4SharedWorld!==true||
+    !window.VerdictAuth?.online||!window.VerdictSharedWorld)return '';
+ const shared=window.VerdictSharedWorld;
+ const news=(shared.events||[]).filter(ev=>ev&&
+  ['incident_reported','investigation_opened','indictment_filed','case_assigned',
+   'hearing_opened','judgment_published','appeal_reported','aftermath_published',
+   'npc_public_update'].includes(ev.event_type)).slice(-30).reverse();
+ const people=(shared.npcs||[]).slice(0,18);
+ if(!news.length&&!people.length)return '';
+ const titles={incident_reported:'사건 발생',investigation_opened:'수사 개시',
+  indictment_filed:'기소',case_assigned:'사건 배당',hearing_opened:'공판 개정',
+  judgment_published:'판결 선고',appeal_reported:'항소',aftermath_published:'후일담',
+  npc_public_update:'인물 변화'};
+ return '<section class="wf-shared-chronology" aria-label="공유 세계 공식 기록">'+
+  '<h3>🌐 공유 세계 공식 기록</h3><p class="muted small">두 판사가 공유하는 확정 사실입니다. 개인 재판 기사·관계와는 구분됩니다.</p>'+
+  news.map(ev=>{
+   const title=String(ev.public_data?.title||ev.public_data?.eventLabel||titles[ev.event_type]);
+   const summary=String(ev.public_data?.summary||ev.public_data?.judgment||'');
+   return '<article class="feed"><small>세계 '+esc(ev.game_day)+'일 · '+
+    esc(titles[ev.event_type])+'</small><b>'+esc(title)+'</b>'+
+    (summary?'<p>'+esc(summary)+'</p>':'')+'</article>';
+  }).join('')+
+  (people.length?'<details><summary>공통 세계 인물 '+esc(people.length)+'명 · 공개 근황</summary>'+
+   people.map(p=>'<p>'+esc(p.public_profile?.name||p.npc_id)+' · '+
+    esc(p.public_profile?.profession||p.public_profile?.publicRole||'')+' · '+
+    esc(p.life_status==='dead'?'사망':p.life_status==='alive'?'생존':'상태 미상')+'</p>').join('')+
+   '</details>':'')+'</section>';
+}
 const priorTablet=tabletInner;
 tabletInner=function(){
  if(ui.tabletTab==='messages')return messagesView();
  if(ui.tabletTab==='social')return '<h2>＃ 여론</h2><p class="muted small">사건마다 여론이 어떻게 움직였는지, 지금 사람들이 무슨 말을 하는지 봅니다.</p>'+opinionFeed();
- if(ui.tabletTab==='news')return '<h2>📰 기사</h2><p class="muted small">내가 맡은 사건의 보도예요. 판결 전에는 전망을, 판결 뒤에는 판결에 대한 평가를 씁니다.</p>'+newsFeed(60);
+ if(ui.tabletTab==='news')return '<h2>📰 기사</h2><p class="muted small">내 사건의 기사와 서버 공통 세계의 공개 기록을 구분해 볼 수 있습니다.</p>'+sharedWorldTabletNews()+newsFeed(60);
  return priorTablet();
 };
 const priorHome=home;
