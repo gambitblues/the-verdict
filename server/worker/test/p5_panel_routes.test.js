@@ -150,3 +150,20 @@ test('P5 joint finalization binds proven majority, citations and native grade, i
  const denied=await p5PanelRoute(req('/world/panel/finalize',body),config,mock,B,headers);
  assert.equal(denied.status,403);
 });
+
+test('P5 dedicated joint slot is separate and can auto assign without browser case choice',async()=>{
+ const requests=[];
+ const mock=async(url,opt={})=>{
+  const u=String(url);requests.push({u,opt});
+  if(u.includes('/rpc/shared_joint_slot'))return json({occupied:false,limit:1});
+  if(u.includes('/rpc/shared_joint_auto_assign'))return json({ok:true,caseId:'case-auto-p5',existing:false});
+  throw Error('unexpected '+u);
+ };
+ const slot=await (await p5PanelRoute(req('/world/panel/slot'),env,mock,A,headers)).json();
+ assert.equal(slot.occupied,false);assert.equal(slot.limit,1);
+ const assigned=await (await p5PanelRoute(req('/world/panel/auto-assign',{}),env,mock,A,headers)).json();
+ assert.equal(assigned.caseId,'case-auto-p5');
+ assert.equal(assigned.existing,false);
+ const sent=JSON.parse(requests.at(-1).opt.body);
+ assert.deepEqual(sent,{p_actor:A},'browser cannot inject case IDs or a second participant');
+});
