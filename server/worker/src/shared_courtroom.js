@@ -57,3 +57,22 @@ export function resolveCourtOrder(sheet,branch,key){
  }
  return {key,response};
 }
+
+/* A shared world-sheet follows the same minimum-hearing policy as trial_play.js:
+ * VerdictTrialCore.minDays(importance). No unfinished evidence orders may be
+ * bypassed by voting or sentencing. Legacy non-world-sheet fixtures retain
+ * the original permissive contract, but new shared cases must satisfy it.
+ */
+import '../../../trial_core.js';
+export function sharedDeliberationReadiness(sheet,actions=[],hearingIndex=0){
+ if(sheet?.format!=='verdict-world-sheet/v1')return {ready:true,minimumHearings:1,pendingOrders:[]};
+ const T=globalThis.VerdictTrialCore;
+ const minimumHearings=T?.minDays?.(Number(sheet.card?.importance)||2)||2;
+ const pendingOrders=(actions||[]).filter(a=>a.action_type==='order'&&
+  !actions.some(r=>r.action_type==='order_result'&&r.action_key===a.action_key))
+  .map(a=>a.action_key);
+ return {
+  ready:Number.isInteger(hearingIndex)&&hearingIndex>=minimumHearings&&pendingOrders.length===0,
+  minimumHearings,pendingOrders
+ };
+}
