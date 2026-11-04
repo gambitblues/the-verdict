@@ -5,10 +5,10 @@
 const LIMIT=50;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let events=[],cursor=0,loading=false,owner='',panel=null,button=null,clock=null,npcs=[];
-let sharedSlot='',offerCandidates=[],selectedCase=null,firstDocs=[],courtStatus=null,courtActions=[],catchup=null,resumeNotice='';
+let sharedSlot='',offerCandidates=[],selectedCase=null,firstDocs=[],courtStatus=null,courtActions=[],courtMotions=[],catchup=null,resumeNotice='';
 const seen=new Set();
 function user(){const a=window.VerdictAuth;return a?.online&&a?.user?.id?a.user.id:null}
-function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;jointSlotState=null;jointSlotLoading=false;jointBench=null;sharedCareer=null;careerLoading=false;evidenceNotes.clear();evidenceBusy.clear();catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
+function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtMotions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;jointSlotState=null;jointSlotLoading=false;jointBench=null;sharedCareer=null;careerLoading=false;evidenceNotes.clear();evidenceBusy.clear();catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
 function valid(ev){
  return ev&&Number.isSafeInteger(ev.event_id)&&ev.event_id>0&&
   typeof ev.event_key==='string'&&typeof ev.event_type==='string'&&
@@ -185,6 +185,13 @@ function renderOffers(){
   body=summary+'<p>'+esc(ready?'제'+courtStatus.hearingIndex+'회 공판 진행 중 · 공통 세계 '+courtStatus.worldDay+'일':
      '서버가 허가한 기일에서만 질문과 주문을 진행할 수 있습니다.')+'</p>'+
    (permitted&&(!p5on||jointBench?.myRole==='chair')?'<button type="button" data-world-begin>▶ 공판 개정 / 다음 기일 열기</button>':'')+
+   (courtMotions.length?'<section class="vsw-motions"><h4>상대 측 신청 · 이의 및 기일 연기</h4>'+
+    courtMotions.map(m=>'<article class="vsw-motion"><b>'+esc(m.label)+'</b>'+
+     (m.answered?'<p>재판장 판단이 공판 기록에 남았습니다.</p>':
+      ready&&(!p5on||jointBench?.myRole==='chair')?
+      '<div class="vsw-motion-actions"><button type="button" data-world-motion="'+esc(m.id)+'" data-motion-choice="accept">받아들인다</button>'+
+      '<button type="button" data-world-motion="'+esc(m.id)+'" data-motion-choice="reject">기각한다</button></div>':
+      '<small>재판장 결정을 기다리는 중</small>')+'</article>').join('')+'</section>':'')+
    '<div data-court-outcomes>'+actions+'</div>';
  }else if(courtTab==='evidence'){
   body='<h4>증거</h4>'+evidenceNow.map(r=>{
@@ -277,6 +284,32 @@ async function reserveOffers(){
   status.textContent='두 판사에게 같은 사건이 중복 예약되지 않습니다.';renderOffers();
  }catch{status.textContent='이 시간대에 공유 배당을 사용할 수 없습니다. 개인 재판에는 영향이 없습니다.'}
 }
+async function refreshMotions(){
+ courtMotions=[];
+ if(!selectedCase||!courtStatus?.canAct||window.VERDICT_CONFIG?.p4TrialParity!==true)return;
+ const caseId=selectedCase.caseId;
+ try{
+  const d=await window.VerdictAuth.api('/world/court/motions?caseId='+encodeURIComponent(caseId));
+  if(selectedCase?.caseId===caseId&&d?.ok&&Array.isArray(d.motions))
+   courtMotions=d.motions.filter(m=>m&&typeof m.id==='string');
+ }catch{courtMotions=[]}
+}
+async function decideSharedMotion(key,choice){
+ if(!selectedCase||!courtStatus?.canAct||
+  !['accept','reject'].includes(choice)||
+  (window.VERDICT_CONFIG?.p5JointPanel===true&&jointBench?.myRole!=='chair'))return;
+ const status=document.querySelector('[data-world-native-status]')||panel?.querySelector('[data-world-offers-status]');
+ if(status)status.textContent='상대측 신청에 대한 판단을 기록하는 중…';
+ try{
+  const d=await window.VerdictAuth.api('/world/court/motion/decide',{
+   caseId:selectedCase.caseId,key,choice,hearingIndex:courtStatus.hearingIndex});
+  if(!d?.ok)throw Error('motion_not_recorded');
+  await refreshCourt();
+  if(status)status.textContent='상대 측 신청에 대한 판단을 공판 기록에 반영했습니다.';
+ }catch{
+  if(status)status.textContent='현재 기일 또는 재판장 권한을 확인하세요.';
+ }
+}
 async function refreshCourt(){
  if(!selectedCase||window.VERDICT_CONFIG?.p4CourtActions!==true)return;
  if(window.VERDICT_CONFIG?.p5JointPanel===true){
@@ -287,10 +320,10 @@ async function refreshCourt(){
     courtActions=Array.isArray(d.actions)?d.actions:[];
     courtStatus={...d.court,canAct:['chair','associate'].includes(d.role)&&d.court?.canAct===true};
     if(d.judgment)finalDecision={result:d.judgment.result,order:d.judgment.order,recordHash:d.judgment.recordHash};
-    renderOffers();await refreshPanel();return;
+    await refreshMotions();renderOffers();await refreshPanel();return;
    }
   }catch{}
-  courtStatus={canAct:false};renderOffers();return;
+  courtStatus={canAct:false};courtMotions=[];renderOffers();return;
  }
  const id=encodeURIComponent(selectedCase.caseId);
  try{
@@ -299,7 +332,7 @@ async function refreshCourt(){
    window.VerdictAuth.api('/world/court/history?caseId='+id)
   ]);
   if(status?.ok&&history?.ok&&Array.isArray(history.actions)){
-   courtStatus=status;courtActions=history.actions;renderOffers();
+   courtStatus=status;courtActions=history.actions;await refreshMotions();renderOffers();
   }
  }catch{courtStatus=null;renderOffers()}
  if(window.VERDICT_CONFIG?.p5JointPanel===true)await refreshPanel();
@@ -674,6 +707,7 @@ function mount(){
  else if(target.hasAttribute('data-world-begin'))beginCourt();
  else if(target.hasAttribute('data-world-verdict'))confirmSharedVerdict();
  else if(target.dataset.worldEvidence&&target.dataset.evidenceDecision)decideSharedEvidence(target.dataset.worldEvidence,target.dataset.evidenceDecision);
+ else if(target.dataset.worldMotion&&target.dataset.motionChoice)decideSharedMotion(target.dataset.worldMotion,target.dataset.motionChoice);
  else if(target.dataset.worldExplain)explainSharedEvidence(target.dataset.worldExplain);
  else if(target.hasAttribute('data-p5-open'))p5Action('open');
  else if(target.hasAttribute('data-p5-vote'))p5Action('vote');
@@ -700,6 +734,7 @@ function mount(){
   if(target.hasAttribute('data-world-begin'))return beginCourt();
   if(target.hasAttribute('data-world-verdict'))return confirmSharedVerdict();
   if(target.dataset.worldEvidence&&target.dataset.evidenceDecision)return decideSharedEvidence(target.dataset.worldEvidence,target.dataset.evidenceDecision);
+  if(target.dataset.worldMotion&&target.dataset.motionChoice)return decideSharedMotion(target.dataset.worldMotion,target.dataset.motionChoice);
   if(target.dataset.worldExplain)return explainSharedEvidence(target.dataset.worldExplain);
   if(target.hasAttribute('data-p5-open'))return p5Action('open');
   if(target.hasAttribute('data-p5-vote'))return p5Action('vote');
