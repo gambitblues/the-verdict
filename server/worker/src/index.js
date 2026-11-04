@@ -17,6 +17,7 @@
 import TerraCloud from './terra_cloud_staging.cjs';
 import {publicCaseSheet,initialEvidence} from './public_case_projection.js';
 import {courtroomPlan} from './shared_courtroom.js';
+import {validateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
 import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,exchangePrompt,checkExchange,verifyPrompt} from './prompts.js';
 
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8',...headers}});
@@ -351,6 +352,48 @@ export async function handle(req,env,fetcher=fetch){
    const actions=await r.json();if(!Array.isArray(actions))return json({error:'court_unavailable'},503,head);
    return json({ok:true,caseId:id,actions},200,head);
   }catch{return json({error:'court_unavailable'},503,head)}
+ }
+
+ // Final shared judgment. Every citation is verified against first-day exhibits
+ // or the immutable action journal; no client-authored order or facts are accepted.
+ if(url.pathname==='/world/court/verdict'&&req.method==='POST'){
+  if(env.P4_COURT_ACTIONS_ENABLED!=='1'||env.P4_JUDGMENTS_ENABLED!=='1')
+   return json({error:'feature_disabled'},404,head);
+  let input;try{input=await req.json()}catch{return json({error:'bad_json'},400,head)}
+  const id=input?.caseId;
+  if(typeof id!=='string'||!/^[a-z][a-z0-9-]{3,79}$/.test(id))
+   return json({error:'bad_case_id'},400,head);
+  const enc=encodeURIComponent(id);
+  const read=async path=>{
+   const r=await fetcher(`${env.SUPABASE_URL}/rest/v1/${path}`,{headers:svc(env)});
+   if(!r.ok)throw Error('store_unavailable');
+   const rows=await r.json();if(!Array.isArray(rows))throw Error('store_unavailable');
+   return rows;
+  };
+  try{
+   const [cases,hearings,actions]=await Promise.all([
+    read(`case_stock?select=case_id,assigned_to,state,sheet&case_id=eq.${enc}&limit=1`),
+    read(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${enc}&judge_id=eq.${encodeURIComponent(uid)}&order=hearing_index.desc&limit=1`),
+    read(`shared_court_actions?select=action_type,action_key,response,hearing_index,game_day&case_id=eq.${enc}&limit=250`)
+   ]);
+   const assigned=cases[0],hearing=hearings[0];
+   if(!assigned||assigned.assigned_to!==uid||assigned.state!=='assigned')
+    return json({error:'case_not_found'},404,head);
+   if(!hearing||hearing.state!=='completed'||!actions.length)
+    return json({error:'hearing_incomplete'},409,head);
+   const decision=validateSharedJudgment(assigned.sheet,actions,input);
+   if(decision.error)return json({error:decision.error},400,head);
+   const hash=await sharedJudgmentHash(id,uid,decision);
+   const post=await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/shared_judgment_publish`,{
+    method:'POST',headers:svc(env),body:JSON.stringify({
+      p_case:id,p_judge:uid,p_result:decision.result,p_order:decision.order,p_record_hash:hash
+    })});
+   if(!post.ok)return json({error:'judgment_conflict'},409,head);
+   const published=await post.json();
+   return json({ok:true,caseId:id,published:published===true,judgment:{
+    result:decision.result,order:decision.order,citations:decision.citations,recordHash:hash
+   }},200,head);
+  }catch{return json({error:'judgment_unavailable'},503,head)}
  }
 
  // Read-only health check for the existing invited judges. Never returns
