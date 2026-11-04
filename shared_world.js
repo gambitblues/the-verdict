@@ -63,9 +63,10 @@ function renderOffers(){
   questions=selectedCase.questions||[],orders=selectedCase.orders||[],
   ready=window.VERDICT_CONFIG?.p4CourtActions===true&&courtStatus?.canAct===true,
   permitted=window.VERDICT_CONFIG?.p4CourtActions===true;
- const nav='<nav class="t4-tabs vsw-six-tabs" aria-label="공유 재판 메뉴">'+
+ const nav=window.VerdictCourtSurface?.navigation?.(TABS,courtTab,true)||
+  '<nav class="t4-tabs vsw-six-tabs" aria-label="재판 화면">'+
   TABS.map(([k,label])=>'<button type="button" class="t4-tab '+(courtTab===k?'on':'')+
-    '" data-court-tab="'+k+'">'+label+'</button>').join('')+'</nav>';
+    '" data-court-tab="'+k+'" aria-current="'+(courtTab===k?'page':'false')+'">'+label+'</button>').join('')+'</nav>';
  const actions=courtActions.map(a=>'<p><small>'+esc(a.action_type)+' / 제'+esc(a.hearing_index||'?')+'회</small> <b>'+
     esc(a.action_key)+'</b> · '+esc(a.response?.answer||a.response?.text||a.response?.status||'')+'</p>').join('');
  const courtBtn=(kind,key,label)=>'<button type="button" data-court-kind="'+esc(kind)+
@@ -205,7 +206,7 @@ function renderOffers(){
     '<p><b>'+esc(a.action_key)+'</b> · '+esc(a.response?.text||a.response?.status||'')+'</p>').join('')+'</div>';
  }else if(courtTab==='verdict'){
   body='<h4>판결</h4>'+(p5on?benchHtml:'')+p5controls+(finalDecision
-   ?'<p><strong>확정 판결</strong> · '+esc(finalDecision.order||'')+'</p>'+(finalDecision.grade?'<p>법정 판단 '+esc(finalDecision.grade.score)+'점 · 종합 평점 '+esc(finalDecision.grade.review)+'점</p>':'')
+   ?'<p><strong>확정 판결</strong> · '+esc(finalDecision.order||'')+'</p>'
    :window.VERDICT_CONFIG?.p4SharedVerdicts===true&&(ready||panelState?.state==='majority_ready')&&courtActions.length
     ?'<section data-world-verdict><p>법정에 실제 제출된 증거·증언에서 근거를 고르세요.</p>'+
       (panelState
@@ -221,7 +222,7 @@ function renderOffers(){
     :'<p>공판 진행과 판결 원장이 확인된 후 서버에서 판결할 수 있습니다.</p>');
  }
  region.innerHTML='<div class="vsw-court-head">'+summary+'</div>'+nav+
-  '<div class="vsw-court-page">'+body+'</div>';
+  '<div class="vsw-court-page t4-page">'+body+'</div>';
  syncNative();
 }
 
@@ -682,5 +683,23 @@ function start(){
  setInterval(()=>{if(!document.hidden)refresh()},60000);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-window.VerdictSharedWorld={refresh,career:()=>sharedCareer,open:openSharedCourt,nativeCourt,courtListEntry,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get selectedCase(){return selectedCase?JSON.parse(JSON.stringify(selectedCase)):null},get clock(){return clock?{...clock}:null},get catchup(){return catchup?JSON.parse(JSON.stringify(catchup)):null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
+function courtSnapshot(){
+ if(!selectedCase)return null;
+ // Public, read-only projection only; never materialize server truth/world branches.
+ return {
+  caseId:selectedCase.caseId,kind:selectedCase.card?.kind||null,
+  role:jointBench?.myRole||(courtStatus?.canAct?'chair':'associate'),
+  hearingIndex:Number(courtStatus?.hearingIndex)||0,
+  gameDay:Number(courtStatus?.worldDay)||0,
+  status:finalDecision?'finalized':courtStatus?.canAct?'in_hearing':'awaiting_hearing',
+  evidence:[...firstDocs.map(r=>({id:r.id,title:r.title,source:'initial'})),
+    ...courtActions.filter(a=>a.action_type==='order_result'&&a.response?.status==='done')
+      .map(a=>({id:a.response?.recordId||a.action_key,title:a.response?.title,source:'court_order'}))],
+  actions:courtActions.map(a=>({type:a.action_type,key:a.action_key,
+    hearingIndex:a.hearing_index,responseStatus:a.response?.status||null})),
+  judgment:finalDecision?{order:finalDecision.order,result:finalDecision.result}:null
+ };
+}
+window.VerdictSharedWorld={refresh,career:()=>sharedCareer,open:openSharedCourt,nativeCourt,courtListEntry,
+ courtSnapshot,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get selectedCase(){return selectedCase?JSON.parse(JSON.stringify(selectedCase)):null},get clock(){return clock?{...clock}:null},get catchup(){return catchup?JSON.parse(JSON.stringify(catchup)):null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
 })();
