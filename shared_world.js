@@ -8,7 +8,7 @@ let events=[],cursor=0,loading=false,owner='',panel=null,button=null,clock=null,
 let sharedSlot='',offerCandidates=[],selectedCase=null,firstDocs=[],courtStatus=null,courtActions=[],catchup=null,resumeNotice='';
 const seen=new Set();
 function user(){const a=window.VerdictAuth;return a?.online&&a?.user?.id?a.user.id:null}
-function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;jointSlotState=null;jointSlotLoading=false;evidenceNotes.clear();evidenceBusy.clear();catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
+function reset(next){owner=next;events=[];cursor=0;clock=null;npcs=[];sharedSlot='';offerCandidates=[];selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;jointSlotState=null;jointSlotLoading=false;sharedCareer=null;careerLoading=false;evidenceNotes.clear();evidenceBusy.clear();catchup=null;resumeNotice='';seen.clear();render();renderOffers();renderCatchup()}
 function valid(ev){
  return ev&&Number.isSafeInteger(ev.event_id)&&ev.event_id>0&&
   typeof ev.event_key==='string'&&typeof ev.event_type==='string'&&
@@ -44,6 +44,7 @@ function kstSlot(){
 }
 let courtTab='case',finalDecision=null,panelState=null,panelPartners=null,panelFor=null,jointSlotState=null,jointSlotLoading=false;
 let evidenceNotes=new Map(),evidenceBusy=new Set();
+let sharedCareer=null,careerLoading=false;
 const TABS=[['case','사건'],['day','기일'],['evidence','증거'],['witness','증인'],['orders','주문'],['verdict','판결']];
 function renderOffers(){
  const region=panel?.querySelector('[data-world-offers-list]');if(!region)return;
@@ -332,7 +333,7 @@ async function confirmSharedVerdict(){
  try{
   const d=await window.VerdictAuth.api(panelState?'/world/panel/finalize':'/world/court/verdict',{caseId:selectedCase.caseId,result,citations,...(sentence?{sentence}:{})});
   if(!d?.ok)throw Error('verdict_invalid');
-  finalDecision=d.judgment;await refreshCourt();await refresh();
+  finalDecision=d.judgment;await refreshCourt();await refreshCareer();await refresh();
   if(status)status.textContent='공유 판결 확정: '+d.judgment.order;
  }catch{if(status)status.textContent='서버에서 판결이 승인되지 않았습니다. 기일과 제출 증거를 확인하세요.'}
 }
@@ -444,6 +445,7 @@ async function resumeWorld(){
   const r=d.resume;
   resumeNotice='세계 '+r.world_day+'일로 복귀 완료 · 미처리 기일 '+r.rescheduled_hearings+'건을 최소 '+r.protected_until_day+'일까지 보호합니다.';
   await loadCatchup();
+  await refreshCareer();
  }catch{status.textContent='복귀 처리를 확인하지 못했습니다. 개인 재판 기록은 변경하지 않았습니다.'}
 }
 
@@ -538,6 +540,18 @@ function nativeCourt(){
   (isJoint?'':'<button class="btn outline" type="button" data-world-offers>사건 후보 확인</button>')+
   '<div data-world-native-list>'+list+'</div></section></div>';
 }
+async function refreshCareer(){
+ if(careerLoading||!user()||window.VERDICT_CONFIG?.p4TrialParity!==true)return;
+ careerLoading=true;
+ try{
+  const r=await window.VerdictAuth.api('/world/career');
+  if(r?.ok){sharedCareer=r;
+   const badge=document.querySelector('[data-shared-career]');
+   if(badge)badge.textContent='공유 경력 '+r.cases+'건 · 평균 평점 '+(r.avgReview??'-')+'점'+
+    ' (개인 세이브는 유지)';
+  }
+ }catch{}finally{careerLoading=false}
+}
 function courtListEntry(){
  if(window.VERDICT_CONFIG?.p4SharedWorld!==true||!user())return '';
  const joint=window.VERDICT_CONFIG?.p5JointPanel===true;
@@ -549,6 +563,7 @@ function courtListEntry(){
   '<div class="t4-head"><h3>⚖ 공동재판 <small>0~1건 · 개인 사건 5건과 별도</small></h3></div>'+
   '<p class="muted small" data-joint-slot-description>합의부 재판관 3명(실제 판사 2명·NPC 1명)이 심리합니다. 개인 사건 배당 한도를 차지하지 않습니다.</p>'+
   '<p class="muted small" data-joint-slot-status aria-live="polite">'+esc(panelState?.state==='majority_ready'?'합의 판결 대기':selectedCase?'진행 중: '+current:'공동재판 배정 대기')+'</p>'+
+  '<p class="muted small" data-shared-career>'+esc(sharedCareer?'공유 경력 '+sharedCareer.cases+'건 · 평균 평점 '+(sharedCareer.avgReview??'-')+'점':'공유 커리어 확인 전')+'</p>'+
   '<button class="btn primary" type="button" data-world-open>공동재판 법정 입장</button></section>';
 }
 function toggle(){if(!panel)return;const visible=panel.hidden;panel.hidden=!visible;if(visible)refresh()}
@@ -634,5 +649,5 @@ function start(){
  setInterval(()=>{if(!document.hidden)refresh()},60000);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-window.VerdictSharedWorld={refresh,open:openSharedCourt,nativeCourt,courtListEntry,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get selectedCase(){return selectedCase?JSON.parse(JSON.stringify(selectedCase)):null},get clock(){return clock?{...clock}:null},get catchup(){return catchup?JSON.parse(JSON.stringify(catchup)):null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
+window.VerdictSharedWorld={refresh,career:()=>sharedCareer,open:openSharedCourt,nativeCourt,courtListEntry,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get selectedCase(){return selectedCase?JSON.parse(JSON.stringify(selectedCase)):null},get clock(){return clock?{...clock}:null},get catchup(){return catchup?JSON.parse(JSON.stringify(catchup)):null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
 })();
