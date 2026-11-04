@@ -1667,7 +1667,7 @@ if(typeof courtList==='function'){
    .replace(/시간을 진행해 보세요\./,'새 사건은 매일 10시~22시에 들어옵니다.')
    .replace(/가상 시간이 진행되면/,'시간이 흐르면');
   if(window.VERDICT_CONFIG?.p4SharedWorld===true&&window.VerdictSharedWorld?.courtListEntry)
-   html=window.VerdictSharedWorld.courtListEntry()+html;
+   html=html+window.VerdictSharedWorld.courtListEntry();
   return html.replace(/data-id="([^"]+)"([\s\S]*?)심리 \d\/3/g,(m,id,mid)=>{const c=CASES.find(x=>x.id===id),st=S.cases[id],t=st?.trial4,g=c&&stage(c,st);return `data-id="${id}"${mid}<span class="t4-st ${g?.k||''}">${esc(g?.text||'재판 전')}</span>${t?` · 기일 ${t.daysDone}/${t.minDays}`:''}`});
  };
 }
