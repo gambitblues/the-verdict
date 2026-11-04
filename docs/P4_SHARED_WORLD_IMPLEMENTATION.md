@@ -199,3 +199,12 @@
 **완료 범위:** 공유/개인 법정은 같은 6메뉴 외형, 핵심 증거·법률 판단 및 형량/배상액 평가 함수를 사용한다. 서버 비공개 사실은 법정 밖으로 내보내지 않는다.
 
 **차이점 및 운영 차단:** 개인재판의 절차 밖 생활 연출과 상대측 NPC의 모든 임의 이의/연기 카드, 민간 여론 생성까지 공유 법정에서 1:1 복제한 것은 아니다. 본 커밋은 운영 SQL/DB/저장 데이터를 바꾸지 않는다. 출시 전에는 별도 QA Supabase·Worker와 2개의 실제 초대 계정으로 비동기 E2E(공판→주문→다음 기일→합의→선고→NPC/뉴스/경력)를 통과해야 한다.
+
+### 2026-11-04 추가 — 개인 엔진의 상대측 이의·연기 신청 공유화
+
+- `server/worker/src/shared_motions.js`: `VerdictTrialCore.cards`를 직접 사용하여 기일별 상대측 이의신청/연기신청을 결정적으로 생성한다. 정당성(`valid`)은 제출 전 공개하지 않는다.
+- `GET /world/court/motions` 및 `POST /world/court/motion/decide`: 인간 재판장만 현재 기일에서 결정할 수 있다. 인간 배석판사는 신청 내용을 조회하되 확정권은 없다.
+- `031_shared_motion_decisions.sql`: 같은 재판/기일 신청의 결과를 서버 불변 원장에 기록한다. 반복 요청은 멱등, 상충 요청은 거절한다.
+- `shared_trial_grade.js`: 서버에 확정된 상대 신청 처리 결과(`valid`, `accept/reject`)를 기존 개인 재판의 `VerdictTrialCore.skill`에 포함한다.
+- `shared_world.js` 6메뉴의 **기일** 페이지와 `p4_native_court.css`에 신청 카드·결정 버튼을 연결. `server/worker/test/shared-motions.test.js`, PGlite, Worker, 브라우저 QA를 추가했다.
+- **한계:** 개인 재판의 NPC/언론 장기 연출은 같은 핵심 판결 계산 함수 밖에서 수행되므로, 공유 재판과 시각·서사 상의 모든 미세 동작이 일치한다는 뜻은 아니다. 공유 재판의 판사 간 시간차 E2E는 실제 QA Supabase 2계정 테스트로 별도 확인해야 한다.
