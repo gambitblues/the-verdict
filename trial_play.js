@@ -1573,6 +1573,24 @@ function resultPanel(c,st){
  ${dk?.narratives?.length?`<h4>언론이 주목하는 흐름</h4>${dk.narratives.map(n=>`<p class="t4-narr l${n.level}">${esc(n.text)}</p>`).join('')}`:''}</section>`;
 }
 
+/* The same six-tab courtroom view contract is used by local cases and
+ * server-authoritative joint cases. Action data attributes remain scoped to
+ * their engine; presenting a shared case never mutates S.cases.
+ */
+window.VerdictCourtSurface=Object.freeze({
+ navigation(tabs,active,server=false){
+  const escText=x=>String(x??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  return '<nav class="t4-tabs t4-unified-tabs" aria-label="재판 화면">'+tabs.map(([key,label,badge])=>
+   '<button type="button" class="t4-tab '+(key===active?'on':'')+'" '+
+   (server?'data-court-tab="'+escText(key)+'"':'data-action="t4tab" data-tab="'+escText(key)+'"')+
+   ' aria-current="'+(key===active?'page':'false')+'">'+escText(label)+
+   (badge?'<i>'+escText(badge)+'</i>':'')+'</button>').join('')+'</nav>';
+ },
+ frame(header,nav,content,source='local'){
+  return '<div class="court-play t4app" data-court-source="'+source+'">'+(header||'')+nav+
+   '<div class="t4-page">'+(content||'')+'</div></div>';
+ }
+});
 /* ---------- court screen takeover ---------- */
 const priorCourt=court;
 let lastCaseId=null;
@@ -1639,8 +1657,10 @@ court=function(){
   if(opts.length||records)page+='<section class="panel t4"><h3>⚖ 당사자가 낸 자료</h3><p class="muted small">'+(isCriminal(c)?'피고인':'당사자')+' 쪽이 낸 자료와 진술은 공판 기록에 남습니다. 얼마나 믿을지는 재판장이 판단합니다.</p>'+opts.map(o=>'<button class="btn outline" style="margin:4px" data-action="t4hearing" data-id="'+esc(o.id)+'">'+esc(o.label)+'</button>').join('')+(records||'<p class="muted small">아직 진행한 이벤트가 없습니다.</p>')+'</section>';
  }
 
- const nav=`<nav class="t4-tabs" aria-label="재판 화면">${tabs.map(([id,label,badge])=>`<button class="t4-tab ${ui.t4tab===id?'on':''}" data-action="t4tab" data-tab="${id}">${label}${badge?`<i>${badge}</i>`:''}</button>`).join('')}</nav>`;
- return `<div class="court-play t4app">${header?header.outerHTML:''}${window.VerdictVisuals?.scene(c,t,ui.t4tab,st.verdict?'선고 완료':stage(c,st).short)||''}${nav}<div class="t4-page">${window.VerdictVisuals?.event(c.id)||''}${page}</div>${t?dock(c,st):''}</div>`;
+ const nav=window.VerdictCourtSurface.navigation(tabs,ui.t4tab);
+ return window.VerdictCourtSurface.frame((header?header.outerHTML:'')+
+   (window.VerdictVisuals?.scene(c,t,ui.t4tab,st.verdict?'선고 완료':stage(c,st).short)||''),
+   nav,(window.VerdictVisuals?.event(c.id)||'')+page+(t?dock(c,st):''),'local');
 };
 function swipeInit(){
  let sx=0,sy=0,box=null;
