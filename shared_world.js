@@ -420,7 +420,7 @@ async function resolveOrder(key){
 }
 async function doCourtAction(kind,key){
  if(!selectedCase||courtStatus?.canAct!==true||!['question','order'].includes(kind)||
-  (window.VERDICT_CONFIG?.p5JointPanel===true&&jointBench?.myRole!=='chair'))return;
+  (window.VERDICT_CONFIG?.p5JointPanel===true&&!['chair','associate'].includes(jointBench?.myRole)))return;
  const region=panel?.querySelector('[data-world-offers-status]');
  if(region)region.textContent='서버에서 법정 기록을 검증하는 중…';
  try{
