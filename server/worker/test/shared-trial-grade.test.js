@@ -36,3 +36,21 @@ test('P4 native score refuses undisclosed documents and illegal cite',()=>{
  },'case-score');
  assert.ok(scored.grade.score<69);
 });
+
+test('Shared evidence decisions and reasons use the same native legal skill rules',()=>{
+ const base={result:'claim_granted',citations:['initial:r1'],sentence:{amount:1000}};
+ const before=adjudicateSharedJudgment(sheet,[],base,'case-evidence');
+ const ruled=adjudicateSharedJudgment(sheet,[{
+  action_type:'evidence_decision',action_key:'r1:1',hearing_index:1,
+  response:{status:'done',recordId:'r1',decision:'conditional'}
+ }],{...base,reasons:['strong']},'case-evidence');
+ assert.equal(ruled.error,undefined);
+ assert.deepEqual(ruled.reasons,['strong']);
+ assert.ok(ruled.grade.items.some(i=>i.key==='reason:strong'));
+ assert.notEqual(ruled.grade.score,before.grade.score,'lawful conditions and stated reasons affect legal skill');
+ const excluded=adjudicateSharedJudgment(sheet,[{
+  action_type:'evidence_decision',action_key:'r1:1',hearing_index:1,
+  response:{status:'done',recordId:'r1',decision:'exclude'}
+ }],base,'case-evidence');
+ assert.equal(excluded.error,'excluded_evidence_cannot_be_cited');
+});
