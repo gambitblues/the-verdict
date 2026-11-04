@@ -1586,7 +1586,7 @@ window.VerdictCourtSurface=Object.freeze({
    (badge?'<i>'+escText(badge)+'</i>':'')+'</button>').join('')+'</nav>';
  },
  frame(header,nav,content,source='local',footer=''){
-  return '<div class="court-play t4app" data-court-source="'+source+'">'+(header||'')+nav+
+  return '<div class="court-play t4app" data-court-source="'+source+'"'+(source==='shared'?' data-world-native-root':'')+'>'+(header||'')+nav+
    '<div class="t4-page">'+(content||'')+'</div>'+(footer||'')+'</div>';
  }
 });

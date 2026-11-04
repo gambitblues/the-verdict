@@ -604,13 +604,14 @@ function nativeCourt(){
   panel?.querySelector('[data-world-offers-list]')?.innerHTML||'';
  const status=isJoint?'공동재판 '+(selectedCase?'1/1':'0/1')+' · 개인 재판 5건과 별도':
   panel?.querySelector('[data-world-offers-status]')?.textContent||'공유 사건 동기화 중';
- return '<div class="court-play t4app" data-world-native-root>'+
-  '<section class="panel t4"><div class="t4-head"><h3>🌐 공유 법정</h3>'+
+ const courtContent='<section class="panel t4"><div class="t4-head"><h3>🌐 공유 법정</h3>'+
   '<button class="btn outline" type="button" data-world-native-back>사건 목록</button></div>'+
   '<p class="muted small">기존 법정의 사건·기일·증거·증인·주문·판결 메뉴를 사용합니다. 개인 사건 세이브와는 분리됩니다.</p>'+
   '<p data-world-native-status aria-live="polite">'+esc(status)+'</p>'+
   (isJoint?'':'<button class="btn outline" type="button" data-world-offers>사건 후보 확인</button>')+
-  '<div data-world-native-list>'+list+'</div></section></div>';
+  '<div data-world-native-list>'+list+'</div></section>';
+ return window.VerdictCourtSurface?.frame?.('','',courtContent,'shared')||
+  '<div class="court-play t4app" data-world-native-root>'+courtContent+'</div>';
 }
 async function refreshCareer(){
  if(careerLoading||!user()||window.VERDICT_CONFIG?.p4TrialParity!==true)return;
