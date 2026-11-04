@@ -55,7 +55,8 @@ function renderOffers(){
    firstDocs.map(r=>'<p><b>'+esc(r.title)+'</b> · '+esc(r.text)+'</p>').join('')+
    '<small>공유 세계 공판은 서버가 승인한 기일에서만 가능합니다. 로컬 재판 저장은 변경하지 않습니다.</small>'+
    (window.VERDICT_CONFIG?.p4CourtActions===true
-    ?'<p>'+esc(ready?'현재 세계 날짜에 공판 기일이 열려 있습니다.':'서버에서 열린 공판이 확인되지 않아 신문/주문이 잠겼습니다.')+'</p>'+
+    ?'<p>'+esc(ready?'현재 세계 날짜에 제'+courtStatus.hearingIndex+'회 공판이 열려 있습니다.':'공판 기일을 열면 질문과 제출명령을 진행할 수 있습니다.')+'</p>'+
+     '<p><button type="button" data-world-begin>▶ 공유 공판 기일 열기 / 다음 기일</button></p>'+
      (ready?[...questions,...orders].map(a=>'<p><button type="button" data-court-kind="'+esc(a.kind)+'" data-court-key="'+esc(a.key)+'">'+esc(a.label)+'</button></p>').join(''):'')+
      '<div data-court-outcomes>'+courtActions.map(a=>'<p><strong>'+esc(a.action_key)+'</strong> · '+esc(a.response?.answer||a.response?.text||a.response?.status||'')+'</p>').join('')+'</div>'
     :'')+'</article>';
@@ -88,6 +89,17 @@ async function refreshCourt(){
    courtStatus=status;courtActions=history.actions;renderOffers();
   }
  }catch{courtStatus=null;renderOffers()}
+}
+async function beginCourt(){
+ if(!selectedCase||!user()||window.VERDICT_CONFIG?.p4CourtActions!==true)return;
+ const area=panel?.querySelector('[data-world-offers-status]');
+ if(area)area.textContent='서버에서 공통 기일을 확인하는 중…';
+ try{
+  const d=await window.VerdictAuth.api('/world/court/begin',{caseId:selectedCase.caseId});
+  if(!d?.ok)throw Error('begin_failed');
+  await refreshCourt();await refresh();
+  if(area)area.textContent='제'+d.hearing.hearing_index+'회 기일 · 공통 세계 '+d.hearing.world_day+'일 개정';
+ }catch{if(area)area.textContent='기일을 열 수 없습니다. 이전 기일의 신문·주문 기록 또는 복귀 보호를 확인하세요.'}
 }
 async function doCourtAction(kind,key){
  if(!selectedCase||courtStatus?.canAct!==true||!['question','order'].includes(kind))return;
@@ -203,6 +215,7 @@ function mount(){
  root.querySelector('[data-world-offers]').onclick=reserveOffers;
  docket.addEventListener('click',e=>{const target=e.target.closest('button');if(!target)return;
  const id=target.dataset.worldAccept;if(id)acceptOffer(id);
+ else if(target.hasAttribute('data-world-begin'))beginCourt();
  else if(target.dataset.courtKind&&target.dataset.courtKey)doCourtAction(target.dataset.courtKind,target.dataset.courtKey)})}
  const style=document.createElement('style');style.textContent=
  '#verdict-shared-world{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:7500;font:inherit}' +
