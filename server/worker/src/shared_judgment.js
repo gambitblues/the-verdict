@@ -39,11 +39,31 @@ export function validateSharedJudgment(sheet,actions,input){
  const citations=[...new Set(input.citations)];
  if(citations.length!==input.citations.length||citations.some(c=>typeof c!=='string'||!allowed.has(c)))
   return {error:'citation_not_in_record'};
+ // Native evidence treatment: a chair may exclude evidence from use in the verdict.
+ // The latest *server recorded* hearing controls, not a client-supplied decision.
+ const rulings=new Map();
+ for(const action of actions){
+  if(action.action_type==='evidence_decision'&&
+   ['use','conditional','exclude'].includes(action.response?.decision)&&
+   typeof action.response.recordId==='string'){
+   const id=action.response.recordId;
+   if(!rulings.has(id)||Number(action.hearing_index||0)>=rulings.get(id).hearing)
+    rulings.set(id,{hearing:Number(action.hearing_index||0),decision:action.response.decision});
+  }
+ }
+ if(citations.some(c=>c.startsWith('initial:')||c.startsWith('order:')?
+   rulings.get(c.split(':').slice(1).join(':'))?.decision==='exclude':false))
+  return {error:'excluded_evidence_cannot_be_cited'};
+ const validReasons=new Set(['strong','flawed','illegal','discord','consistent','doubt']);
+ const reasons=input.reasons===undefined?[]:input.reasons;
+ if(!Array.isArray(reasons)||reasons.length>6||
+  new Set(reasons).size!==reasons.length||reasons.some(x=>!validReasons.has(x)))
+  return {error:'verdict_reasons_invalid'};
  // The wording intentionally contains no client-authored facts, fabricated sentence
  // or untrusted legal determination beyond the judge's selected lawful option.
  const order=WORDS[result];
  const evidence=citations.map(k=>({key:k,title:String(allowed.get(k)).slice(0,150)}));
- return {result,order,citations,evidence};
+ return {result,order,citations,evidence,reasons};
 }
 /* Fail closed when scored grading is enabled: no phantom sentence, evidence
  * grading metadata, public-opinion result or unauthorized monetary award. */
@@ -59,7 +79,7 @@ export function adjudicateSharedJudgment(sheet,actions,input,seed,options={}){
  return {...judgment,grade};
 }
 export async function sharedJudgmentHash(caseId,judgeId,judgment){
- const text=JSON.stringify({caseId,judgeId,result:judgment.result,order:judgment.order,citations:judgment.citations,...(judgment.sentence?{sentence:judgment.sentence}:{}),...(judgment.grade?{skill:judgment.grade.score,review:judgment.grade.review}:{})});
+ const text=JSON.stringify({caseId,judgeId,result:judgment.result,order:judgment.order,citations:judgment.citations,reasons:judgment.reasons,...(judgment.sentence?{sentence:judgment.sentence}:{}),...(judgment.grade?{skill:judgment.grade.score,review:judgment.grade.review}:{})});
  const bytes=new TextEncoder().encode(text);
  const digest=await crypto.subtle.digest('SHA-256',bytes);
  return Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
