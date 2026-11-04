@@ -1,3 +1,4 @@
+import {publicCaseSheet,initialEvidence} from './public_case_projection.js';
 import {panelStatus} from './p5_joint_panel.js';
 import {npcDeliberationPrompt,validateNpcOpinion,panelChoices} from './p5_npc_deliberation.js';
 import {validateSharedJudgment,adjudicateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
@@ -52,6 +53,18 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
   return r.json();
  };
  try{
+  if(url.pathname==='/world/panel/case'&&req.method==='GET'){
+   const panels=await read('shared_joint_panels?select=chair_id,peer_id&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1');
+   const bench=panels[0];
+   if(!bench||(bench.chair_id!==uid&&bench.peer_id!==uid))return response({error:'not_panel_member'},403);
+   const rows=await read('case_stock?select=case_id,state,sheet&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1');
+   const row=rows[0];if(!row||row.state!=='assigned')return response({error:'case_not_found'},404);
+   const secret=await read('world_secrets?select=truth&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1');
+   const branch=secret[0]?.truth?.branch;
+   if(!['did','didnt','reason'].includes(branch))return response({error:'case_not_sealed'},409);
+   const actions=await read('shared_court_actions?select=action_type,action_key,response,hearing_index,game_day&case_id=eq.'+encodeURIComponent(caseId)+'&order=created_at.asc&limit=250');
+   return response({ok:true,case:publicCaseSheet(row.sheet,caseId),records:initialEvidence(row.sheet,caseId,branch),actions,role:bench.chair_id===uid?'chair':'peer'});
+  }
   if(url.pathname==='/world/panel/open'&&isPost){
    if(!validUuid(input.peerId)||typeof input.npcId!=='string'||input.npcId.length>120)
     return response({error:'invalid_members'},400);
