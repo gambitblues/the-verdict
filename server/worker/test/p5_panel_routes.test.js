@@ -59,7 +59,7 @@ test('P5 NPC AI is metered, sees public evidence not human ballots, and commits 
  const bytes=new TextEncoder().encode(JSON.stringify({caseId,journal:acts}));
  const digest=await crypto.subtle.digest('SHA-256',bytes);
  const hash=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
- const sheet={card:{kind:'civil',title:'사고 손해배상'},records:[
+ const sheet={format:'verdict-world-sheet/v1',id:'case-p5',card:{kind:'civil',title:'사고 손해배상'},records:[
   {id:'r1',title:'감정서 원본',first:true}],questions:[{id:'q1',q:'신호를 보셨나요?'}],
   worlds:{did:{act:'SEALED_DONT_SEND',records:{r1:'공개된 감정서에는 사고 당시 위치가 기재되어 있다.'}}}};
  const calls=[];const completed=[];
