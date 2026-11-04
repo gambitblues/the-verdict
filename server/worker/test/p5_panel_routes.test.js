@@ -32,6 +32,9 @@ test('P5 human vote uses member-derived seat and server evidence hash',async()=>
  const f=async(url,opt={})=>{
   const u=String(url);calls.push({u,opt});
   if(u.includes('/shared_joint_panels?'))return json([{chair_id:A,peer_id:B}]);
+  if(u.includes('/case_stock?'))return json([{state:'assigned',sheet:{card:{kind:'civil'}}}]);
+  if(u.includes('/shared_judge_hearings?'))return json([{hearing_index:1,state:'completed',completed_game_day:8}]);
+  if(u.includes('/shared_world_clock?'))return json([{game_day:8}]);
   if(u.includes('/shared_court_actions?'))return json([
    {action_type:'question',action_key:'q1',response:{status:'done',answer:'증인 진술'}}
   ]);
@@ -126,7 +129,8 @@ test('P5 joint finalization binds proven majority, citations and native grade, i
   const u=String(url);calls.push({u,opt});
   if(u.includes('/shared_joint_panels?'))return json([{chair_id:A}]);
   if(u.includes('/case_stock?'))return json([{assigned_to:A,state:'assigned',sheet}]);
-  if(u.includes('/shared_judge_hearings?'))return json([{state:'completed',hearing_index:1}]);
+  if(u.includes('/shared_judge_hearings?'))return json([{state:'completed',hearing_index:1,completed_game_day:8}]);
+  if(u.includes('/shared_world_clock?'))return json([{game_day:8}]);
   if(u.includes('/shared_court_actions?'))return json(acts);
   if(u.includes('/shared_joint_votes?'))return json([
    {evidence_hash:hash},{evidence_hash:hash},{evidence_hash:hash}
