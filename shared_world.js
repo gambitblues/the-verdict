@@ -312,11 +312,28 @@ async function refresh(){
 }
 function openSharedCourt(){
  if(!user())return;
- mount();
- if(!panel)return;
+ mount();if(!panel)return;
+ if(typeof ui!=='undefined'&&typeof render==='function'){
+  ui.p4NativeCourt=true;ui.tab='court';
+  if(selectedCase)courtTab='case';
+  renderOffers();render();refresh();
+  return;
+ }
  panel.hidden=false;button?.setAttribute('aria-expanded','true');
- if(selectedCase)courtTab='case';
  renderOffers();refresh();
+}
+function nativeCourt(){
+ if(!user())return '<section class="panel t4">공유 법정에 로그인해 주세요.</section>';
+ mount();renderOffers();
+ const list=panel?.querySelector('[data-world-offers-list]')?.innerHTML||'';
+ const status=panel?.querySelector('[data-world-offers-status]')?.textContent||'공유 사건 동기화 중';
+ return '<div class="court-play t4app" data-world-native-root>'+
+  '<section class="panel t4"><div class="t4-head"><h3>🌐 공유 법정</h3>'+
+  '<button class="btn outline" type="button" data-world-native-back>사건 목록</button></div>'+
+  '<p class="muted small">기존 법정의 사건·기일·증거·증인·주문·판결 메뉴를 사용합니다. 개인 사건 세이브와는 분리됩니다.</p>'+
+  '<p data-world-native-status aria-live="polite">'+esc(status)+'</p>'+
+  '<button class="btn outline" type="button" data-world-offers>사건 후보 확인</button>'+
+  '<div data-world-native-list>'+list+'</div></section></div>';
 }
 function courtListEntry(){
  if(window.VERDICT_CONFIG?.p4SharedWorld!==true||!user())return '';
@@ -375,5 +392,5 @@ function start(){
  setInterval(()=>{if(!document.hidden)refresh()},60000);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-window.VerdictSharedWorld={refresh,open:openSharedCourt,courtListEntry,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get selectedCase(){return selectedCase?JSON.parse(JSON.stringify(selectedCase)):null},get clock(){return clock?{...clock}:null},get catchup(){return catchup?JSON.parse(JSON.stringify(catchup)):null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
+window.VerdictSharedWorld={refresh,open:openSharedCourt,nativeCourt,courtListEntry,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get selectedCase(){return selectedCase?JSON.parse(JSON.stringify(selectedCase)):null},get clock(){return clock?{...clock}:null},get catchup(){return catchup?JSON.parse(JSON.stringify(catchup)):null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
 })();
