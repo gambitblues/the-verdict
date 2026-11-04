@@ -485,8 +485,15 @@ export async function handle(req,env,fetcher=fetch){
    if(!hearing||hearing.state!=='completed'||!actions.length)
     return json({error:'hearing_incomplete'},409,head);
    const scored=env.P4_TRIAL_PARITY_ENABLED==='1';
+   const ancillary=[...(assigned.sheet?.card?.charge?.orders||[]),
+    ...(assigned.sheet?.card?.claim?.remedies||[])];
+   const usesFit=scored&&ancillary.some(x=>x?.fit);
+   const secrets=usesFit?await read('world_secrets?select=truth&case_id=eq.'+enc+'&limit=1'):[];
+   const branch=usesFit?secrets[0]?.truth?.branch:undefined;
+   if(usesFit&&!['did','didnt','reason'].includes(branch))
+    return json({error:'truth_context_unavailable'},503,head);
    const decision=scored
-    ?adjudicateSharedJudgment(assigned.sheet,actions,input,id)
+    ?adjudicateSharedJudgment(assigned.sheet,actions,input,id,{branch})
     :validateSharedJudgment(assigned.sheet,actions,input);
    if(decision.error)return json({error:decision.error},400,head);
    const hash=await sharedJudgmentHash(id,uid,decision);
