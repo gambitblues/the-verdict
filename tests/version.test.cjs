@@ -17,3 +17,16 @@ console.log('PASS: version',v);
  if(!launcher.includes('>이어하기</button>')||!launcher.includes('>새로하기</button>'))throw Error('entry buttons missing');
  console.log('PASS: entry has only 이어하기 and 새로하기');
 }
+
+// A logged-in new-career action must reset server state before clearing browser state.
+{
+ const gate=fs.readFileSync(path.join(root,'auth_gate.js'),'utf8');
+ const runtime=fs.readFileSync(path.join(root,'game_runtime.js'),'utf8');
+ const sql=fs.readFileSync(path.join(root,'server/supabase/035_player_career_reset.sql'),'utf8');
+ if(!gate.includes("rest('rpc/reset_player_career'")||!gate.includes('if(!r.ok)')||
+    !gate.includes('if(await r.json()!==true)'))throw Error('server-confirmed reset guard missing');
+ if(!runtime.includes('await window.VerdictAuth.resetCareer()'))throw Error('new career not routed through authenticated reset');
+ if(!sql.includes('where user_id = uid')||!sql.includes('auth.uid()')||
+    !sql.includes('grant execute on function public.reset_player_career() to authenticated'))throw Error('user-scoped SQL reset missing');
+ console.log('PASS: server-authoritative per-user career reset contract');
+}
