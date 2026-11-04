@@ -6,6 +6,7 @@ on:
       - 'shared_world.js'
       - 'tests/shared-world-ui.mjs'
       - 'tests/p5-panel-ui.mjs'
+      - 'tests/p5-dual-judge-ui.mjs'
       - 'trial_play.js'
       - 'p4_native_court.css'
       - 'server/worker/**'
@@ -46,3 +47,5 @@ jobs:
         run: node tests/shared-world-ui.mjs
       - name: Joint bench NPC and finalization native UI
         run: node tests/p5-panel-ui.mjs
+      - name: Independent judges share records with different roles
+        run: node tests/p5-dual-judge-ui.mjs
