@@ -12,6 +12,13 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
  const url=new URL(req.url),isPost=req.method==='POST';
  let input={};
  if(isPost){try{input=await req.json()}catch{return response({error:'bad_json'},400)}}
+ if(url.pathname==='/world/panel/slot'&&req.method==='GET'){
+  try {
+   const r=await fetcher(env.SUPABASE_URL+'/rest/v1/rpc/shared_joint_slot',{method:'POST',headers:serviceHeaders,body:JSON.stringify({p_actor:uid})});
+   if(!r.ok)return response({error:'slot_unavailable'},503);
+   return response({ok:true,...await r.json()});
+  } catch {return response({error:'slot_unavailable'},503)}
+ }
  const caseId=isPost?input.caseId:url.searchParams.get('caseId');
  if(!validCase(caseId))return response({error:'invalid_case'},400);
  const read=async path=>{
@@ -46,10 +53,6 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
     p_case:caseId,p_chair:uid,p_peer:input.peerId,p_npc:input.npcId
    });
    return response({ok:true,created:inserted===true,caseId});
-  }
-  if(url.pathname==='/world/panel/slot'&&req.method==='GET'){
-   const slot=await rpc('shared_joint_slot',{p_actor:uid});
-   return response({ok:true,...slot});
   }
   if(url.pathname==='/world/panel/status'&&req.method==='GET'){
    const status=await rpc('shared_joint_status',{p_case:caseId,p_actor:uid});
