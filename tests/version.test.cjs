@@ -60,3 +60,14 @@ console.log('PASS: version',v);
    throw Error('AI witness context not sent');
  console.log('PASS: ten-story news paging and case-specific witness payload');
 }
+
+// Judicial order quality: never fill choice slots with generic repeated summaries.
+{
+ const trial=fs.readFileSync(path.join(root,'trial_play.js'),'utf8');
+ if(trial.includes("key:'x:'+is.id")||trial.includes("양측은 '${is.title}'에 대한 주장과 근거를 다음 기일까지 서면으로 정리해 주세요."))
+  throw Error('generic repeated judicial order template returned');
+ if(!trial.includes("key:'x:e:'+is.id")||!trial.includes("key:'x:h:'+is.id")||
+    !trial.includes("e.revealed>0")||!trial.includes("!h.struck&&!h.tainted"))
+  throw Error('public evidence and heard testimony required for specific clarifications');
+ console.log('PASS: no generic judicial order padding; public record grounded variants');
+}
