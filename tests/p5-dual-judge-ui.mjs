@@ -15,6 +15,7 @@ try{
     p4SharedVerdicts:true,p5JointPanel:true,p4TrialParity:true};
    window.ui={tab:'courtList',p4NativeCourt:false};
    window.__majority=false;
+   window.__motionAnswered=false;
    window.__rulings=[];
    const uid=role==='chair'?'judge-a':'judge-b';
    const everyone=[
@@ -36,6 +37,17 @@ try{
      history.push({action_type:'evidence_decision',action_key:payload.recordId+':'+payload.hearingIndex,
       hearing_index:payload.hearingIndex,game_day:8,response});
      return {ok:true,ruling:response};
+    }
+    if(path.startsWith('/world/court/motions?'))
+     return {ok:true,motions:[{id:'d1-obj',type:'objection',label:'상대 측 증거 이의신청',
+      answered:window.__motionAnswered}]};
+    if(path==='/world/court/motion/decide'){
+     if(role!=='chair')throw Error('associate cannot decide opponent motions');
+     window.__motionAnswered=true;
+     const response={status:'done',type:'objection',valid:true,choice:payload.choice};
+     history.push({action_type:'motion',action_key:payload.key,
+      hearing_index:payload.hearingIndex,game_day:8,response});
+     return {ok:true,response};
     }
     if(path==='/world/panel/slot')return {ok:true,occupied:true,limit:1,caseId:'case-p5-together',role};
     if(path.startsWith('/world/panel/case?'))return {ok:true,case:caseSheet,
@@ -102,6 +114,11 @@ try{
   'admissibility ruling belongs to same immutable court log');
  await a.root.locator('[data-court-tab="day"]').click();
  await b.root.locator('[data-court-tab="day"]').click();
+ assert.equal(await a.root.locator('[data-world-motion="d1-obj"]').count(),2,'chair can resolve native opponent application');
+ assert.equal(await b.root.locator('[data-world-motion="d1-obj"]').count(),0,'associate sees motion but cannot decide');
+ await a.root.locator('[data-world-motion="d1-obj"][data-motion-choice="accept"]').click();
+ await a.page.waitForFunction(()=>document.querySelector('[data-world-native-root]')?.textContent?.includes('재판장 판단이 공판 기록에 남았습니다'));
+ assert.equal((await a.page.evaluate(()=>window.VerdictSharedWorld.courtSnapshot())).actions.length,3,'motion is part of same canonical court log');
  assert.equal(await a.root.locator('[data-world-begin]').count(),1,'human chair opens the hearing');
  assert.equal(await b.root.locator('[data-world-begin]').count(),0,'human associate cannot open a hearing');
  await b.root.locator('[data-court-tab="verdict"]').click();
