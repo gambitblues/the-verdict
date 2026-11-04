@@ -215,8 +215,9 @@ function renderOffers(){
       legalForm+ancillaryUi+
       citations.map(r=>'<label style="display:block;margin:8px 0"><input type="checkbox" data-cite="'+
         esc(r.key)+'"> '+esc(r.title)+'</label>').join('')+
-      (panelState?.state==='majority_ready'||!panelState
-       ?'<button type="button" data-world-verdict>⚖ '+(panelState?'합의 판결 선고':'공유 판결 확정')+'</button>':'')+'</section>'
+      ((panelState?.state==='majority_ready'&&jointBench?.myRole==='chair')||!panelState
+       ?'<button type="button" data-world-verdict>⚖ '+(panelState?'합의 판결 선고':'공유 판결 확정')+'</button>'
+       :panelState?.state==='majority_ready'?'<p class="vsw-note">합의 결과가 확정됐습니다. 재판장이 최종 선고합니다.</p>':'')+'</section>'
     :'<p>공판 진행과 판결 원장이 확인된 후 서버에서 판결할 수 있습니다.</p>');
  }
  region.innerHTML='<div class="vsw-court-head">'+summary+'</div>'+nav+
