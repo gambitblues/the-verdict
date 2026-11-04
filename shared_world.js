@@ -104,7 +104,13 @@ function renderOffers(){
    '<div data-court-outcomes>'+courtActions.filter(a=>a.action_type==='question').map(a=>
     '<p><b>'+esc(a.action_key)+'</b> · '+esc(a.response?.answer||'')+'</p>').join('')+'</div>';
  }else if(courtTab==='orders'){
-  body='<h4>재판장 주문</h4>'+(ready?orders.slice(0,40).map(o=>
+  body='<h4>재판장 주문</h4>'+
+   (ready&&window.VERDICT_CONFIG?.p4FreeOrders===true
+    ?'<div class="vsw-free-order"><label for="vsw-order-text"><b>자유 주문</b></label>'+
+      '<textarea id="vsw-order-text" data-free-order rows="3" maxlength="600" placeholder="예: 사고 전후 이동 경로와 주변 CCTV 원본을 제출하도록 명합니다."></textarea>'+
+      '<button type="button" data-free-order-check>AI로 주문 해석</button>'+
+      '<p class="vsw-note">AI는 요청을 이해할 뿐, 존재하지 않는 증거를 만들거나 판결을 결정하지 않습니다.</p></div>':'')+
+   (ready?orders.slice(0,40).map(o=>
     '<p>'+courtBtn('order',o.record,o.ask||o.record)+'</p>').join(''):
     '<p>자료 제출 명령은 개정 중에만 가능합니다.</p>')+
     (ready?due.map(a=>'<p><button type="button" data-order-result="'+esc(a.action_key)+
@@ -176,6 +182,32 @@ async function beginCourt(){
   await refreshCourt();await refresh();
   if(area)area.textContent='제'+d.hearing.hearing_index+'회 기일 · 공통 세계 '+d.hearing.world_day+'일 개정';
  }catch{if(area)area.textContent='기일을 열 수 없습니다. 이전 기일의 신문·주문 기록 또는 복귀 보호를 확인하세요.'}
+}
+async function interpretFreeOrder(){
+ if(!selectedCase||!courtStatus?.canAct||window.VERDICT_CONFIG?.p4FreeOrders!==true)return;
+ const value=panel?.querySelector('[data-free-order]')?.value||'';
+ const status=panel?.querySelector('[data-world-offers-status]');
+ if(value.trim().length<8||value.length>600){
+  if(status)status.textContent='구체적으로 어떤 자료가 필요한지 8~600자로 주문해 주세요.';return;
+ }
+ if(status)status.textContent='AI가 주문의 대상을 해석하고 있습니다…';
+ try{
+  const plan=await window.VerdictAuth.api('/world/court/free-order',{
+   caseId:selectedCase.caseId,hearingIndex:courtStatus.hearingIndex,text:value
+  });
+  if(!plan?.ok)throw Error('interpretation_failed');
+  if(!plan.matched){
+   if(status)status.textContent='현재 사건 원본에 확인 가능한 자료가 없습니다. 사건에 없는 증거를 임의로 생성하지 않습니다.';
+   return;
+  }
+  const record=(selectedCase.records||[]).find(r=>r.id===plan.recordId);
+  if(!record||record.first===true||
+     !(selectedCase.orders||[]).some(o=>o.record===record.id)){
+   if(status)status.textContent='검증되지 않은 자료 제안은 법정 명령으로 사용할 수 없습니다.';return;
+  }
+  if(!window.confirm('AI가 '+String(record.title||record.id)+' 제출 요청으로 해석했습니다. 이 주문을 기록할까요?'))return;
+  await doCourtAction('order',record.id);
+ }catch{if(status)status.textContent='주문 해석을 완료하지 못했습니다. 기존 주문 선택은 계속 사용할 수 있습니다.'}
 }
 async function resolveOrder(key){
  if(!selectedCase||!courtStatus?.canAct)return;
@@ -323,6 +355,7 @@ function mount(){
  else if(target.dataset.courtTab){courtTab=target.dataset.courtTab;renderOffers()}
  else if(target.hasAttribute('data-world-begin'))beginCourt();
  else if(target.hasAttribute('data-world-verdict'))confirmSharedVerdict();
+ else if(target.hasAttribute('data-free-order-check'))interpretFreeOrder();
  else if(target.dataset.orderResult)resolveOrder(target.dataset.orderResult);
  else if(target.dataset.courtKind&&target.dataset.courtKey)doCourtAction(target.dataset.courtKind,target.dataset.courtKey)})}
  document.addEventListener('click',e=>{if(e.target.closest?.('[data-world-open]')){e.preventDefault();openSharedCourt()}});
