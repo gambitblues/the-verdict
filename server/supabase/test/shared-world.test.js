@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -505,4 +505,29 @@ test('P4 shared career ledger records scored verdict once, without changing pers
  assert.ok(rows.some(x=>x.case_id==='case-native-review-001'&&x.seat==='solo'));
  await assert.rejects(pa('update public.shared_judge_career_events set review_score=100'),/permission denied/);
  await assert.rejects(svc('update public.shared_judge_career_events set review_score=100'),/career_event_immutable/);
+});
+
+test('P5 human presides; second human and NPC always associate with immutable seats',async()=>{
+ const caseId='joint-auto-test';
+ const panel=(await svc('select chair_id,peer_id,npc_id from public.shared_joint_panels where case_id=$1',[caseId])).rows[0];
+ assert.ok(panel,'previous test assigned active joint case');
+ const bench=uid=>svc('select public.shared_joint_bench($1,$2::uuid) as bench',[caseId,uid]);
+ const chair=(await bench(A)).rows[0].bench;
+ const peer=(await bench(B)).rows[0].bench;
+ assert.equal(chair.myRole,'chair');
+ assert.equal(chair.canOpenHearing,true);
+ assert.equal(peer.myRole,'associate');
+ assert.equal(peer.canOpenHearing,false);
+ assert.deepEqual(chair.seats.map(x=>[x.seat,x.kind,x.role]),[
+  ['chair','human','presiding'],['peer','human','associate'],['npc','npc','associate']
+ ]);
+ assert.equal(chair.seats[0].id,A);
+ assert.equal(chair.seats[1].id,B);
+ assert.equal(chair.seats[2].id,panel.npc_id);
+ assert.equal(peer.seats[0].id,A);
+ await assert.rejects(svc('select public.shared_joint_bench($1,$2::uuid)',[
+  caseId,'00000000-0000-0000-0000-00000000000f']),/not_panel_member/);
+ await assert.rejects(pa('select public.shared_joint_bench($1,$2::uuid)',[caseId,A]),/permission denied/);
+ await assert.rejects(svc('update public.shared_joint_panels set chair_id=$1 where case_id=$2',[B,caseId]),/joint_seats_immutable/);
+ await assert.rejects(svc('update public.shared_joint_panels set npc_id=$1 where case_id=$2',['npc:other',caseId]),/joint_seats_immutable|foreign key/);
 });
