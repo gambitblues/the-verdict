@@ -280,7 +280,7 @@ async function reserveOffers(){
  sharedSlot=kstSlot();status.textContent='서버에서 사건 후보를 확인하는 중…';
  try{const d=await window.VerdictAuth.api('/world/offers',{slot:sharedSlot});
   if(!d?.ok||!Array.isArray(d.offers))throw Error('not_available');
-  selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;offerCandidates=d.offers.slice(0,2);
+  selectedCase=null;firstDocs=[];courtStatus=null;courtActions=[];courtMotions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;offerCandidates=d.offers.slice(0,2);
   status.textContent='두 판사에게 같은 사건이 중복 예약되지 않습니다.';renderOffers();
  }catch{status.textContent='이 시간대에 공유 배당을 사용할 수 없습니다. 개인 재판에는 영향이 없습니다.'}
 }
@@ -518,7 +518,7 @@ async function acceptOffer(id){
   const c=await window.VerdictAuth.api('/world/case?caseId='+encodeURIComponent(id));
   const r=await window.VerdictAuth.api('/world/case/initial?caseId='+encodeURIComponent(id));
   if(!c?.ok||!r?.ok||c.case?.caseId!==id)throw Error('case_unavailable');
-  selectedCase=c.case;firstDocs=Array.isArray(r.records)?r.records:[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;offerCandidates=[];
+  selectedCase=c.case;firstDocs=Array.isArray(r.records)?r.records:[];courtMotions=[];courtTab='case';finalDecision=null;panelState=null;panelPartners=null;panelFor=null;offerCandidates=[];
   status.textContent='공통 사건 배당 완료 · 공개 초기 자료만 표시';renderOffers();await refreshCourt();refresh();
  }catch{status.textContent='배당 또는 사건 자료 조회에 실패했습니다. 서버 기록을 확인해 주세요.'}
 }
