@@ -45,3 +45,15 @@
 .joint-court-slot{margin-top:20px;border:1px solid #a38d68;border-left:4px solid #a38d68;border-radius:12px}
 .t4-ai-evidence,.vsw-ai-note{margin:10px 0;padding:12px;border-left:3px solid #7d8f9d;background:rgba(100,120,140,.08)}
 .t4-ai-evidence p,.vsw-ai-note p{white-space:pre-wrap;line-height:1.6}
+
+/* One native six-tab courtroom: evidence treatment & reasons match the local court workflow. */
+[data-world-native-root] .t4-unified-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+[data-world-native-root] .t4-unified-tabs .t4-tab{min-height:46px;white-space:normal}
+[data-world-native-root] .vsw-evidence-decisions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+[data-world-native-root] .vsw-evidence-decisions button{flex:1;min-width:105px;min-height:44px;border:1px solid #998261;border-radius:9px;background:#f5f0e5;color:#263b4a;font-weight:700;cursor:pointer}
+[data-world-native-root] .vsw-evidence-decisions button:focus-visible{outline:3px solid #967848;outline-offset:3px}
+[data-world-native-root] .vsw-admissibility{color:#526371;font-size:.9em}
+[data-world-native-root] .vsw-verdict-reasons{border:1px solid #d0c5b4;border-radius:12px;padding:12px;margin:15px 0}
+[data-world-native-root] .vsw-verdict-reasons legend{font-weight:700;padding:0 7px}
+[data-world-native-root] .vsw-verdict-reasons label{display:flex;align-items:center;gap:9px;padding:7px 0;line-height:1.5}
+@media(max-width:600px){[data-world-native-root] .t4-unified-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}[data-world-native-root] .vsw-evidence-decisions button{min-width:30%}}
