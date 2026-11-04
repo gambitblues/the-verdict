@@ -1,3 +1,5 @@
+import {adjudicateSentence} from './shared_sentence.js';
+import {evaluateSharedTrial} from './shared_trial_grade.js';
 /* THE VERDICT P4 shared-world judgment validation.
  * Input contains ONLY the judge's chosen disposition and citation keys.
  * The server verifies each cited item was actually disclosed in court.
@@ -43,8 +45,21 @@ export function validateSharedJudgment(sheet,actions,input){
  const evidence=citations.map(k=>({key:k,title:String(allowed.get(k)).slice(0,150)}));
  return {result,order,citations,evidence};
 }
+/* Fail closed when scored grading is enabled: no phantom sentence, evidence
+ * grading metadata, public-opinion result or unauthorized monetary award. */
+export function adjudicateSharedJudgment(sheet,actions,input,seed){
+ const decision=validateSharedJudgment(sheet,actions,input);
+ if(decision.error)return decision;
+ const sentence=adjudicateSentence(sheet,decision.result,input.sentence,decision.citations);
+ if(sentence.error)return {error:sentence.error};
+ const judgment={...decision,order:sentence.order||decision.order,
+  sentence:sentence.sentence};
+ const grade=evaluateSharedTrial(sheet,actions,judgment,sentence,seed);
+ if(grade.error)return {error:grade.error};
+ return {...judgment,grade};
+}
 export async function sharedJudgmentHash(caseId,judgeId,judgment){
- const text=JSON.stringify({caseId,judgeId,result:judgment.result,order:judgment.order,citations:judgment.citations});
+ const text=JSON.stringify({caseId,judgeId,result:judgment.result,order:judgment.order,citations:judgment.citations,...(judgment.sentence?{sentence:judgment.sentence}:{}),...(judgment.grade?{skill:judgment.grade.score,review:judgment.grade.review}:{})});
  const bytes=new TextEncoder().encode(text);
  const digest=await crypto.subtle.digest('SHA-256',bytes);
  return Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
