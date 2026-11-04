@@ -216,3 +216,31 @@ export function checkJudgment(p,out){
  }
  return {ok:true,value:{facts:of,issues:oi,conclusion:oc},compare:[pairs.map(x=>x[0]).join('\n'),pairs.map(x=>x[1]).join('\n')]};
 }
+
+/* Evidence explanation: not evidence itself, never a new witness/source. */
+export function evidencePrompt(p){
+ const original=cap(p?.original,2400),title=cap(p?.title,160);
+ if(original.length<15||!title)return {error:'evidence_source_required'};
+ return {instructions:`${COMMON}
+지금 할 일: 이미 법정에 공개된 증거의 문장을 읽기 쉬운 한국어로 설명합니다.
+- 새로운 증거, 사람, 행위, 장소, 시간, 수치, 인과관계를 만들지 않습니다.
+- 원문의 인정/부인/불확실성/출처의 한계를 모두 유지합니다.
+- CCTV에 화면 밖 장면을 만들지 않으며 검토되지 않은 음주나 고의를 사실로 단정하지 않습니다.
+- 원문과 같은 뜻이어야 하며 추측, 법률상 결론, 선고 의견을 쓰지 않습니다.
+- 플레이어에게 보이는 별도 참고 해설일 뿐 증거 원본이나 공식 법정 기록은 아닙니다.`,
+ input:JSON.stringify({title,original}),
+ schema:{name:'evidence_explanation',schema:{type:'object',additionalProperties:false,
+ required:['text'],properties:{text:{type:'string'}}}}};
+}
+export function checkEvidence(p,out){
+ const original=S(p?.original),result=S(out?.text);
+ if(!original||result.length<15||result.length>original.length*1.7+70)
+  return {ok:false,why:'evidence_length'};
+ if(!sameNumbers(original,result)||!sameDates(original,result))
+  return {ok:false,why:'evidence_numbers'};
+ for(const q of quotesIn(original))if(!result.includes(q))
+  return {ok:false,why:'evidence_quote_changed'};
+ const cause=guard(original,result,{names:namesOf(p),keep:0.6});
+ if(cause)return {ok:false,why:'evidence_'+cause};
+ return {ok:true,value:{text:result},compare:[original,result]};
+}
