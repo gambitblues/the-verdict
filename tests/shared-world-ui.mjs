@@ -116,6 +116,7 @@ try{
   assert.match(await page.locator('main [data-world-native-list]').innerText(),/첫날 공개된 계약 내용/);
   await page.locator('[data-world-native-back]').click();
   assert.equal(await page.evaluate(()=>window.ui.p4NativeCourt),false,'return to original case list safely');
+  await page.getByRole('button',{name:'공유 세계 연혁 열기'}).click();
 
   const picked=await page.evaluate(()=>window.VerdictSharedWorld.selectedCase.caseId);
   assert.equal(picked,'case-'+id);
