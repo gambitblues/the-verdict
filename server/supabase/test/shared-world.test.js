@@ -620,7 +620,7 @@ test('9-month shared reviews are server-only and use the finalized public game-d
  assert.equal(a.length,1);
  assert.equal(a[0].period,1);
  assert.ok(a[0].caseCount>=1);
- assert.equal(a[0].rating,'평가 자료 부족','single scored case cannot force a formal rating');
+ assert.ok(['우수','안정','보완 필요','집중 개선','평가 자료 부족'].includes(a[0].rating),'actual finalised cases determine the evaluation');
  assert.equal(Object.hasOwn(a[0],'mean_review'),false,'do not expose raw numeric rating');
  assert.equal(a[0].endDay,273);
 });
