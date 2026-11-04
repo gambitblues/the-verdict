@@ -1574,6 +1574,8 @@ function resultPanel(c,st){
 const priorCourt=court;
 let lastCaseId=null;
 court=function(){
+ if(ui.p4NativeCourt===true&&window.VERDICT_CONFIG?.p4SharedWorld===true&&window.VerdictSharedWorld?.nativeCourt)
+  return window.VerdictSharedWorld.nativeCourt();
  const html=priorCourt(),x=current();
  if(!x||!html.includes('court-screen-hearing'))return html;
  if(!caseReady(x.c)){preloadSave();VC_().load(archId(x.c)).then(()=>render(),e=>{console.warn(e);toast('사건 기록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.')});
