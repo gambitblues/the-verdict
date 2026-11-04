@@ -182,3 +182,20 @@
 - `chambers_art.js/.css`: 독립형 SVG 집무실 원본 그래픽. PWA 프리캐시 등록. 신규 외부 이미지 의존성 없음.
 - `tests/career-evaluation.test.cjs`, `tests/p5-dual-judge-ui.mjs`, `server/supabase/test/shared-world.test.js`에 시간 구간/배석 신문/서버 기일 원장 관련 회귀 테스트 추가.
 - **릴리스 차단:** 위 통합은 UI 화면·공통 서버 원장까지이며, 개인 `trial_play.js`의 모든 세부 심리 연출/증거능력 결정 모듈이 서버에서 그대로 재사용되는 것은 아님. 또한 독립 Supabase 실제 2계정→개정→신문/이월→합의→선고→익일 기사·NPC 후속 E2E가 통과하기 전 운영에 적용하지 않는다.
+
+## 2026-11-04 — 공유 재판 엔진 통합 2차 (develop only)
+
+이번 통합은 별도의 두 번째 법정 화면을 추가하지 않고, 개인 `trial_play.js`와 공유 `shared_world.js`가 동일한 `VerdictCourtSurface.frame/navigation`을 사용하도록 했다.
+
+- **권한:** 실제 인간 재판장만 개정·증거 채택/배제·선고를 수행한다. 인간 배석판사는 개정 중 증인신문·주문 및 비공개 투표를 수행한다. NPC는 인간의 선고 권한을 갖지 않는다. 두 판사의 질문·주문은 공통 서버 원장에 즉시 기록된다.
+- **서버 원장:** 030 migration의 `shared_evidence_decision_record`가 기일별 불변 증거 채택·조건부 채택·배제를 추가한다. 동일 기일 재전송은 멱등, 변경은 충돌, 다음 기일 재결정은 새 기록으로 남긴다.
+- **판결 이유:** 기존 개인재판의 `VerdictTrialCore.REASONS` 항목을 공유 판결에서 선택할 수 있다. 서버는 근거로 든 증거/증언의 실제 공개 여부, 배제 여부, 미존재 이유를 검증한다. `shared_trial_grade.js`는 서버 증거 결정 및 근거를 개인 법정과 동일한 `VerdictTrialCore.skill/evaluate`에 넣는다. 기록이 없는 항목의 신빙성 지표는 추측하지 않고 오류로 종료한다.
+- **NPC 합의:** NPC 배석판사에게도 **실제로 공개된 최초 증거 원문**과 신문 답변, 주문으로 넘어온 증거, 채택/배제 이력을 투입한다. 감춰진 진실·다른 두 판사의 투표·비공개 NPC 관계는 모델에 주지 않는다. 투표마다 서버 법정 기록의 해시를 검증한다.
+- **최소 기일:** 신규 `verdict-world-sheet/v1` 사건은 개인재판과 동일한 `VerdictTrialCore.minDays(importance)`에 따라 최소 2~4번의 기일 및 모든 주문의 결과 확인 후 합의를 시작한다. 레거시 시트는 무단 변경하지 않는다.
+- **비동기 접속:** 신문·주문·증거 결정을 실행할 때는 현재 열린 기일/세계 날짜와 권한이 필요하다. 다만 서로 다른 날 접속한 판사라도 **기록이 그대로이고 심리를 끝냈다면** 3인 합의 투표·선고할 수 있다. 다른 사건으로 세계 날짜가 바뀌어도 기결/미결의 판정은 서버가 정한다.
+- **후속 세계:** 기존 `judgment_published` → NPC 공개 이력 → 다음 게임 날짜 기사 트리거 및 공동 경력 원장을 그대로 유지하며, 단 한 번의 선고만 확정한다.
+- **회귀 테스트:** `server/worker/test/shared-courtroom.test.js`, `shared-trial-grade.test.js`, `p5_panel_routes.test.js`, `worker.test.js`, `server/supabase/test/shared-world.test.js`, `tests/p5-dual-judge-ui.mjs`.
+
+**완료 범위:** 공유/개인 법정은 같은 6메뉴 외형, 핵심 증거·법률 판단 및 형량/배상액 평가 함수를 사용한다. 서버 비공개 사실은 법정 밖으로 내보내지 않는다.
+
+**차이점 및 운영 차단:** 개인재판의 절차 밖 생활 연출과 상대측 NPC의 모든 임의 이의/연기 카드, 민간 여론 생성까지 공유 법정에서 1:1 복제한 것은 아니다. 본 커밋은 운영 SQL/DB/저장 데이터를 바꾸지 않는다. 출시 전에는 별도 QA Supabase·Worker와 2개의 실제 초대 계정으로 비동기 E2E(공판→주문→다음 기일→합의→선고→NPC/뉴스/경력)를 통과해야 한다.
