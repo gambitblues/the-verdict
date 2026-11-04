@@ -544,3 +544,39 @@ test('P5 evidence ruling is sealed: chair + disclosed item only, no browser-supp
  const off=await handle(req('/world/court/evidence/decide',body),env,make());
  assert.equal(off.status,404);
 });
+
+test('native opponent motion endpoints hide validity, require chair for response',async()=>{
+ const sheet={format:'verdict-world-sheet/v1',id:'case-motion',
+  card:{kind:'civil',opponentStyle:'aggressive'}};
+ const seen=[];
+ const f=async(url,opt={})=>{
+  const u=String(url);seen.push({u,opt});
+  const ok=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'content-type':'application/json'}});
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/rest/v1/case_stock'))return ok([{assigned_to:'u1',state:'assigned',sheet}]);
+  if(u.includes('/rest/v1/shared_judge_hearings'))return ok([{hearing_index:1,state:'completed',completed_game_day:5}]);
+  if(u.includes('/rest/v1/shared_world_clock'))return ok([{game_day:5}]);
+  if(u.includes('/rest/v1/shared_court_actions'))return ok([]);
+  if(u.includes('/rpc/shared_motion_decision_record'))return ok(JSON.parse(opt.body).p_response);
+  throw Error('unexpected '+u);
+ };
+ const enabled={...env,P4_COURT_ACTIONS_ENABLED:'1',P4_TRIAL_PARITY_ENABLED:'1'};
+ const first=await (await handle(req('/world/court/motions?caseId=case-motion'),enabled,f)).json();
+ assert.equal(first.ok,true);
+ assert.ok(Array.isArray(first.motions));
+ assert.ok(!JSON.stringify(first).includes('"valid"'),'do not leak the correct response before judgment');
+ if(first.motions.length){
+  const key=first.motions[0].id;
+  const b={caseId:'case-motion',hearingIndex:1,key,choice:'accept',valid:false,answer:'FORGED'};
+  const outcome=await (await handle(req('/world/court/motion/decide',b),enabled,f)).json();
+  assert.equal(outcome.ok,true);
+  const recorded=JSON.parse(seen.find(x=>x.u.includes('/rpc/shared_motion_decision_record')).opt.body);
+  assert.ok(!JSON.stringify(recorded).includes('FORGED'));
+  assert.equal(typeof recorded.p_response.valid,'boolean');
+ }
+ const denied=await handle(req('/world/court/motion/decide',{caseId:'case-motion',key:'forged',choice:'accept',hearingIndex:1}),enabled,f);
+ assert.equal(denied.status,400);
+ const off=await handle(req('/world/court/motions?caseId=case-motion'),env,f);
+ assert.equal(off.status,404);
+});
