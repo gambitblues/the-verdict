@@ -140,12 +140,11 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    // The native court cannot enter deliberation before required hearings or
    // while a judicial evidence order remains unresolved. Only the trusted
    // shared clock determines whether this hearing is currently open.
-   const [cases,hearings,clock]=await Promise.all([
+   const [cases,hearings]=await Promise.all([
     read('case_stock?select=state,sheet&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
     read('shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.'+
       encodeURIComponent(caseId)+'&judge_id=eq.'+encodeURIComponent(panels[0].chair_id)+
-      '&order=hearing_index.desc&limit=1'),
-    read('shared_world_clock?select=game_day&id=eq.main&limit=1')
+      '&order=hearing_index.desc&limit=1')
    ]);
    const hearing=hearings[0];
    const {acts,evidenceHash}=await record();
@@ -231,13 +230,12 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
   }
   if(url.pathname==='/world/panel/finalize'&&isPost){
    if(env.P4_JUDGMENTS_ENABLED!=='1')return response({error:'feature_disabled'},404);
-   const [panels,world,hearing,clock]=await Promise.all([
+   const [panels,world,hearing]=await Promise.all([
     read('shared_joint_panels?select=chair_id&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
     read('case_stock?select=assigned_to,state,sheet&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
     read('shared_judge_hearings?select=state,hearing_index,completed_game_day&case_id=eq.'+
       encodeURIComponent(caseId)+'&judge_id=eq.'+encodeURIComponent(uid)+
-      '&order=hearing_index.desc&limit=1'),
-    read('shared_world_clock?select=game_day&id=eq.main&limit=1')
+      '&order=hearing_index.desc&limit=1')
    ]);
    if(!panels[0]||panels[0].chair_id!==uid)return response({error:'chair_required'},403);
    if(!world[0]||world[0].assigned_to!==uid||world[0].state!=='assigned')
