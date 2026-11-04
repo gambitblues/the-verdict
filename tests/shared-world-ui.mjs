@@ -90,6 +90,14 @@ try{
   await page.waitForFunction(()=>window.__verdict===true);
   assert.match(await page.locator('[data-world-offers-status]').innerText(),/원고의 청구를 인용한다/);
   assert.equal(await page.locator('[data-court-tab]').count(),6,'same six courtroom menu names');
+  const bridge=await page.evaluate(()=>window.VerdictSharedWorld.courtListEntry());
+  assert.match(bridge,/data-world-open/,'original docket must expose shared court entry');
+  await page.getByRole('button',{name:'공유 세계 연혁 열기'}).click();
+  assert.equal(await page.locator('.vsw-panel').isVisible(),false);
+  await page.evaluate(html=>document.querySelector('main').insertAdjacentHTML('beforeend',html),bridge);
+  await page.locator('main [data-world-open]').click();
+  assert.equal(await page.locator('.vsw-panel').isVisible(),true);
+
   const picked=await page.evaluate(()=>window.VerdictSharedWorld.selectedCase.caseId);
   assert.equal(picked,'case-'+id);
   const event=await page.evaluate(()=>window.VerdictSharedWorld.events[0]);
