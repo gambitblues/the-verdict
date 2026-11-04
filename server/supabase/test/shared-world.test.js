@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql','028_joint_associate_court_actions.sql','029_shared_career_nine_month.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql','028_joint_associate_court_actions.sql','029_shared_career_nine_month.sql','030_shared_evidence_rulings.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -623,4 +623,15 @@ test('9-month shared reviews are server-only and use the finalized public game-d
  assert.ok(['우수','안정','보완 필요','집중 개선','평가 자료 부족'].includes(a[0].rating),'actual finalised cases determine the evaluation');
  assert.equal(Object.hasOwn(a[0],'mean_review'),false,'do not expose raw numeric rating');
  assert.equal(a[0].endDay,273);
+});
+
+test('evidence ruling RPC is server-only and requires an open hearing and chair',async()=>{
+ await assert.rejects(pa('select public.shared_evidence_decision_record($1,$2::uuid,$3,$4,$5)',
+  ['case-p4',A,1,'r1','use']),/permission denied/);
+ await assert.rejects(svc('select public.shared_evidence_decision_record($1,$2::uuid,$3,$4,$5)',
+  ['case-p4',A,1,'r1','forged']),/invalid_evidence_ruling/);
+ await assert.rejects(svc('select public.shared_evidence_decision_record($1,$2::uuid,$3,$4,$5)',
+  ['case-p4',B,1,'r1','use']),/chair_required/);
+ await assert.rejects(svc('select public.shared_evidence_decision_record($1,$2::uuid,$3,$4,$5)',
+  ['case-p4',A,1,'r1','use']),/hearing_not_open_today/);
 });
