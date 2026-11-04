@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -286,4 +286,26 @@ test('P4 sealed courtroom journal: only owner, opened hearing, immutable answer'
  await assert.rejects(svc('delete from public.shared_court_actions where case_id=$1',[id]),/court_action_immutable/);
  const count=(await svc('select count(*)::int as n from public.shared_court_actions where case_id=$1',[id])).rows[0].n;
  assert.equal(count,1);
+});
+
+test('P4 courtroom begin: server owns day, next hearing requires real prior action',async()=>{
+ const id='case-next-001',hash=HASH;
+ await svc(
+  'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
+  [id,'civil',hash,hash,'fingerprint-next-001',JSON.stringify({id}),JSON.stringify({passed:true}),A]);
+ const begin=()=>svc('select * from public.shared_court_begin($1,$2::uuid)',[id,A]);
+ const first=(await begin()).rows[0];
+ assert.equal(first.hearing_index,1);
+ assert.equal(first.world_day,12);
+ assert.equal(first.already_opened,false);
+ assert.equal((await begin()).rows[0].already_opened,true,'same hearing is idempotent');
+ await assert.rejects(begin(),/previous_hearing_empty/);
+ await svc('select public.shared_court_action_record($1,$2::uuid,$3,$4,$5,$6::jsonb)',
+  [id,A,1,'question','q1',JSON.stringify({status:'done',answer:'증언'})]);
+ const next=(await begin()).rows[0];
+ assert.equal(next.hearing_index,2);
+ assert.equal(next.world_day,13);
+ assert.equal((await pb('select game_day from public.shared_world_clock')).rows[0].game_day,13);
+ await assert.rejects(svc('select * from public.shared_court_begin($1,$2::uuid)',[id,B]),/court_case_not_owned/);
+ await assert.rejects(pa('select * from public.shared_court_begin($1,$2::uuid)',[id,A]),/permission denied/);
 });
