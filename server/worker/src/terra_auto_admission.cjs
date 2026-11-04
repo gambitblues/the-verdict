@@ -9,7 +9,7 @@ const {validateAuthorSeed}=require('./terra_author_seed.cjs');
 const {validateDraft}=require('./terra_case_pipeline.cjs');
 const {prepareWorldSheet}=require('./terra_world_sheet_handoff.cjs');
 const {run:trialQA}=require('./terra_cloud_trial_qa.cjs');
-const {freeOrderCatalog}=require('./free_order_intent.js');
+
 
 const digest=x=>createHash('sha256').update(JSON.stringify(x)).digest('hex');
 function verifyForAdmission(seed,candidate,sheet){
@@ -45,7 +45,7 @@ function verifyForAdmission(seed,candidate,sheet){
  if(!trial.ok)errors.push(...trial.errors.map(x=>'trial:'+x));
  // A novel free order must have a matching secured order. Otherwise the case can
  // still be playable, but its dynamic/free-order quality target isn't met.
- const available=freeOrderCatalog(sheet);
+ const available=(sheet?.records||[]).filter(r=>r.first===false&&typeof r.id==='string');
  if(!available.some(r=>(sheet?.orders||[]).some(o=>o.record===r.id)))
   errors.push('no_working_followup_evidence_order');
  if(errors.length)return {ok:false,errors:[...new Set(errors)],trial,verification:null};
