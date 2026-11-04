@@ -21,6 +21,16 @@ test('NPC AI receives disclosed record only, no sealed truth or human votes',()=
  assert.equal(p.schema.name,'p5_npc_deliberation');
  assert.deepEqual(p.schema.schema.properties.choice.enum,['guilty','acquittal','partial']);
 });
+test('NPC sees disclosed text with court-adjudicated admissibility, never unreleased truth',()=>{
+ const p=npcDeliberationPrompt(sheet,[{
+  action_type:'evidence_decision',action_key:'r1:1',hearing_index:1,
+  response:{status:'done',recordId:'r1',decision:'exclude'}
+ }],{name:'재판관'},[{id:'r1',title:'사고감정서',text:'법정에서 제출된 감정서 내용'}]);
+ assert.ok(p.input.includes('법정에서 제출된 감정서 내용'));
+ assert.ok(p.input.includes('"admissibility":"exclude"'));
+ assert.ok(p.instructions.includes('must not support a finding of fact'));
+ assert.ok(!p.input.includes('SEALED_TRUE_NOT_FOR_AI'));
+});
 test('NPC structured opinion cannot set an unauthorized outcome',()=>{
  assert.deepEqual(validateNpcOpinion('civil',{choice:'partial',reason:'공개된 자료만으로 판단하면 일부만 인정할 수 있습니다.'}),{
   choice:'partial',reason:'공개된 자료만으로 판단하면 일부만 인정할 수 있습니다.'
