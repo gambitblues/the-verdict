@@ -552,7 +552,8 @@ function wipeGame(){VerdictStore.halt();
  try{const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^(the_verdict|verdict_)/.test(k))keys.push(k)}keys.forEach(k=>localStorage.removeItem(k));localStorage.setItem('verdict_player_active','1')}catch{}
  try{sessionStorage.clear()}catch{}
  const done=()=>location.reload();Promise.race([window.VerdictSnapshots?VerdictSnapshots.clearAll():Promise.resolve(),new Promise(r=>setTimeout(r,3000))]).then(done,done)}
-function save(){const build=()=>JSON.stringify({...S,casePacks:(S.casePacks||[]).filter(p=>p.packId!=='starter-diverse-2026')});
+function save(){try{window.VerdictCareerBalance?.advanceEvaluations(S,S.week)}catch(e){console.warn('career evaluations',e)}
+ const build=()=>JSON.stringify({...S,casePacks:(S.casePacks||[]).filter(p=>p.packId!=='starter-diverse-2026')});
  try{archiveOld(false)}catch(e){console.warn('archive',e)}
  VerdictStore.save(KEY,build)}
 VerdictStore.onError(()=>{try{archiveOld(true);S.qaLog=(S.qaLog||[]).slice(-50);S.news=(S.news||[]).slice(0,300);localStorage.setItem(KEY,VerdictStore.encode(JSON.stringify({...S,casePacks:(S.casePacks||[]).filter(p=>p.packId!=='starter-diverse-2026')})));toast('저장 공간을 정리해 저장했습니다.')}catch{toast('브라우저 저장 공간이 가득 찼습니다. 설정에서 백업 파일을 저장해주세요.')}});
