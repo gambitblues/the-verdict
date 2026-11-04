@@ -8,8 +8,10 @@ export function publicCaseSheet(sheet,caseId){
  const pick=(o,keys)=>Object.fromEntries(keys.filter(k=>Object.hasOwn(o||{},k)).map(k=>[k,o[k]]));
  const limited=(v,limit=1200)=>typeof v==='string'?v.slice(0,limit):v;
  const card=pick(sheet.card,['kind','category','title','summary','accused','complainant']);
- const charge=pick(sheet.card?.charge,['name','law','min','max','life','fine']);
+ const charge=pick(sheet.card?.charge,['name','law','min','max','life','fine','death','both']);
  card.charge=charge;
+ const claim=pick(sheet.card?.claim,['amount','fair','what']);
+ if(Object.keys(claim).length)card.claim=claim;
  const people=(sheet.people||[]).slice(0,20).map(p=>pick(p,['key','name','role','age','job','edu','family','stake','leans']));
  const common={date:limited(sheet.common?.date||'',64),
   timeline:(sheet.common?.timeline||[]).slice(0,80).map(t=>pick(t,['at','place','who','what'])),
