@@ -5,6 +5,9 @@ on:
     paths:
       - 'shared_world.js'
       - 'tests/shared-world-ui.mjs'
+      - 'tests/p5-panel-ui.mjs'
+      - 'trial_play.js'
+      - 'p4_native_court.css'
       - 'server/worker/**'
       - 'server/supabase/**'
       - '.github/workflows/p4-focused-qa.yml'
@@ -41,3 +44,5 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Two judge read and sealed action preview
         run: node tests/shared-world-ui.mjs
+      - name: Joint bench NPC and finalization native UI
+        run: node tests/p5-panel-ui.mjs
