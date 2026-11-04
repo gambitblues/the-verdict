@@ -342,14 +342,16 @@ export async function handle(req,env,fetcher=fetch){
    const rows=await r.json();if(!Array.isArray(rows))throw Error('store_unavailable');return rows;
   };
   try{
-   const [cases,hearings,clock,judgments]=await Promise.all([
+   const [cases,clock,judgments]=await Promise.all([
     query(`case_stock?select=assigned_to,state,sheet&case_id=eq.${encodeURIComponent(caseId)}&limit=1`),
-    query(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encodeURIComponent(caseId)}&judge_id=eq.${encodeURIComponent(uid)}&hearing_index=eq.${hearing}&limit=1`),
     query('shared_world_clock?select=game_day&id=eq.main&limit=1'),
     query(`shared_case_judgments?select=case_id&case_id=eq.${encodeURIComponent(caseId)}&limit=1`)
    ]);
-   const row=cases[0],session=hearings[0],today=clock[0]?.game_day;
-   if(!row||row.assigned_to!==uid||row.state!=='assigned')return json({error:'case_not_found'},404,head);
+   const row=cases[0],today=clock[0]?.game_day;
+   if(!row||row.state!=='assigned'||!await courtRole(caseId,row.assigned_to))
+    return json({error:'case_not_found'},404,head);
+   const hearings=await query(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encodeURIComponent(caseId)}&judge_id=eq.${encodeURIComponent(row.assigned_to)}&hearing_index=eq.${hearing}&limit=1`);
+   const session=hearings[0];
    if(!session||session.state!=='completed'||session.completed_game_day!==today||judgments.length)
     return json({error:'hearing_not_open_today'},409,head);
    const built=freeOrderPrompt(orderText,row.sheet);
