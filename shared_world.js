@@ -378,8 +378,9 @@ async function beginCourt(){
 }
 async function interpretFreeOrder(){
  if(!selectedCase||!courtStatus?.canAct||window.VERDICT_CONFIG?.p4FreeOrders!==true)return;
- const value=panel?.querySelector('[data-free-order]')?.value||'';
- const status=panel?.querySelector('[data-world-offers-status]');
+ const region=(typeof ui!=='undefined'&&ui.p4NativeCourt?document.querySelector('[data-world-native-root]'):null)||panel;
+ const value=region?.querySelector('[data-free-order]')?.value||'';
+ const status=region?.querySelector('[data-world-native-status]')||panel?.querySelector('[data-world-offers-status]');
  if(value.trim().length<8||value.length>600){
   if(status)status.textContent='구체적으로 어떤 자료가 필요한지 8~600자로 주문해 주세요.';return;
  }
