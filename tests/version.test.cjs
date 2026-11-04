@@ -39,3 +39,12 @@ console.log('PASS: version',v);
  if(!runtime.includes("sessionStorage.getItem('vauth_new_career')")||!runtime.includes('if(!has){setup();return}'))throw Error('post-reset onboarding bypass missing');
  console.log('PASS: post-reset judge creation follows server confirmation');
 }
+
+// Startup: downloads overlap while classic script execution retains dependency order.
+{
+ const gate=fs.readFileSync(path.join(root,'auth_gate.js'),'utf8');
+ if(!gate.includes('for(const path of GAME)')||!gate.includes('s.async=false')||
+    !gate.includes('document.body.appendChild(s)')||gate.includes('s.onload=next'))
+   throw Error('startup script loader is no longer parallel-ordered');
+ console.log('PASS: startup scripts download concurrently and execute in order');
+}
