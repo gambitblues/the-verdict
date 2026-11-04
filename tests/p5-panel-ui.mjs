@@ -124,7 +124,7 @@ try{
  await root.locator('[data-v-amount]').fill('1000');
  await root.locator('button[data-world-verdict]').click();
  await page.waitForFunction(()=>window.__p5.published===true);
- assert.match(await root.innerText(),/종합 평점 74점/);
+ assert.doesNotMatch(await root.innerText(),/종합 평점 74점/,'individual grades remain hidden until the nine-month career review');
  assert.equal(await root.locator('[data-p5-vote]').count(),0);
  console.log('PASS P5 native court UI: private humans → metered NPC flow → majority → scored verdict');
  await page.close();
