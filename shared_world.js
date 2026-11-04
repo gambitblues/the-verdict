@@ -125,7 +125,7 @@ function renderOffers(){
      esc(panelState.state==='majority_ready'?'다수 의견 성립':
        panelState.state==='further_deliberation'?'의견 불일치 · 추가 심의 필요':'다른 재판관 의견 대기')+'</p>'+
    '<p>내 의견: '+esc(panelState.myVote||'아직 제출하지 않음')+'</p>'+
-   (!panelState.myVote&&ready
+   (!panelState.myVote&&courtActions.length>0
     ?'<label>판단</label><select data-p5-choice>'+choices.map(([v,label])=>
        '<option value="'+esc(v)+'">'+esc(label)+'</option>').join('')+'</select>'+
       '<label>비공개 심의 의견</label><textarea data-p5-note rows="3" maxlength="1000" placeholder="법정 기록에 근거한 판단 이유를 적으세요"></textarea>'+
@@ -174,7 +174,7 @@ function renderOffers(){
  }else if(courtTab==='verdict'){
   body='<h4>판결</h4>'+p5controls+(finalDecision
    ?'<p><strong>확정 판결</strong> · '+esc(finalDecision.order||'')+'</p>'+(finalDecision.grade?'<p>법정 판단 '+esc(finalDecision.grade.score)+'점 · 종합 평점 '+esc(finalDecision.grade.review)+'점</p>':'')
-   :window.VERDICT_CONFIG?.p4SharedVerdicts===true&&ready&&courtActions.length
+   :window.VERDICT_CONFIG?.p4SharedVerdicts===true&&(ready||panelState?.state==='majority_ready')&&courtActions.length
     ?'<section data-world-verdict><p>법정에 실제 제출된 증거·증언에서 근거를 고르세요.</p>'+
       (panelState
        ?'<p><strong>합의 결론: '+esc(panelState.majority||'심의 대기')+'</strong></p>'
@@ -258,7 +258,7 @@ async function p5Action(kind){
  }
 }
 async function confirmSharedVerdict(){
- if(!selectedCase||!courtStatus?.canAct||window.VERDICT_CONFIG?.p4SharedVerdicts!==true)return;
+ if(!selectedCase||(!courtStatus?.canAct&&panelState?.state!=='majority_ready')||window.VERDICT_CONFIG?.p4SharedVerdicts!==true)return;
  const region=(typeof ui!=='undefined'&&ui.p4NativeCourt?
   document.querySelector('[data-world-native-root] [data-world-verdict]'):null)||
   panel?.querySelector('[data-world-verdict]');if(!region)return;
