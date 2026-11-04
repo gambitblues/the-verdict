@@ -107,7 +107,9 @@ const esc=x=>h(String(x??''));
 const tabletBase=tabletInner,baseShell=shell,priorClick=clicker;
 const APP=[['news','📰','기사'],['social','＃','여론'],['messages','💬','메시지'],['archives','⚖','판결 기록'],['career','🎖','나의 커리어'],['notes','📝','메모'],];
 function clockData(){
- const d=new Date(),worldDays=Math.max(0,S.week*7+(S.realtimeInbox?.dayProgress||0));
+ const d=new Date(),sharedDay=window.VERDICT_CONFIG?.p4SharedWorld===true?Number(window.VerdictSharedWorld?.clock?.game_day):NaN;
+ const isSharedClock=Number.isSafeInteger(sharedDay)&&sharedDay>=0;
+ const worldDays=isSharedClock?sharedDay:Math.max(0,S.week*7+(S.realtimeInbox?.dayProgress||0));
  const gameDay=new Date(Date.UTC(2027,2,1)+worldDays*86400000);
  const gameDate=[gameDay.getUTCFullYear(),String(gameDay.getUTCMonth()+1).padStart(2,'0'),String(gameDay.getUTCDate()).padStart(2,'0')].join('.');
  const format=()=>d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false});
@@ -115,7 +117,7 @@ function clockData(){
  if(hour>=21)candidate.setDate(candidate.getDate()+1),candidate.setHours(10);
  else if(hour<10)candidate.setHours(10);
  else candidate.setHours(hour+1);
- return {time:format(),gameDate,next:candidate.toLocaleString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}),weekday:d.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})};
+ return {time:format(),gameDate,sharedClock:isSharedClock,next:candidate.toLocaleString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}),weekday:d.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})};
 }
 /* Career-facing judicial identity; derives from actual recorded outcomes, never invents an alignment score. */
 function judgeIdentity(){
@@ -165,7 +167,7 @@ home=function(){
  const t=clockData(),cases=openCases().slice(0,5),articles=(window.VerdictMedia?.articles()||[]).slice().sort((a,b)=>(Number(b.day)||0)-(Number(a.day)||0)).slice(0,4);
  const judgeStyle=window.VerdictJudgeStyle?.describe?.(S)||'판결은 기록으로 말합니다.';
  return '<div class="tv-home tv-chambers"><section class="tv-welcome">'+(window.VerdictChambersArt?.scene?.()||'')+'<div><span class="eyebrow">THE VERDICT · JUDICIAL CAREER <span class="ver-badge">v'+esc(window.VERDICT_VERSION||'')+' · '+esc(window.VERDICT_RELEASED||'')+'</span></span><h2>'+esc(judgeStyle)+'</h2><p>'+esc(S.name)+' 판사 · '+esc(S.post)+' · 진행 중 '+openCases().length+'건</p></div><div class="tv-judge-photo">'+avatar('self')+'</div></section>'+
- '<section class="tv-clock tv-office-clock"><div class="tv-clockface"><small>집무실 시계</small><strong class="tv-clock-local">'+esc(t.time)+'</strong><span>'+esc(t.weekday)+'</span></div><div class="tv-calendar"><small>재판 일정표</small><strong>'+esc(t.gameDate)+'</strong><span>공판이 열릴 때 흘러요</span></div><div><small>다음 배당</small><strong class="tv-clock-next">'+esc(t.next)+'</strong><span>10:00–22:00 · 매시 정각</span></div></section>'+
+ '<section class="tv-clock tv-office-clock"><div class="tv-clockface"><small>집무실 시계</small><strong class="tv-clock-local">'+esc(t.time)+'</strong><span>'+esc(t.weekday)+'</span></div><div class="tv-calendar"><small>'+(t.sharedClock?'공유 세계 달력':'재판 일정표')+'</small><strong>'+esc(t.gameDate)+'</strong><span>공판이 열릴 때 흘러요</span></div><div><small>다음 배당</small><strong class="tv-clock-next">'+esc(t.next)+'</strong><span>10:00–22:00 · 매시 정각</span></div></section>'+
  priority()+
  '<section class="tv-open-cases"><div class="row between"><h3>⚖ 진행 중인 재판</h3><button class="btn ghost mini" data-action="tab" data-tab="courtList">전체 사건</button></div>'+
  (cases.length?cases.map(hearingCard).join(''):'<p class="muted">배당된 사건이 없습니다.</p>')+'</section>'+
