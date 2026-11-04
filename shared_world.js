@@ -278,6 +278,21 @@ async function refresh(){
  }catch(e){if(panel)panel.querySelector('[data-world-status]').textContent='세계 연결을 확인할 수 없습니다. 개인 재판은 계속할 수 있습니다.';return false}
  finally{loading=false}
 }
+function openSharedCourt(){
+ if(!user())return;
+ mount();
+ if(!panel)return;
+ panel.hidden=false;button?.setAttribute('aria-expanded','true');
+ if(selectedCase)courtTab='case';
+ renderOffers();refresh();
+}
+function courtListEntry(){
+ if(window.VERDICT_CONFIG?.p4SharedWorld!==true||!user())return '';
+ const current=selectedCase?.card?.title||selectedCase?.caseId||'공유 사건';
+ return '<section class="panel tv-inbox"><h3>🌐 공유 세계 법정</h3>'+
+ '<p class="muted small">두 판사가 공유하는 사건·기일·증거·증인·주문·판결입니다. 개인 사건 세이브는 별도로 유지됩니다.</p>'+
+ '<button class="btn primary" type="button" data-world-open>공유 법정 열기 · '+esc(current)+'</button></section>';
+}
 function toggle(){if(!panel)return;const visible=panel.hidden;panel.hidden=!visible;if(visible)refresh()}
 function mount(){
  if(document.querySelector('#verdict-shared-world'))return;
@@ -310,6 +325,7 @@ function mount(){
  else if(target.hasAttribute('data-world-verdict'))confirmSharedVerdict();
  else if(target.dataset.orderResult)resolveOrder(target.dataset.orderResult);
  else if(target.dataset.courtKind&&target.dataset.courtKey)doCourtAction(target.dataset.courtKind,target.dataset.courtKey)})}
+ document.addEventListener('click',e=>{if(e.target.closest?.('[data-world-open]')){e.preventDefault();openSharedCourt()}});
  const style=document.createElement('style');style.textContent=
  '#verdict-shared-world{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:7500;font:inherit}' +
  '.vsw-button{padding:9px 13px;border-radius:22px;background:#182e42;color:#fff;border:1px solid #a8926c;box-shadow:0 2px 12px #0004;cursor:pointer}' +
@@ -326,5 +342,5 @@ function start(){
  setInterval(()=>{if(!document.hidden)refresh()},60000);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-window.VerdictSharedWorld={refresh,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get selectedCase(){return selectedCase?JSON.parse(JSON.stringify(selectedCase)):null},get clock(){return clock?{...clock}:null},get catchup(){return catchup?JSON.parse(JSON.stringify(catchup)):null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
+window.VerdictSharedWorld={refresh,open:openSharedCourt,courtListEntry,get events(){return events.map(x=>({...x,public_data:{...x.public_data}}))},get cursor(){return cursor},get selectedCase(){return selectedCase?JSON.parse(JSON.stringify(selectedCase)):null},get clock(){return clock?{...clock}:null},get catchup(){return catchup?JSON.parse(JSON.stringify(catchup)):null},get npcs(){return npcs.map(n=>({...n,public_profile:{...n.public_profile}}))}};
 })();
