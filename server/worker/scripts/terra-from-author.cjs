@@ -7,7 +7,6 @@
 const fs=require('node:fs'),path=require('node:path');
 const {validateAuthorSeed,seedToTerraInput}=require('../src/terra_author_seed.cjs');
 const {generate}=require('../src/terra_case_generator.cjs');
-const {run}=require('../../../tests/terra-trial-qa.cjs');
 async function main(args=process.argv.slice(2)){
  const [action,input,outArg]=args;
  if(!['validate','generate'].includes(action)||!input)throw Error('Usage: validate|generate <author-seed.json> [output-directory]');
