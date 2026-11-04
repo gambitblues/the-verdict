@@ -17,7 +17,7 @@
 import TerraCloud from './terra_cloud_staging.cjs';
 import {publicCaseSheet,initialEvidence} from './public_case_projection.js';
 import {courtroomPlan,resolveCourtOrder} from './shared_courtroom.js';
-import {validateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
+import {validateSharedJudgment,adjudicateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
 import {freeOrderPrompt,verifyFreeOrderReply} from './free_order_intent.js';
 import {p5PanelRoute} from './p5_panel_routes.js';
 import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,exchangePrompt,checkExchange,verifyPrompt} from './prompts.js';
@@ -484,17 +484,22 @@ export async function handle(req,env,fetcher=fetch){
     return json({error:'case_not_found'},404,head);
    if(!hearing||hearing.state!=='completed'||!actions.length)
     return json({error:'hearing_incomplete'},409,head);
-   const decision=validateSharedJudgment(assigned.sheet,actions,input);
+   const scored=env.P4_TRIAL_PARITY_ENABLED==='1';
+   const decision=scored
+    ?adjudicateSharedJudgment(assigned.sheet,actions,input,id)
+    :validateSharedJudgment(assigned.sheet,actions,input);
    if(decision.error)return json({error:decision.error},400,head);
    const hash=await sharedJudgmentHash(id,uid,decision);
-   const post=await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/shared_judgment_publish`,{
+   const post=await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/${scored?'shared_judgment_publish_scored':'shared_judgment_publish'}`,{
     method:'POST',headers:svc(env),body:JSON.stringify({
-      p_case:id,p_judge:uid,p_result:decision.result,p_order:decision.order,p_record_hash:hash
+      p_case:id,p_judge:uid,p_result:decision.result,p_order:decision.order,p_record_hash:hash,
+      ...(scored?{p_score:decision.grade.score,p_review:decision.grade.review,p_grade:decision.grade}:{})
     })});
    if(!post.ok)return json({error:'judgment_conflict'},409,head);
    const published=await post.json();
    return json({ok:true,caseId:id,published:published===true,judgment:{
-    result:decision.result,order:decision.order,citations:decision.citations,recordHash:hash
+    result:decision.result,order:decision.order,citations:decision.citations,recordHash:hash,
+    ...(scored?{sentence:decision.sentence,grade:decision.grade}:{})
    }},200,head);
   }catch{return json({error:'judgment_unavailable'},503,head)}
  }
