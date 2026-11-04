@@ -85,7 +85,7 @@ async function publishOne(seed,dirArg){
  const reviewPath=path.join(dir,name+'.review.json');
  const report=JSON.parse(fs.readFileSync(reviewPath,'utf8'));
  report.status='qa_stock_admitted';report.autoAdmitted=true;report.admittedTo='qa';
- fs.writeFileSync(reviewPath,JSON.stringify(report,null,2)+'\\n');
+ fs.writeFileSync(reviewPath,JSON.stringify(report,null,2)+'\n');
  console.log(inserted?'PASS: QA 사건 재고 등록 완료 — 다음 공유 배당부터 사용 가능':'PASS: 같은 사건이 이미 QA 재고에 있어 중복 등록하지 않음');
  return inserted;
 }
