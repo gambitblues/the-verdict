@@ -14,6 +14,8 @@
   <link rel="icon" type="image/svg+xml" href="./icon.svg">
   <link rel="stylesheet" href="./game.css">
   <link rel="stylesheet" href="./court_visuals.css">
+  <link rel="stylesheet" href="./p4_native_court.css">
+  <link rel="stylesheet" href="./chambers_art.css">
   <title>THE VERDICT | 판결이 인생이 된다</title>
 </head>
 <body>
@@ -22,23 +24,8 @@
   <div id="toast" aria-live="polite"></div>
 <script>
 /* Release version: bump together with CACHE in sw.js and the top entry of docs/CHANGELOG.md (tests/version.test.cjs checks). */
-window.VERDICT_VERSION='8.6.5';window.VERDICT_RELEASED='2026.11.03';
-/* Profile bootstrap must run before the deferred runtime reads the active save. */
-(()=>{const K='the_verdict_alpha_1',P='verdict_player_active',slot=id=>'verdict_player_save_'+id;
-const active=localStorage.getItem(P)||'1';const main=localStorage.getItem(K);
-if(!localStorage.getItem(P)){if(main)localStorage.setItem(slot('1'),main);localStorage.setItem(P,'1');}
-else if(main&&!localStorage.getItem(slot(active)))localStorage.setItem(slot(active),main);
-const saved=localStorage.getItem(slot(active));if(saved!==null)localStorage.setItem(K,saved);else localStorage.removeItem(K);
-})();
+window.VERDICT_VERSION='8.7.4';window.VERDICT_RELEASED='2026.11.04';
 </script>
-  <script src="./names.js" defer></script>
-  <script src="./deep_case_engine.js" defer></script>
-  <script src="./story_engine.js" defer></script>
-  <script src="./case_pack_engine.js" defer></script>
-  <script src="./curated_index.js" defer></script>
-  <script src="./continuity_engine.js" defer></script>
-  <script src="./npc_life_justice.js" defer></script>
-  <script src="./family_engine.js" defer></script>
 
 <style>
 #verdict-entry{position:fixed;inset:0;z-index:99999;background:rgba(8,18,30,.97);color:#f6f0e6;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit}
@@ -50,25 +37,9 @@ const saved=localStorage.getItem(slot(active));if(saved!==null)localStorage.setI
 #verdict-entry .entry-btn:disabled{opacity:.45;cursor:not-allowed}
 #verdict-entry .entry-info{font-size:12px;color:#b6c5cc;margin-top:18px;line-height:1.8}
 </style>
-  <script src="./save_store.js" defer></script>
-  <script src="./court_visuals.js" defer></script>
-  <script src="./career_balance.js" defer></script>
-  <script src="./avatar_system.js" defer></script>
-  <script src="./game_runtime.js" defer></script>
-  <script src="./game_hearings.js" defer></script>
-  <script src="./game_professions.js" defer></script>
-  <script src="./game_ui.js" defer></script>
-  <script src="./trial_core.js" defer></script>
-  <script src="./hearing_events.js" defer></script>
-  <script src="./media_desk.js" defer></script>
-  <script src="./match_engine.js" defer></script>
-  <script src="./world_sheets_index.js" defer></script>
-  <script src="./match_play.js" defer></script>
-  <script src="./trial_play.js" defer></script>
-  <script src="./world_feed.js" defer></script>
-  <script src="./people_map.js" defer></script>
-  <script src="./v6_world.js" defer></script>
   <script src="./viewport_fix.js"></script>
-  <script src="./app_install.js" defer></script>
+<!-- v8.7: private login first (auth_gate.js), then the game files in their old order (list in auth_gate.js) -->
+<script src="./config.js"></script>
+<script src="./auth_gate.js"></script>
 </body>
 </html>

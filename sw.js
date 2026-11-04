@@ -1,8 +1,8 @@
 /* THE VERDICT service worker — network first, offline fallback. Bump CACHE on every release. */
-const CACHE='the-verdict-v8.6.5'; // v8.6.5: civil claim amounts match, 100만 원 steps, issue reasoning from the judge's own material
+const CACHE='the-verdict-v8.7.4'; // v8.7.4 (develop): review fixes, law clerk, panel rules
 const FILES=['./','./index.html','./game.css','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png','./apple-touch-icon.png',
  './names.js','./deep_case_engine.js','./story_engine.js','./case_pack_engine.js','./curated_index.js','./continuity_engine.js','./npc_life_justice.js','./family_engine.js',
- './save_store.js','./avatar_system.js','./viewport_fix.js','./court_visuals.js','./court_visuals.css','./career_balance.js','./game_runtime.js','./game_hearings.js','./game_professions.js','./game_ui.js','./trial_core.js','./hearing_events.js','./media_desk.js','./match_engine.js','./world_sheets_index.js','./match_play.js','./trial_play.js','./world_feed.js','./people_map.js','./v6_world.js','./app_install.js',
+ './config.js','./auth_gate.js','./ai_bridge.js','./shared_world.js','./npc_court_memory.js','./save_store.js','./avatar_system.js','./viewport_fix.js','./court_visuals.js','./court_visuals.css','./career_balance.js','./game_runtime.js','./game_hearings.js','./game_professions.js','./chambers_art.js','./chambers_art.css','./p4_native_court.css','./game_ui.js','./trial_core.js','./hearing_events.js','./media_desk.js','./match_engine.js','./world_sheets_index.js','./match_play.js','./trial_play.js','./world_feed.js','./people_map.js','./v6_world.js','./app_install.js',
  './content-packs/index.json','./content-packs/starter-v1.json','./content-packs/beta-weekend-100-v1.json','./content-packs/v6-new-30-v1.json','./content-packs/narrative-100-v1.json',
  './content-packs/drama-100-v1.json','./content-packs/court-editorial-100-v1.json','./content-packs/forensic-detail-33-v1.json'];
 /* v8.2.3: each case's courtroom detail is fetched when needed (case-data/); the worker still keeps all of it for

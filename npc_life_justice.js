@@ -117,6 +117,14 @@ window.LifeJustice=(()=>{
   }
   return info;
  }
+ /* A dated, idempotent life event from a real sentence transition.
+  * Reuses the biography history rather than creating a second parallel timeline. */
+ function recordCustodyMilestone(p,caseId,week,type,change,career,wealth){
+  const yr=2027+Math.floor(week/52);
+  const event={week,type,change,sourceCaseId:caseId,career:career||p.career,wealth:Number.isFinite(wealth)?wealth:p.wealth};
+  if(!recordAnnualEvent(p,event,yr))return false;
+  return true;
+ }
  function weekTick(S,NPC,w,remember,news,log){
   for(const [id,p] of Object.entries(NPC)){
    if(!p.custodyHistory)continue;
@@ -124,13 +132,15 @@ window.LifeJustice=(()=>{
     sentence.releasedWeek=w;p.legalStatus='출소 · 사회 복귀';
     p.career='구직·사회 복귀 준비';if(p.residence==='교정시설'){p.residenceHistory??=[];p.residenceHistory.push({year:2027+Math.floor(w/52),from:'교정시설',to:'출소자 임시 거처',reason:'출소'});p.residence='출소자 임시 거처'}p.reentry={startWeek:w,stage:'구직 중',priorCareer:sentence.originalCareer,completed:false};
     p.wealth=limit(Math.round((p.wealth||25)*.9),0,100);
+    recordCustodyMilestone(p,sentence.caseId,w,'출소',`${sentence.caseId} 형기 종료 후 사회 복귀 시작`,p.career,p.wealth);
     remember(id,'출소',`${sentence.caseId}에 따른 형기 종료. 거주·구직·가족관계 재정비 시작`,sentence.caseId);
     log('NPC 생활',`${p.name} 출소`,`과거 ${sentence.caseId} 판결의 장기 결과가 발생했다.`);
    }
-   if(p.reentry&&!p.reentry.completed&&w-p.reentry.startWeek>=26){
+   if(p.reentry&&!p.reentry.completed&&w-p.reentry.startWeek>=26&&isFree(p,w)){
     p.reentry.completed=true;p.reentry.stage='생활 재정착';
     const job=p.traits?.conscientiousness>=60&&p.wealth>=25?'중소기업 취업': '비정규·임시직 구직';
-    p.career=job;p.jobHistory??=[];p.jobHistory.push({year:2027+Math.floor(w/52),job,reason:'출소 후 사회 복귀'});
+    p.career=job;
+    recordCustodyMilestone(p,p.custodyHistory.at(-1)?.caseId,w,'사회 복귀','출소 후 약 6개월, '+job,job,p.wealth);
     remember(id,'사회 복귀',`출소 후 약 6개월 경과, 현재 생활: ${job}`,p.custodyHistory.at(-1).caseId);
    }
   }
@@ -145,10 +155,73 @@ window.LifeJustice=(()=>{
    if(p.life?.marital&&p.maritalStatus!==p.life.marital){p.maritalStatus=p.life.marital;p.relationshipHistory.push({year:yr,type:'혼인 상태 변화',detail:p.life.marital});}
   }
  }
+ /* Commit an already generated annual event to the canonical biography.
+  * Do not generate new facts here: life events, career, finances and family must agree.
+  * Idempotent on event week/type so a rerender or save retry cannot duplicate history. */
+ function recordAnnualEvent(p,event,yr){
+  if(!p||!event||!Number.isFinite(event.week)||!event.type)return false;
+  p.historyEvents??=[];
+  if(p.historyEvents.some(e=>e.week===event.week&&e.type===event.type&&e.change===event.change))return false;
+  p.jobHistory??=[];p.financialHistory??=[];p.relationshipHistory??=[];
+  const reason=String(event.change||'생활 변화');
+  if(['직업','출소','사회 복귀'].includes(event.type)&&event.career){
+   p.career=event.career;
+   if(p.jobHistory.at(-1)?.job!==event.career)p.jobHistory.push({year:yr,job:event.career,reason});
+  }
+  if(['재산','출소'].includes(event.type)&&Number.isFinite(event.wealth)){
+   p.wealth=limit(event.wealth,0,100);
+   p.financialHistory.push({year:yr,wealth:p.wealth,reason});
+  }
+  if(event.type==='혼인'||event.type==='이혼'){
+   p.maritalStatus=event.type==='혼인'?'기혼':'이혼';
+   p.relationshipHistory.push({year:yr,type:'혼인 상태 변화',detail:p.maritalStatus,reason});
+  }
+  if(event.type==='출생'&&Number.isInteger(event.children)&&event.children>=0){
+   p.children=event.children;
+   p.relationshipHistory.push({year:yr,type:'가족 변화',detail:reason});
+  }
+  if(event.type==='관계')p.relationshipHistory.push({year:yr,type:'교류 변화',detail:reason});
+  p.historyEvents.push({...event});
+  return true;
+ }
+ /* A short, sourced life moment for a character's profile; not a claim about
+  * the new case or a judgment about an individual's character. */
+ /* The earlier life change must precede even the earliest possible incident date
+  * (new incidents are drawn 7–22 weeks before filing). Incarcerated/deceased NPCs
+  * cannot be selected as fresh, active civil plaintiffs. */
+ /* Candidate for a NEW allegation after a previous conviction (not proof of new guilt).
+  * A completed case and a sentence/conviction are mandatory; a prior acquittal
+  * never becomes a 'repeat offender'. Old custody must end before the NEW event,
+  * not merely before the trial filing. All information is saved player history. */
+ function repeatDefendant(previousCase,priorState,person,week){
+  if(!previousCase||previousCase.kind!=='criminal'||!priorState?.verdict||!person||person.alive===false)return false;
+  const actual=priorState.sentenced;
+  const convicted=actual?actual.kind==='crim'&&Number(actual.side)>0&&actual.type!=='none'
+    :['guilty','partial'].includes(String(priorState.verdict));
+  if(!convicted)return false;
+  if(!Number.isFinite(priorState.closedWeek)||!Number.isFinite(week)||week-priorState.closedWeek<23)return false;
+  const sentence=(person.custodyHistory||[]).filter(x=>x.kind==='징역형'&&x.caseId===previousCase.id).at(-1);
+  // The incident can occur as early as 22 weeks before the new case is filed.
+  if(sentence&&(!Number.isFinite(sentence.releaseWeek)||sentence.releaseWeek>week-22))return false;
+  if(!isFree(person,week))return false;
+  return true;
+ }
+ function eligibleLifeTrigger(event,p,week){
+  return !!event&&!!p&&p.alive!==false&&!event.consumed&&Number.isFinite(event.week)
+   &&week-event.week>=23&&week-event.week<312&&isFree(p,week)
+   // Do not cast one NPC as both a litigant and the assigned counsel/prosecutor.
+   &&!/검사|변호사|판사|법관|수사관|재판장/.test(String(p.role||''));
+ }
+ function latestLifeMoment(p,w){
+  const events=(p?.historyEvents||[]).filter(e=>e&&Number.isFinite(e.week)&&e.week<=w&&e.change);
+  if(!events.length)return null;
+  const item=events.reduce((a,b)=>!a||b.week>a.week?b:a,null);
+  return {week:item.week,type:item.type,text:String(item.change)};
+ }
  function custodySummary(p,w){const hist=p.custodyHistory||[];if(!hist.length)return '확정된 복역 이력 없음';return hist.slice(-3).map(x=>`${x.caseId}: ${x.releasedWeek?'출소 완료':isFree(p,w)?'형기 종료':'복역 중'} (${Math.round(x.termWeeks/52*10)/10}년 상당)`).join(' · ')}
  /* Sibling words depend on whose point of view: 형/누나 for a man, 오빠/언니 for a woman. */
  function sibText(p){const f=/여/.test(p?.gender||'');let s=String(p?.siblings||p?.family||'미상');
   return f?s.replace(/^형 /,'오빠 ').replace(/^누나 /,'언니 '):s.replace(/^오빠 /,'형 ').replace(/^언니 /,'누나 ')}
  function summary(p,yr,w){return [`${p.gender||'미상'} · ${p.bornYear?yr-p.bornYear+'세':'연령 미상'}`,`학위 ${p.degree||'미상'} (${p.educationField||'전공 미상'})`,`부모 경제수준 ${p.parentWealth??'?'} / 100`,`형제 ${sibText(p)}`,`혼인 ${p.maritalStatus||'미상'} · 자녀 ${p.children??0}명`,`MBTI ${p.mbti||'-'} / 혈액형 ${p.blood||'-'}`,`생활 ${p.legalStatus||'일반 생활'}`].join(' · ')}
- return {sibText,enrich,hydrate,isFree,currentSentence,applyVerdict,weekTick,annualLifeTick,summary,custodySummary};
+ return {sibText,enrich,hydrate,isFree,currentSentence,applyVerdict,weekTick,annualLifeTick,recordAnnualEvent,latestLifeMoment,eligibleLifeTrigger,repeatDefendant,summary,custodySummary};
 })();

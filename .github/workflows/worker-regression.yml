@@ -1,0 +1,44 @@
+name: THE VERDICT Worker regression tests
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'server/worker/**'
+      - 'server/supabase/**'
+      - 'game_runtime.js'
+      - 'npc_life_justice.js'
+      - 'npc_court_memory.js'
+      - 'story_engine.js'
+      - 'continuity_engine.js'
+      - 'trial_play.js'
+      - 'auth_gate.js'
+      - 'ai_bridge.js'
+      - '.github/workflows/worker-regression.yml'
+  pull_request:
+    branches: [develop]
+    paths:
+      - 'server/worker/**'
+      - '.github/workflows/worker-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  worker-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run offline Worker regression tests (no external API calls)
+        working-directory: server/worker
+        run: npm run check
+      - name: Test shared-world SQL and Supabase RLS in isolated PGlite
+        working-directory: server/supabase
+        run: |
+          npm ci
+          npm test
+      - name: Bundle Cloudflare Worker without deploying
+        working-directory: server/worker
+        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/the-verdict-worker-bundle

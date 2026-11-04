@@ -251,50 +251,74 @@ function remember(id,type,body,caseId){
  if(!S.memories[id].some(m=>m.caseId===caseId&&m.type===type&&m.body===body))S.memories[id].push({week:S.week,type,body,caseId});
 }
 function getPriorByKey(key){return completed().filter(c=>c.story?.deep?.key===key||(!c.story?.deep&&c.legal===key)).slice(-8).at(-1)}
-function createGeneratedCase(selectedCandidate=null){
+/* News is exceptional, not the default case-intake path. */
+function shouldPreReport(bp,roll){return Number(bp?.importance)>=4&&roll<.45}
+function createGeneratedCase(selectedCandidate=null,planning=null){
  if(age()>=75||openCases().length>=12)return null;
  const serial=++S.caseSerial;
  const candidate=selectedCandidate||(CasePackEngine.pool(S).length&&(window.VerdictCurated?.active||rand()<.82)?CasePackEngine.choose(S,rand):null);
  const bp=candidate?CasePackEngine.blueprint(candidate.pack,candidate.a):choose(CASE_BLUEPRINTS);
+ // Only a minority of high-profile cases are first seen in the news.
+ // Routine matters go directly to court without a synthetic breaking-news cycle.
+ if(planning==='auto')planning=shouldPreReport(bp,Number(bp.importance)>=4?rand():1)
+  ?{incidentWeek:S.week,filingWeek:S.week+8}:null;
  const i=Math.floor(rand()*bp.premises.length), loc=choose(LOCATIONS);
  // Recurrence is a genuinely NEW incident, involving a previously tried individual.
  // Conviction/acquittal does not imply guilt in the new matter.
- const previous=completed().filter(c=>c.kind==='criminal'&&c.generated&&c.who?.[0]
-   &&NPC[c.who[0]]?.alive!==false
-   &&LifeJustice.isFree(NPC[c.who[0]],S.week)
-   &&year()-(NPC[c.who[0]].bornYear||year())<83
-   &&S.week-(S.cases[c.id]?.closedWeek||0)>(S.cases[c.id]?.verdict==='guilty'?(c.story?.deep?.key==='murder'?624:208):52)).slice(-60);
+ const previous=completed().filter(c=>c.generated&&c.who?.[0]
+   &&LifeJustice.repeatDefendant(c,S.cases[c.id],NPC[c.who[0]],S.week)
+   &&year()-(NPC[c.who[0]].bornYear||year())<83).slice(-60);
+ // Keep recurrence uncommon, but when chosen it must actually use that same person.
  const recidivist=bp.kind==='criminal'&&previous.length&&rand()<.18?choose(previous):null;
  const prior=getPriorByKey(bp.key),caseId=`proc-${year()}-${String(serial).padStart(6,'0')}`;
- const lifePool=(S.lifeTriggers||[]).filter(x=>!x.consumed&&NPC[x.id]?.alive!==false&&S.week-x.week>=1&&S.week-x.week<312);
+ const lifePool=(S.lifeTriggers||[]).filter(x=>LifeJustice.eligibleLifeTrigger(x,NPC[x.id],S.week));
  const appropriate=lifePool.filter(x=>(x.type==='이혼'&&['affair','inherit','contract','defamation'].includes(bp.key))||(x.type==='재산'&&['fraud','rent','contract','embezzle'].includes(bp.key))||(x.type==='직업'&&['harassment','contract','privacy','celebrity'].includes(bp.key)));
- const lifeSeed=appropriate.length&&rand()<.65?choose(appropriate):null;
- const c=StoryEngine.build({caseId,blueprint:bp,instance:i,loc,now:day(),week:S.week,r:rand,
+ const lifeSeed=bp.kind==='civil'&&appropriate.length&&rand()<.65?choose(appropriate):null;
+ const c=StoryEngine.build({caseId,blueprint:bp,instance:i,loc,now:day(planning?.filingWeek??S.week),week:planning?.filingWeek??S.week,incidentWeekOverride:planning?.incidentWeek, r:rand,lifeActorId:lifeSeed?.id||null,
   makeNPC:(role)=>freshNPC(role,serial,bp.key),oldCriminal:recidivist,priorDecision:prior,
   prosecutorPool:livePool(['soo','jun'],'prosecutor','검사',serial),counselPool:livePool(['jiyu','seon'],'lawyer','변호사',serial),people:NPC});
  if(lifeSeed){
-  lifeSeed.consumed=true;
   c.lifeConnection={npcId:lifeSeed.id,originWeek:lifeSeed.week,type:lifeSeed.type,detail:lifeSeed.change};
   // Background is context, not proof or automatic guilt; keep evidence and the incident immutable.
   c.story.lifeContext=`${NPC[lifeSeed.id].name}의 과거 생활 변화: ${lifeSeed.change}. 이 변화가 현재 사건의 법적 책임을 증명하지는 않습니다.`;
   c.story.lifeRelated=true;
  }
  window.VerdictSex?.fix(c);
- const continuity=ContinuityEngine.audit(c,NPC,S.week,CASES);
+ const continuity=ContinuityEngine.audit(c,NPC,planning?.filingWeek??S.week,CASES);
  c.continuityAudit=continuity;
  if(!continuity.pass){S.caseSerial--;throw new Error(`사건 연속성 검증 실패: ${continuity.errors.join(', ')}`)};
  if(!c.qa.pass){S.caseSerial--;throw new Error(`사건 스토리 검증 실패: ${c.qa.errors.join(', ')}`)}
+ if(recidivist&&c.who?.[0]===recidivist.who?.[0]){
+  c.repeatDefendant={personId:c.who[0],priorCaseId:recidivist.id,priorCaseName:String(recidivist.name||recidivist.id).split(' · ')[0],priorClosedWeek:S.cases[recidivist.id]?.closedWeek};
+ }
+ if(lifeSeed&&c.who?.[0]===lifeSeed.id)lifeSeed.consumed=true; // consume only after continuity & story QA pass
+ // P3: freeze a complete case and its NPCs now, but do not assign it to the judge
+ // until the filing week. Neither trial controls nor private proof appear in news.
+ if(planning){
+  c.newsLifecycle='reported';
+  c.contentPack=c.story?.pack?{...c.story.pack}:null;
+  S.pendingCases??=[];
+  S.pendingCases.push({case:c,incidentWeek:planning.incidentWeek,investigationWeek:planning.incidentWeek+3,
+   filingWeek:planning.filingWeek,investigated:false,publicOutcome:publicIncidentOutcome(c.kind,rand())});
+  for(const id of c.who)remember(id,'사건 발생',`${c.id} · 별개의 사건 관계인`,c.id);
+  if(c.story.investigator)remember(c.story.investigator.detective,'수사 착수',`${c.id} 사건 수사`,c.id);
+  newsForIncident(c);
+  return c;
+ }
  c.contentPack=c.story?.pack?{...c.story.pack}:null;
  CASES.push(c);S.generatedCases.push(c);
  S.cases[caseId]={phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null,positions:null,positionHistory:[],review:null};
  c.participantSnapshots=ContinuityEngine.snapshots(c,NPC,S.week);
  for(const id of c.who)remember(id,'새로운 사건',`${caseId} · ${c.name} 사건 당사자로 등장`,caseId);
  if(c.story.investigator)remember(c.story.investigator.detective,'수사 업무',`${caseId} 사건 수사자료 확보`,caseId);
- if(recidivist)remember(c.who[0],'별개 사건',`과거 ${recidivist.id} 재판과 무관하게 새로운 사실관계를 심리함`,caseId);
+ if(recidivist&&c.who?.[0]===recidivist.who?.[0]){
+  
+  remember(c.who[0],'다시 기소됨',`과거 ${recidivist.id} 판결 이후 별개 사건 ${caseId}에 새로 기소됨. 이번 사건의 유무죄는 증거로 독립 판단.`,caseId);
+ }
  if(prior)remember(c.who[0],'참조할 과거 판결',`${prior.id}의 법적 쟁점을 참조하되 구속력·차이점 검토 필요`,caseId);
  const quality=c.story.evidenceDetails.map(e=>`${e.id}:${e.quality}`).join(', ');
  log('사건 배당',c.name,`${caseId} · 고유 사건 · 검증 ${c.qa.checks}항목 통과`);
- news('새 사건 배당',`${c.name} · ${c.legal}`,'법원 접수');
+ // Routine filings are visible in the court inbox, not automatically headline news.
  S.qaLog??=[];S.qaLog.push({id:caseId,week:S.week,pass:c.qa.pass,warnings:c.qa.warnings,proof:c.story.proofClass,evidenceQuality:quality,deepAudit:c.story.deep?.version||null});
  return c;
 }
@@ -313,11 +337,17 @@ function currentPost(){
 function annualNPCLives(){
  LifeJustice.annualLifeTick(S,NPC,year(),S.week,remember,news,rand);
  FamilyEngine.annualTick(S,NPC,year(),S.week,remember,rand);
- const ids=Object.keys(S.npcDB||{}).filter(id=>NPC[id]&&NPC[id].alive!==false&&LifeJustice.isFree(NPC[id],S.week)&&year()-(NPC[id].bornYear||year())<78);
+ const ids=Object.keys(S.npcDB||{}).filter(id=>NPC[id]&&NPC[id].alive!==false&&LifeJustice.isFree(NPC[id],S.week)&&(!NPC[id].reentry||NPC[id].reentry.completed)&&year()-(NPC[id].bornYear||year())<78);
  S.lifeTriggers??=[];
  for(let i=0;i<Math.min(5,ids.length);i++){
   const id=choose(ids),p=NPC[id];if(!p||p.alive===false||p.lastLifeYear===year())continue;
-  p.lastLifeYear=year();p.life??={marital:'미혼',career:p.career,wealth:p.wealth,partner:null,children:0};
+  p.lastLifeYear=year();p.life??={marital:p.maritalStatus||'미혼',career:p.career,wealth:p.wealth,partner:p.partnerId||null,children:p.children||0};
+  // FamilyEngine or an earlier judgment may have changed the canonical life state.
+  // Do not run the annual event against a stale second copy.
+  p.life.marital=p.maritalStatus||p.life.marital;
+  p.life.children=Number.isInteger(p.children)?p.children:p.life.children;
+  p.life.career=p.career||p.life.career;
+  p.life.wealth=Number.isFinite(p.wealth)?p.wealth:p.life.wealth;
   const life=p.life,roll=rand();let change='',type='일상';
   if(roll<.18&&life.marital==='미혼'&&year()-(p.bornYear||year())>=24){life.marital='기혼';life.partner='가상 배우자';type='혼인';change='혼인하여 새로운 가족 관계가 형성됨';}
   else if(roll<.29&&life.marital==='기혼'){life.marital='이혼';type='이혼';change='별거와 이혼을 경험하며 가족 관계가 변화함';}
@@ -325,8 +355,10 @@ function annualNPCLives(){
   else if(roll<.66){const sector=p.role.includes('수사')?'수사기관':p.role.includes('변호')?'법률서비스':p.role.includes('검사')?'검찰':null;const next=sector||choose(PROFESSIONS);p.career=next;life.career=next;type='직업';change=`근무·직업 환경이 ${next}(으)로 변경됨`;}
   else if(roll<.88){const delta=Math.round((rand()-.52)*28);p.wealth=clamp(p.wealth+delta,0,100);life.wealth=p.wealth;type='재산';change=`경제 상황이 ${delta<0?'악화':'변화'}되어 생활 선택이 달라짐`;}
   else{p.relationships=choose(RELATION_STYLES);type='관계';change='교우관계와 가족 교류 방식에 변화가 생김';}
-  const event={week:S.week,id,type,change,wealth:p.wealth,career:p.career,marital:life.marital};
-  p.historyEvents??=[];p.historyEvents.push(event);remember(id,'생활 변화',change,'life-'+year()+'-'+id);
+  const event={week:S.week,id,type,change,wealth:p.wealth,career:p.career,marital:life.marital,children:life.children};
+  // Keep the legacy life event and every canonical biography field consistent.
+  if(!LifeJustice.recordAnnualEvent(p,event,year()))continue;
+  remember(id,'생활 변화',change,'life-'+year()+'-'+id);
   if(['이혼','재산','직업'].includes(type)&&rand()<.38){S.lifeTriggers.push({...event,consumed:false});}
   if(rand()<.06)news('인물 근황',`${p.name}: ${change}`,'지역 소식');
  }
@@ -355,13 +387,91 @@ function moveOldCasesToOtherCourt(){
   }
  }
 }
+/* P3: incident reporting uses the allegation and known public timeline, NEVER
+ * privateTruth, proofStrength, suspect identity, or unavailable evidence. */
+/* Some reported incidents never enter this judge's docket.
+ * Route selection is fixed at incident creation, not retrofitted after a verdict.
+ * These outcomes are procedural/public: they do not resolve privateTruth. */
+function publicIncidentOutcome(kind,roll){
+ if(roll>=.22)return 'court';
+ if(kind==='criminal')return roll<.07?'investigation_closed':roll<.15?'not_prosecuted':'other_court';
+ return roll<.07?'settled':roll<.15?'withdrawn':'other_court';
+}
+function publicOutcomeNews(c,outcome){
+ const label=String(c.name||'사건').split(' · ')[0];
+ const criminal=c.kind==='criminal';
+ const outcomes={
+  investigation_closed:[`${label} 수사 종결`,'관계 기관은 현재까지 확보한 자료에 대한 검토를 마쳤습니다. 이 결과만으로 사건 관련자의 형사책임을 단정할 수 없습니다.'],
+  not_prosecuted:[`${label} 불기소 처분`,'검찰은 이번 사건에 공소를 제기하지 않기로 했습니다. 관련 의혹이 법원에서 유죄로 판단된 것은 아닙니다.'],
+  settled:[`${label} 당사자 간 합의`,'분쟁 당사자들이 재판을 거치지 않고 합의로 사건을 마무리했다고 밝혔습니다. 법원의 본안 판단은 없었습니다.'],
+  withdrawn:[`${label} 소 제기 없이 종결`,'당사자가 소송을 진행하지 않기로 해 이번 분쟁은 법원에 배당되지 않았습니다. 법적 책임이 확정된 것은 아닙니다.'],
+  other_court:[`${label} 다른 재판부 배당`,'이번 사건은 다른 재판부에 배당돼 심리가 진행될 예정입니다. 이 법원 판사의 담당 사건은 아니며 결론은 아직 정해지지 않았습니다.']
+ };
+ const [title,body]=outcomes[outcome]||[label,criminal?'수사가 진행 중입니다.':'분쟁이 진행 중입니다.'];
+ news(title,body,criminal?'사회':'지역 소식',{caseId:c.id,stage:'closed'});
+}
+function newsForIncident(c){
+ const criminal=c.kind==='criminal';
+ const shortTitle=String(c.name||'사건').split(' · ')[0];
+ const place=String(c.name||'').match(/· (.+?) \(/)?.[1]||'지역';
+ const subject=String(c.tag||'').split('·').at(-1)||'사건';
+ const headline=criminal?`${place} ${subject} 사건 발생, 수사 착수`:`${place} ${subject} 분쟁 발생`;
+ const body=criminal
+  ?`${place}에서 ${subject} 관련 신고가 접수돼 수사가 시작됐습니다. 정확한 경위와 관련자 책임은 확인 중입니다.`
+  :`${place}에서 ${shortTitle} 관련 다툼이 발생했습니다. 당사자들이 경위를 확인하고 있으며 법적 책임은 아직 판단되지 않았습니다.`;
+ news(headline,body,'지역 소식',{caseId:c.id,stage:'incident'});
+}
+function progressPendingCases(){
+ for(const pending of [...(S.pendingCases||[])]){
+  if(!pending?.case?.id)continue;
+  const c=pending.case;
+  if(!pending.investigated&&S.week>=pending.investigationWeek&&S.week<pending.filingWeek){
+   pending.investigated=true;
+   news(`${String(c.name).split(' · ')[0]} ${c.kind==='criminal'?'수사 진행':'분쟁 경과 확인'}`,
+    c.kind==='criminal'?'수사기관이 관련 진술과 자료를 확인하고 있습니다. 혐의나 범행 사실은 아직 법원에서 확정되지 않았습니다.'
+    :'당사자들이 사건 경위와 자료를 확인하고 있습니다. 법원의 판단은 아직 이루어지지 않았습니다.',
+    '지역 소식',{caseId:c.id,stage:'investigation'});
+  }
+  if(S.week<pending.filingWeek)continue;
+  if(pending.publicOutcome&&pending.publicOutcome!=='court'){
+   S.worldIncidents??=[];
+   if(!S.worldIncidents.some(x=>x.caseId===c.id)){
+    S.worldIncidents.push({caseId:c.id,week:S.week,kind:c.kind,outcome:pending.publicOutcome,
+     title:String(c.name||'사건').split(' · ')[0],participantIds:[...(c.who||[])]});
+    publicOutcomeNews(c,pending.publicOutcome);
+    for(const id of c.who||[])remember(id,'사건 경과',`${c.id} · 재판 없이 종결`,c.id);
+   }
+   // Keep only a small public record of untried incidents; discard sealed case data.
+   S.pendingCases=S.pendingCases.filter(x=>x.case?.id!==c.id);
+   continue;
+  }
+  if(!CASES.some(x=>x.id===c.id)){
+   CASES.push(c);S.generatedCases.push(c);
+   S.cases[c.id]={phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null,positions:null,positionHistory:[],review:null};
+   c.participantSnapshots=ContinuityEngine.snapshots(c,NPC,S.week);
+   for(const id of c.who)remember(id,'법원 배당',`${c.id} · ${c.name}`,c.id);
+   if(c.story.investigator)remember(c.story.investigator.detective,'수사자료 제출',`${c.id} 관련 수사자료`,c.id);
+   log('사건 배당',c.name,'새로 배당된 사건의 기록이 재판부에 도착했다');
+   news(c.kind==='criminal'?`${String(c.name).split(' · ')[0]} 기소·법원 배당`:`${String(c.name).split(' · ')[0]} 소장 접수·법원 배당`,
+    c.kind==='criminal'?'검찰이 공소를 제기해 법원에 사건이 배당됐습니다. 범죄 성립 여부는 재판에서 판단합니다.'
+    :'원고가 소장을 제출해 법원에 사건이 배당됐습니다. 청구의 성립 여부는 재판에서 판단합니다.',
+    '법원 접수',{caseId:c.id,stage:'filed'});
+  }
+  S.pendingCases=S.pendingCases.filter(x=>x.case?.id!==c.id);
+ }
+}
 function ensureGeneratedCases(){
+ // Existing queued cases finish their public timeline even if later content sources change.
+ progressPendingCases();
  if(S.realtimeInbox?.enabled)return;
  moveOldCasesToOtherCourt();
- // Fixed introductory 6 cases coexist with unlimited-by-count, bounded-by-variety procedural cases.
+ // Existing queued case must reach filing before the next incident is prepared.
  if(S.week<14||age()>=75)return;
- if(openCases().length>=4)return;
- if(!S.realtimeInbox?.enabled&&S.week>=S.nextCaseWeek){createGeneratedCase();S.nextCaseWeek=S.week+6+Math.floor(rand()*5);}
+ if(openCases().length>=4||(S.pendingCases||[]).length)return;
+ if(S.week>=S.nextCaseWeek){
+  const c=createGeneratedCase(null,'auto');
+  S.nextCaseWeek=S.week+(c?.newsLifecycle==='reported'?8:0)+6+Math.floor(rand()*5);
+ }
 }
 function finalizeCareer(){if(S.ended)return;
  S.ended=true;const count=completed().length;log('은퇴','75세 · 법관 커리어 종료',`총 ${count}건 판결 · 최종 직위 ${currentPost()} · 판결은 기록으로 남습니다.`);
@@ -378,7 +488,7 @@ function worldTick(){
 const START=new Date(Date.UTC(2027,2,1));
 // Every new career gets its own world: cases, people and their lives start from a random seed.
 const freshSeed=()=>{try{const a=new Uint32Array(1);crypto.getRandomValues(a);return (a[0]>>>0)||37519}catch{return (Date.now()^Math.floor(Math.random()*4294967296))>>>0||37519}};
-const newState=()=>({version:5,casePacks:[],removedPackIds:[],lifeTriggers:[],qaLog:[],generatedCases:[],npcDB:{},memories:{},caseSerial:0,nextCaseWeek:14,lastYear:2027,post:'지방법원 판사',milestones:[],ended:false,name:'',style:0,week:0,actions:0,cash:1250,salary:340,notes:'',owned:[],equipped:{},romance:{person:null,stage:'single',lastYear:-1},market:Object.fromEntries(SECTORS.map(x=>[x.id,100])),holdings:{},traded:-1,rng:freshSeed(),relations:{hyun:66,senior:48,jiyu:39,seon:32,soo:39,jun:35,reporter:25,tenant:20,owner:18,builder:20,actor:10,singer:10,ceo:10},professional:50,publicity:12,cases:Object.fromEntries(CASES.map(c=>[c.id,{phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null}])),journal:[{week:0,type:'커리어',title:'신임 판사 발령',body:'법조인으로서 첫 커리어가 시작되었습니다.'}],news:[{week:0,title:'신임 법관 인사 발령 발표',body:'전국 각급 법원에서 신임 법관이 새로운 업무를 시작했다.',category:'법조일보'}],msgs:[{week:0,from:'hyun',body:'첫 발령 축하해! 서로 잘 버텨보자. 시간 나면 연락해.'}],events:[]});
+const newState=()=>({version:5,casePacks:[],removedPackIds:[],lifeTriggers:[],qaLog:[],generatedCases:[],pendingCases:[],worldIncidents:[],npcDB:{},memories:{},caseSerial:0,nextCaseWeek:14,lastYear:2027,post:'지방법원 판사',milestones:[],ended:false,name:'',style:0,week:0,actions:0,cash:1250,salary:340,notes:'',owned:[],equipped:{},romance:{person:null,stage:'single',lastYear:-1},market:Object.fromEntries(SECTORS.map(x=>[x.id,100])),holdings:{},traded:-1,rng:freshSeed(),relations:{hyun:66,senior:48,jiyu:39,seon:32,soo:39,jun:35,reporter:25,tenant:20,owner:18,builder:20,actor:10,singer:10,ceo:10},professional:50,publicity:12,cases:Object.fromEntries(CASES.map(c=>[c.id,{phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null}])),journal:[{week:0,type:'커리어',title:'신임 판사 발령',body:'법조인으로서 첫 커리어가 시작되었습니다.'}],news:[{week:0,title:'신임 법관 인사 발령 발표',body:'전국 각급 법원에서 신임 법관이 새로운 업무를 시작했다.',category:'법조일보'}],msgs:[{week:0,from:'hyun',body:'첫 발령 축하해! 서로 잘 버텨보자. 시간 나면 연락해.'}],events:[]});
 let S;
 try{
  const loaded=VerdictStore.read(KEY);
@@ -397,7 +507,7 @@ for(const c of S.generatedCases||[]){
  if(!CASES.some(x=>x.id===c.id))CASES.push(c);
  if(!S.cases[c.id])S.cases[c.id]={phase:0,actions:[],clues:[],flags:[],verdict:null,grade:null,closedWeek:null};
 }
-S.qaLog??=[];S.casePacks??=[];S.removedPackIds??=[];S.lifeTriggers??=[];S.version=5;S.memories??={};S.milestones??=[];S.equipped??={};S.romance??={person:null,stage:'single',lastYear:-1};S.relations.mina??=28;S.relations.taeo??=28;for(const cs of Object.values(S.cases||{})){if(cs.verdict&&cs.review&&cs.review.status!=='재판상 화해로 종결'){cs.review={status:'게임 내 최종 판결 · 즉시 확정',filingDeadline:null};if(cs.precedent)cs.precedent.authority='게임 세계의 확정 판결 기록';}} S.post??='지방법원 판사';S.nextCaseWeek??=14;S.caseSerial??=0;S.ended??=false;
+S.pendingCases??=[];S.worldIncidents??=[];S.qaLog??=[];S.casePacks??=[];S.removedPackIds??=[];S.lifeTriggers??=[];S.version=5;S.memories??={};S.milestones??=[];S.equipped??={};S.romance??={person:null,stage:'single',lastYear:-1};S.relations.mina??=28;S.relations.taeo??=28;for(const cs of Object.values(S.cases||{})){if(cs.verdict&&cs.review&&cs.review.status!=='재판상 화해로 종결'){cs.review={status:'게임 내 최종 판결 · 즉시 확정',filingDeadline:null};if(cs.precedent)cs.precedent.authority='게임 세계의 확정 판결 기록';}} S.post??='지방법원 판사';S.nextCaseWeek??=14;S.caseSerial??=0;S.ended??=false;
 
 const ui={archiveQuery:'',tab:'home',caseId:'deposit',shopCat:'집',assetTab:'shop',tabletTab:'news',npcId:'hyun',modal:null,lastResult:null};
 const money=n=>`${Math.round(n).toLocaleString('ko-KR')}만 원`;
@@ -442,12 +552,21 @@ function wipeGame(){VerdictStore.halt();
  try{const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^(the_verdict|verdict_)/.test(k))keys.push(k)}keys.forEach(k=>localStorage.removeItem(k));localStorage.setItem('verdict_player_active','1')}catch{}
  try{sessionStorage.clear()}catch{}
  const done=()=>location.reload();Promise.race([window.VerdictSnapshots?VerdictSnapshots.clearAll():Promise.resolve(),new Promise(r=>setTimeout(r,3000))]).then(done,done)}
-function save(){const build=()=>JSON.stringify({...S,casePacks:(S.casePacks||[]).filter(p=>p.packId!=='starter-diverse-2026')});
+function save(){try{window.VerdictCareerBalance?.advanceEvaluations(S,S.week)}catch(e){console.warn('career evaluations',e)}
+ const build=()=>JSON.stringify({...S,casePacks:(S.casePacks||[]).filter(p=>p.packId!=='starter-diverse-2026')});
  try{archiveOld(false)}catch(e){console.warn('archive',e)}
  VerdictStore.save(KEY,build)}
 VerdictStore.onError(()=>{try{archiveOld(true);S.qaLog=(S.qaLog||[]).slice(-50);S.news=(S.news||[]).slice(0,300);localStorage.setItem(KEY,VerdictStore.encode(JSON.stringify({...S,casePacks:(S.casePacks||[]).filter(p=>p.packId!=='starter-diverse-2026')})));toast('저장 공간을 정리해 저장했습니다.')}catch{toast('브라우저 저장 공간이 가득 찼습니다. 설정에서 백업 파일을 저장해주세요.')}});
 function log(type,title,body){S.journal.unshift({week:S.week,type,title,body});/* 30년 커리어 전체 보존 */}
-function news(title,body,category='법조일보'){S.news.unshift({week:S.week,title,body,category});/* 과거 뉴스 보존 */}
+/* P3: preserve publicly known source, never hidden case facts. */
+function news(title,body,category='법조일보',source=null){
+ const item={week:S.week,title,body,category};
+ if(source?.caseId&&(CASES.some(c=>c.id===source.caseId)||(S.pendingCases||[]).some(x=>x.case?.id===source.caseId)||(S.worldIncidents||[]).some(x=>x.caseId===source.caseId))){
+  item.caseId=source.caseId;
+  if(['incident','investigation','filed','verdict','reaction','closed'].includes(source.stage))item.caseStage=source.stage;
+ }
+ S.news.unshift(item);/* 과거 뉴스 보존 */
+}
 function message(from,body){S.msgs.unshift({week:S.week,from,body});/* 과거 메시지 보존 */}
 function modifyRel(id,delta){S.relations[id]=clamp((S.relations[id]||20)+delta,0,100)}
 function rand(){let x=S.rng>>>0;x^=x<<13;x^=x>>>17;x^=x<<5;S.rng=x>>>0;return(S.rng>>>0)/4294967296}
@@ -481,7 +600,7 @@ function shell(content){
 }
 function heading(title,sub=''){return `<div><h1 class="page-title">${h(title)}</h1>${sub?`<div class="muted small">${h(sub)}</div>`:''}</div>`}
 function section(title,detail=''){return `<div class="section-title"><h2>${h(title)}</h2>${detail?`<span>${h(detail)}</span>`:''}</div>`}
-function chips(c){return `<span class="chip">${h(c.tag)}</span><span class="chip ${c.importance>=4?'red':'gold'}">중요도 ${c.importance}/5</span>`}
+function chips(c){return `<span class="chip">${h(c.tag)}</span>`}
 function status(c){const st=S.cases[c.id];return st.verdict?'판결 완료':st.referred?'타 재판부 진행':st.phase?'심리 진행':'신규 배당'}
 function caseCard(c){const s=S.cases[c.id];return `<div class="case-card"><div class="case-icon">${c.icon}</div><div class="case-info"><div class="eyebrow">${h(c.tag)} · ${h(c.id)}</div><h3>${h(c.name)}</h3><p>${h(c.sub)}</p><div class="case-meta"><span class="chip ${c.importance>3?'red':'gold'}">중요도 ${c.importance}</span><span class="chip">${h(status(c))}</span></div></div><div class="case-side"><button class="btn mini ${s.verdict?'outline':'primary'}" data-action="openCase" data-id="${c.id}">${s.verdict?'기록':'재판 진행'} →</button><small>${s.verdict?day(s.closedWeek):'심리 '+s.phase+'/3'}</small></div></div>`}
 function officeScene(){
@@ -524,12 +643,12 @@ function court(){const available=openCases();let c=CASES.find(x=>x.id===ui.caseI
  ${c.story?.deep&&!c.story.criminal&&p>=2&&p<=3?`<button class="btn outline full mt" data-action="proposeSettlement" ${left===0?'disabled':''}>🤝 양측에 화해·조정 의사 확인</button>`:''}
  ${st.positions?`<div class="detail mt"><b>이번 심리로 바뀐 입장</b><br>원고·검찰: ${h(st.positions.claimant)}<br>피고 측: ${h(st.positions.respondent)}</div>`:''}
  ${left===0?'<div class="notice mt">이번 주 심리 여력을 모두 사용했습니다. 다음 주로 진행한 뒤 계속할 수 있습니다.</div>':''}</div>`;
- return `${heading('나의 법정',`${c.name} · 사건 중요도 ${c.importance}/5`)}<div class="row between mt2" style="flex-wrap:wrap"><button class="btn outline mini" data-action="tab" data-tab="courtList">← 사건 선택</button><span class="pill">이번 주 심리 ${left}/${actionMax()}</span></div><div class="grid two court-columns mt"><div>${body}</div><div class="stack"><div class="panel"><div class="row between"><b>📎 증거함</b><span class="chip">${c.evidence.length+st.clues.length}개 항목</span></div><div class="evidence-list mt">${c.evidence.map((e,i)=>{const d=c.story?.evidenceDetails?.[i];return `<div class="evidence"><b>📄 ${h(e)}</b><small>${d?.available?"기본 제출 자료":"현재 자료 미확보"} · 기록 ${i+1}</small>${d?`<details class="evidence-detail"><summary>증거 정보 확인</summary><div class="xs muted">유형: ${h(d.type)} · 출처: ${h(d.origin)}<br>증명 대상: ${h(d.scope)}<br>작성·보존 상태: ${h(d.chain)}<br>${h(d.status)}<br>${h(d.concern)}${d.elementId?`<br>요건 연결: ${h(d.elementId)} · 제출 상태: ${h(d.collectionStatus)} · 신빙성: ${h(d.reliabilityNote)} · 적법성: ${h(d.admissibility)}`:''}</div></details>`:''}</div>`}).join('')}${st.clues.map((e,i)=>`<div class="evidence" style="background:#f0f6f2;border-color:#cfdfd6"><b>✓ ${h(e)}</b><small>내가 확인한 심리 결과 ${i+1}</small></div>`).join('')}</div></div>
+ return `${heading('나의 법정',`${c.name}`)}<div class="row between mt2" style="flex-wrap:wrap"><button class="btn outline mini" data-action="tab" data-tab="courtList">← 사건 선택</button><span class="pill">이번 주 심리 ${left}/${actionMax()}</span></div><div class="grid two court-columns mt"><div>${body}</div><div class="stack"><div class="panel"><div class="row between"><b>📎 증거함</b><span class="chip">${c.evidence.length+st.clues.length}개 항목</span></div><div class="evidence-list mt">${c.evidence.map((e,i)=>{const d=c.story?.evidenceDetails?.[i];return `<div class="evidence"><b>📄 ${h(e)}</b><small>${d?.available?"기본 제출 자료":"현재 자료 미확보"} · 기록 ${i+1}</small>${d?`<details class="evidence-detail"><summary>증거 정보 확인</summary><div class="xs muted">유형: ${h(d.type)} · 출처: ${h(d.origin)}<br>증명 대상: ${h(d.scope)}<br>작성·보존 상태: ${h(d.chain)}<br>${h(d.status)}<br>${h(d.concern)}${d.elementId?`<br>요건 연결: ${h(d.elementId)} · 제출 상태: ${h(d.collectionStatus)} · 신빙성: ${h(d.reliabilityNote)} · 적법성: ${h(d.admissibility)}`:''}</div></details>`:''}</div>`}).join('')}${st.clues.map((e,i)=>`<div class="evidence" style="background:#f0f6f2;border-color:#cfdfd6"><b>✓ ${h(e)}</b><small>내가 확인한 심리 결과 ${i+1}</small></div>`).join('')}</div></div>
  <div class="panel"><b>👤 사건 관계인</b><div class="grid two mt">${[...c.side,...c.who].filter((x,i,a)=>a.indexOf(x)===i).map(id=>`<div class="row" style="gap:5px">${avatar(id)}<div><b class="small">${h(NPC[id].name)}</b><div class="xs muted">${h(NPC[id].role)}</div></div></div>`).join('')}</div></div>
  <div class="panel"><b>📔 심리 기록</b>${st.actions.length?`<div class="timeline mt">${st.actions.map((a,i)=>`<div class="timeline-item"><small>심리 ${i+1}</small><b>${h(a.label)}</b><p>${h(a.says)}</p></div>`).join('')}</div>`:'<p class="muted small">진행한 심문이 여기에 기록됩니다.</p>'}</div>
  <div class="notice">현실적 법적 쟁점에서 착안한 **완전한 가상 사건**입니다. 재판 절차는 게임 속도에 맞춰 단순화했습니다.</div></div></div>`;
 }
-function resultCase(c){const st=S.cases[c.id];const v=c.verdicts.find(v=>v.id===st.verdict)|| (st.verdict==='settled'?{label:'재판상 화해 성립',note:'양측의 동의에 따른 분쟁 종결'}:null);return `<div class="panel"><div class="result-head"><div class="eyebrow gold-text">JUDGMENT DELIVERED · ${day(st.closedWeek)}</div><h2>⚖ ${h(v?.label||'판결')}</h2><div class="small" style="color:#d5e7e8">${h(c.outcome)}</div></div><div class="grid two mt"><div class="stat-card"><label>법리 평가</label><strong>${st.grade}/100</strong><small>${grade(st.grade)}</small></div><div class="stat-card"><label>조사한 쟁점</label><strong>${st.clues.length}건</strong><small>선택한 심리 기록</small></div></div><div class="result-note"><b>판결 해설</b><br>${h(st.judgementAnalysis||c.ideal)}<br><br><b>나의 선택:</b> ${h(v?.label||'')}<br><b>사건 처리:</b> ${h(st.review?.status||'최종 판결')}<br><b>참고:</b> 다른 결론에도 합리적인 설명이 있을 수 있으며, 이 평가는 가상 사건용 게임 평가입니다.</div><div class="row mt" style="flex-wrap:wrap"><button class="btn primary" data-action="tab" data-tab="cases">다른 사건 보기 →</button><button class="btn outline" data-action="tablet" data-sub="archives">판결 기록</button></div></div>`}
+function resultCase(c){const st=S.cases[c.id];const v=c.verdicts.find(v=>v.id===st.verdict)|| (st.verdict==='settled'?{label:'재판상 화해 성립',note:'양측의 동의에 따른 분쟁 종결'}:null);return `<div class="panel"><div class="result-head"><div class="eyebrow gold-text">JUDGMENT DELIVERED · ${day(st.closedWeek)}</div><h2>⚖ ${h(v?.label||'판결')}</h2><div class="small" style="color:#d5e7e8">${h(c.outcome)}</div></div><div class="grid two mt"><div class="stat-card"><label>판결 평가</label><strong>정기 평가 반영</strong><small>개별 사건의 점수는 비공개</small></div><div class="stat-card"><label>조사한 쟁점</label><strong>${st.clues.length}건</strong><small>선택한 심리 기록</small></div></div><div class="result-note"><b>판결 해설</b><br>${h(st.judgementAnalysis||c.ideal)}<br><br><b>나의 선택:</b> ${h(v?.label||'')}<br><b>사건 처리:</b> ${h(st.review?.status||'최종 판결')}<br><b>참고:</b> 다른 결론에도 합리적인 설명이 있을 수 있으며, 이 평가는 가상 사건용 게임 평가입니다.</div><div class="row mt" style="flex-wrap:wrap"><button class="btn primary" data-action="tab" data-tab="cases">다른 사건 보기 →</button><button class="btn outline" data-action="tablet" data-sub="archives">판결 기록</button></div></div>`}
 function people(){const contacts=['hyun','senior','jiyu','seon','soo','jun','reporter','actor',...Object.keys(WORLD_ROSTER)];const ordered=contacts.sort((a,b)=>(S.relations[b]||0)-(S.relations[a]||0));const p=NPC[ui.npcId]||NPC.hyun;const rel=S.relations[ui.npcId]||0;
  return `${heading('인간관계 네트워크','관계는 판결의 정답을 바꾸지 않지만, 당신의 커리어와 이야기를 바꿉니다.')}
  <div class="grid two mt2"><div class="panel"><div class="eyebrow">SOCIAL PYRAMID</div><h3 style="margin:6px 0 15px">법조계와 사회의 관계망</h3>
@@ -554,8 +673,8 @@ function tablet(){return `${heading('나의 태블릿','문자부터 판결문�
  <div class="app-grid mt2">${APPS.map(([id,icon,name,color])=>`<button class="app-tile" data-action="tablet" data-sub="${id}"><span class="app-icon" style="background:${color};${ui.tabletTab===id?'outline:3px solid #debd7a;outline-offset:2px':''}">${icon}</span><span>${name}</span></button>`).join('')}</div>
  <div class="panel mt2">${tabletInner()}</div>`}
 function tabletInner(){switch(ui.tabletTab){
- case 'news':return `<div class="row between"><h3 class="no-margin">📰 뉴스</h3><span class="chip">${S.news.length}건</span></div><div class="feed-list mt">${S.news.map(n=>`<div class="feed"><div class="feed-label">${h(n.category)} · ${day(n.week)}</div><b>${h(n.title)}</b><p>${h(n.body)}</p></div>`).join('')}</div>`;
- case 'social':return `<h3 class="no-margin">＃ 시민광장</h3><p class="small muted">가상의 온라인 여론입니다. 실제 법률적 판단과 여론의 방향은 다를 수 있습니다.</p>${S.news.filter(x=>x.category!=='법조일보').length?`<div class="feed-list mt">${S.news.filter(x=>x.category!=='법조일보').map(n=>`<div class="feed"><div class="feed-label">${h(n.category)} · ${day(n.week)}</div><b>${h(n.title)}</b><p>${h(n.body)}</p></div>`).join('')}</div>`:'<div class="empty"><i>＃</i><strong>아직 관심을 끄는 게시글이 없습니다.</strong><span class="small">화제성 있는 판결 이후 커뮤니티 글이 올라올 수 있습니다.</span></div>'}`;
+ case 'news':return `<div class="row between"><h3 class="no-margin">📰 뉴스</h3><span class="chip">${S.news.length}건</span></div><div class="feed-list mt">${S.news.map(n=>`<div class="feed"><div class="feed-label">${h(n.category)} · ${day(n.week)}</div><b>${h(n.title)}</b><p>${h(n.body)}</p>${n.caseId&&CASES.some(c=>c.id===n.caseId)?`<button class="btn outline mini" data-action="openCase" data-id="${h(n.caseId)}">${S.cases[n.caseId]?.verdict?'판결 기록 보기':'사건 기록 보기'}</button>`:''}${n.caseId&&(S.pendingCases||[]).some(x=>x.case?.id===n.caseId)?'<p class="small muted">수사·사건 진행 중 · 법원 배당 전</p>':''}${n.caseId&&(S.worldIncidents||[]).some(x=>x.caseId===n.caseId)?'<p class="small muted">법원 배당 없이 종결된 사건</p>':''}</div>`).join('')}</div>`;
+ case 'social':return `<h3 class="no-margin">＃ 시민광장</h3><p class="small muted">가상의 온라인 여론입니다. 실제 법률적 판단과 여론의 방향은 다를 수 있습니다.</p>${S.news.filter(x=>x.category!=='법조일보').length?`<div class="feed-list mt">${S.news.filter(x=>x.category!=='법조일보').map(n=>`<div class="feed"><div class="feed-label">${h(n.category)} · ${day(n.week)}</div><b>${h(n.title)}</b><p>${h(n.body)}</p>${n.caseId&&CASES.some(c=>c.id===n.caseId)?`<button class="btn outline mini" data-action="openCase" data-id="${h(n.caseId)}">사건 기록 보기</button>`:''}${n.caseId&&(S.pendingCases||[]).some(x=>x.case?.id===n.caseId)?'<p class="small muted">수사·사건 진행 중 · 법원 배당 전</p>':''}${n.caseId&&(S.worldIncidents||[]).some(x=>x.caseId===n.caseId)?'<p class="small muted">법원 배당 없이 종결된 사건</p>':''}</div>`).join('')}</div>`:'<div class="empty"><i>＃</i><strong>아직 관심을 끄는 게시글이 없습니다.</strong><span class="small">화제성 있는 판결 이후 커뮤니티 글이 올라올 수 있습니다.</span></div>'}`;
  case 'messages':return `<h3 class="no-margin">💬 문자</h3><div class="feed-list mt">${S.msgs.map(m=>`<div class="feed"><div class="row">${avatar(m.from)}<div><b>${h(NPC[m.from]?.name||'알림')}</b><div class="xs muted">${day(m.week)}</div></div></div><p class="mt">${h(m.body)}</p></div>`).join('')}</div>`;
  case 'archives':{
  const q=ui.archiveQuery.trim().toLowerCase();
@@ -650,7 +769,7 @@ function changeTab(tab){ui.tab=tab;render();window.scrollTo({top:0,behavior:'ins
 function modal(title,body,buttons){
  ui.modal=`<div class="modal-veil" role="presentation"><div class="modal" role="dialog" aria-modal="true"><h2>${h(title)}</h2><div>${body}</div><div class="modal-actions">${buttons||'<button class="btn primary full" data-action="dismiss">확인</button>'}</div></div></div>`;render();
 }
-function popupNPC(id){const x=NPC[id];if(!x)return;modal(x.name,`<div class="row align-start">${avatar(id)}<div style="flex:1"><b>${h(x.role)}</b><p>${x.bornYear?`${year()-x.bornYear}세 · `:''}신뢰 ${S.relations[id]??20} / 100</p></div></div><div class="detail mt"><b>성향</b><br>${h(x.personality||'조용한 성격')}<br><b>성장 배경</b><br>${h(x.origin||'가상 인물')}<br><b>교육·가족</b><br>${h(x.education||'정보 없음')} · ${h(x.family||'정보 없음')}<br><b>현재 직업</b><br>${h(x.career||'정보 없음')}<br><b>관계 성향</b><br>${h(x.relationships||'정보 없음')}<br><b>나와의 관계</b><br>${h(x.bond||'업무상 인연')}</div><div class="detail mt"><b>개인 생애 정보</b><br>${h(LifeJustice.summary(x,year(),S.week))}<br><b>사법·복역 기록</b><br>${h(LifeJustice.custodySummary(x,S.week))}</div><div class="detail mt"><b>기억 기록 (${(S.memories[id]||[]).length})</b>${(S.memories[id]||[]).slice(-8).reverse().map(m=>`<p>${h(day(m.week))} · ${h(m.type)} · ${h(m.body)}</p>`).join('')||'<p>아직 기록이 없습니다.</p>'}</div>`,null)}
+function popupNPC(id){const x=NPC[id];if(!x)return;const lifeMoment=LifeJustice.latestLifeMoment(x,S.week);modal(x.name,`<div class="row align-start">${avatar(id)}<div style="flex:1"><b>${h(x.role)}</b><p>${x.bornYear?`${year()-x.bornYear}세 · `:''}신뢰 ${S.relations[id]??20} / 100</p></div></div><div class="detail mt"><b>성향</b><br>${h(x.personality||'조용한 성격')}<br><b>성장 배경</b><br>${h(x.origin||'가상 인물')}<br><b>교육·가족</b><br>${h(x.education||'정보 없음')} · ${h(x.family||'정보 없음')}<br><b>현재 직업</b><br>${h(x.career||'정보 없음')}${lifeMoment?`<p class="npc-life-moment">${h(day(lifeMoment.week))} · ${h(lifeMoment.text)}</p>`:''}<br><b>관계 성향</b><br>${h(x.relationships||'정보 없음')}<br><b>나와의 관계</b><br>${h(x.bond||'업무상 인연')}</div><div class="detail mt"><b>개인 생애 정보</b><br>${h(LifeJustice.summary(x,year(),S.week))}<br><b>사법·복역 기록</b><br>${h(LifeJustice.custodySummary(x,S.week))}</div><div class="detail mt"><b>기억 기록 (${(S.memories[id]||[]).length})</b>${(S.memories[id]||[]).slice(-8).reverse().map(m=>`<p>${h(day(m.week))} · ${h(m.type)} · ${h(m.body)}</p>`).join('')||'<p>아직 기록이 없습니다.</p>'}</div>`,null)}
 function popupEvent(){const evt=WEEK_EVENTS[S.week];if(!evt||S.events.includes(evt.id))return;
  modal(evt.title,`<div class="row align-start">${avatar(evt.who)}<p>${h(evt.body)}</p></div><div class="mt">${evt.opts.map((o,i)=>`<button class="choice" data-action="eventChoose" data-i="${i}"><span class="choice-index">${i+1}</span><strong>${h(o.t)}</strong></button>`).join('')}</div>`,`<button class="btn outline full" data-action="dismiss">나중에 결정</button>`);
 }
@@ -675,8 +794,8 @@ function conclude(id){
  S.actions++;window.VerdictCareerBalance.award(S,c.id,st.grade,c.importance,year());
  modifyRel(c.side[0],st.grade>=70?3:-2);modifyRel(c.side[1],st.grade>=70?2:-3);
  const messageText=`${c.name}에서 ${v.label} 판결이 선고됐다. 재판부 판단 요지: ${v.note}.`;
- news(`${c.name} · 최종 선고`,messageText);
- if(c.importance>=4)news(`시민광장 반응: ${c.name}`,`판결 결과를 놓고 네티즌들의 평가가 엇갈리고 있다. 법률적 판단과 대중 여론은 별개라는 목소리도 나온다.`,'시민광장');
+ news(`${c.name} · 최종 선고`,messageText,'법조일보',{caseId:c.id,stage:'verdict'});
+ if(c.importance>=4)news(`시민광장 반응: ${c.name}`,`판결 결과를 놓고 네티즌들의 평가가 엇갈리고 있다. 법률적 판단과 대중 여론은 별개라는 목소리도 나온다.`,'시민광장',{caseId:c.id,stage:'reaction'});
  log('판결',c.name,`${v.label} · 검토 점수 ${st.grade}점`);
  for(const npcId of [...new Set([...(c.who||[]),...(c.side||[])])])remember(npcId,'판결',`${c.name} · ${v.label}`,c.id);
  st.precedent={decision:v.label,issue:c.legal||c.tag,week:S.week,authority:'게임 세계의 확정 판결 기록'};
@@ -1108,16 +1227,22 @@ clicker=function(e){const action=e.target.closest('[data-action]')?.dataset.acti
 function show(){
 if(document.getElementById('verdict-entry'))document.getElementById('verdict-entry').remove();
 release();
-const id=selected(),has=!!S.name;
+const id=selected(),has=!!S.name,authenticated=!!window.VerdictAuth?.user;
 const box=document.createElement('div');box.id='verdict-entry';
-box.innerHTML='<div class="entry-card"><div style="font-size:28px">⚖️</div><div class="entry-title">THE VERDICT</div><div class="entry-sub">40년 법관 커리어 · 플레이어별 독립된 세계관</div><div class="entry-ver">v'+(window.VERDICT_VERSION||'')+' · '+(window.VERDICT_RELEASED||'')+' 업데이트</div><div class="entry-switch"><button type="button" data-profile="1" class="entry-btn '+(id==='1'?'primary':'')+'">플레이어 1<small>'+escapeHtml(profileName('1'))+'</small></button><button type="button" data-profile="2" class="entry-btn '+(id==='2'?'primary':'')+'">플레이어 2<small>'+escapeHtml(profileName('2'))+'</small></button></div><button class="entry-btn primary" id="profile-continue">'+(has?'이어서 하기':'새 커리어 시작')+'</button><button class="entry-btn" id="profile-reset">이 슬롯에서 새 게임</button><button class="entry-btn" id="profile-import">저장 파일 불러오기 (JSON)</button><div class="entry-info">현재: 플레이어 '+id+' · 이 기기에만 저장됨<br>다른 기기와 동기화하려면 별도의 클라우드 로그인이 필요해요.</div></div>';
+box.innerHTML='<div class="entry-card"><div style="font-size:28px">⚖️</div><div class="entry-title">THE VERDICT</div><div class="entry-sub">40년 법관 커리어 · 판사 집무실</div><div class="entry-ver">v'+(window.VERDICT_VERSION||'')+' · '+(window.VERDICT_RELEASED||'')+' 업데이트</div><div class="entry-switch" '+(authenticated?'hidden':'')+'><button type="button" data-profile="1" class="entry-btn '+(id==='1'?'primary':'')+'">플레이어 1<small>'+escapeHtml(profileName('1'))+'</small></button><button type="button" data-profile="2" class="entry-btn '+(id==='2'?'primary':'')+'">플레이어 2<small>'+escapeHtml(profileName('2'))+'</small></button></div><button class="entry-btn primary" id="profile-continue">'+(has?'이어서 하기':'새로 시작하기')+'</button><button class="entry-btn" id="profile-reset">새로 하기</button><button class="entry-btn" id="profile-import" '+(authenticated?'hidden':'')+'>저장 파일 불러오기 (JSON)</button><div class="entry-info">'+(authenticated?'로그인한 판사의 경력이 자동 저장됩니다.':'이 기기의 기존 프로필과 기록을 관리합니다.')+'</div></div>';
 document.body.appendChild(box);
 const scene=document.createElement('div');scene.className='verdict-brand-scene';scene.setAttribute('aria-label','일러스트 법정과 판사');scene.innerHTML='<span class="scene-flag">🇰🇷</span><span class="scene-seal">⚖</span><span class="scene-judge">👨🏻‍⚖️</span><span class="scene-bench"></span><span class="scene-caption">THE VERDICT · JUDICIAL LIFE</span>';const subtitle=box.querySelector('.entry-sub');if(subtitle)subtitle.insertAdjacentElement('afterend',scene);
 box.querySelectorAll('[data-profile]').forEach(b=>b.onclick=()=>change(b.dataset.profile));
 box.querySelector('#profile-continue').onclick=()=>box.remove();
 // no confirm(): some in-app browsers block it silently, which made this button do nothing. Ask with a second tap instead.
 const resetBtn=box.querySelector('#profile-reset');let armed=false;
-resetBtn.onclick=()=>{if(has&&!armed){armed=true;resetBtn.textContent='한 번 더 누르면 이 기기의 모든 기록을 지우고 새로 시작해요';resetBtn.classList.add('danger');setTimeout(()=>{armed=false;resetBtn.textContent='이 슬롯에서 새 게임';resetBtn.classList.remove('danger')},6000);return}resetBtn.disabled=true;resetBtn.textContent='새 게임 준비 중…';wipeGame()};
+resetBtn.onclick=()=>{if(box.querySelector('.entry-reset-dialog'))return;
+ const dialog=document.createElement('div');dialog.className='entry-reset-dialog';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
+ dialog.innerHTML='<p><b>새로운 판사 커리어를 시작할까요?</b></p><p>현재 진행 기록이 교체될 수 있습니다. 기존 기록은 백업 후 진행하는 것을 권장합니다.</p><button type="button" class="entry-btn" data-reset-cancel>닫기 · 이전으로</button><button type="button" class="entry-btn danger" data-reset-confirm>새로 시작</button>';
+ resetBtn.insertAdjacentElement('afterend',dialog);
+ dialog.querySelector('[data-reset-cancel]').onclick=()=>{dialog.remove();resetBtn.focus()};
+ dialog.querySelector('[data-reset-confirm]').onclick=()=>{dialog.querySelectorAll('button').forEach(b=>b.disabled=true);wipeGame()};
+};
 box.querySelector('#profile-import').onclick=()=>{box.remove();const inp=document.getElementById('importFile');if(inp)inp.click();else {ui.tabletTab='backup';changeTab('tablet');document.getElementById('importFile')?.click();}};
 }
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}

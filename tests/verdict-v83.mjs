@@ -44,7 +44,19 @@ try{
  assert.equal(await U.order(page.locator('.t4-q.order').filter({hasText:'4층 복도 영상'}).first()),1);
  await U.tab('day');await U.endSession();await page.evaluate(()=>{S.cases[ui.caseId].trial4.nextAt=0;render()});
  await U.tab('day');await U.openSession();
- const res=await page.evaluate(()=>S.cases[ui.caseId].trial4.courtOrders.map(o=>o.outcome));assert.deepEqual(res,['done'],'didnt world: the defence hands the video over');
+ // The court may grant a one-hearing delay even when the world's fixed result is 'done'.
+ // Assert that a delay is truly pending (not a lost order), then finish the next hearing.
+ let orderState=await page.evaluate(()=>{const t=S.cases[ui.caseId].trial4,o=t.courtOrders[0];return {day:t.day,due:o?.due,status:o?.status,outcome:o?.outcome,delayed:o?.delayed}});
+ if(orderState.outcome===null){
+  assert.equal(orderState.status,'pending','a null order outcome must still be pending');
+  assert.equal(orderState.delayed,true,'the order must be explicitly marked delayed');
+  assert.equal(orderState.due,orderState.day+1,'a late order must be due the next hearing');
+  await U.tab('day');await U.endSession();await page.evaluate(()=>{S.cases[ui.caseId].trial4.nextAt=0;render()});
+  await U.tab('day');await U.openSession();
+  orderState=await page.evaluate(()=>{const t=S.cases[ui.caseId].trial4,o=t.courtOrders[0];return {day:t.day,due:o?.due,status:o?.status,outcome:o?.outcome,delayed:o?.delayed}});
+ }
+ assert.equal(orderState.status,'done','the order is eventually completed');
+ assert.equal(orderState.outcome,'done','didnt world: the defence hands the video over');
  await U.tab('witness');const after=await page.evaluate(()=>{ui.t4w=1;render();return document.querySelector('.t4-pager')?.innerText||''});
  assert.match(after,/영상에서 다시 보면/,'the video question opens once the video is in');
  await shot('own-questions');
@@ -58,7 +70,7 @@ try{
  assert.equal(await page.locator('[data-k="addon"][data-v="tag"]').count(),0,'the unavailable order cannot be pressed');
  await page.locator('[data-k="addon"][data-v="program"]').click();await page.locator('[data-k="addonN"][data-v="program:1"]').click();
  assert.equal(await page.evaluate(()=>ui.t4v.addons.program),60,'hours move by the step');
- await page.locator('.t4-addons').scrollIntoViewIfNeeded();await shot('addons');
+ await page.evaluate(()=>document.querySelector('.t4-addons')?.scrollIntoView({block:'center'}));await shot('addons');
  await next();await page.locator('.t4-cite').first().click();await next();
  const doc=await page.locator('.t4-judgment').innerText();
  assert.match(doc,/60시간의 성폭력 치료프로그램 이수를 명한다/);assert.match(doc,/신상정보 등록대상자가 된다/);

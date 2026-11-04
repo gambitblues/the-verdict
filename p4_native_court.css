@@ -1,0 +1,71 @@
+/* Native P4 court: use the same main app viewport and six navigation tabs. */
+[data-world-native-root] .vsw-court-head{padding:10px 0 4px}
+[data-world-native-root] .vsw-six-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:12px 0}
+[data-world-native-root] .vsw-six-tabs button{min-height:44px;padding:10px 5px;border-radius:9px;border:1px solid #bcc3c7}
+[data-world-native-root] .vsw-six-tabs button.on{background:#182e42;color:#fff;border-color:#182e42}
+[data-world-native-root] .vsw-court-page{min-height:220px;padding:12px 0;line-height:1.6}
+[data-world-native-root] button:focus-visible{outline:3px solid #a17841;outline-offset:2px}
+[data-world-native-root] textarea,[data-world-native-root] select{width:100%;max-width:100%;box-sizing:border-box;padding:11px;border-radius:9px}
+[data-world-native-root] [data-world-native-list]{max-width:900px;margin:auto}
+@media(max-width:600px){
+ [data-world-native-root] .vsw-six-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}
+ [data-world-native-root] .vsw-six-tabs button{min-height:48px}
+ [data-world-native-root] .vsw-court-page{padding:8px 0}
+}
+
+/* Joint bench uses the same six native tabs and keeps private opinions visually separate. */
+[data-world-native-root] .vsw-p5{
+ margin:12px 0 18px;padding:16px;
+ background:var(--panel-bg,#f8f7f3);
+ border:1px solid #c7ccd0;border-radius:12px;
+ display:grid;gap:9px;
+}
+[data-world-native-root] .vsw-p5 h4{margin:0 0 4px;font-size:16px}
+[data-world-native-root] .vsw-p5 label{font-weight:650;font-size:13px}
+[data-world-native-root] .vsw-p5 p{margin:4px 0;line-height:1.55}
+[data-world-native-root] .vsw-p5 button,
+[data-world-native-root] [data-world-verdict] button{
+ min-height:44px;padding:10px 13px;border-radius:9px;
+ cursor:pointer;
+}
+[data-world-native-root] .vsw-sentence{
+ margin:12px 0;padding:13px;border-left:3px solid #9d855e;
+ display:grid;gap:8px;
+}
+[data-world-native-root] .vsw-sentence input[type="number"]{
+ width:100%;box-sizing:border-box;padding:10px;border:1px solid #aab4ba;
+ border-radius:8px;
+}
+@media(max-width:600px){
+ [data-world-native-root] .vsw-p5{padding:12px}
+ [data-world-native-root] .vsw-p5 button,
+ [data-world-native-root] [data-world-verdict] button{width:100%}
+}
+
+.joint-court-slot{margin-top:20px;border:1px solid #a38d68;border-left:4px solid #a38d68;border-radius:12px}
+.t4-ai-evidence,.vsw-ai-note{margin:10px 0;padding:12px;border-left:3px solid #7d8f9d;background:rgba(100,120,140,.08)}
+.t4-ai-evidence p,.vsw-ai-note p{white-space:pre-wrap;line-height:1.6}
+
+/* One native six-tab courtroom: evidence treatment & reasons match the local court workflow. */
+[data-world-native-root] .t4-unified-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+[data-world-native-root] .t4-unified-tabs .t4-tab{min-height:46px;white-space:normal}
+[data-world-native-root] .vsw-evidence-decisions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+[data-world-native-root] .vsw-evidence-decisions button{flex:1;min-width:105px;min-height:44px;border:1px solid #998261;border-radius:9px;background:#f5f0e5;color:#263b4a;font-weight:700;cursor:pointer}
+[data-world-native-root] .vsw-evidence-decisions button:focus-visible{outline:3px solid #967848;outline-offset:3px}
+[data-world-native-root] .vsw-admissibility{color:#526371;font-size:.9em}
+[data-world-native-root] .vsw-verdict-reasons{border:1px solid #d0c5b4;border-radius:12px;padding:12px;margin:15px 0}
+[data-world-native-root] .vsw-verdict-reasons legend{font-weight:700;padding:0 7px}
+[data-world-native-root] .vsw-verdict-reasons label{display:flex;align-items:center;gap:9px;padding:7px 0;line-height:1.5}
+@media(max-width:600px){[data-world-native-root] .t4-unified-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}[data-world-native-root] .vsw-evidence-decisions button{min-width:30%}}
+
+/* Same native opponent application cards as private hearing: responsive and accessible. */
+[data-world-native-root] .vsw-motions{margin:14px 0;padding:14px;border:1px solid #c8b89d;border-radius:12px;background:#f8f4eb}
+[data-world-native-root] .vsw-motions h4{margin:0 0 10px;font-size:1rem}
+[data-world-native-root] .vsw-motion{background:#fff;border:1px solid #e6dfd2;padding:12px;margin:10px 0;border-radius:10px;line-height:1.6}
+[data-world-native-root] .vsw-motion-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+[data-world-native-root] .vsw-motion-actions button{min-height:44px;min-width:115px;padding:9px 13px;background:#f4f0e8;border:1px solid #8a765a;border-radius:9px;color:#253948;cursor:pointer}
+[data-world-native-root] .vsw-motion-actions button:focus-visible{outline:3px solid #bd965e;outline-offset:3px}
+@media(max-width:600px){[data-world-native-root] .vsw-motion-actions button{flex:1}}
+
+/* v8.7.4 합의실: every opinion and its reasons after all three are in */
+.vsw-opinions{margin:6px 0;padding-left:18px}.vsw-opinions li{margin:4px 0}.vsw-opinions small{display:block;color:#6b7686;font-size:12px}

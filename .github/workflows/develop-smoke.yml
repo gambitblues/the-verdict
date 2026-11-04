@@ -14,10 +14,12 @@ jobs:
           node-version: '22'
       - name: Validate bundled Javascript and case packs
         run: |
+          node --check shared_world.js
           node --check game_runtime.js
           node --check game_hearings.js
           node --check game_professions.js
           node --check game_ui.js
+          node --check chambers_art.js
           node --check trial_core.js
           node --check media_desk.js
           node --check trial_play.js
@@ -49,6 +51,12 @@ jobs:
           node tests/advanced-courtroom-conflict.test.cjs
           node tests/advanced-pilot-integration.test.cjs
           node tests/advanced-world-schema.test.cjs
+          node tests/terra-trial-qa.test.cjs
+          node tests/terra-generate.test.cjs
+          node tests/terra-stock.test.cjs
+          node tests/terra-replenish-plan.test.cjs
+          node tests/terra-refill-execute.test.cjs
+          node tests/case-afterlife.test.cjs
           node tests/advanced-production-ledger.test.cjs
           node tests/advanced-story-beats-99.test.cjs
           node tests/advanced-expanded-99.test.cjs
@@ -56,6 +64,7 @@ jobs:
           node tests/advanced-assembled-99.test.cjs
           node tests/advanced-legacy-60.test.cjs
           node tests/career-hearing-events.test.cjs
+          node tests/career-evaluation.test.cjs
           node tests/avatar-500.test.cjs
           node tests/avatar-production-budget.test.cjs
           node tests/advanced-content-qa.cjs
@@ -73,6 +82,8 @@ jobs:
         run: node tests/match-engine-screen.mjs
       - name: World-sheet cases in the normal courtroom (six pages, verdict, every sheet case)
         run: node tests/match-play.mjs
+      - name: P3-12 staged case real six-tab courtroom and verdict (isolated)
+        run: node tests/terra-browser-qa.mjs --fixture clinic-001
       - name: v8.2 objections during questioning and the verdict window
         run: node tests/verdict-v82.mjs
       - name: v8.3 own questions and orders, ancillary orders, remedies, life after
@@ -83,6 +94,8 @@ jobs:
         run: node tests/hearing-events.mjs
       - name: Evidence shapes and witness moments (visual review gallery)
         run: node tests/evidence-moments.mjs
+      - name: P4 two-judge shared-world browser UI (isolated data)
+        run: node tests/shared-world-ui.mjs
       - name: Run mobile viewport browser test
         run: node tests/browser-smoke.mjs
       - name: v6 features end to end (decision cases, witnesses, confrontation, face-off, bench, truth, experts, pressure, personnel season)

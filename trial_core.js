@@ -191,7 +191,13 @@ function reasonFits(id,t,g=gauge(t)){
  if(id==='flawed')return t.evidence.some(e=>e.revealed>=1&&e.flawType!=='none');
  if(id==='illegal')return t.evidence.some(e=>e.flawType==='illegal'&&e.revealed>=2&&e.decision==='exclude');
  if(id==='discord')return g.discord>0;
- if(id==='consistent')return t.witnesses.some(w=>w.asked>=1&&testimony(w,t.truth).kind==='truthful'&&testimony(w,t.truth).p>0)&&g.discord===0;
+ if(id==='consistent'){
+  const reliable=(t.heard||[]).filter(h=>!h.struck&&!h.tainted&&['p','d'].includes(h.side));
+  const sharedRecordAgreement=!(t.witnesses||[]).length&&reliable.length>=2&&
+   new Set(reliable.map(h=>h.side)).size===1;
+  return (t.witnesses.some(w=>w.asked>=1&&testimony(w,t.truth).kind==='truthful'&&testimony(w,t.truth).p>0)||
+   sharedRecordAgreement)&&g.discord===0;
+ }
  if(id==='doubt')return g.D>=35;
  return false;
 }

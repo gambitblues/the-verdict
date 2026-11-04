@@ -1,0 +1,17 @@
+/* Illustrated judicial chambers: original scalable vector composition. */
+.tv-chambers .tv-welcome{min-height:292px;display:flex;align-items:flex-start;isolation:isolate;position:relative;padding:clamp(22px,3.2vw,40px)!important}
+.tv-chambers .tv-welcome>div:not(.chambers-art){position:relative;z-index:2}
+.tv-chambers .tv-welcome .chambers-art{position:absolute;z-index:0;inset:0;overflow:hidden;pointer-events:none}
+.tv-chambers .tv-welcome .chambers-art svg{width:100%;height:100%;display:block}
+.tv-chambers .tv-welcome:after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(11,24,33,.93) 0%,rgba(11,24,33,.76) 38%,rgba(11,24,33,.10) 82%)}
+.tv-chambers .tv-welcome h2{max-width:390px;text-wrap:balance;text-shadow:0 2px 9px #101d2c}
+.tv-chambers .tv-welcome p{color:#d2dbe0;text-shadow:0 1px 6px #121f28}
+.tv-chambers .tv-welcome .tv-judge-photo{position:absolute!important;right:20px;bottom:16px;z-index:3;border:3px solid #bd955e;border-radius:12px;box-shadow:0 10px 25px #0d171e66;transform:scale(.78);transform-origin:right bottom}
+.tv-chambers .tv-office-clock{background:linear-gradient(130deg,#faf6eb,#eee7d8)!important}
+.tv-chambers .tv-office-clock .tv-clockface{position:relative}
+.tv-chambers .tv-office-clock .tv-clockface:before{content:"◷";color:#9d7746;font-size:24px;position:absolute;right:10px;top:8px}
+.tv-chambers .tv-office-clock .tv-calendar{border-left:4px solid #b29160}
+.tv-chambers .tv-office-clock .tv-calendar:before{content:"▦";color:#9d7746;font-size:23px;float:right}
+.tv-review-period{border-top:1px solid #ddccb5;padding:12px 0}
+.tv-review-period b{display:block;font-size:16px}.tv-review-period small{display:block;color:#666}.tv-review-period p{margin:7px 0 0}
+@media(max-width:700px){.tv-chambers .tv-welcome{min-height:205px}.tv-chambers .tv-welcome .tv-judge-photo{display:none}.tv-chambers .tv-welcome:after{background:linear-gradient(90deg,#12222ff2 0%,#12222fba 64%,#12222f12 100%)}.tv-chambers .tv-welcome h2{max-width:75%;font-size:clamp(20px,5.3vw,28px)}}

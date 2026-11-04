@@ -25,7 +25,11 @@ const ContinuityEngine=(()=>{
   if((c.stages||[]).some(st=>(st.actions||[]).some(a=>(a.sourceIds||[]).some(id=>!ids.includes(id)))))errors.push('심리 선택지의 존재하지 않는 증거');
   return {pass:errors.length===0,errors,warnings,checks:10,version:'0.6'};
  }
- function snapshots(c,people,week){return unique([...(c.who||[]),...(c.side||[]),c.story?.witness,c.story?.investigator?.detective]).map(id=>{let p=people[id]||{};return {id,name:p.name||id,role:p.role||'',career:p.career||'',wealth:p.wealth??null,alive:p.alive!==false,week};});}
+ function snapshots(c,people,week){return unique([...(c.who||[]),...(c.side||[]),c.story?.witness,c.story?.investigator?.detective]).map(id=>{const p=people[id]||{};
+  const latest=(p.historyEvents||[]).filter(e=>Number.isFinite(e?.week)&&e.week<=week).sort((a,b)=>b.week-a.week)[0];
+  return {id,name:p.name||id,role:p.role||'',career:p.career||'',wealth:p.wealth??null,alive:p.alive!==false,week,
+   legalStatus:p.legalStatus||null,maritalStatus:p.maritalStatus||null,children:Number.isInteger(p.children)?p.children:null,
+   residence:p.residence||null,lastLifeEvent:latest?{week:latest.week,type:latest.type,change:latest.change}:null};});}
  function originDocket(c,st,week){return {originalCaseId:c.id,originalCourt:'1심',firstJudgment:{week,verdict:st.verdict,grade:st.grade,explanation:st.judgementAnalysis||'',examinedEvidence:unique((st.actions||[]).flatMap(a=>a.sourceIds||[])),actionFlags:(st.actions||[]).map(a=>a.flag)},stages:[{level:'1심',week,status:'선고',result:st.verdict}],historyLinked:true};}
  function fileAppeal(c,st,v,week){const d=v.docket||originDocket(c,st,st.closedWeek??week);return {...d,appeal:{filedAt:v.appealFiledWeek,grounds:v.grounds,appellant:v.appellant,hearingCourt:'별도 항소심 재판부',playerControls:false},stages:[...d.stages,{level:'항소심',week,status:'계속 중',result:null}]};}
  function finishAppeal(c,st,v,changed,week){const d=v.docket||fileAppeal(c,st,v,week);return {...d,appeal:{...d.appeal,determinedAt:week,decision:changed?'원심 일부 변경':'원심 판단 유지',reason:v.reason},stages:d.stages.map(x=>x.level==='항소심'?{...x,week,status:'선고',result:changed?'원심 일부 변경':'원심 유지'}:x)};}

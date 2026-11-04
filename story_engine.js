@@ -59,12 +59,14 @@ const StoryEngine = (()=>{
  const fmt=(x)=>`${Math.round(x)}만 원`;
  function findEvidenceCategory(title){if(/계좌|송금|금융|매출|정산|지출|세금/.test(title))return PROOF_TYPES[1];if(/CCTV|영상|사진|블랙박스/.test(title))return PROOF_TYPES[3];if(/연락|통화|메시지|대화|메일/.test(title))return PROOF_TYPES[2];if(/진료|감정|부검|진단|검사/.test(title))return PROOF_TYPES[4];if(/진술|증언|목격/.test(title))return PROOF_TYPES[5];if(/로그|공문|행정|등록/.test(title))return PROOF_TYPES[6];return PROOF_TYPES[0]}
  function build(ctx){
-  const {caseId,blueprint:bp,instance:index,loc,now,week,r,makeNPC,oldCriminal,priorDecision,prosecutorPool,counselPool,people}=ctx;
+  const {caseId,blueprint:bp,instance:index,loc,now,week,r,makeNPC,oldCriminal,lifeActorId,incidentWeekOverride,priorDecision,prosecutorPool,counselPool,people}=ctx;
   const criminal=bp.kind==='criminal',title=bp.titles[index],base=bp.premises[index];
   const value=pick([350,900,1800,2800,5200,8400,12000,26000,53000],r),
    trigger=bp.packOrigin?.trigger||pick(TRIGGERS[bp.key]||TRIGGERS.contract,r), pattern=bp.packOrigin?.incident?.action||pick(PATTERNS,r), motive=bp.packOrigin?.motive||pick(MOTIVES,r);
-  const prev=oldCriminal&&r()<.20?oldCriminal:null;
-  const a=prev?.who?.[0]||makeNPC(criminal?'피고인':'원고');
+  const prev=criminal&&oldCriminal||null; // chosen once by the world; do not silently discard the repeat actor
+  // A real earlier life event may bring the SAME person back in an unrelated civil dispute.
+  // The incident and its truth are still generated independently of that person's history.
+  const a=prev?.who?.[0]||(!criminal&&lifeActorId&&people[lifeActorId]?lifeActorId:null)||makeNPC(criminal?'피고인':'원고');
   const b=makeNPC(criminal?'피해자':'피고');
   const pa=people[a],pb=people[b];
   if(bp.key==='murder'){pb.alive=false;pb.deathWeek=week;pb.careerAtDeath=pb.career;}
@@ -79,7 +81,7 @@ const StoryEngine = (()=>{
   const wealthA=pa.wealth??between(15,80,r),wealthB=pb.wealth??between(15,80,r);
   const lawyerA={id:ca,years:between(1,26,r),quality:criminal?prosecutor.trialSkill:cap(between(30,80,r)+Math.round(wealthA/8),25,95),funding:criminal?'공적 소추':wealthA>65?'사선 소송대리인':'일반 소송대리인'};
   const lawyerB={id:cb,years:between(1,26,r),quality:cap(between(29,77,r)+Math.round(wealthB/9),25,95),funding:wealthB<30&&criminal?'국선변호인 선임 가능성 검토':wealthB>70?'사선 변호인':'법률 지원·사선 혼재'};
-  const eventWeek=week-between(7,22,r),investigationWeek=week-between(4,6,r),claimWeek=week-between(1,2,r);
+  const eventWeek=Number.isInteger(incidentWeekOverride)?incidentWeekOverride:week-between(7,22,r),investigationWeek=week-between(4,6,r),claimWeek=week-between(1,2,r);
   const d=new Date(Date.UTC(2027,2,1)+eventWeek*604800000);const dateText=`${d.getUTCFullYear()}.${String(d.getUTCMonth()+1).padStart(2,'0')}.${String(d.getUTCDate()).padStart(2,'0')}`;
   // Separate facts (never edited after creation) from assertions and what the player may read.
   const timeline=[
@@ -109,10 +111,36 @@ const StoryEngine = (()=>{
   const settle = criminal?{possible:false,reason:'피해 회복이나 합의는 공소 여부·양형 등과 구별해서 다룸'}:{possible:r()<.75,proposal:Math.round(value*(.5+r()*.4)),
    influence:cap(Math.round((wealthA+wealthB)/2),10,90),reason:'당사자의 지급 능력·관계·소송비용을 바탕으로 임의 협의 가능성 평가'};
   const progress=`${pa.name}(${pa.role})은(는) ${bp.legal} 관련 주장을 제기했습니다. ${pb.name}(${pb.role})은(는) 중요한 부분을 다투고 있습니다.`;
-  const intro=(criminal?`검찰은 ${pa.name}을(를) ${bp.tag.replace('형사·','')} 관련 혐의로 기소했습니다. `:`${pa.name}이(가) ${pb.name}을(를) 상대로 ${bp.tag.replace(/.*·/,'')} 사건을 제기했습니다. `)+base+` ${trigger} 사건 시점은 ${loc} ${pick(PLACE[bp.key]||PLACE.contract,r)}에서 약 ${week-eventWeek}주 전입니다.`;
+  /* Concrete scene details are visible observations, not an accusation and not
+  * new proof. A verified authored scene takes priority; built-ins get a restrained
+  * forensic view instead of generic legalese. */
+ const builtinScenes={
+  murder:{location:'사건 현장',observed:'출입문 안쪽 바닥에 혈흔이 남아 있었고, 방 안에서는 피해자가 움직이지 않는 상태로 발견됐습니다. 현장에 있던 물건 몇 개가 넘어져 있었습니다.',uncertainty:'누가 언제 현장에 들어왔는지, 혈흔과 물건의 상태가 어떤 행위로 생겼는지는 아직 확인되지 않았습니다.'},
+  assault:{location:'충돌 장소',observed:'현장에는 깨진 소지품과 바닥에 떨어진 개인 물건이 남아 있었습니다. 다친 사람은 부상 부위를 가리키며 통증을 호소했습니다.',uncertainty:'누가 먼저 신체 접촉을 시작했는지와 각각의 부상이 어떤 과정에서 발생했는지는 다툼이 있습니다.'},
+  fire:{location:'화재 현장',observed:'그을린 벽과 열에 변형된 집기들이 발견됐습니다. 바닥에는 소방 활동으로 젖은 물건이 흩어져 있었습니다.',uncertainty:'발화 지점과 원인, 누가 관여했는지는 감정 결과와 다른 자료를 대조해야 합니다.'},
+  accident:{location:'충돌 지점',observed:'도로 위에는 차량 파편과 제동 흔적이 남았고, 충돌한 차체 일부가 찌그러져 있었습니다.',uncertainty:'사고 직전 속도와 신호 상태, 부상 발생의 직접 원인은 추가 확인이 필요합니다.'}
+ };
+ const sceneVariants={
+  murder:[
+   builtinScenes.murder,
+   {location:'다세대주택 계단참',observed:'계단 아래에는 벗겨진 신발 한 짝과 휴대전화가 떨어져 있었고, 난간과 벽면에는 혈흔이 남아 있었습니다. 현장에 도착한 구급대가 피해자의 사망을 확인했습니다.',uncertainty:'추락·충돌 또는 다른 행동 중 무엇이 상처와 흔적을 만들었는지, 사망 직전 다른 사람이 함께 있었는지는 확인해야 합니다.'},
+   {location:'상가 뒤편 창고',observed:'창고 바닥에 피가 묻은 작업복과 끌린 듯한 자국이 남아 있었습니다. 출입문은 잠겨 있지 않았고 피해자는 안쪽 통로에서 발견됐습니다.',uncertainty:'자국이 만들어진 시점과 작업복의 소유자, 사망에 이르게 된 직접 경위는 감식 및 진술 대조가 필요합니다.'}
+  ],
+  assault:[builtinScenes.assault,
+   {location:'주차장 통로',observed:'바닥에 깨진 휴대전화 화면 조각과 옷의 단추가 떨어져 있었고, 현장을 떠난 한 사람의 얼굴에 부기가 확인됐습니다.',uncertainty:'어떤 접촉이 상해를 만들었는지와 정당방위 주장의 사실관계는 별도로 판단해야 합니다.'}],
+  fire:[builtinScenes.fire],
+  accident:[builtinScenes.accident]
+ };
+ // Scene selection must not consume the case RNG: physical staging must not
+ // secretly alter the truth, evidence support or proof distribution.
+ const variants=sceneVariants[bp.key]||[];
+ const sceneIndex=[...String(caseId)].reduce((h,c)=>Math.imul(h^c.charCodeAt(0),16777619)>>>0,2166136261)%(variants.length||1);
+ const scene=bp.packOrigin?.scene||variants[sceneIndex]||null;
+ const sceneText=scene?` ${scene.observed} ${scene.uncertainty}`:'';
+ const intro=(criminal?`검찰은 ${pa.name}을(를) ${bp.tag.replace('형사·','')} 관련 혐의로 기소했습니다. `:`${pa.name}이(가) ${pb.name}을(를) 상대로 ${bp.tag.replace(/.*·/,'')} 사건을 제기했습니다. `)+base+` ${trigger} 사건 시점은 ${loc} ${scene?.location||pick(PLACE[bp.key]||PLACE.contract,r)}에서 약 ${week-eventWeek}주 전입니다.`+sceneText;
   const relation=bp.packOrigin?.relationship||pick(['과거 일면식이 있는 사이','업무 또는 거래로 연결된 사이','가까운 사이였다가 갈등이 생김','사건 전 직접적 관계가 거의 없었음'],r);
   const publicDossier={
-   circumstance:base,relation,amount:value,financial:{claimant:wealthA,respondent:wealthB},
+   circumstance:base,scene:scene?{location:scene.location,observed:scene.observed,uncertainty:scene.uncertainty}:null,relation,amount:value,financial:{claimant:wealthA,respondent:wealthB},
    allegedCause:trigger,
    situation:`${pattern}. ${pick(CONTEXTS,r)} 관련 기록을 따져야 합니다.`,
    investigators:criminal?{name:agency.name,experience:agency.skill,workload:agency.workload,summary:agency.skill<55?'조사 인력이 부족해 일부 자료가 누락됨':agency.skill>75?'원본과 출처를 비교적 충실히 확보함':'핵심 문서와 진술 위주로 조사함'}:null,
@@ -160,11 +188,11 @@ const StoryEngine = (()=>{
   if(criminal&&!hasMultiple)outcomes.splice(1,1); // don't invent partial guilt in single-count case
   const relatedCaseId=prev?.id||null;
   const story={engine:'causal-v0.4',privateTruth:{kind:truthKind,actual,notes:'사실 자체와 법정에서 인정 가능한 증명은 별개'},
-   trigger,storyMotif:`${bp.packOrigin?.id||bp.key}|${index}|${pattern}|${trigger}|${relation}|${truthKind}`,timeline,relation,place:pick(PLACE[bp.key]||PLACE.contract,r),
+   trigger,scene:scene?{location:scene.location,observed:scene.observed,uncertainty:scene.uncertainty}:null,storyMotif:`${bp.packOrigin?.id||bp.key}|${index}|${pattern}|${trigger}|${relation}|${truthKind}`,timeline,relation,place:scene?.location||pick(PLACE[bp.key]||PLACE.contract,r),
    arc:{begin:bp.packOrigin?.incident?.cause||`${relation} · ${title} 관련 갈등이 시작됐다.`,development:bp.packOrigin?`${bp.packOrigin.incident.action} ${bp.packOrigin.incident.aftermath}`:`${trigger}. ${pattern} 문제가 수사·소송 준비 중 드러났다.`,trial:`${bp.legal} 쟁점에 관하여 서면과 반론이 제출됐다.`,resolution:'법정에서 확인한 증거에 따라 판단이 달라진다.'},
    roleA:a,roleB:b,witness,investigator:agency,prosecutor,lawyerA,lawyerB,criminal,financial:{a:wealthA,b:wealthB},
    initialDispute:progress,amount:value,publicDossier,evidenceDetails:evidences,proofStrength:strength,proofClass,
-   pack:bp.packOrigin?{packId:bp.packOrigin.packId,version:bp.packOrigin.version,archetypeId:bp.packOrigin.id,category:bp.packOrigin.category,causalTags:bp.packOrigin.causalTags,incident:bp.packOrigin.incident}:null,
+   pack:bp.packOrigin?{packId:bp.packOrigin.packId,version:bp.packOrigin.version,archetypeId:bp.packOrigin.id,category:bp.packOrigin.category,causalTags:bp.packOrigin.causalTags,incident:bp.packOrigin.incident,referenceCount:(bp.packOrigin.references||[]).length}:null,
    targetClaim:criminal?'공소사실':'청구 원인',settlement:settle,validation:null};
   const caseObj={id:caseId,week,icon:bp.icon,tag:bp.tag,level:cap(Math.round(1+bp.importance/2+between(-1,1,r)),1,5),importance:bp.importance,
    name:`${title} · ${loc} (${dateText})`,sub:`${bp.legal} · ${fmt(value)} 쟁점 규모`,who:[a,b],side:[ca,cb],intro,

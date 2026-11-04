@@ -17,7 +17,7 @@ const shortName=c=>String(c.name||'').split(' · ')[0];
 const open=new Set();
 
 /* ---------- comments that follow the trial ---------- */
-const NICK_A=['법정관찰자','동네주민','퇴근길독자','정의구현','팩트체크','조용한방청객','새벽시민','판결문러','현실주의자','오늘의독자','지나가던변호사','법알못','두아이부모','시민1','커피는아아'];
+const NICK_A=['법정관찰자','동네주민','퇴근길독자','정의구현','팩트체크','조용한방청객','새벽시민','판결문러','현실주의자','오늘의독자','지나가던변호사','법알못','두아이부모','시민1','커피는아아','법원앞편의점','기록읽는사람','가사사건경험자','동네사장','퇴직공무원','사회초년생','지방소식통','야간근무자','민사소송중','회의적인독자','판결문공부중','동네엄마','경제신문독자','퇴근후뉴스','검증먼저','중립독자','법학도','사회부애독자'];
 const NICK_B=['','87','_k','2027','33','99','_','7','01','J'];
 function nick(seed){const a=pick(NICK_A,seed+'a'),b=pick(NICK_B,seed+'b');return a+b}
 /* What the public knows: evidence shown in court, testimony heard, new evidence, the verdict. Nothing hidden. */
@@ -220,20 +220,21 @@ function articles(){
   for(const iv of t?.final?.interviews||[])out.push({caseId:c.id,outlet:iv.outlet,title:iv.title,body:iv.body,day:st?.closedWeek||c.week,index:'iv'+out.length,phase:'after',tone:iv.tone==='논란'?'blame':'praise',frame:'인터뷰 · ',lean:''});
   if(!TP.curOf(c))continue;
   const [rp,rd]=reporterPair(c);
-  for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r);
-   out.push({caseId:c.id,outlet:r.outlet,title:a.title,body:a.body,day:st?.closedWeek||c.week,index:idx,phase:a.phase,tone:a.tone||null,frame:(a.phase==='after'?(a.tone==='praise'?'판결 호평 · ':a.tone==='blame'?'판결 비판 · ':'판결 평가 · '):'재판 전망 · ')+(lean==='p'?(crim?'검찰 측 시각':'원고 측 시각'):(crim?'변호인 측 시각':'피고 측 시각')),reporter:r,lean})}
+  for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r),ai=S.aiArticles?.[window.VerdictAI?.articleKey?.({caseId:c.id,index:idx,phase:a.phase,base:a})];   // AI wording of exactly this text (v8.7.4: key follows the engine text, so struck evidence never survives in an old wording)
+   out.push({caseId:c.id,outlet:r.outlet,title:ai?.title||a.title,body:ai?.body||a.body,base:{title:a.title,body:a.body},day:st?.closedWeek||c.week,index:idx,phase:a.phase,tone:a.tone||null,frame:(a.phase==='after'?(a.tone==='praise'?'판결 호평 · ':a.tone==='blame'?'판결 비판 · ':'판결 평가 · '):'재판 전망 · ')+(lean==='p'?(crim?'검찰 측 시각':'원고 측 시각'):(crim?'변호인 측 시각':'피고 측 시각')),reporter:r,lean})}
  }
  return out;
 }
 /* ---------- news with comments ---------- */
 /* articles open from their headline; which ones the reader opened is remembered for this visit only */
 const readOpen=new Set();
-document.addEventListener('toggle',e=>{const d=e.target;if(!d?.matches?.('details.wf-art'))return;d.open?readOpen.add(d.dataset.art):readOpen.delete(d.dataset.art)},true);
+document.addEventListener('toggle',e=>{const d=e.target;if(!d?.matches?.('details.wf-art'))return;d.open?readOpen.add(d.dataset.art):readOpen.delete(d.dataset.art);
+ if(d.open&&window.VerdictAI?.on){const [cid,key]=d.dataset.art.split(':art'),a=articles().find(x=>x.caseId===cid&&String(x.index)===key);if(a)window.VerdictAI.article(a)}},true);
 function newsFeed(limit=40){
- const list=articles().slice(0,limit);
+ const list=articles().slice().sort((a,b)=>(Number(b.day)||0)-(Number(a.day)||0)|| (Number(b.index)||0)-(Number(a.index)||0)).slice(0,limit);
  if(!list.length)return '<p class="muted">내가 맡은 사건이 생기면 재판 전 전망 기사부터 실려요.</p>';
  return '<div class="tv-news-list">'+list.map(a=>{
-  const c=CASES.find(x=>x.id===a.caseId),key='art'+a.index,id=a.caseId+':'+key,n=3+hash(id)%3;
+  const c=CASES.find(x=>x.id===a.caseId),key='art'+a.index,id=a.caseId+':'+key,n=6+hash(id)%11;
   return `<article class="tv-media-card"><details class="wf-art" data-art="${esc(id)}" ${readOpen.has(id)||open.has(id)?'open':''}><summary><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div><strong>${esc(a.title)}</strong><small class="wf-more">기사 펼치기</small></summary>${a.reporter?`<button class="tv-reporter" data-action="reporter" data-i="${REPORTERS.indexOf(a.reporter)}">✍ <b>${esc(a.reporter.name)} 기자</b> · ${esc(a.reporter.bio)}. ${esc(a.reporter.voice)}. <i>›</i></button>`:''}<p>${esc(a.body)}</p>
   <button class="wf-link" data-action="wfopen" data-id="${esc(id)}">💬 ${open.has(id)?'댓글 접기':`댓글 ${n}개`}</button>${open.has(id)&&c?`<div class="wf-thread">${threadView(thread(c,key,n))}</div>`:''}</details></article>`;
  }).join('')+'</div>';
@@ -295,6 +296,20 @@ const TPL={
   choices:[['thanks','말해 줘서 고맙다고 답한다','들어 주셔서 감사합니다. 이제야 조금 마음이 놓여요.',{rel:6}],
    ['final','판결은 이미 확정됐다고 답한다','네, 압니다. 그래도 판사님은 아셔야 할 것 같았어요.',{rel:0}],
    ['where','필요하면 알려야 할 곳을 안내한다','알려 주신 곳에 정식으로 말해 보겠습니다. 용기를 내 볼게요.',{rel:3}]]},
+ mentor:{from:'senior',text:[
+   '{c} 재판 기록을 읽어 봤네. 이제는 재판장으로서 경험이 쌓였으니, 신임 판사들에게 절차를 설명하는 자리에 함께하지 않겠나?',
+   '{c} 판결 뒤에 후배 법관들끼리 기록 검토 모임을 연다네. 자네가 어려웠던 지점을 이야기해 주면 도움이 될 것 같아.',
+   '{c} 사건을 맡으며 느낀 점을 동료 판사들과 나눠 보게. 결론이 아니라 절차와 경험에 관한 이야기일세.'],
+  choices:[['join','동료 판사들과 실무 경험을 공유한다',['좋아. 정답을 알려 주려는 게 아니라 어떻게 기록을 살폈는지 나누면 되네.','후배들에게도 좋은 배움이 될 걸세.'],{rel:5}],
+   ['observe','이번에는 모임에 참석해 듣는다',['경청하는 것도 훌륭한 태도지. 다음엔 자네 경험도 들려주게.'],{rel:2}],
+   ['decline','재판 업무에 집중하겠다고 답한다',['알겠네. 여유가 생기면 다시 이야기하세.'],{rel:0}]]},
+ colleague:{from:'hyun',text:[
+   '{c} 건으로 고생 많았지? 종결 사건의 공개 판결문을 주제로 동기들과 조촐하게 이야기해 보려고 해. 올래?',
+   '이번에 동기들이 {c} 판결문을 함께 읽어 보기로 했어. 서로 다른 시각을 들어 보는 자리야.',
+   '{c} 판결 이유를 보면서 고민할 부분이 많더라. 비공개 기록은 빼고 판결문에 있는 것만 함께 살펴보자.'],
+  choices:[['discuss','공개 판결문을 함께 검토한다',['좋아. 판결 결론보다 논증 방식을 놓고 이야기해 보자.'],{rel:4}],
+   ['listen','동료들의 견해를 먼저 듣는다',['좋아, 서로 배울 점이 있지.'],{rel:2}],
+   ['later','다음에 참석하겠다고 한다',['알겠어. 다음에 다시 연락할게.'],{rel:0}]]},
  review:{from:'senior',text:[
    '{c} 리뷰 봤다. 너무 신경 쓰지 마. 다음엔 뭘 다르게 해 볼 생각이야?',
    '{c} 평가가 박하게 나왔더라. 나도 그런 해가 있었다. 뭐가 제일 아쉬웠어?',
@@ -359,7 +374,10 @@ function scan(){
   const has=k=>threads().some(x=>x.id===k+':'+c.id);
   if(t.final&&!has('press')&&(t.final.media?.H??0)>=50){addThread('press',c);added=true}
   if(t.lateDone&&!t.final&&!has('late')){addThread('late',c);added=true}
-  if(t.final?.reviewShown&&t.final.review<60&&!has('review')){addThread('review',c);added=true}
+  if(t.final?.reviewShown&&t.final.review<60&&Number(S.week)>=Number(S.cases[c.id]?.closedWeek??S.week)+39&&!has('review')){addThread('review',c);added=true}
+  // Relationship benefits are social/professional only. No private case records or outcome modifiers.
+  if(t.final&&(S.relations?.senior??0)>=65&&!has('mentor')&&hash(c.id+'mentor')%4===0){addThread('mentor',c);added=true}
+  if(t.final&&(S.relations?.hyun??0)>=65&&!has('colleague')&&hash(c.id+'colleague')%4===0){addThread('colleague',c);added=true}
   if(t.final&&!t.final.pressDone){t.final.pressDone=true;added=true;const side=T.sideOf(t.final.dir);
    if(side===1||side===-1)for(const r of reporterPair(c)){const i=REPORTERS.indexOf(r),id=reporterNPC(i);if(!id)continue;
     const up=(side===1)===(r.side==='p');S.relations[id]=Math.max(0,Math.min(100,(S.relations[id]??30)+(up?6:-6)));
@@ -400,11 +418,45 @@ function messagesView(){
 
 /* ---------- hooks ---------- */
 if(window.VerdictMedia){window.VerdictMedia.articles=articles;window.VerdictMedia.newsFeed=newsFeed;window.VerdictMedia.socialFeed=()=>opinionFeed()}
+/* Read-only P4 bridge: the native news tablet receives the same canonical
+ * public chronology as the shared courtroom. Local personal articles are kept
+ * separate and personal relations/saves never become shared world authority.
+ * Every field is escaped and every event came through the invited-player API.
+ */
+function sharedWorldTabletNews(){
+ if(window.VERDICT_CONFIG?.p4SharedWorld!==true||
+    !window.VerdictAuth?.online||!window.VerdictSharedWorld)return '';
+ const shared=window.VerdictSharedWorld;
+ const news=(shared.events||[]).filter(ev=>ev&&
+  ['incident_reported','investigation_opened','indictment_filed','case_assigned',
+   'hearing_opened','judgment_published','appeal_reported','aftermath_published',
+   'npc_public_update'].includes(ev.event_type)).slice(-30).reverse();
+ const people=(shared.npcs||[]).slice(0,18);
+ if(!news.length&&!people.length)return '';
+ const titles={incident_reported:'사건 발생',investigation_opened:'수사 개시',
+  indictment_filed:'기소',case_assigned:'사건 배당',hearing_opened:'공판 개정',
+  judgment_published:'판결 선고',appeal_reported:'항소',aftermath_published:'후일담',
+  npc_public_update:'인물 변화'};
+ return '<section class="wf-shared-chronology" aria-label="공유 세계 공식 기록">'+
+  '<h3>🌐 공유 세계 공식 기록</h3><p class="muted small">두 판사가 공유하는 확정 사실입니다. 개인 재판 기사·관계와는 구분됩니다.</p>'+
+  news.map(ev=>{
+   const title=String(ev.public_data?.title||ev.public_data?.eventLabel||titles[ev.event_type]);
+   const summary=String(ev.public_data?.summary||ev.public_data?.judgment||'');
+   return '<article class="feed"><small>세계 '+esc(ev.game_day)+'일 · '+
+    esc(titles[ev.event_type])+'</small><b>'+esc(title)+'</b>'+
+    (summary?'<p>'+esc(summary)+'</p>':'')+'</article>';
+  }).join('')+
+  (people.length?'<details><summary>공통 세계 인물 '+esc(people.length)+'명 · 공개 근황</summary>'+
+   people.map(p=>'<p>'+esc(p.public_profile?.name||p.npc_id)+' · '+
+    esc(p.public_profile?.profession||p.public_profile?.publicRole||'')+' · '+
+    esc(p.life_status==='dead'?'사망':p.life_status==='alive'?'생존':'상태 미상')+'</p>').join('')+
+   '</details>':'')+'</section>';
+}
 const priorTablet=tabletInner;
 tabletInner=function(){
  if(ui.tabletTab==='messages')return messagesView();
  if(ui.tabletTab==='social')return '<h2>＃ 여론</h2><p class="muted small">사건마다 여론이 어떻게 움직였는지, 지금 사람들이 무슨 말을 하는지 봅니다.</p>'+opinionFeed();
- if(ui.tabletTab==='news')return '<h2>📰 기사</h2><p class="muted small">내가 맡은 사건의 보도예요. 판결 전에는 전망을, 판결 뒤에는 판결에 대한 평가를 씁니다.</p>'+newsFeed(60);
+ if(ui.tabletTab==='news')return '<h2>📰 기사</h2><p class="muted small">내 사건의 기사와 서버 공통 세계의 공개 기록을 구분해 볼 수 있습니다.</p>'+sharedWorldTabletNews()+newsFeed(60);
  return priorTablet();
 };
 const priorHome=home;
