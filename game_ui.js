@@ -105,7 +105,7 @@ window.VerdictMedia={outlets:OUTLETS,articles,comments,newsFeed,socialFeed};
 (()=>{
 const esc=x=>h(String(x??''));
 const tabletBase=tabletInner,baseShell=shell,priorClick=clicker;
-const APP=[['news','📰','기사'],['social','＃','여론'],['rank','🏆','법조계 랭킹'],['messages','💬','메시지'],['archives','⚖','판결 기록'],['career','🎖','나의 커리어'],['notes','📝','메모'],['save','💾','저장']];
+const APP=[['news','📰','기사'],['social','＃','여론'],['messages','💬','메시지'],['archives','⚖','판결 기록'],['career','🎖','나의 커리어'],['notes','📝','메모'],];
 function clockData(){
  const d=new Date(),worldDays=Math.max(0,S.week*7+(S.realtimeInbox?.dayProgress||0));
  const gameDay=new Date(Date.UTC(2027,2,1)+worldDays*86400000);
@@ -122,13 +122,12 @@ function priority(){
  const db=S.realtimeInbox,now=Date.now(),D=window.VerdictDocket,cap=D?.MAX_ACTIVE||5,active=openCases().length;
  const offers=(db?.offers||[]).filter(o=>o.status==='available'&&o.expires>now).sort((a,b)=>b.created-a.created);
  const left=o=>{const m=Math.max(1,Math.ceil((o.expires-now)/60000));return m>=60?Math.floor(m/60)+'시간 '+(m%60)+'분':m+'분'};
- const heat=x=>x.importance>=5?'화제성 높음':x.importance>=4?'화제성 보통':'조용한 사건';
  const next=D?new Date(D.nextSlot()).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'';
  const missed=D?.missedToday()||0;
  return '<section class="panel tv-inbox"><div class="row between"><h3>📨 사건 배당</h3><small>맡은 사건 '+active+'/'+cap+'</small></div>'+
  '<p class="muted small">매시 정각 두 사건 중 하나를 고르세요. 3시간 안에 고르지 않으면 둘 다 다른 재판부로 넘어가요.</p>'+
  (offers.length?offers.slice(0,3).map(o=>'<div class="tv-pair"><div class="tv-pair-head"><b>'+new Date(o.created).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})+' 도착</b><span>⏳ '+left(o)+' 남음</span></div>'+
-  (o.options||[]).map((x,k)=>'<div class="tv-offer"><div><b>'+esc(x.title)+'</b><small>'+esc(x.tag)+(x.importance?' · 중요도 '+x.importance+' · 최소 기일 '+(x.importance>=5?4:x.importance>=4?3:2)+'회 · '+heat(x):'')+'</small>'+(x.logline?'<p class="small">'+esc(x.logline)+'</p>':'')+'</div><button class="btn primary mini" data-action="acceptDocket" data-slot="'+esc(o.slot)+'" data-opt="'+k+'" '+(active>=cap?'disabled':'')+'>이 사건 맡기</button></div>').join('')+'</div>').join('')
+  (o.options||[]).map((x,k)=>'<div class="tv-offer"><div><b>'+esc(x.title)+'</b><small>'+esc(x.tag)+'</small>'+(x.logline?'<p class="small">'+esc(x.logline)+'</p>':'')+'</div><button class="btn primary mini" data-action="acceptDocket" data-slot="'+esc(o.slot)+'" data-opt="'+k+'" '+(active>=cap?'disabled':'')+'>이 사건 맡기</button></div>').join('')+'</div>').join('')
  :'<p class="muted small">지금 고를 수 있는 사건이 없어요.</p>')+
  '<p class="small">다음 사건 '+esc(next)+' 도착'+(missed?' · 오늘 다른 재판부로 간 사건 '+missed+'건':'')+(active>=cap?' · <b>자리가 꽉 찼어요. 진행 중인 사건을 먼저 선고하세요.</b>':'')+'</p></section>';
 }
@@ -138,9 +137,10 @@ function hearingCard(c){
 }
 home=function(){
  if(!S.name)return '<div class="panel">판사 프로필을 생성해 커리어를 시작하세요.</div>';
- const t=clockData(),cases=openCases().slice(0,5),articles=window.VerdictMedia?.articles().slice(0,4)||[];
- return '<div class="tv-home"><section class="tv-welcome"><div><span class="eyebrow">THE VERDICT · JUDICIAL CAREER <span class="ver-badge">v'+esc(window.VERDICT_VERSION||'')+' · '+esc(window.VERDICT_RELEASED||'')+'</span></span><h2>오늘도 법정은 열립니다.</h2><p>'+esc(S.name)+' 판사 · '+esc(S.post)+' · 진행 중 '+openCases().length+'건</p></div><div class="tv-judge-photo">'+avatar('self')+'</div></section>'+
- '<section class="tv-clock"><div><small>실제 현재시간</small><strong class="tv-clock-local">'+esc(t.time)+'</strong><span>'+esc(t.weekday)+'</span></div><div><small>게임 달력</small><strong>'+esc(t.gameDate)+'</strong><span>공판이 열릴 때 흘러요</span></div><div><small>다음 배당</small><strong class="tv-clock-next">'+esc(t.next)+'</strong><span>10:00–22:00 · 매시 정각</span></div></section>'+
+ const t=clockData(),cases=openCases().slice(0,5),articles=(window.VerdictMedia?.articles()||[]).slice().sort((a,b)=>(Number(b.day)||0)-(Number(a.day)||0)).slice(0,4);
+ const judgeStyle=window.VerdictJudgeStyle?.describe?.(S)||'판결은 기록으로 말합니다.';
+ return '<div class="tv-home tv-chambers"><section class="tv-welcome"><div><span class="eyebrow">THE VERDICT · JUDICIAL CAREER <span class="ver-badge">v'+esc(window.VERDICT_VERSION||'')+' · '+esc(window.VERDICT_RELEASED||'')+'</span></span><h2>'+esc(judgeStyle)+'</h2><p>'+esc(S.name)+' 판사 · '+esc(S.post)+' · 진행 중 '+openCases().length+'건</p></div><div class="tv-judge-photo">'+avatar('self')+'</div></section>'+
+ '<section class="tv-clock tv-office-clock"><div class="tv-clockface"><small>집무실 시계</small><strong class="tv-clock-local">'+esc(t.time)+'</strong><span>'+esc(t.weekday)+'</span></div><div class="tv-calendar"><small>재판 일정표</small><strong>'+esc(t.gameDate)+'</strong><span>공판이 열릴 때 흘러요</span></div><div><small>다음 배당</small><strong class="tv-clock-next">'+esc(t.next)+'</strong><span>10:00–22:00 · 매시 정각</span></div></section>'+
  priority()+
  '<section class="tv-open-cases"><div class="row between"><h3>⚖ 진행 중인 재판</h3><button class="btn ghost mini" data-action="tab" data-tab="courtList">전체 사건</button></div>'+
  (cases.length?cases.map(hearingCard).join(''):'<p class="muted">배당된 사건이 없습니다.</p>')+'</section>'+
@@ -161,8 +161,8 @@ function ranking(){
  '<details class="tv-law-firms"><summary>전체 로펌 명부 및 등급</summary>'+(S.legalWorld?.firms||[]).map(x=>'<p>'+esc(x.name)+' · 등급 '+x.tier+'/5</p>').join('')+'</details></div>';
 }
 tabletInner=function(){
- if(ui.tabletTab==='rank')return ranking();
- if(ui.tabletTab==='news')return '<h2>📰 법조·사회 뉴스</h2><p class="muted small">가상 언론사 20곳의 사건별 보도. 각 기사는 게임 내 사건에 기반합니다.</p>'+(window.VerdictMedia?.newsFeed(70)||'');
+ if(ui.tabletTab==='rank')ui.tabletTab='career';
+ if(ui.tabletTab==='news')return '<h2>📰 법조·사회 뉴스 · 최신순</h2><p class="muted small">가상 언론사 20곳의 사건별 보도. 각 기사는 게임 내 사건에 기반합니다.</p>'+(window.VerdictMedia?.newsFeed(70)||'');
  if(ui.tabletTab==='social')return '<h2>＃ 시민광장 · 여론</h2><p class="muted small">가상 이용자들의 의견입니다. 댓글 수나 여론은 증거가 아닙니다.</p>'+(window.VerdictMedia?.socialFeed(90)||'');
  if(ui.tabletTab==='settings')return '<h2>⚙ 설정 · 기기 이전</h2><p>진행은 자동 저장되고, 브라우저를 닫아도 같은 기기에서 이어할 수 있어요.</p><details><summary>고급 백업 / 다른 기기로 파일 옮기기</summary><div class="save-buttons"><button class="btn outline" data-action="export">파일로 백업</button><button class="btn outline" data-action="import">백업 파일 불러오기</button></div><input id="importFile" type="file" accept="application/json,.json"></details><p class="muted small">브라우저 데이터 삭제 또는 시크릿 모드에서는 저장이 사라질 수 있습니다. 계정 간 클라우드 동기화는 아직 지원하지 않습니다.</p>';
  return tabletBase();
@@ -172,7 +172,7 @@ tablet=function(){
  return heading('나의 태블릿','기록과 인물, 뉴스를 확인합니다.')+
  '<div class="tv-tablet-top"><span>THE VERDICT OS</span><span>자동 저장 켜짐</span></div>'+
  '<div class="tv-tablet-apps">'+visible.map(([id,icon,label])=>'<button class="tv-tablet-app'+(ui.tabletTab===id?' selected':'')+'" data-action="tablet" data-sub="'+id+'"><span>'+icon+'</span><b>'+label+'</b></button>').join('')+
- '<button class="tv-tablet-app" data-action="safeSave"><span>💾</span><b>저장</b></button></div>'+
+ '</div>'+
  '<div class="tv-save-status" id="verdict-save-status">자동 저장 중 · 브라우저를 닫아도 같은 기기에서 이어할 수 있어요.</div>'+
  '<section class="panel tv-tablet-body">'+tabletInner()+'</section>'+
  '<button class="tv-settings-link" data-action="tablet" data-sub="settings">⚙ 설정 · 기기 이전</button>';

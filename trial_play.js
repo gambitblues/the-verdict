@@ -1598,7 +1598,7 @@ court=function(){
  const tabs=t?tabsFor(c,st):[['case','사건'],['log','기록']];
  if(!tabs.some(v=>v[0]===ui.t4tab))ui.t4tab=tabs[0][0];
  const status=header?.querySelector('.court-play-status');
- if(status&&t)status.innerHTML=st.verdict?`<span>선고 완료</span><span>기일 ${t.daysDone}회</span>`:`<span>${esc(stage(c,st).short)}</span><span>${t.daysDone>t.minDays?`기일 ${t.daysDone}회 · 추가 심리`:`기일 ${t.daysDone}/${t.minDays}`}</span><span>중요도 ${c.importance}</span>`;
+ if(status&&t)status.innerHTML=st.verdict?`<span>선고 완료</span><span>기일 ${t.daysDone}회</span>`:`<span>${esc(stage(c,st).short)}</span><span>${t.daysDone>t.minDays?`기일 ${t.daysDone}회 · 추가 심리`:`기일 ${t.daysDone}/${t.minDays}`}</span>`;
  const crim=isCriminal(c),who=c.who||[];
  const vless=curOf(c)?.victimless;
  const facts=[[crim?'피고인':'원고',NPC[who[crim?0:0]]?.name],vless?['피해자','따로 없음 (검사가 공소를 제기한 사건)']:[crim?(curOf(c)?.bRole||'피해자'):'피고',NPC[who[1]]?.name],['분류',c.tag],['상대 변호사',t?NPC[t.opponent]?.name:null],[crim?'죄명':'청구',crim?(chargeOf(c)?`${chargeOf(c).name} (${chargeOf(c).law})`:null):(claimOf(c)?`${won(claimOf(c).amount)} · ${claimOf(c).what}`:null)],[isDecision(c)?'신청':null,isDecision(c)?tell(c,t,curOf(c).decision.what):null],[isDecision(c)?'진행':'최소 기일',t?(isDecision(c)?'심리기일 1회 뒤 바로 결정':t.minDays+'회'):null],['증거·증인',t?`증거 ${t.evidence.length}건 · 증인 ${t.witnesses.length}명`:null]].filter(v=>v[1]);
