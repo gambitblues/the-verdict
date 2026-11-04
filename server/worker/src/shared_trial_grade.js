@@ -61,7 +61,13 @@ export function evaluateSharedTrial(sheet,actions,judgment,sentence,seed){
  if(!cites.length)return {error:'evaluation_evidence_missing'};
  const dir=DIRECTIONS[judgment.result];
  if(!dir)return {error:'evaluation_choice_invalid'};
- const trial={truth:'did',evidence,witnesses:[],heard,cards:[]};
+ const cards=(actions||[]).filter(a=>a.action_type==='motion'&&a.response?.status==='done'&&
+  ['objection','delay'].includes(a.response?.type)&&
+  ['accept','reject'].includes(a.response?.choice)&&
+  typeof a.response?.valid==='boolean').map(a=>({
+   id:a.action_key,type:a.response.type,valid:a.response.valid,choice:a.response.choice
+  }));
+ const trial={truth:'did',evidence,witnesses:[],heard,cards};
  const start=T.pressStart(Number(sheet.card?.importance)||2,{criminal:sheet.card.kind==='criminal'});
  const media=T.pressDay(start,trial,{twist:false});
  trial.media=media;
