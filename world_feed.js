@@ -225,7 +225,43 @@ function articles(){
  }
  return out;
 }
-/* ---------- news with comments ---------- */
+/* ---------- news with comments and case-specific opinion ---------- */
+/* The card copy is editorially summarized from actual case facts, never a CSS-clipped article. */
+function compactCaseName(c){
+ return shortName(c).replace(/\s*\(\d{4}[.\-]\d{1,2}[.\-]\d{1,2}\)/g,'').trim();
+}
+function articlePreview(a,c){
+ const source=a.base?.body||a.body||'';
+ const facts=material(c,S.cases[c.id]?.trial4);
+ const e=facts.evs.find(x=>x.decision!=='exclude'&&x.shows)||facts.evs.find(x=>x.title)||null;
+ const issue=facts.issues.find(x=>x.title)||null;
+ const side=a.lean==='p'?(c.kind==='criminal'?'검찰':'원고'):(c.kind==='criminal'?'변호인':'피고');
+ const name=compactCaseName(c);
+ const angle=issue?.title||e?.title||'핵심 쟁점';
+ const headline=a.phase==='after'
+  ? `[판결] ${name} · ${facts.f?.label||'선고 결과'}`
+  : `[전망] ${name} · ${angle}`;
+ // Summarize in full sentences from the public claims and courtroom record, not by cutting characters.
+ const evidence=e?.shows?.replace(/[.。]$/,'')||'';
+ const sideStatement=(a.lean==='p'?facts.claimP:facts.claimD)||'';
+ const context=sideStatement|| (evidence?`법정 자료 '${e.title}'의 내용은 ${evidence}.`:`'${angle}'에 대한 심리가 이어지고 있다.`);
+ const summary=a.phase==='after'
+  ? `${facts.f?.label||'선고'} 판결이 나왔다. ${side} 측 보도는 '${angle}'에 대한 판단을 중심으로 평가한다.`
+  : `주요 쟁점은 '${angle}'이다. ${side} 측 입장: ${context}`;
+ return {headline,summary};
+}
+function opinionStats(c){
+ const t=S.cases[c.id]?.trial4,mix=stanceMix(t),f=t?.final;
+ if(!f)return {labels:[c.kind==='criminal'?'처벌 요구':'원고 지지',c.kind==='criminal'?'피고인 동정':'피고 지지','판단 보류'],values:[mix.pro,mix.con,mix.mid]};
+ const agree=T.opinionMatch(t?.media?.O||0,f.dir);
+ const a=Math.round(agree*0.8),b=Math.round((100-agree)*0.8);
+ return {labels:['판결 지지','판결 반대','판단 보류'],values:[a,b,100-a-b]};
+}
+function opinionLine(c){
+ const o=opinionStats(c);
+ return `<div class="wf-news-opinion" aria-label="사건 여론 통계">${o.labels.map((label,i)=>`<span><i class="wf-opinion-dot wf-opinion-${i}"></i>${esc(label)} <b>${o.values[i]}%</b></span>`).join('')}</div>`;
+}
+
 /* Headlines and two-line article previews are visible without opening a disclosure.
  * Page state is per browser visit and is never written into career saves. */
 const NEWS_PAGE_SIZE=10;
@@ -240,7 +276,8 @@ function newsFeed(limit=60){
  return '<div class="tv-news-list">'+page.map(a=>{
   const id=a.caseId+':art'+a.index,n=6+hash(id)%11,c=CASES.find(x=>x.id===a.caseId);
   return `<article class="tv-media-card wf-news-compact"><div class="tv-media-head"><b>${esc(a.outlet)}</b><span class="lean ${a.lean||''}">${esc(a.frame)}</span></div>
-   <strong class="tv-news-title">${esc(a.title)}</strong><p class="tv-news-summary">${esc(a.body)}</p>
+   ${c?(()=>{const copy=articlePreview(a,c);return `<strong class="tv-news-title">${esc(copy.headline)}</strong><p class="tv-news-summary">${esc(copy.summary)}</p><details class="wf-article-full"><summary>기사 전문 보기</summary><p>${esc(a.body)}</p></details>`})():`<strong class="tv-news-title">${esc(a.title)}</strong><p class="tv-news-summary">${esc(a.body)}</p>`}
+   ${c?opinionLine(c):''}
    ${a.reporter?`<button class="tv-reporter" data-action="reporter" data-i="${REPORTERS.indexOf(a.reporter)}">✍ ${esc(a.reporter.name)} 기자</button>`:''}
    <button class="wf-link" data-action="wfopen" data-id="${esc(id)}">💬 ${open.has(id)?'댓글 접기':`댓글 ${n}개`}</button>
    ${open.has(id)&&c?`<div class="wf-thread">${threadView(thread(c,'art'+a.index,n))}</div>`:''}</article>`;
@@ -427,7 +464,8 @@ function messagesView(){
 
 // The same one-line title and two-line text in home and tablet news, regardless of older CSS.
 const articleStyle=document.createElement('style');
-articleStyle.textContent='.tv-news-title,.tv-headline .tv-news-title,.tv-media-card .tv-news-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:1!important;line-clamp:1!important;overflow:hidden!important;white-space:normal!important}.tv-news-summary,.tv-headline .tv-news-summary,.tv-media-card .tv-news-summary{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;line-clamp:2!important;overflow:hidden!important;white-space:normal!important;line-height:1.5!important;margin:5px 0 0}.wf-news-compact .tv-reporter{display:block;margin-top:7px}.tv-news-pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding:15px 0}';
+articleStyle.textContent='.tv-news-title,.tv-headline .tv-news-title,.tv-media-card .tv-news-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:1!important;line-clamp:2!important;overflow:hidden!important;white-space:normal!important}.tv-news-summary,.tv-headline .tv-news-summary,.tv-media-card .tv-news-summary{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;line-clamp:initial!important;overflow:visible!important;white-space:normal!important;line-height:1.5!important;margin:5px 0 0}.wf-news-compact .tv-reporter{display:block;margin-top:7px}.tv-news-pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding:15px 0}';
+articleStyle.textContent += '.wf-news-opinion{display:flex;flex-wrap:wrap;gap:5px 14px;margin:9px 0 3px;padding:7px 0;border-top:1px solid #e6ddcf;font-size:12px;color:#5c6572}.wf-news-opinion span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.wf-opinion-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#c8442f}.wf-opinion-1{background:#2f62a8}.wf-opinion-2{background:#9a9790}.wf-article-full{margin:6px 0;color:#39465a;font-size:13px}.wf-article-full summary{cursor:pointer;color:#41617f;font-weight:650}.wf-article-full p{white-space:normal;line-height:1.7}';
 document.head.appendChild(articleStyle);
 
 /* ---------- hooks ---------- */
@@ -469,7 +507,7 @@ function sharedWorldTabletNews(){
 const priorTablet=tabletInner;
 tabletInner=function(){
  if(ui.tabletTab==='messages')return messagesView();
- if(ui.tabletTab==='social')return '<h2>＃ 여론</h2><p class="muted small">사건마다 여론이 어떻게 움직였는지, 지금 사람들이 무슨 말을 하는지 봅니다.</p>'+opinionFeed();
+ if(ui.tabletTab==='social'){ui.tabletTab='news';}
  if(ui.tabletTab==='news')return '<h2>📰 기사</h2><p class="muted small">내 사건의 기사와 서버 공통 세계의 공개 기록을 구분해 볼 수 있습니다.</p>'+sharedWorldTabletNews()+newsFeed(60);
  return priorTablet();
 };
