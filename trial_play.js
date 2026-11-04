@@ -1240,6 +1240,9 @@ function tick(){
 const byWord={검찰:'검찰 제출',변호인:'변호인 제출',원고:'원고 제출',피고:'피고 제출'};
 function evidenceCard(e,t,locked,c){
  const d=evDetail(c,e),dis=locked?'disabled':'';
+ if(d&&window.VerdictAI?.on)void window.VerdictAI.evidence(c,t,e,d);
+ const aiSource=[d?.excerpt||e.scope||'',d?.how?'확보 경위: '+d.how:'',e.note?'자료의 한계: '+e.note:''].filter(Boolean).join(' ');
+ const aiNote=t.aiEvidence?.[e.id]?.source===aiSource?t.aiEvidence[e.id]?.text:null;
  const opt=(v,l)=>`<button class="t4-chip ${e.decision===v?'on':''}" data-action="t4" data-kind="decide" data-id="${esc(e.id)}" data-choice="${v}" ${dis||e.decision===v?'disabled':''}>${l}</button>`;
  const iss=issuesOf(c).find(i=>i.id===d?.issue);
  return `<article class="t4-card t4-ev"><header><b>${esc(e.title)}</b>${e.late?'<span class="t4-tag new">새로 제출됨</span>':''}</header>
@@ -1248,6 +1251,7 @@ function evidenceCard(e,t,locked,c){
  ${d?.excerpt?(window.VerdictVisuals?.evidence(e,d,tell(c,t,d.excerpt),tell(c,t,d.when||''))||`<blockquote class="t4-excerpt">${esc(tell(c,t,d.excerpt))}</blockquote>`):''}
  ${d?.how?`<p class="small"><b>확보 경위</b> ${esc(tell(c,t,d.how))}</p>`:''}
  ${e.note?`<p class="small"><b>한계</b> ${esc(e.note)}</p>`:''}
+ ${aiNote?`<aside class="t4-ai-evidence"><b>AI 증거 해설 · 참고용</b><p>${esc(aiNote)}</p><small>판결 근거에는 위 원본 기록만 사용됩니다.</small></aside>`:''}
  ${compareBox(c,t,e)}
  ${iss?`<p class="t4-issue-tag">쟁점 · ${esc(iss.title)}</p>`:''}
  ${window.VerdictV6?.benchAdvice?.(c,t,e)||''}
