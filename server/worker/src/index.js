@@ -16,7 +16,7 @@
  */
 import TerraCloud from './terra_cloud_staging.cjs';
 import {publicCaseSheet,initialEvidence} from './public_case_projection.js';
-import {courtroomPlan} from './shared_courtroom.js';
+import {courtroomPlan,resolveCourtOrder} from './shared_courtroom.js';
 import {validateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
 import {npcPrompt,articlePrompt,judgmentPrompt,checkNpc,checkArticle,checkJudgment,openingPrompt,checkOpening,benchPrompt,checkBench,closingPrompt,checkClosing,exchangePrompt,checkExchange,verifyPrompt} from './prompts.js';
 
@@ -336,6 +336,44 @@ export async function handle(req,env,fetcher=fetch){
    return json({ok:true,caseId,kind,key,response:result},200,head);
   }catch{return json({error:'court_unavailable'},503,head)}
  }
+ // Ordered evidence is released only after a SECOND server-confirmed hearing.
+ if(url.pathname==='/world/court/order/resolve'&&req.method==='POST'){
+  if(env.P4_COURT_ACTIONS_ENABLED!=='1')return json({error:'feature_disabled'},404,head);
+  let input;try{input=await req.json()}catch{return json({error:'bad_json'},400,head)}
+  const id=input?.caseId,key=input?.key,hearing=input?.hearingIndex;
+  if(typeof id!=='string'||!/^[a-z][a-z0-9-]{3,79}$/.test(id)||
+     typeof key!=='string'||!/^[a-zA-Z0-9:_-]{1,80}$/.test(key)||
+     !Number.isInteger(hearing)||hearing<2||hearing>200)
+   return json({error:'invalid_order_request'},400,head);
+  const encoded=encodeURIComponent(id);
+  const get=async path=>{
+   const r=await fetcher(`${env.SUPABASE_URL}/rest/v1/${path}`,{headers:svc(env)});
+   if(!r.ok)throw Error('store_unavailable');
+   const rows=await r.json();if(!Array.isArray(rows))throw Error('store_unavailable');return rows;
+  };
+  try{
+   const [cases,hearings,actions]=await Promise.all([
+    get(`case_stock?select=assigned_to,state,sheet&case_id=eq.${encoded}&limit=1`),
+    get(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encoded}&judge_id=eq.${encodeURIComponent(uid)}&hearing_index=eq.${hearing}&limit=1`),
+    get(`shared_court_actions?select=action_type,action_key,hearing_index,response&case_id=eq.${encoded}&action_key=eq.${encodeURIComponent(key)}&limit=10`)
+   ]);
+   if(cases[0]?.assigned_to!==uid||cases[0]?.state!=='assigned')
+    return json({error:'case_not_found'},404,head);
+   if(hearings[0]?.state!=='completed')return json({error:'hearing_not_open'},409,head);
+   const request=actions.find(a=>a.action_type==='order');
+   if(!request||request.hearing_index>=hearing)return json({error:'order_not_due'},409,head);
+   const truth=await get(`world_secrets?select=truth&case_id=eq.${encoded}&limit=1`);
+   const plan=resolveCourtOrder(cases[0].sheet,truth[0]?.truth?.branch,key);
+   if(plan.error)return json({error:plan.error},409,head);
+   const saved=await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/shared_order_result_record`,{
+    method:'POST',headers:svc(env),body:JSON.stringify({
+     p_case:id,p_judge:uid,p_hearing:hearing,p_key:key,p_response:plan.response})});
+   if(!saved.ok)return json({error:'order_result_conflict'},409,head);
+   const result=await saved.json();
+   return json({ok:true,caseId:id,key,response:result},200,head);
+  }catch{return json({error:'court_unavailable'},503,head)}
+ }
+
  // The player's prior courtroom results are isolated from the public news feed.
  if(url.pathname==='/world/court/history'&&req.method==='GET'){
   if(env.P4_COURT_ACTIONS_ENABLED!=='1')return json({error:'feature_disabled'},404,head);
