@@ -85,5 +85,5 @@ export function evaluateSharedTrial(sheet,actions,judgment,sentence,seed){
   method:'VerdictTrialCore.skill/evaluate',
   inputMode:'server_disclosed_court_record',
   publicOpinion:{H:media.H,O:media.O,S:media.S,match:audience},
-  parityLimit:'private opponent-card decisions and media life simulation not stored in shared record'};
+  parityLimit:'private witness personality, persistent NPC relationships, and media-life feedback are not reproduced by the shared grading projection'};
 }
