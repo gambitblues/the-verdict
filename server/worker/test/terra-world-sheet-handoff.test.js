@@ -110,6 +110,10 @@ test('P4 new authored seed can enter trusted shared docket only after determinis
  c.records[0].authorLeadId='e1';
  c.records[2].authorLeadId='e2';
  const sh=sheet(c);sh.immutableFacts=facts;
+ sh.records.forEach(r=>{r.review={
+  strength:60,flaw:0,flawType:'none',side:r.by==='변호인'?'d':'p'
+ }});
+
  sh.orders=[{record:'r-log',ask:'출입 통제 원장의 원본 제출을 명한다.',result:{did:'done',didnt:'done',reason:'done'}}];
  const seed={
   format:'verdict-author-seed/v1',id:c.id,status:'draft',category:'violence',kind:'criminal',
@@ -135,4 +139,8 @@ test('P4 new authored seed can enter trusted shared docket only after determinis
  const denied=Admission.verifyForAdmission(seed,c,fake);
  assert.equal(denied.ok,false);
  assert.ok(denied.errors.includes('immutable_author_facts_not_preserved'));
+ const ungraded=structuredClone(sh);delete ungraded.records[0].review;
+ const blocked=Admission.verifyForAdmission(seed,c,ungraded);
+ assert.ok(blocked.errors.some(e=>e.startsWith('ungraded_evidence:')));
+
 });
