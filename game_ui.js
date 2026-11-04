@@ -117,6 +117,28 @@ function clockData(){
  else candidate.setHours(hour+1);
  return {time:format(),gameDate,next:candidate.toLocaleString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}),weekday:d.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})};
 }
+/* Career-facing judicial identity; derives from actual recorded outcomes, never invents an alignment score. */
+function judgeIdentity(){
+ const done=completed().filter(c=>S.cases?.[c.id]?.verdict);
+ if(done.length<3)return '사실과 기록을 쌓아가는 판사';
+ const types=done.reduce((o,c)=>{const v=String(S.cases[c.id].verdict||'');if(/settle|화해|조정/.test(v))o.mediation++;else if(/acquit|denied|기각|무죄/.test(v))o.strict++;else o.affirm++;return o},{mediation:0,strict:0,affirm:0});
+ if(types.mediation>=Math.max(2,Math.ceil(done.length*.4)))return '대화와 조정의 가능성을 중시하는 판사';
+ if(types.strict>=Math.ceil(done.length*.55))return '입증의 빈틈을 쉽게 넘기지 않는 판사';
+ if(types.affirm>=Math.ceil(done.length*.6))return '확인된 사실에 단호하게 결론 내리는 판사';
+ return '사건마다 다른 사정을 세심히 살피는 판사';
+}
+window.VerdictJudgeStyle={describe:judgeIdentity};
+/* A career chronicle is a read-only projection from saved journal records. */
+function careerChronicle(){
+ const entries=(S.journal||[]).filter(e=>e&&/(판결|선고|승진|인사|부임|이동|상|퇴임|은퇴|커리어|사회 경력|인간관계)/.test(String(e.type||'')+' '+String(e.title||'')))
+  && !/(베타|배포|QA|업데이트|버전|테스트|설치|원형|패키지|100개)/i.test(String(e.title||'')+' '+String(e.body||'')))
+  .sort((a,b)=>Number(b.week||0)-Number(a.week||0)).slice(0,100);
+ const years=Math.floor(Math.max(0,Number(S.week)||0)/52);
+ const reviewPeriods=Math.floor(Math.max(0,Number(S.week)||0)/39);
+ const intro='<section class="tv-career-summary"><h3>'+esc(S.name||'법관')+' 판사의 법관 일대기</h3><p>'+esc(S.post||'판사')+'로 재직하며, '+completed().length+'건의 사건에 판결을 남겼습니다. '+esc(judgeIdentity())+'라는 평판은 지금까지의 판결 유형에서 조심스럽게 읽을 수 있습니다.</p><small>법관 경력 약 '+years+'년 · 기록된 주요 장면 '+entries.length+'건</small></section>';
+ const evaluation=reviewPeriods?'<section class="tv-career-review"><h3>정기 경력 회고</h3><p>게임 시작 이후 9개월 단위의 회고 시점 '+reviewPeriods+'회가 지났습니다. 개별 사건 점수 대신 누적 판결과 경력의 변화를 돌아봅니다. 이 문구는 정식 인사평가 결과가 아닙니다.</p></section>':'<p class="muted small">첫 정기 경력 회고는 게임 시간 약 9개월이 지난 뒤 표시됩니다.</p>';
+ return intro+evaluation+'<div class="tv-career-timeline">'+(entries.length?entries.map(e=>'<article><small>'+esc(typeof day==='function'?day(e.week):'경력 기록')+' · '+esc(e.type||'')+'</small><h4>'+esc(e.title||'법관 경력의 한 장면')+'</h4><p>'+esc(e.body||'')+'</p></article>').join(''):'<p>앞으로의 판결과 인연이 여기에 쌓입니다.</p>')+'</div>';
+}
 window.VerdictDockPanel=()=>priority();
 function priority(){
  const db=S.realtimeInbox,now=Date.now(),D=window.VerdictDocket,cap=D?.MAX_ACTIVE||5,active=openCases().length;
@@ -162,6 +184,7 @@ function ranking(){
 }
 tabletInner=function(){
  if(ui.tabletTab==='rank')ui.tabletTab='career';
+ if(ui.tabletTab==='career')return careerChronicle();
  if(ui.tabletTab==='news')return '<h2>📰 법조·사회 뉴스 · 최신순</h2><p class="muted small">가상 언론사 20곳의 사건별 보도. 각 기사는 게임 내 사건에 기반합니다.</p>'+(window.VerdictMedia?.newsFeed(70)||'');
  if(ui.tabletTab==='social')return '<h2>＃ 시민광장 · 여론</h2><p class="muted small">가상 이용자들의 의견입니다. 댓글 수나 여론은 증거가 아닙니다.</p>'+(window.VerdictMedia?.socialFeed(90)||'');
  if(ui.tabletTab==='settings')return '<h2>⚙ 설정 · 기기 이전</h2><p>진행은 자동 저장되고, 브라우저를 닫아도 같은 기기에서 이어할 수 있어요.</p><details><summary>고급 백업 / 다른 기기로 파일 옮기기</summary><div class="save-buttons"><button class="btn outline" data-action="export">파일로 백업</button><button class="btn outline" data-action="import">백업 파일 불러오기</button></div><input id="importFile" type="file" accept="application/json,.json"></details><p class="muted small">브라우저 데이터 삭제 또는 시크릿 모드에서는 저장이 사라질 수 있습니다. 계정 간 클라우드 동기화는 아직 지원하지 않습니다.</p>';

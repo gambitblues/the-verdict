@@ -1561,8 +1561,7 @@ function resultPanel(c,st){
  const groups={anger:'분노',sympathy:'동정',cynic:'냉소',legal:'법리 옹호',flaw:'법리 옹호'};
  const comments=(f.sns||[]).map(x=>`<div class="t4-sns ${x.pol==='+'?'pos':x.pol==='-'||x.pol==='?'?'neg':''}"><b>${esc(x.nick)}</b>${x.cluster?` <span class="t4-tag">${groups[x.cluster]||''}</span>`:''}<p>${esc(x.text)}</p><small>▲ ${x.likes}</small>${x.reply?`<div class="t4-reply">↳ <b>${esc(x.reply.nick)}</b> ${esc(x.reply.text)}</div>`:''}</div>`).join('');
  return `<section class="panel t4"><h3>📰 선고 이후</h3>
- <div class="t4-stats"><span>판결 실력 <b>${f.skill}</b></span><span>여론과 맞은 정도 <b>${f.match}</b></span><span>판결 리뷰 <b>${reviewed?f.review:'공개 전'}</b></span></div>
- ${reviewed?`<p class="small">${f.evaluators.map(e=>`${esc(e.name)} ${e.score}점`).join(' · ')}</p>`:`<p class="muted small">판결 리뷰는 ${Math.max(1,Math.ceil((f.reviewAt-now())/HOUR))}시간 뒤 공개됩니다.</p>`}
+ <p class="muted small">선고 직후 개별 재판의 점수는 공개되지 않습니다. 판결 이유와 후속 변화는 법정 기록에서 확인하고, 누적된 경력 평가는 커리어 화면에서 확인할 수 있습니다.</p>
  ${window.VerdictV6?.truthPanel?.(c,t)||''}${judgmentView(f.judgmentAI||f.judgment)}${lifeAfter(st,c)}
  <!-- itemised self-check kept in the save (f.items) and in the score only; not shown (v6.9) -->
  ${dk?`<h4>📋 판결 요약</h4><div class="t4-summary">${dk.summary.map(l=>`<div>${esc(l)}</div>`).join('')}</div>
