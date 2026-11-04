@@ -896,8 +896,11 @@ function askRequests(force){
   if(filed){
    filed.filedBy=card.by;filed.filedEvent=true;
    (t.filingHistory??=[]).push(card.by);
-   t.notices.push({type:'filing',title:filed.title,by:card.by,day:t.day});
    addLog(t,'새 증거',`${toWord(c,card.by)} · ${filed.title} 제출`);
+   t.changes={day:t.day,items:[...((t.changes?.day===t.day&&t.changes.items)||[]),
+    {key:'filed:'+filed.id,kind:'done',text:`${toWord(c,card.by)}가 '${filed.title}'을 추가 제출했어요. 증거 탭에서 내용을 확인하세요.`}]};
+   ui.t4ev=null;
+   toast(`${toWord(c,card.by)} · 새 증거 제출: ${filed.title}`);
   }
   save();return askNotices(false);
  }
