@@ -45,7 +45,7 @@ const RULES=`THE VERDICT용 독립적인 한국 성인 법정 사건의 제작�
 placeholder, '원문 확인 필요', 동일한 증거 문장 재활용을 금지한다.`;
 function stageOneInput(seed){
  return `다음 소재를 사실과 인물 식별정보 모두 가상으로 제작: ${JSON.stringify(seed)}
-반드시 verdict-terra-candidate/v1 JSON으로 반환. status는 draft, source는 {type:"original",note:"..."};
+입력 소재에 포함된 authorSeedFormat=verdict-author-seed/v1 의 immutableFacts는 id/text 전체를 글자 하나 바꾸지 말고 candidate.immutableFacts 배열에 보존하라. source evidenceLeads의 confirmed/possible/unavailable 구분을 어기지 마라. unknowns의 가설을 확정 사실로 만들지 마라.\n반드시 verdict-terra-candidate/v1 JSON으로 반환. status는 draft, source는 {type:"original",note:"..."};
 card {kind,category,title,summary}, premise {cause,action,aftermath},
 scene {location,observed,uncertainty}, records는 3건 이상(최소 1개 최초 제출, 최소 1개 추후 제출,
 각 record에 id,title,kind,how,limitation,first,by);
@@ -65,7 +65,7 @@ function stageTwoInput(candidate){
  return `다음 후보의 숨긴 세계와 원문을 한 글자도 바꾸지 않고,
 verdict-world-sheet/v1 정식 세계 시트 JSON을 완성하라:
 ${JSON.stringify(candidate)}
-필수: format, id, status:"draft", source:{type:"original",note},
+candidate.immutableFacts 배열이 있으면 그대로 sheet.immutableFacts에 복사하라. 이 고정 사실의 의미를 거꾸로 해석하지 말라.\n필수: format, id, status:"draft", source:{type:"original",note},
 card는 후보 kind/category/title/summary 그대로, accused:"A",complainant:"B",
 형사 card.charge {name,law,min,max,life,fine}, 민사 claim {amount,fair:[min,max],what},
 결정형 decision {what,yes,no};
