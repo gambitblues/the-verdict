@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import Converter from '../src/terra_world_sheet_handoff.cjs';
 import Generator from '../src/terra_case_generator.cjs';
 import Pipeline from '../src/terra_case_pipeline.cjs';
+import Admission from '../src/terra_auto_admission.cjs';
 const fact='작성된 시각과 기록을 비교하여 공간과 관찰 범위를 구체적으로 확인하였다.';
 function prepared(){
  const c={format:'verdict-terra-candidate/v1',id:'terra-handoff-001',status:'review',
@@ -95,4 +96,42 @@ test('repair cannot be used to rewrite a candidate with missing review fields',a
   fetcher:async()=>{calls++;throw Error('must not call API')}
  });
  assert.equal(result.ok,false);assert.equal(result.stage,'candidate-QA');assert.equal(calls,0);
+});
+
+test('P4 new authored seed can enter trusted shared docket only after deterministic QA',()=>{
+ const c=prepared();c.status='draft';
+ const factTexts=[
+  '창고 통로에서 두 당사자가 마주친 당시 경비실의 출입 시각 기록이 존재한다.',
+  '피고인과 상대방은 다툼이 시작되기 전 같은 복도를 지나가고 있었다.',
+  '복도 앞 감시영상은 해당 복도의 움직임만 기록하며 건물 내부 행동을 보여주지 않는다.'
+ ];
+ const facts=factTexts.map((text,i)=>({id:'f'+(i+1),text}));
+ c.immutableFacts=facts;
+ c.records[0].authorLeadId='e1';
+ c.records[2].authorLeadId='e2';
+ const sh=sheet(c);sh.immutableFacts=facts;
+ const seed={
+  format:'verdict-author-seed/v1',id:c.id,status:'draft',category:'violence',kind:'criminal',
+  title:c.card.title,opening:c.card.summary+' 최초 신고 당시 양측의 행동과 출입 시간이 쟁점이었다.',
+  immutableFacts:factTexts.map((fact,i)=>({id:'f'+(i+1),fact,certainty:'confirmed'})),
+  people:[{id:'A',role:'피고인',knowledge:'자신의 당시 행동에 관한 일부 사실을 기억하고 있다.'},
+          {id:'B',role:'피해자',knowledge:'복도에서 본 움직임 일부를 기억하고 있다.'}],
+  evidenceLeads:[
+   {id:'e1',title:'복도 감시영상',exists:'confirmed',source:'경비실 원본 보관',reveals:'출입 시각과 이동을 확인할 수 있다.',limit:'건물 안쪽의 신체 접촉은 볼 수 없다.'},
+   {id:'e2',title:'출입통제 원장',exists:'possible',source:'건물 관리인 보관',reveals:'카드 출입 로그를 볼 수 있다.',limit:'카드 소지자와 실제 사용자가 같다고 단정할 수 없다.'}
+  ],
+  contestedQuestions:['접촉 당시 신체 행동의 실제 경위를 확인해야 한다.'],
+  unknowns:[],source:{type:'original',note:'실제 사례와 관계없는 독립 가상 사건만 작성하였다.'}
+ };
+ const result=Admission.verifyForAdmission(seed,c,sh);
+ assert.equal(result.ok,true,JSON.stringify(result.errors));
+ assert.equal(result.payload.p_id,c.id);
+ assert.equal(result.payload.p_verification.completedSimulations,18);
+ assert.match(result.payload.p_candidate_hash,/^[a-f0-9]{64}$/);
+ assert.match(result.payload.p_sheet_hash,/^[a-f0-9]{64}$/);
+ assert.ok(['did','didnt','reason'].includes(result.branch));
+ const fake=structuredClone(sh);fake.immutableFacts[0].text='AI가 바꿔버린 사실';
+ const denied=Admission.verifyForAdmission(seed,c,fake);
+ assert.equal(denied.ok,false);
+ assert.ok(denied.errors.includes('immutable_author_facts_not_preserved'));
 });
