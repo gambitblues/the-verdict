@@ -11,7 +11,7 @@ export function courtUI(page,{rule='reject'}={}){
   if(r.querySelector('[data-kind="card"][data-choice]'))return 'request';
   if(r.querySelector('[data-action="v6dept"]'))return 'season';
   if(r.querySelector('[data-action="t4end"][data-ok]'))return 'end-confirm';
-  if(r.querySelector('.modal-actions [data-action="dismiss"]'))return 'notice';   // 확인 / 닫기 (a filing may also offer '증거 보기')
+  if(r.querySelector('.modal-actions [data-action="dismiss"]')||r.querySelector('.modal-actions [data-action="t4go"][data-go="evidence"]'))return 'notice';   // 확인 / 닫기 (a filing may also offer '증거 보기')
   return 'other: '+r.innerText.replace(/\s+/g,' ').slice(0,120)});
  const sig=()=>page.evaluate(()=>String(ui.modal||''));
  const gone=before=>page.waitForFunction(b=>String(ui.modal||'')!==b,before,{timeout:10000});
@@ -25,7 +25,7 @@ export function courtUI(page,{rule='reject'}={}){
    await btn.click();
    await page.waitForFunction(i=>!!S.cases[ui.caseId]?.trial4?.cards.find(v=>v.id===i)?.choice,id,{timeout:10000});   // the ruling is recorded
   }else if(k==='season'){await page.locator('#modal-root [data-action="v6dept"]').first().click();await gone(before)}
-  else if(k==='notice'||k==='end-confirm'){await page.locator('#modal-root .modal-actions [data-action="dismiss"]').first().click();await gone(before)}
+  else if(k==='notice'||k==='end-confirm'){const close=page.locator('#modal-root .modal-actions [data-action="dismiss"]');const target=await close.count()?close:page.locator('#modal-root .modal-actions [data-action="t4go"][data-go="evidence"]');await target.first().click();await gone(before)}
   else throw new Error('unknown popup — '+k);
   return k;
  }
@@ -75,7 +75,7 @@ export function courtUI(page,{rule='reject'}={}){
   await page.waitForFunction(o=>(S.cases[ui.caseId].trial4.courtOrders||[]).length>o,o0,{timeout:10000});await settle();return (await trial()).orders-o0}
  /* every ruling of the day is in the log exactly once; orders and questions are never duplicated */
  const audit=()=>page.evaluate(()=>{const t=S.cases[ui.caseId].trial4,out=[];
-  const ruled=t.cards.filter(v=>v.choice&&v.type!=='media').length,logged=t.log.filter(l=>l.day===t.day&&(l.kind==='이의'||l.kind==='연기')&&/: (받아들임|받아들이지 않음|기각)$/.test(l.text)).length;
+  const ruled=t.cards.filter(v=>v.choice&&(v.type==='objection'||v.type==='delay')).length,logged=t.log.filter(l=>l.day===t.day&&(l.kind==='이의'||l.kind==='연기')&&/: (받아들임|받아들이지 않음|기각)$/.test(l.text)).length;
   if(ruled!==logged)out.push(`day ${t.day}: ${ruled} rulings, ${logged} in the log`);
   const ids=(t.courtOrders||[]).map(o=>o.id||o.key+':'+o.day);if(new Set(ids).size!==ids.length)out.push('an order was recorded twice');
   t.witnesses.forEach((w,i)=>{const a=w.askedIds||[];if(new Set(a).size!==a.length)out.push(`witness ${i}: a question was asked twice`)});
