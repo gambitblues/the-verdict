@@ -53,6 +53,15 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
   return r.json();
  };
  try{
+  if(url.pathname==='/world/panel/bench'&&req.method==='GET'){
+   const bench=await rpc('shared_joint_bench',{p_case:caseId,p_actor:uid});
+   if(!bench||!Array.isArray(bench.seats)||bench.seats.length!==3||
+    bench.seats[0]?.kind!=='human'||bench.seats[0]?.role!=='presiding'||
+    bench.seats[1]?.role!=='associate'||bench.seats[2]?.kind!=='npc'||
+    bench.seats[2]?.role!=='associate')
+    return response({error:'bench_invalid'},503);
+   return response({ok:true,bench});
+  }
   if(url.pathname==='/world/panel/case'&&req.method==='GET'){
    const panels=await read('shared_joint_panels?select=chair_id,peer_id&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1');
    const bench=panels[0];
@@ -62,8 +71,21 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    const secret=await read('world_secrets?select=truth&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1');
    const branch=secret[0]?.truth?.branch;
    if(!['did','didnt','reason'].includes(branch))return response({error:'case_not_sealed'},409);
-   const actions=await read('shared_court_actions?select=action_type,action_key,response,hearing_index,game_day&case_id=eq.'+encodeURIComponent(caseId)+'&order=created_at.asc&limit=250');
-   return response({ok:true,case:publicCaseSheet(row.sheet,caseId),records:initialEvidence(row.sheet,caseId,branch),actions,role:bench.chair_id===uid?'chair':'peer'});
+   const [actions,hearings,clock,judgments]=await Promise.all([
+    read('shared_court_actions?select=action_type,action_key,response,hearing_index,game_day&case_id=eq.'+encodeURIComponent(caseId)+'&order=created_at.asc&limit=250'),
+    read('shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.'+encodeURIComponent(caseId)+'&judge_id=eq.'+encodeURIComponent(bench.chair_id)+'&order=hearing_index.desc&limit=1'),
+    read('shared_world_clock?select=game_day&id=eq.main&limit=1'),
+    read('shared_case_judgments?select=case_id&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1')
+   ]);
+   const hearing=hearings[0],worldDay=clock[0]?.game_day;
+   const canAct=!!hearing&&hearing.state==='completed'&&hearing.completed_game_day===worldDay&&!judgments.length;
+   const isChair=bench.chair_id===uid;
+   return response({ok:true,case:publicCaseSheet(row.sheet,caseId),records:initialEvidence(row.sheet,caseId,branch),
+    actions,role:isChair?'chair':'associate',court:{
+     worldDay,hearingIndex:canAct?hearing.hearing_index:null,
+     canAct:canAct&&isChair,canObserve:canAct,canOpenHearing:isChair,
+     judgmentPublished:judgments.length>0
+    }});
   }
   if(url.pathname==='/world/panel/open'&&isPost){
    if(!validUuid(input.peerId)||typeof input.npcId!=='string'||input.npcId.length>120)
