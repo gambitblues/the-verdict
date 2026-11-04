@@ -299,7 +299,7 @@ export async function handle(req,env,fetcher=fetch){
     return rows;
    };
    const [cases,clocks,judgments]=await Promise.all([
-    query(`case_stock?select=assigned_to,state&case_id=eq.${encodeURIComponent(id)}&limit=1`),
+    query(`case_stock?select=assigned_to,state,sheet&case_id=eq.${encodeURIComponent(id)}&limit=1`),
     query('shared_world_clock?select=game_day&id=eq.main&limit=1'),
     query(`shared_case_judgments?select=case_id&case_id=eq.${encodeURIComponent(id)}&limit=1`)
    ]);
@@ -309,9 +309,15 @@ export async function handle(req,env,fetcher=fetch){
     return json({error:'case_not_found'},404,head);
    const hearings=await query(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encodeURIComponent(id)}&judge_id=eq.${encodeURIComponent(owner)}&state=eq.completed&order=hearing_index.desc&limit=1`);
    const day=clocks[0]?.game_day,hearing=hearings[0]||null;
+   const actions=hearing?await query('shared_court_actions?select=action_type,action_key,response,hearing_index&case_id=eq.'+
+    encodeURIComponent(id)+'&order=created_at.asc&limit=250'):[];
+   const readiness=sharedDeliberationReadiness(cases[0]?.sheet,actions,hearing?.hearing_index||0);
    return json({ok:true,caseId:id,worldDay:day,role,canBegin:role==='chair',
      hearingIndex:hearing&&hearing.completed_game_day===day&&!judgments.length?hearing.hearing_index:null,
-     canAct:!!hearing&&hearing.completed_game_day===day&&!judgments.length},200,head);
+     canAct:!!hearing&&hearing.completed_game_day===day&&!judgments.length,
+     minimumHearings:readiness.minimumHearings,
+     canDeliberate:!!hearing&&hearing.state==='completed'&&readiness.ready&&!judgments.length,
+     pendingOrders:readiness.pendingOrders},200,head);
   }catch{return json({error:'court_unavailable'},503,head)}
  }
 
