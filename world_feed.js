@@ -374,7 +374,7 @@ function scan(){
   const has=k=>threads().some(x=>x.id===k+':'+c.id);
   if(t.final&&!has('press')&&(t.final.media?.H??0)>=50){addThread('press',c);added=true}
   if(t.lateDone&&!t.final&&!has('late')){addThread('late',c);added=true}
-  if(t.final?.reviewShown&&t.final.review<60&&!has('review')){addThread('review',c);added=true}
+  if(t.final?.reviewShown&&t.final.review<60&&Number(S.week)>=Number(S.cases[c.id]?.closedWeek??S.week)+39&&!has('review')){addThread('review',c);added=true}
   // Relationship benefits are social/professional only. No private case records or outcome modifiers.
   if(t.final&&(S.relations?.senior??0)>=65&&!has('mentor')&&hash(c.id+'mentor')%4===0){addThread('mentor',c);added=true}
   if(t.final&&(S.relations?.hyun??0)>=65&&!has('colleague')&&hash(c.id+'colleague')%4===0){addThread('colleague',c);added=true}
