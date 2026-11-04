@@ -62,7 +62,9 @@ function renderOffers(){
  const caseId=selectedCase.caseId,c=selectedCase.card||{},records=selectedCase.records||[],
   questions=selectedCase.questions||[],orders=selectedCase.orders||[],
   ready=window.VERDICT_CONFIG?.p4CourtActions===true&&courtStatus?.canAct===true,
-  permitted=window.VERDICT_CONFIG?.p4CourtActions===true;
+  permitted=window.VERDICT_CONFIG?.p4CourtActions===true,
+  verdictReady=courtStatus?.canDeliberate===true||
+   (courtStatus?.canDeliberate==null&&ready);
  const nav=window.VerdictCourtSurface?.navigation?.(TABS,courtTab,true)||
   '<nav class="t4-tabs vsw-six-tabs" aria-label="재판 화면">'+
   TABS.map(([k,label])=>'<button type="button" class="t4-tab '+(courtTab===k?'on':'')+
@@ -222,7 +224,7 @@ function renderOffers(){
  }else if(courtTab==='verdict'){
   body='<h4>판결</h4>'+(p5on?benchHtml:'')+p5controls+(finalDecision
    ?'<p><strong>확정 판결</strong> · '+esc(finalDecision.order||'')+'</p>'
-   :window.VERDICT_CONFIG?.p4SharedVerdicts===true&&(ready||panelState?.state==='majority_ready')&&courtActions.length
+   :window.VERDICT_CONFIG?.p4SharedVerdicts===true&&(verdictReady||panelState?.state==='majority_ready')&&courtActions.length
     ?'<section data-world-verdict><p>법정에 실제 제출된 증거·증언에서 근거를 고르세요.</p>'+
       (panelState
        ?'<p><strong>합의 결론: '+esc(panelState.majority||'심의 대기')+'</strong></p>'
@@ -348,7 +350,7 @@ async function p5Action(kind){
  }
 }
 async function confirmSharedVerdict(){
- if(!selectedCase||(!courtStatus?.canAct&&panelState?.state!=='majority_ready')||window.VERDICT_CONFIG?.p4SharedVerdicts!==true||
+ if(!selectedCase||(!courtStatus?.canDeliberate&&!courtStatus?.canAct&&panelState?.state!=='majority_ready')||window.VERDICT_CONFIG?.p4SharedVerdicts!==true||
   (window.VERDICT_CONFIG?.p5JointPanel===true&&jointBench?.myRole!=='chair'))return;
  const region=(typeof ui!=='undefined'&&ui.p4NativeCourt?
   document.querySelector('[data-world-native-root] [data-world-verdict]'):null)||
