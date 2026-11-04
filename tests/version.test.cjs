@@ -30,3 +30,12 @@ console.log('PASS: version',v);
     !sql.includes('grant execute on function public.reset_player_career() to authenticated'))throw Error('user-scoped SQL reset missing');
  console.log('PASS: server-authoritative per-user career reset contract');
 }
+
+// After a successful authenticated reset, the next boot must open judge creation.
+{
+ const gate=fs.readFileSync(path.join(root,'auth_gate.js'),'utf8');
+ const runtime=fs.readFileSync(path.join(root,'game_runtime.js'),'utf8');
+ if(!gate.includes("sessionStorage.setItem('vauth_new_career',uid)"))throw Error('reset onboarding token missing');
+ if(!runtime.includes("sessionStorage.getItem('vauth_new_career')")||!runtime.includes('if(!has){setup();return}'))throw Error('post-reset onboarding bypass missing');
+ console.log('PASS: post-reset judge creation follows server confirmation');
+}
