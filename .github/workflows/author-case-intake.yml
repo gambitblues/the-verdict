@@ -71,7 +71,7 @@ jobs:
           mkdir -p terra-author-drafts
           node server/worker/scripts/terra-from-author.cjs generate "$FILE" terra-author-drafts
       - name: Auto-admit fully verified case to isolated QA game stock
-        if: ${{ vars.TERRA_AUTHOR_AUTO_ADMIT_ENABLED == '1' }}
+        if: vars.TERRA_AUTHOR_AUTO_ADMIT_ENABLED == '1'
         env:
           QA_SUPABASE_URL: ${{ secrets.TERRA_QA_SUPABASE_URL }}
           QA_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TERRA_QA_SERVICE_ROLE_KEY }}
@@ -87,16 +87,9 @@ jobs:
             FILE="$MANUAL_FILE"
           else
             FILE="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" -- world-sheets/author-seeds/ |
-              grep -E '^world-sheets/author-seeds/[a-z0-9-]+\\.(md|json)        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: terra-author-unapproved-drafts
-          path: terra-author-drafts/
-          if-no-files-found: ignore
-          retention-days: 14
- | head -n 1 || true)"
+              grep -E '^world-sheets/author-seeds/[a-z0-9-]+\.(md|json)$' | head -n 1 || true)"
           fi
-          if [[ "$FILE" =~ ^world-sheets/author-seeds/[a-z0-9-]+\\.(md|json)$ ]] && [ -f "$FILE" ]; then
+          if [[ "$FILE" =~ ^world-sheets/author-seeds/[a-z0-9-]+\.(md|json)$ ]] && [ -f "$FILE" ]; then
             node server/worker/scripts/terra-from-author.cjs publish "$FILE" terra-author-drafts
           else
             echo 'No eligible authored case to admit.'
