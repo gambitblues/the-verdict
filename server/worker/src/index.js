@@ -271,6 +271,24 @@ export async function handle(req,env,fetcher=fetch){
   }catch{return json({error:'court_unavailable'},503,head)}
  }
 
+ // Trusted shared-court session entry. Database determines the next index and
+ // global day; the browser cannot request an arbitrary day or impersonate a judge.
+ if(url.pathname==='/world/court/begin'&&req.method==='POST'){
+  if(env.P4_COURT_ACTIONS_ENABLED!=='1')return json({error:'feature_disabled'},404,head);
+  let input;try{input=await req.json()}catch{return json({error:'bad_json'},400,head)}
+  const id=input?.caseId;
+  if(typeof id!=='string'||!/^[a-z][a-z0-9-]{3,79}$/.test(id))
+   return json({error:'bad_case_id'},400,head);
+  let response;
+  try{response=await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/shared_court_begin`,{
+    method:'POST',headers:svc(env),body:JSON.stringify({p_case:id,p_judge:uid})})}
+  catch{return json({error:'court_unavailable'},503,head)}
+  if(!response.ok)return json({error:'hearing_not_ready'},409,head);
+  let rows;try{rows=await response.json()}catch{return json({error:'court_unavailable'},503,head)}
+  if(!Array.isArray(rows)||!rows[0])return json({error:'court_unavailable'},503,head);
+  return json({ok:true,caseId:id,hearing:rows[0]},200,head);
+ }
+
  // P4: Witness / court order action is evaluated only against the sealed
  // server sheet. No arbitrary witness answer, document text or truth is accepted
  // from the browser. This endpoint is DISABLED unless independent QA opts in.
