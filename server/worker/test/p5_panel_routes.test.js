@@ -212,6 +212,7 @@ test('P5 associate observes identical public court actions, but cannot open the 
   if(u.includes('/shared_judge_hearings?'))return json([{state:'completed',hearing_index:1,completed_game_day:8}]);
   if(u.includes('/shared_world_clock?'))return json([{game_day:8}]);
   if(u.includes('/shared_case_judgments?'))return json([]);
+  if(u.includes('/shared_joint_votes?'))return json([]);
   throw Error('unexpected '+u);
  };
  const chair=(await p5PanelRoute(req('/world/panel/case?caseId=case-p5'),env,mock,A,headers));
@@ -303,4 +304,35 @@ test('v8.7.4 P5: ballot must fit the case; AI failure never stalls the panel; su
  assert.equal(rpcs.at(-1).body.p_wait_hours,24);
  const reo=await (await p5PanelRoute(req('/world/panel/reopen',{caseId}),env,mock,B,headers)).json();
  assert.equal(reo.round,3);
+});
+
+
+test('v8.7.4: first joint ballot closes court controls for both human judges without hiding prior record',async()=>{
+ const sheet={format:'verdict-world-sheet/v1',id:'case-p5',card:{kind:'civil',importance:1},
+  people:[],common:{facts:[]},records:[{id:'r1',title:'원본',first:true}],
+  worlds:{did:{records:{r1:'공개 증거'}}},questions:[],orders:[]};
+ let firstBallot=false;
+ const mock=async url=>{
+  const u=String(url);
+  if(u.includes('/shared_joint_panels?'))return json([{chair_id:A,peer_id:B}]);
+  if(u.includes('/case_stock?'))return json([{case_id:'case-p5',state:'assigned',sheet}]);
+  if(u.includes('/world_secrets?'))return json([{truth:{branch:'did'}}]);
+  if(u.includes('/shared_court_actions?'))return json([{action_type:'question',action_key:'q1',response:{status:'done',answer:'공개 증언'}}]);
+  if(u.includes('/shared_judge_hearings?'))return json([{state:'completed',hearing_index:2,completed_game_day:8}]);
+  if(u.includes('/shared_world_clock?'))return json([{game_day:9}]);
+  if(u.includes('/shared_case_judgments?'))return json([]);
+  if(u.includes('/shared_joint_votes?'))return json(firstBallot?[{seat:'chair'}]:[]);
+  throw Error('unexpected '+u);
+ };
+ const get=async who=>(await p5PanelRoute(req('/world/panel/case?caseId=case-p5'),env,mock,who,headers)).json();
+ const opened=await get(A);
+ assert.equal(opened.court.canAct,true);
+ firstBallot=true;
+ for(const who of [A,B]){
+  const state=await get(who);
+  assert.equal(state.court.canAct,false,'no evidence, witness or order button after deliberation starts');
+  assert.equal(state.court.canObserve,false);
+  assert.equal(state.court.canDeliberate,true,'record-closed judges can still deliberate');
+  assert.equal(state.actions[0].response.answer,'공개 증언');
+ }
 });
