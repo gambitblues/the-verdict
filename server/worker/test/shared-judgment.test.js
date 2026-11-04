@@ -27,3 +27,13 @@ test('P4 verdict rejects fake testimony, unreleased exhibits and unauthorized re
  assert.equal(check('claim_granted',['initial:r1']).error,'judgment_choice_invalid');
  assert.equal(check('guilty',[]).error,'citations_required');
 });
+
+test('Shared verdict only accepts native court reasons, no fabricated rationale or excluded citation',()=>{
+ const sheet={card:{kind:'civil'},records:[{id:'r1',first:true,title:'계약서 원본'}]};
+ const ruled=[{action_type:'evidence_decision',action_key:'r1:1',hearing_index:1,
+  response:{status:'done',recordId:'r1',decision:'exclude'}}];
+ const good={result:'claim_denied',citations:['initial:r1'],reasons:['doubt']};
+ assert.equal(validateSharedJudgment(sheet,ruled,good).error,'excluded_evidence_cannot_be_cited');
+ assert.equal(validateSharedJudgment(sheet,[],{...good,reasons:['secret_truth']}).error,'verdict_reasons_invalid');
+ assert.equal(validateSharedJudgment(sheet,[],{...good,reasons:['doubt','doubt']}).error,'verdict_reasons_invalid');
+});
