@@ -1,4 +1,4 @@
-import {adjudicateSentence} from './shared_sentence.js';
+import {adjudicateFullSentence} from './shared_ancillary.js';
 import {evaluateSharedTrial} from './shared_trial_grade.js';
 /* THE VERDICT P4 shared-world judgment validation.
  * Input contains ONLY the judge's chosen disposition and citation keys.
@@ -47,10 +47,10 @@ export function validateSharedJudgment(sheet,actions,input){
 }
 /* Fail closed when scored grading is enabled: no phantom sentence, evidence
  * grading metadata, public-opinion result or unauthorized monetary award. */
-export function adjudicateSharedJudgment(sheet,actions,input,seed){
+export function adjudicateSharedJudgment(sheet,actions,input,seed,options={}){
  const decision=validateSharedJudgment(sheet,actions,input);
  if(decision.error)return decision;
- const sentence=adjudicateSentence(sheet,decision.result,input.sentence,decision.citations);
+ const sentence=adjudicateFullSentence(sheet,decision.result,input.sentence,decision.citations,options.branch);
  if(sentence.error)return {error:sentence.error};
  const judgment={...decision,order:sentence.order||decision.order,
   sentence:sentence.sentence};
