@@ -70,7 +70,7 @@ try{
  assert.equal(await page.locator('[data-k="addon"][data-v="tag"]').count(),0,'the unavailable order cannot be pressed');
  await page.locator('[data-k="addon"][data-v="program"]').click();await page.locator('[data-k="addonN"][data-v="program:1"]').click();
  assert.equal(await page.evaluate(()=>ui.t4v.addons.program),60,'hours move by the step');
- await page.locator('.t4-addons').scrollIntoViewIfNeeded();await shot('addons');
+ await page.evaluate(()=>document.querySelector('.t4-addons')?.scrollIntoView({block:'center'}));await shot('addons');
  await next();await page.locator('.t4-cite').first().click();await next();
  const doc=await page.locator('.t4-judgment').innerText();
  assert.match(doc,/60시간의 성폭력 치료프로그램 이수를 명한다/);assert.match(doc,/신상정보 등록대상자가 된다/);
