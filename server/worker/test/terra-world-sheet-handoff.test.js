@@ -110,6 +110,7 @@ test('P4 new authored seed can enter trusted shared docket only after determinis
  c.records[0].authorLeadId='e1';
  c.records[2].authorLeadId='e2';
  const sh=sheet(c);sh.immutableFacts=facts;
+ sh.orders=[{record:'r-log',ask:'출입 통제 원장의 원본 제출을 명한다.',result:{did:'done',didnt:'done',reason:'done'}}];
  const seed={
   format:'verdict-author-seed/v1',id:c.id,status:'draft',category:'violence',kind:'criminal',
   title:c.card.title,opening:c.card.summary+' 최초 신고 당시 양측의 행동과 출입 시간이 쟁점이었다.',
