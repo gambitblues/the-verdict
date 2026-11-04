@@ -58,7 +58,19 @@ function renderOffers(){
     ?'<p>'+esc(ready?'현재 세계 날짜에 제'+courtStatus.hearingIndex+'회 공판이 열려 있습니다.':'공판 기일을 열면 질문과 제출명령을 진행할 수 있습니다.')+'</p>'+
      '<p><button type="button" data-world-begin>▶ 공유 공판 기일 열기 / 다음 기일</button></p>'+
      (ready?[...questions,...orders].map(a=>'<p><button type="button" data-court-kind="'+esc(a.kind)+'" data-court-key="'+esc(a.key)+'">'+esc(a.label)+'</button></p>').join(''):'')+
-     '<div data-court-outcomes>'+courtActions.map(a=>'<p><strong>'+esc(a.action_key)+'</strong> · '+esc(a.response?.answer||a.response?.text||a.response?.status||'')+'</p>').join('')+'</div>'
+     '<div data-court-outcomes>'+courtActions.map(a=>'<p><strong>'+esc(a.action_key)+'</strong> · '+esc(a.response?.answer||a.response?.text||a.response?.status||'')+'</p>').join('')+'</div>'+
+     (window.VERDICT_CONFIG?.p4SharedVerdicts===true&&courtActions.length&&courtStatus?.canAct
+      ?'<section data-world-verdict><h4>⚖ 공유 판결 검토</h4><p>서버 법정기록 중 판결 근거를 고르세요.</p>'+
+        '<select data-verdict-result>'+((c.kind==='criminal'
+         ?[['guilty','유죄'],['acquittal','무죄'],['partial','일부 유죄']]
+         :[['claim_granted','청구 인용'],['claim_denied','청구 기각'],['partial','일부 인용'],['settled','화해']])
+         .map(([v,l])=>'<option value="'+esc(v)+'">'+esc(l)+'</option>').join(''))+'</select>'+
+        [...(selectedCase.records||[]).filter(r=>r.first===true).map(r=>({key:'initial:'+r.id,title:r.title})),
+         ...courtActions.filter(a=>a.response?.status==='done').map(a=>({
+          key:a.action_type+':'+a.action_key,title:a.response?.title||a.action_key
+         }))].map(r=>'<label style="display:block;margin:6px 0"><input type="checkbox" data-cite="'+esc(r.key)+'"> '+esc(r.title)+'</label>').join('')+
+        '<button type="button" data-world-verdict>공유 판결 확정</button><p class="small">확정된 판결은 두 판사의 공개 연혁에 기록되며 취소할 수 없습니다.</p></section>'
+      :'')
     :'')+'</article>';
   return;
  }
@@ -89,6 +101,22 @@ async function refreshCourt(){
    courtStatus=status;courtActions=history.actions;renderOffers();
   }
  }catch{courtStatus=null;renderOffers()}
+}
+async function confirmSharedVerdict(){
+ if(!selectedCase||!courtStatus?.canAct||window.VERDICT_CONFIG?.p4SharedVerdicts!==true)return;
+ const region=panel?.querySelector('[data-world-verdict]');if(!region)return;
+ const result=region.querySelector('[data-verdict-result]')?.value;
+ const citations=[...region.querySelectorAll('input[data-cite]:checked')].map(x=>x.dataset.cite);
+ const status=panel?.querySelector('[data-world-offers-status]');
+ if(!citations.length){if(status)status.textContent='확인한 증거 또는 증언을 하나 이상 선택하세요.';return}
+ if(!window.confirm('공유 세계에 판결을 확정할까요? 판결은 되돌릴 수 없습니다.'))return;
+ if(status)status.textContent='서버 법정 기록과 판결을 확인 중…';
+ try{
+  const d=await window.VerdictAuth.api('/world/court/verdict',{caseId:selectedCase.caseId,result,citations});
+  if(!d?.ok)throw Error('verdict_invalid');
+  await refreshCourt();await refresh();
+  if(status)status.textContent='공유 판결 확정: '+d.judgment.order;
+ }catch{if(status)status.textContent='서버에서 판결이 승인되지 않았습니다. 기일과 제출 증거를 확인하세요.'}
 }
 async function beginCourt(){
  if(!selectedCase||!user()||window.VERDICT_CONFIG?.p4CourtActions!==true)return;
@@ -216,6 +244,7 @@ function mount(){
  docket.addEventListener('click',e=>{const target=e.target.closest('button');if(!target)return;
  const id=target.dataset.worldAccept;if(id)acceptOffer(id);
  else if(target.hasAttribute('data-world-begin'))beginCourt();
+ else if(target.hasAttribute('data-world-verdict'))confirmSharedVerdict();
  else if(target.dataset.courtKind&&target.dataset.courtKey)doCourtAction(target.dataset.courtKind,target.dataset.courtKey)})}
  const style=document.createElement('style');style.textContent=
  '#verdict-shared-world{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:7500;font:inherit}' +
