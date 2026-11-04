@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql','028_joint_associate_court_actions.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -532,4 +532,39 @@ test('P5 human presides; second human and NPC always associate with immutable se
  await assert.rejects(pa('select public.shared_joint_bench($1,$2::uuid)',[caseId,A]),/permission denied/);
  await assert.rejects(svc('update public.shared_joint_panels set chair_id=$1 where case_id=$2',[B,caseId]),/joint_seats_immutable/);
  await assert.rejects(svc('update public.shared_joint_panels set npc_id=$1 where case_id=$2',['npc:other',caseId]),/joint_seats_immutable|foreign key/);
+});
+
+test('P5 presiding judge opens shared hearing, human associate can question and receive next-hearing evidence',async()=>{
+ const active=(await svc(`select p.case_id from public.shared_joint_panels p
+ where p.chair_id=$1 and not exists(
+  select 1 from public.shared_case_judgments j where j.case_id=p.case_id)
+ order by p.case_id limit 1`,[A])).rows[0];
+ assert.ok(active,'active panel created in prior dedicated-slot test');
+ const id=active.case_id;
+ const opening=(await svc('select * from public.shared_court_begin($1,$2::uuid)',[id,A])).rows[0];
+ assert.equal(opening.hearing_index,1);
+ await assert.rejects(svc('select * from public.shared_court_begin($1,$2::uuid)',[id,B]),
+  /court_case_not_owned/);
+ const delayed={status:'delayed',recordId:'r-test',title:'감시영상 원본'};
+ const a=await svc('select public.shared_court_action_record($1,$2::uuid,$3,$4,$5,$6::jsonb) as action',
+  [id,B,1,'order','r-test',JSON.stringify(delayed)]);
+ assert.equal(a.rows[0].action.status,'delayed');
+ const peerQuestion={status:'done',answer:'목격한 차량을 확인했습니다.'};
+ const q=await svc('select public.shared_court_action_record($1,$2::uuid,$3,$4,$5,$6::jsonb) as action',
+  [id,B,1,'question','q-peer',JSON.stringify(peerQuestion)]);
+ assert.equal(q.rows[0].action.answer,peerQuestion.answer);
+ await assert.rejects(svc('select public.shared_court_action_record($1,$2::uuid,$3,$4,$5,$6::jsonb)',
+  [id,'00000000-0000-0000-0000-00000000000f',1,'question','q-outsider',JSON.stringify(peerQuestion)]),
+  /court_case_not_owned/);
+ const next=(await svc('select * from public.shared_court_begin($1,$2::uuid)',[id,A])).rows[0];
+ assert.equal(next.hearing_index,2);
+ const released={status:'done',recordId:'r-test',title:'감시영상 원본',text:'공개된 원본 자료'};
+ const result=await svc('select public.shared_order_result_record($1,$2::uuid,$3,$4,$5::jsonb) as record',
+  [id,B,2,'r-test',JSON.stringify(released)]);
+ assert.equal(result.rows[0].record.text,released.text);
+ const entries=(await svc('select action_type,judge_id,hearing_index from public.shared_court_actions where case_id=$1 order by hearing_index,action_type',[id])).rows;
+ assert.equal(entries.filter(x=>x.judge_id===B).length,3);
+ assert.equal(entries.find(x=>x.action_type==='order_result').hearing_index,2);
+ await assert.rejects(svc('select public.shared_order_result_record($1,$2::uuid,$3,$4,$5::jsonb)',
+  [id,B,2,'r-never-ordered',JSON.stringify(released)]),/order_not_due/);
 });
