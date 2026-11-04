@@ -46,12 +46,16 @@ let courtTab='case',finalDecision=null;
 const TABS=[['case','사건'],['day','기일'],['evidence','증거'],['witness','증인'],['orders','주문'],['verdict','판결']];
 function renderOffers(){
  const region=panel?.querySelector('[data-world-offers-list]');if(!region)return;
+ const syncNative=()=>{
+  const el=document.querySelector('[data-world-native-list]');
+  if(el)el.innerHTML=region.innerHTML;
+ };
  if(!selectedCase){
-  if(!offerCandidates.length){region.textContent='현재 예약된 사건 후보가 없습니다.';return}
+  if(!offerCandidates.length){region.textContent='현재 예약된 사건 후보가 없습니다.';syncNative();return}
   region.innerHTML=offerCandidates.map(c=>
    '<div class="vsw-event"><strong>'+esc(c.case_id)+'</strong><small>'+esc(c.category||'')+
    '</small><button type="button" data-world-accept="'+esc(c.case_id)+'">이 사건 선택</button></div>').join('');
-  return;
+  syncNative();return;
  }
  const caseId=selectedCase.caseId,c=selectedCase.card||{},records=selectedCase.records||[],
   questions=selectedCase.questions||[],orders=selectedCase.orders||[],
@@ -131,6 +135,7 @@ function renderOffers(){
  }
  region.innerHTML='<div class="vsw-court-head">'+summary+'</div>'+nav+
   '<div class="vsw-court-page">'+body+'</div>';
+ syncNative();
 }
 
 async function reserveOffers(){
