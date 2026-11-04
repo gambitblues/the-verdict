@@ -453,3 +453,59 @@ test('P4 shared verdict requires owned case and genuine citation; refuses browse
  owner='other-judge';
  assert.equal((await handle(request(['initial:r1']),enabled,mock)).status,404);
 });
+
+test('P4 free order: AI maps Korean open order to catalog but never writes evidence',async()=>{
+ const calls=[],usage=[];
+ const ok=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}});
+ const sheet={
+  records:[{id:'r1',title:'최초 제출',first:true},{id:'r-cctv',title:'식당 CCTV 원본',kind:'영상',first:false,unlock:'사고 전 식당 영상'}],
+  orders:[{record:'r-cctv',ask:'식당 CCTV 원본 제출'}],
+  worlds:{did:{records:{'r-cctv':'SEALED_CCTV_CONTENT'}}}
+ };
+ let owner='u1',opened=true,hasJudgment=false,reply={recordId:'r-cctv',intent:'request_record',explanation:'기존 영상 제출 요청'};
+ const fakeFetch=async(url,opt={})=>{
+  const u=String(url);calls.push({u,opt});
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/rest/v1/case_stock'))return ok([{assigned_to:owner,state:'assigned',sheet}]);
+  if(u.includes('/rest/v1/shared_judge_hearings'))return ok([{state:opened?'completed':'scheduled',completed_game_day:7}]);
+  if(u.includes('/rest/v1/shared_world_clock'))return ok([{game_day:7}]);
+  if(u.includes('/rest/v1/shared_case_judgments'))return ok(hasJudgment?[{case_id:'case-p4'}]:[]);
+  if(u.includes('/rpc/ai_reserve')){usage.push({});return ok(usage.length)}
+  if(u.includes('/rpc/ai_finish')){Object.assign(usage.at(-1),JSON.parse(opt.body));return ok(null)}
+  if(u.includes('/v1/responses')){
+   const request=JSON.parse(opt.body);
+   assert.equal(request.store,false);
+   assert.equal(request.text.format.name,'judicial_order_intent');
+   assert.ok(!JSON.stringify(request).includes('SEALED_CCTV_CONTENT'),'model must never see sealed truth');
+   return ok({model:'gpt-6-luna',output:[{content:[{type:'output_text',text:JSON.stringify(reply)}]}],
+    usage:{input_tokens:100,output_tokens:25}});
+  }
+  throw Error('unexpected '+u);
+ };
+ const enabled={...env,P4_COURT_ACTIONS_ENABLED:'1',P4_FREE_ORDERS_ENABLED:'1'};
+ const body={caseId:'case-p4',hearingIndex:1,text:'사고 전 식당 CCTV의 원본 영상을 제출하도록 명합니다.',branch:'didnt',evidence:'FAKE'};
+ const denied=await handle(req('/world/court/free-order',body),env,fakeFetch);
+ assert.equal(denied.status,404);
+ assert.equal(calls.filter(c=>c.u.includes('/v1/responses')).length,0);
+ const good=await (await handle(req('/world/court/free-order',body),enabled,fakeFetch)).json();
+ assert.deepEqual({ok:good.ok,matched:good.matched,recordId:good.recordId,confirm:good.confirmationRequired},
+  {ok:true,matched:true,recordId:'r-cctv',confirm:true});
+ assert.ok(!JSON.stringify(good).includes('SEALED_'));
+ assert.equal(calls.filter(c=>c.u.includes('/v1/responses')).length,1);
+ assert.equal(calls.filter(c=>c.u.includes('/rpc/shared_court_action_record')).length,0,'AI suggestion cannot commit court order');
+ assert.equal(usage[0].p_ok,true);
+ reply={recordId:'r-fake',intent:'request_record',explanation:'신규 자료'};
+ const fakeAnswer=await handle(req('/world/court/free-order',body),enabled,fakeFetch);
+ assert.equal(fakeAnswer.status,503);
+ assert.equal((await fakeAnswer.json()).error,'order_interpretation_unavailable');
+ opened=false;
+ const before=calls.filter(c=>c.u.includes('/v1/responses')).length;
+ assert.equal((await handle(req('/world/court/free-order',body),enabled,fakeFetch)).status,409);
+ assert.equal(calls.filter(c=>c.u.includes('/v1/responses')).length,before);
+ opened=true;owner='someone-else';
+ assert.equal((await handle(req('/world/court/free-order',body),enabled,fakeFetch)).status,404);
+ owner='u1';hasJudgment=true;
+ assert.equal((await handle(req('/world/court/free-order',body),enabled,fakeFetch)).status,409);
+ assert.equal((await handle(req('/world/court/free-order',body, ''),enabled,fakeFetch)).status,401);
+});
