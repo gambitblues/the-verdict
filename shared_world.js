@@ -259,6 +259,7 @@ async function refreshCourt(){
     firstDocs=Array.isArray(d.records)?d.records:[];
     courtActions=Array.isArray(d.actions)?d.actions:[];
     courtStatus={...d.court,canAct:d.role==='chair'&&d.court?.canAct===true};
+    if(d.judgment)finalDecision={result:d.judgment.result,order:d.judgment.order,recordHash:d.judgment.recordHash};
     renderOffers();await refreshPanel();return;
    }
   }catch{}
@@ -498,6 +499,9 @@ async function refresh(){
   try{const c=await window.VerdictAuth.api('/world/clock',undefined,{timeout:8000});if(c?.ok&&c.clock)clock=c.clock}catch{}
   try{const n=await window.VerdictAuth.api('/world/npcs',undefined,{timeout:8000});if(n?.ok&&Array.isArray(n.npcs))npcs=n.npcs.slice(0,50)}catch{}
   await loadCatchup();
+  // On return from another tab, the associate sees newly opened hearings,
+  // submitted evidence, the canonical verdict and public NPC/news updates.
+  if(selectedCase&&window.VERDICT_CONFIG?.p4CourtActions===true)await refreshCourt();
   if(panel){panel.querySelector('[data-world-status]').textContent='공개 기록 '+events.length+'건';render()}
   return true;
  }catch(e){if(panel)panel.querySelector('[data-world-status]').textContent='세계 연결을 확인할 수 없습니다. 개인 재판은 계속할 수 있습니다.';return false}
