@@ -75,12 +75,14 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
     read('shared_court_actions?select=action_type,action_key,response,hearing_index,game_day&case_id=eq.'+encodeURIComponent(caseId)+'&order=created_at.asc&limit=250'),
     read('shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.'+encodeURIComponent(caseId)+'&judge_id=eq.'+encodeURIComponent(bench.chair_id)+'&order=hearing_index.desc&limit=1'),
     read('shared_world_clock?select=game_day&id=eq.main&limit=1'),
-    read('shared_case_judgments?select=case_id&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1')
+    read('shared_case_judgments?select=case_id,result,public_order,game_day,record_hash&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1')
    ]);
    const hearing=hearings[0],worldDay=clock[0]?.game_day;
    const canAct=!!hearing&&hearing.state==='completed'&&hearing.completed_game_day===worldDay&&!judgments.length;
    const isChair=bench.chair_id===uid;
-   return response({ok:true,case:publicCaseSheet(row.sheet,caseId),records:initialEvidence(row.sheet,caseId,branch),
+   const j=judgments[0];
+   const publicJudgment=j?{result:j.result,order:j.public_order,worldDay:j.game_day,recordHash:j.record_hash}:null;
+   return response({ok:true,case:publicCaseSheet(row.sheet,caseId),records:initialEvidence(row.sheet,caseId,branch),judgment:publicJudgment,
     actions,role:isChair?'chair':'associate',court:{
      worldDay,hearingIndex:canAct?hearing.hearing_index:null,
      canAct:canAct&&isChair,canObserve:canAct,canOpenHearing:isChair,
