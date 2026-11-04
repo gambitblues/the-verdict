@@ -86,6 +86,29 @@ function renderOffers(){
     title:a.response?.title||a.action_key
    }))
  ];
+ const parity=window.VERDICT_CONFIG?.p4TrialParity===true;
+ const legalForm=parity?(
+   c.kind==='criminal'
+    ?'<div class="vsw-sentence"><h4>형량 선택</h4>'+
+      '<label>형 종류</label><select data-v-type>'+
+      '<option value="prison">징역</option><option value="suspend">징역·집행유예</option>'+
+      (Number(c.charge?.fine)>0?'<option value="fine">벌금</option>':'')+
+      (c.charge?.life===true?'<option value="life">무기징역</option>':'')+
+      (c.charge?.death===true?'<option value="death">사형</option>':'')+
+      '</select><label>징역 기간(개월, 6개월 단위)</label>'+
+      '<input data-v-months type="number" min="'+esc(Math.max(6,Number(c.charge?.min||0)*12))+
+      '" max="'+esc(Math.max(6,Number(c.charge?.max||1)*12))+
+      '" step="6" value="'+esc(Math.min(Math.max(6,Number(c.charge?.min||0)*12),Number(c.charge?.max||1)*12))+'">'+
+      '<label>벌금(만 원)</label><input data-v-fine type="number" min="0" value="0">'+
+      '<label>집행유예(년)</label><input data-v-susp type="number" min="1" max="5" value="2">'+
+      '<label><input data-v-with-fine type="checkbox"> 벌금 병과</label>'+
+      '<small>법정형과 기록상 사유는 서버가 검증합니다. 입증되지 않은 감경은 허용하지 않습니다.</small></div>'
+    :c.kind==='civil'
+     ?'<div class="vsw-sentence"><h4>배상액</h4><p>청구액: '+esc(c.claim?.amount||0)+'만 원</p>'+
+      '<label>명할 금액(만 원)</label><input data-v-amount type="number" min="0" max="'+
+      esc(Number(c.claim?.amount)||0)+'" step="10" value="'+esc(Number(c.claim?.amount)||0)+'"></div>'
+     :''
+  ):'';
  const p5on=window.VERDICT_CONFIG?.p5JointPanel===true;
  const p5controls=!p5on?'':(!panelState
   ?'<section class="vsw-p5"><h4>합의부 구성 · 판사 2명 + NPC 재판관</h4>'+
@@ -150,13 +173,14 @@ function renderOffers(){
     '<p><b>'+esc(a.action_key)+'</b> · '+esc(a.response?.text||a.response?.status||'')+'</p>').join('')+'</div>';
  }else if(courtTab==='verdict'){
   body='<h4>판결</h4>'+p5controls+(finalDecision
-   ?'<p><strong>확정 판결</strong> · '+esc(finalDecision.order||'')+'</p>'
+   ?'<p><strong>확정 판결</strong> · '+esc(finalDecision.order||'')+'</p>'+(finalDecision.grade?'<p>법정 판단 '+esc(finalDecision.grade.score)+'점 · 종합 평점 '+esc(finalDecision.grade.review)+'점</p>':'')
    :window.VERDICT_CONFIG?.p4SharedVerdicts===true&&ready&&courtActions.length
     ?'<section data-world-verdict><p>법정에 실제 제출된 증거·증언에서 근거를 고르세요.</p>'+
       (panelState
        ?'<p><strong>합의 결론: '+esc(panelState.majority||'심의 대기')+'</strong></p>'
        :'<select data-verdict-result>'+choices.map(([value,label])=>
         '<option value="'+esc(value)+'">'+esc(label)+'</option>').join('')+'</select>')+
+      legalForm+
       citations.map(r=>'<label style="display:block;margin:8px 0"><input type="checkbox" data-cite="'+
         esc(r.key)+'"> '+esc(r.title)+'</label>').join('')+
       (panelState?.state==='majority_ready'||!panelState
@@ -241,12 +265,23 @@ async function confirmSharedVerdict(){
  if(panelState&&panelState.state!=='majority_ready')return;
  const result=panelState?.majority||region.querySelector('[data-verdict-result]')?.value;
  const citations=[...region.querySelectorAll('input[data-cite]:checked')].map(x=>x.dataset.cite);
+ const sentence=window.VERDICT_CONFIG?.p4TrialParity===true&&selectedCase
+  ?(selectedCase.card?.kind==='criminal'
+   ?{type:region.querySelector('[data-v-type]')?.value||'prison',
+     months:Number(region.querySelector('[data-v-months]')?.value||0),
+     fine:Number(region.querySelector('[data-v-fine]')?.value||0),
+     susp:Number(region.querySelector('[data-v-susp]')?.value||2),
+     withFine:region.querySelector('[data-v-with-fine]')?.checked||false,
+     mitigating:false,aggravating:false}
+   :selectedCase.card?.kind==='civil'
+    ?{amount:Number(region.querySelector('[data-v-amount]')?.value||0)}:undefined)
+  :undefined;
  const status=document.querySelector('[data-world-native-status]')||panel?.querySelector('[data-world-offers-status]');
  if(!citations.length){if(status)status.textContent='확인한 증거 또는 증언을 하나 이상 선택하세요.';return}
  if(!window.confirm('공유 세계에 판결을 확정할까요? 판결은 되돌릴 수 없습니다.'))return;
  if(status)status.textContent='서버 법정 기록과 판결을 확인 중…';
  try{
-  const d=await window.VerdictAuth.api(panelState?'/world/panel/finalize':'/world/court/verdict',{caseId:selectedCase.caseId,result,citations});
+  const d=await window.VerdictAuth.api(panelState?'/world/panel/finalize':'/world/court/verdict',{caseId:selectedCase.caseId,result,citations,...(sentence?{sentence}:{})});
   if(!d?.ok)throw Error('verdict_invalid');
   finalDecision=d.judgment;await refreshCourt();await refresh();
   if(status)status.textContent='공유 판결 확정: '+d.judgment.order;
