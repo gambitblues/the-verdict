@@ -394,16 +394,30 @@ const P=(name,p)=>window.VerdictCurated?VerdictCurated.particle(name,p):name+p;
 const pend=v=>!v.choice&&v.type!=='media'&&!(v.live&&!v.fired);
 const liveWhen=card=>card.otype==='hearsay'||(card.otype==='lead'&&card.valid)?'after':'before';
 const OBJ={lead:'유도신문',hearsay:'전문증거(남에게 들은 말)',relevance:'관련성 없음'};
+/* Only case-authored evidence can be filed spontaneously. A filed exhibit cannot
+ * be filed again in response to a judicial order. */
+function filingPool(c,t){
+ const cur=curOf(c),pool=[];
+ if(!cur)return pool;
+ if(cur.late&&!t.lateDone&&!t.lateDue&&!t.evidence?.some(e=>e.late))
+  pool.push({source:'late',by:/검찰|원고/.test(cur.late.by||'')?'p':'d',title:tell(c,t,cur.late.title)});
+ for(const f of cur.followUps||[]){
+  if(!f.evidence||f.now||!['p','d'].includes(f.to)||!T.nodeOpen(f,nodeState(t)))continue;
+  if(t.evidence?.some(e=>e.follow===f.id)||(t.courtOrders||[]).some(o=>o.follow===f.id))continue;
+  pool.push({source:'follow',followId:f.id,by:f.to,title:tell(c,t,f.evidence.title)});
+ }
+ return pool;
+}
 function dressCards(c,t,cards){
- // Turn the existing procedural-event chance into a real, authored filing.
- // No guessed or duplicate evidence is admitted to the case.
- const late=curOf(c)?.late;
- const canFile=!!late&&!t.lateDone&&!t.evidence?.some(e=>e.late);
- const pending=(cards||[]).filter(card=>!card.choice&&(card.type==='objection'||card.type==='delay'));
- const selected=canFile?pending[0]:null;
- return (cards||[]).filter(card=>card.type!=='objection'&&card.type!=='delay').concat(
-  selected?[{id:selected.id,type:'filing',choice:null,by:/검찰|원고/.test(late.by||'')?'p':'d',dressed:true}]:[]
- );
+ const rolled=(cards||[]).filter(card=>!card.choice&&(card.type==='objection'||card.type==='delay'));
+ const retained=(cards||[]).filter(card=>card.type!=='objection'&&card.type!=='delay');
+ if(!rolled.length||retained.some(card=>card.type==='filing'))return retained;
+ const pool=filingPool(c,t);if(!pool.length)return retained;
+ const before=(t.filingHistory||[]).slice(-1)[0];
+ const options=pool.some(x=>x.by!==before)?pool.filter(x=>x.by!==before):pool;
+ const chosen=options[T.hash(t.seed+':filing:'+t.day)%options.length];
+ return retained.concat([{id:rolled[0].id,type:'filing',choice:null,by:chosen.by,
+  source:chosen.source,followId:chosen.followId||null,title:chosen.title,dressed:true}]);
 }
 
 /* a witness's answer turned into the leading question that would have put it in the witness's mouth:
@@ -863,12 +877,21 @@ function askRequests(force){
  const card=t.cards.find(pend);if(!card)return askNotices(false);
  if(!force&&t.askedDay===t.day)return false;t.askedDay=t.day;
  if(card.type==='filing'){
-  card.choice='filed';
-  if(!t.lateDone&&curOf(c)?.late){addLate(c,t);t.lateDue=false;}
-  save();
-  // The existing submission notice leads to the evidence tab; admission
-  // remains a judge decision, not an automatic bonus to either side.
-  return askNotices(false);
+  card.choice='filed';let filed=null;
+  if(card.source==='late'&&!t.lateDone&&curOf(c)?.late){
+   addLate(c,t);t.lateDue=false;filed=t.evidence.find(e=>e.late);
+   t.notices=t.notices.filter(n=>!(n.type==='late'&&n.day===t.day));
+  }else if(card.source==='follow'){
+   const f=curOf(c)?.followUps?.find(x=>x.id===card.followId);
+   if(f?.evidence&&!t.evidence.some(e=>e.follow===f.id))filed=followEvidence(c,t,f,false);
+  }
+  if(filed){
+   filed.filedBy=card.by;filed.filedEvent=true;
+   (t.filingHistory??=[]).push(card.by);
+   t.notices.push({type:'filing',title:filed.title,by:card.by,day:t.day});
+   addLog(t,'새 증거',`${toWord(c,card.by)} · ${filed.title} 제출`);
+  }
+  save();return askNotices(false);
  }
  const left=t.cards.filter(pend).length;
  modal(`${cardText(card,t,c).who}가 일어섭니다`,`<p class="muted small">${card.live?(liveWhen(card)==='before'?'증인이 답하기 전에 이의가 나왔습니다. 지금 정해 주세요.':'증인의 답을 두고 이의가 나왔습니다. 지금 정해 주세요.'):`${session(c,t.day)}을 시작하기 전에 신청${left>1?` ${left}건`:''}에 답해 주세요.`}</p>${cardBlock(card,t,c)}`,
@@ -881,6 +904,11 @@ function askNotices(force){
  const n=(t.notices||[]).find(v=>!v.seen);if(!n)return false;
  n.seen=true;save();
  const cur=curOf(c);
+ if(n.type==='filing'){
+  modal(`${toWord(c,n.by)} 추가 자료 제출`,`<p><b>${esc(n.title)}</b></p><p>새 자료가 제출됐습니다. 증거 탭에서 내용과 제출 경위를 읽고 쓸지 정하세요.</p>`,
+   '<button class="btn primary" data-action="t4go" data-go="evidence">증거 확인하기</button>');
+  return true;
+ }
  if(n.type==='late'){
   const L=cur?.late,e=t.evidence.find(v=>v.late);if(!L||!e)return false;
   const bySide=/검찰|원고/.test(L.by)?'p':'d',reply=bySide==='p'?sideWord(c,'d'):sideWord(c,'p');
