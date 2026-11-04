@@ -44,7 +44,7 @@ try{
      if(path==='/world/offers')return {ok:true,offers:[{case_id:'case-'+id,category:'civil',option_index:0},{case_id:'alt-'+id,category:'public',option_index:1}]};
      if(path==='/world/accept')return {ok:true,assignment:{case_id:'case-'+id}};
      if(path.startsWith('/world/case/initial'))return {ok:true,caseId:'case-'+id,records:[{id:'r1',title:'제출된 계약서',kind:'문서',text:'첫날 공개된 계약 내용'}]};
-     if(path.startsWith('/world/case'))return {ok:true,case:{caseId:'case-'+id,card:{kind:'civil',title:'법정의 계약 분쟁',summary:'원고의 계약 청구'},records:[{id:'r1',title:'제출된 계약서',first:true}],questions:[{id:'q1',w:'W1',q:'무엇을 보셨습니까?'}],orders:[{record:'r2',ask:'CCTV 원본을 제출하세요.'}]}};
+     if(path.startsWith('/world/case'))return {ok:true,case:{caseId:'case-'+id,card:{kind:'civil',title:'법정의 계약 분쟁',summary:'원고의 계약 청구'},records:[{id:'r1',title:'제출된 계약서',first:true},{id:'r2',title:'CCTV 원본',first:false}],questions:[{id:'q1',w:'W1',q:'무엇을 보셨습니까?'}],orders:[{record:'r2',ask:'CCTV 원본을 제출하세요.'}]}};
      if(path.startsWith('/world/events'))return {ok:true,events:[{
       event_id:19,event_key:'case-assigned:p4-case',case_id:'p4-case',
       event_type:'case_assigned',game_day:33,public_data:{
