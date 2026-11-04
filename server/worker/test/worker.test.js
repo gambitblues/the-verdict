@@ -335,6 +335,27 @@ test('P4 first reconnect without progress row still detects overdue private hear
 });
 
 
+test('P4 hearing begin derives judge from JWT and does not let browser choose world date',async()=>{
+ const calls=[];
+ const ok=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'content-type':'application/json'}});
+ const mock=async(url,opt={})=>{
+  const u=String(url);calls.push({u,opt});
+  if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
+  if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
+  if(u.includes('/rpc/shared_court_begin'))return ok([{hearing_index:2,world_day:12,already_opened:false}]);
+  throw Error('unexpected '+u);
+ };
+ const body={caseId:'case-p4',p_judge:'other-user',worldDay:9999,hearingIndex:19};
+ assert.equal((await handle(req('/world/court/begin',body),env,mock)).status,404);
+ const enabled={...env,P4_COURT_ACTIONS_ENABLED:'1'};
+ const result=await (await handle(req('/world/court/begin',body),enabled,mock)).json();
+ assert.equal(result.hearing.world_day,12);
+ const call=calls.find(x=>x.u.includes('/rpc/shared_court_begin'));
+ assert.deepEqual(JSON.parse(call.opt.body),{p_case:'case-p4',p_judge:'u1'});
+ assert.equal(call.opt.headers.authorization,'Bearer svc');
+ assert.equal((await handle(req('/world/court/begin',{caseId:'bad id'}),enabled,mock)).status,400);
+});
+
 test('P4 sealed courtroom endpoint: only the assigned judge can obtain a server-derived answer',async()=>{
  const calls=[];let owner='u1',hearingState='completed',finalized=false;
  const sheet={id:'case-p4',questions:[
