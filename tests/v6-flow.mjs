@@ -70,6 +70,13 @@ try{
  await tab('evidence');assert.ok(await page.locator('.t4-bench').count()>=1,'bench advice on evidence card');
  const adv=await page.locator('.t4-bench').first().innerText();assert.match(adv,/배석판사|재판연구원/);
  ok('재판부 의견이 증거 카드에 표시됨');
+ // Newly filed evidence is shown first. Make sure the original exhibit e0
+ // is admitted for the contradiction test regardless of pagination order.
+ await tab('evidence');
+ await page.locator('.t4-pagenav [data-action="t4page"][data-kind="evidence"][data-i="0"]').first().click();
+ const e0Use=page.locator('.t4 [data-kind="decide"][data-choice="use"]:not([disabled])');
+ if(await e0Use.count())await e0Use.first().click();
+ await answer();
  // force a contradiction on the issue of evidence e0 (side p): the witness answered the other way
  await page.evaluate(i=>{const t=S.cases[i].trial4;t.qLeft=8;t.heard.push({w:1,q:'q1',side:'d',issue:'i1',day:t.day});t.witnesses[1].askedIds.push('q1');render()},cid);
  await tab('witness');await page.evaluate(()=>{ui.t4w=1;render()});
