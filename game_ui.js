@@ -138,11 +138,16 @@ function careerChronicle(){
  const years=Math.floor(Math.max(0,Number(S.week)||0)/52);
  const reviewPeriods=Math.floor(Math.max(0,Number(S.week)||0)/39);
  const official=(S.careerReviews||[]).filter(r=>r?.endWeek<=S.week).sort((a,b)=>b.period-a.period);
+ const sharedReviews=window.VERDICT_CONFIG?.p4SharedWorld===true?(window.VerdictSharedWorld?.career?.()?.evaluations||[]):[];
  const intro='<section class="tv-career-summary"><h3>'+esc(S.name||'법관')+' 판사의 법관 일대기</h3><p>'+esc(S.post||'판사')+'로 재직하며, '+completed().length+'건의 사건에 판결을 남겼습니다. '+esc(judgeIdentity())+'라는 평판은 지금까지의 판결 유형에서 조심스럽게 읽을 수 있습니다.</p><small>법관 경력 약 '+years+'년 · 기록된 주요 장면 '+entries.length+'건</small></section>';
  const evaluation=official.length?'<section class="tv-career-review"><h3>9개월 정기 법관 평가</h3>'+
   official.slice(0,8).map(r=>'<article class="tv-review-period"><b>'+esc(r.period)+'차 · '+esc(r.rating)+'</b><small>게임 제'+esc(r.startWeek)+'~'+esc(r.endWeek)+'주 · 판결 '+esc(r.caseCount)+'건</small><p>'+esc(r.narrative)+'</p></article>').join('')+
   '</section>':reviewPeriods?'<p class="muted small">정기 평가 시점이 도래했습니다. 경력 기록이 저장되면 평가 원장이 생성됩니다.</p>':'<p class="muted small">첫 정기 법관 평가는 게임 시간 9개월 뒤에 진행됩니다.</p>';
- return intro+evaluation+'<div class="tv-career-timeline">'+(entries.length?entries.map(e=>'<article><small>'+esc(typeof day==='function'?day(e.week):'경력 기록')+' · '+esc(e.type||'')+'</small><h4>'+esc(e.title||'법관 경력의 한 장면')+'</h4><p>'+esc(e.body||'')+'</p></article>').join(''):'<p>앞으로의 판결과 인연이 여기에 쌓입니다.</p>')+'</div>';
+ const sharedReviewPanel=sharedReviews.length?'<section class="tv-career-review"><h3>공유 법정 · 9개월 평가</h3>'+
+  sharedReviews.slice(0,8).map(r=>'<article class="tv-review-period"><b>'+esc(r.period)+'차 · '+esc(r.rating)+'</b>'+
+   '<small>공유 세계 제'+esc(r.startDay)+'~'+esc(r.endDay)+'일 · '+esc(r.caseCount)+'건 (단독 '+esc(r.solo)+' · 합의 '+esc(r.joint)+')</small>'+
+   '<p>'+esc(r.narrative)+'</p></article>').join('')+'</section>':'';
+ return intro+evaluation+sharedReviewPanel+'<div class="tv-career-timeline">'+(entries.length?entries.map(e=>'<article><small>'+esc(typeof day==='function'?day(e.week):'경력 기록')+' · '+esc(e.type||'')+'</small><h4>'+esc(e.title||'법관 경력의 한 장면')+'</h4><p>'+esc(e.body||'')+'</p></article>').join(''):'<p>앞으로의 판결과 인연이 여기에 쌓입니다.</p>')+'</div>';
 }
 window.VerdictDockPanel=()=>priority();
 function priority(){
