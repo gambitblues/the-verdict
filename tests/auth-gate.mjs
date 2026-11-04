@@ -97,9 +97,12 @@ try{
   const cand=CasePackEngine.pool(S)[0],c=createGeneratedCase(cand);S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};
   const t=VerdictTrialPlay.ensure(c,S.cases[c.id]);VerdictTrialPlay.openSession(c,S.cases[c.id]);
   const q=VerdictTrialPlay.questions(c,t,0)[0];await VerdictAI.npc(c,t,{w:0,q:q.id,question:'그날 무엇을 보셨습니까?',answer:'창고 문이 열려 있었어요.'});
-  return {shown:t.ai?.['0:'+q.id]}});
+  t.witnesses[0].attitude='protect';   // hidden attitude: must not reach the server (v8.7.4)
+  await VerdictAI.npc(c,t,{w:0,q:q.id+'-x',side:'d',question:'다시 묻겠습니다.',answer:'창고 문이 열려 있었어요.'});
+  return {shown:t.ai?.['0:'+q.id+':n']}});
  assert.equal(ai.shown,'(AI) 창고 문이 열려 있었어요.');
  const call=aiCalls.at(-1);assert.equal(call.user,'uid-a');assert.equal(call.path,'/ai/npc');assert.ok(call.body.names.length>=2,'case names go along for the person check');
+ assert.equal(call.body.attitude,'honest','a hidden attitude (protect) is never sent; only a visible change of story is');
  assert.ok(!/truth|did|didnt|reason|score/.test(Object.keys(call.body).join(',')),'no hidden truth in the request: '+Object.keys(call.body));
  console.log('  ✓ AI answer: the player\'s token and visible text only, shown in the game');
 
@@ -173,6 +176,38 @@ try{
  keys=await p3.evaluate(()=>Object.keys(localStorage));assert.ok(!keys.some(k=>/^(the_verdict|verdict_)/.test(k))&&!keys.includes('vauth_session'),'signed out, saves put away');
  net.refuse.clear();await ctx3.close();
  console.log('  ✓ offline: only the recent owner, no AI, signed out at once when the server refuses');
+
+ // 7b. (v8.7.4) back online while the game runs, and another device saved meanwhile: the newer cloud save is taken,
+ //     the running game is stopped from writing its older state back, and the page restarts on the newer save
+ const ctx5=await browser.newContext({viewport:{width:390,height:844}});await routes(ctx5);const p5=await ctx5.newPage();
+ await p5.goto(url+'?auth=1',{waitUntil:'networkidle'});await login(p5,'b@x.kr','pw-b');await loaded(p5);
+ await p5.evaluate(()=>{S.name='오프라인 판사';save();VerdictStore.flush()});
+ await p5.evaluate(()=>window.dispatchEvent(new Event('focus')));
+ await p5.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'hidden'});document.dispatchEvent(new Event('visibilitychange'))});
+ await new Promise(r=>setTimeout(r,800));
+ await p5.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'visible'})});
+ const up=cloud.get('uid-b:1');assert.ok(up,'player B\'s save is in the cloud');
+ net.down=true;await p5.reload({waitUntil:'domcontentloaded'});await loaded(p5,'오프라인 판사');
+ const newer=await p5.evaluate(()=>{const v=VerdictStore.parse(localStorage.getItem('verdict_player_save_1'));v.name='다른 기기 판사';return JSON.stringify(v)});
+ cloud.set('uid-b:1',{...up,data:newer,rev:up.rev+1,device:'PC-zz',updated_at:new Date().toISOString()});
+ net.down=false;await p5.evaluate(()=>window.dispatchEvent(new Event('online')));
+ // if this device also changed something while offline the player is asked first; take the other device's record
+ await p5.waitForFunction(()=>document.querySelector('#verdict-login [data-a="y"]')||(typeof S!=='undefined'&&S.name==='다른 기기 판사'),null,{timeout:30000});
+ if(await p5.locator('#verdict-login [data-a="y"]').count())await p5.locator('#verdict-login [data-a="y"]').click();
+ await loaded(p5,'다른 기기 판사');await p5.waitForLoadState('networkidle');
+ await p5.evaluate(()=>{save();VerdictStore.flush()});await new Promise(r=>setTimeout(r,500));
+ assert.match(cloud.get('uid-b:1').data,/다른 기기 판사/,'the newer save from the other device was not overwritten by the older game in memory');
+ await ctx5.close();
+ console.log('  ✓ back online: a newer cloud save restarts the game on it, never overwritten by the old one in memory');
+
+ // 7c. (v8.7.4) no login server configured (the public build's default): the game opens as a solo offline game
+ const solo=await (await browser.newContext()).newPage();
+ await solo.route('**/config.js',r=>r.fulfill({status:200,contentType:'text/javascript',body:"window.VERDICT_CONFIG={supabaseUrl:'',supabaseAnonKey:'',apiBase:'',ai:true};"}));
+ await solo.goto(url+'?auth=1',{waitUntil:'networkidle'});await loaded(solo);
+ assert.equal(await solo.locator('#verdict-login').count(),0,'no login wall without a login server');
+ assert.equal(await solo.evaluate(async()=>{try{await VerdictAuth.api('/ai/npc',{});return 'called'}catch(e){return e.message}}),'ai_unavailable');
+ await solo.context().close();
+ console.log('  ✓ no login server set: plays as before (solo, offline, no AI)');
 
  // 8b. no login, no AI
  const before=aiCalls.length;const p4=await (await browser.newContext()).newPage();

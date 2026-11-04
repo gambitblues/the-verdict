@@ -24,6 +24,8 @@ const KEY='the_verdict_alpha_1',ACTIVE='verdict_player_active',slotKey=id=>'verd
 const WORK=/^(the_verdict|verdict_)/;   // every key the game owns (the game's own wipe uses the same pattern)
 const stash=uid=>`vu:${uid}:`;
 const local=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)&&!/[?&]auth=1\b/.test(location.search);
+/* v8.7.4: with no login server configured (the public build's default) the game runs as before: solo, offline, no AI */
+const solo=local||!CFG.supabaseUrl||!CFG.supabaseAnonKey;
 let online=false;   // true once the server confirmed this session in this visit
 
 /* ---------- start the game exactly as the old page did ---------- */
@@ -126,9 +128,12 @@ async function settle(uid,s,row){
  if(take){await backup('replaced',uid,{[slotKey(s)]:slotValue(s)});await adopt(uid,s,row);return 'cloud'}
  await put(uid,s,true);return 'local';
 }
+let adoptedLive=false;   // a cloud save replaced a slot while the game was already running → reload after pull
 async function adopt(uid,s,row){
  let data=row.data;if(data==null){const r=await rest(`saves?select=data&user_id=eq.${uid}&slot=eq.${s}`);data=(await r.json())?.[0]?.data}
- if(data==null)return;writeSlot(s,data);localStorage.setItem(REV(uid,s),String(row.rev));localStorage.setItem(PUSHED(uid,s),fp(data));
+ if(data==null)return;
+ if(booted){try{window.VerdictStore?.halt()}catch{}adoptedLive=true}   // the game in memory must not write its older state back over this
+ writeSlot(s,data);localStorage.setItem(REV(uid,s),String(row.rev));localStorage.setItem(PUSHED(uid,s),fp(data));
 }
 async function pull(uid){
  const r=await rest(`saves?select=slot,rev,device,updated_at&user_id=eq.${uid}`);if(!r.ok)return;
@@ -137,6 +142,7 @@ async function pull(uid){
   if(slotValue(row.slot)==null||!dirty(uid,row.slot)){if(slotValue(row.slot)!=null)await backup('replaced',uid,{[slotKey(row.slot)]:slotValue(row.slot)});await adopt(uid,row.slot,row)}
   else await settle(uid,row.slot,row);
  }
+ if(adoptedLive){adoptedLive=false;location.reload()}
 }
 let pushing=false,held=new Set();
 async function put(uid,s,force=false){
@@ -156,7 +162,8 @@ async function push(uid,{ask:askNow=true}={}){
    if(c?.conflict&&askNow){const which=await settle(uid,s,c);if(which==='cloud'){try{window.VerdictStore?.halt()}catch{}location.reload();return}}}
  }catch(e){if(e.refused)signOutNow(e.message)}finally{pushing=false}
 }
-function sync(uid){setInterval(()=>push(uid),20000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')push(uid,{ask:false})})}
+let syncing=false;
+function sync(uid){if(syncing)return;syncing=true;setInterval(()=>push(uid),20000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')push(uid,{ask:false})})}
 
 /* ---------- screens ---------- */
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -186,14 +193,19 @@ function signOutNow(msg){
  if(booted){sessionStorage.setItem('vauth_msg',msg||'');location.reload()}else loginForm(msg);
 }
 function offlineBanner(){const d=document.createElement('div');d.id='vl-offline';d.textContent='오프라인으로 하는 중이에요 · 인터넷이 연결되면 계정을 다시 확인하고 기록을 올려요';document.body.appendChild(d);
- addEventListener('online',async()=>{try{await verify();d.remove();const uid=session.user.id;sync(uid);await pull(uid).catch(()=>{});push(uid)}catch(e){if(e.refused)signOutNow(e.message)}})}
+ let rejoining=false;
+ addEventListener('online',async()=>{if(online||rejoining)return;rejoining=true;
+  try{await verify();d.remove();const uid=session.user.id;try{window.VerdictStore?.flush()}catch{}await pull(uid).catch(()=>{});sync(uid);push(uid)}
+  catch(e){if(e.refused)signOutNow(e.message)}finally{rejoining=false}})}
 
 /* after the online check (or a permitted offline start): make the device's saves this user's, bring the cloud copy, start */
 async function enter(){
  const uid=session.user.id;
  await claimDevice(uid);
  if(online){card('<div class="entry-sub">기록을 불러오는 중…</div>');
-  try{await Promise.race([pull(uid),new Promise(r=>setTimeout(r,8000))])}catch(e){if(e.refused)return signOutNow(e.message)}
+  /* a slow pull keeps going after the game starts; if it then replaces a slot, adopt() halts saving and the page reloads */
+  const pulling=pull(uid);pulling.catch(e=>{if(e?.refused)signOutNow(e.message)});
+  try{await Promise.race([pulling,new Promise(r=>setTimeout(r,8000))])}catch(e){if(e.refused)return signOutNow(e.message)}
   close();sync(uid)}
  else{close();offlineBanner()}
  boot();logoutButton();
@@ -253,21 +265,22 @@ const st=document.createElement('style');st.textContent=`#verdict-login{position
 document.head.appendChild(st);
 
 window.VerdictAuth={
- get user(){return local?null:session?.user||null},
+ get user(){return solo?null:session?.user||null},
  get online(){return online},
  /* call THE VERDICT API (Cloudflare Worker) as the signed-in player; only after this visit's online check */
  async api(path,body,{timeout=15000}={}){
-  if(local||!session||!online||!CFG.apiBase)throw new Error('ai_unavailable');
+  if(solo||!session||!online||!CFG.apiBase)throw new Error('ai_unavailable');
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),timeout);
   try{const r=await fetch(CFG.apiBase+path,{method:body?'POST':'GET',signal:ctl.signal,headers:{authorization:`Bearer ${await token()}`,'content-type':'application/json'},body:body?JSON.stringify(body):undefined});
-   if(r.status===401||r.status===403){signOutNow('계정을 다시 확인해야 해요. 다시 로그인해 주세요.');throw new Error('refused')}
+   /* 401/403 can also be a game-rule refusal or a short auth outage: sign out only if the account check itself says no */
+   if(r.status===401||r.status===403){try{await verify()}catch(e){if(e.refused){signOutNow(e.message);throw new Error('refused')}}
+    const d=await r.json().catch(()=>({}));throw Object.assign(new Error(d?.error||'refused'),{status:r.status})}
    return await r.json()}finally{clearTimeout(t)}
  },
  logout
 };
 
-if(local){boot();return}
-if(!CFG.supabaseUrl||!CFG.supabaseAnonKey){card('<div class="entry-sub">로그인 서버 설정이 아직 없어요. config.js에 Supabase 주소와 공개 키를 넣어 주세요.</div>');return}
+if(solo){boot();return}
 const shown=sessionStorage.getItem('vauth_msg');sessionStorage.removeItem('vauth_msg');
 if(session?.refresh_token){
  card('<div class="entry-sub">로그인 확인 중…</div>');

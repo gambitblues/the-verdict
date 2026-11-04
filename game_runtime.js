@@ -451,7 +451,7 @@ function progressPendingCases(){
    c.participantSnapshots=ContinuityEngine.snapshots(c,NPC,S.week);
    for(const id of c.who)remember(id,'법원 배당',`${c.id} · ${c.name}`,c.id);
    if(c.story.investigator)remember(c.story.investigator.detective,'수사자료 제출',`${c.id} 관련 수사자료`,c.id);
-   log('사건 배당',c.name,`${c.id} · 사전 생성된 사건의 기록 검증 완료`);
+   log('사건 배당',c.name,'새로 배당된 사건의 기록이 재판부에 도착했다');
    news(c.kind==='criminal'?`${String(c.name).split(' · ')[0]} 기소·법원 배당`:`${String(c.name).split(' · ')[0]} 소장 접수·법원 배당`,
     c.kind==='criminal'?'검찰이 공소를 제기해 법원에 사건이 배당됐습니다. 범죄 성립 여부는 재판에서 판단합니다.'
     :'원고가 소장을 제출해 법원에 사건이 배당됐습니다. 청구의 성립 여부는 재판에서 판단합니다.',

@@ -220,7 +220,7 @@ function articles(){
   for(const iv of t?.final?.interviews||[])out.push({caseId:c.id,outlet:iv.outlet,title:iv.title,body:iv.body,day:st?.closedWeek||c.week,index:'iv'+out.length,phase:'after',tone:iv.tone==='논란'?'blame':'praise',frame:'인터뷰 · ',lean:''});
   if(!TP.curOf(c))continue;
   const [rp,rd]=reporterPair(c);
-  for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r),ai=S.aiArticles?.[`${c.id}:${idx}:${a.phase||''}`];   // v8.7: AI wording once it came back
+  for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r),ai=S.aiArticles?.[window.VerdictAI?.articleKey?.({caseId:c.id,index:idx,phase:a.phase,base:a})];   // AI wording of exactly this text (v8.7.4: key follows the engine text, so struck evidence never survives in an old wording)
    out.push({caseId:c.id,outlet:r.outlet,title:ai?.title||a.title,body:ai?.body||a.body,base:{title:a.title,body:a.body},day:st?.closedWeek||c.week,index:idx,phase:a.phase,tone:a.tone||null,frame:(a.phase==='after'?(a.tone==='praise'?'판결 호평 · ':a.tone==='blame'?'판결 비판 · ':'판결 평가 · '):'재판 전망 · ')+(lean==='p'?(crim?'검찰 측 시각':'원고 측 시각'):(crim?'변호인 측 시각':'피고 측 시각')),reporter:r,lean})}
  }
  return out;

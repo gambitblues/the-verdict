@@ -54,7 +54,8 @@ const COMMON=`당신은 한국 법정 시뮬레이션 게임 THE VERDICT의 문�
 - 누가 유죄인지, 진실이 무엇인지 짐작해 덧붙이지 않습니다.`;
 
 /* ---------- a witness's answer ---------- */
-const ATT={honest:'아는 대로 차분히 말한다',shield:'누군가를 감싸려 말을 아끼고 조심스럽다',fear:'겁을 먹어 머뭇거린다',flip:'앞서 한 말과 달라져 조금 흔들린다'};
+/* v8.7.4: only a manner the player can already see — a hidden attitude (protecting someone, fear) would give the case away */
+const ATT={honest:'아는 대로 차분히 말한다',flip:'앞서 한 말과 달라져 조금 흔들린다'};
 export function npcPrompt(p){
  const answer=cap(p.answer,400),question=cap(p.question,200);
  if(!answer||!question)return {error:'missing_text'};
@@ -187,8 +188,12 @@ export function checkArticle(p,out){
 
 /* ---------- a judgment: the engine's order, sections and every number stay; only sentences change ---------- */
 export function judgmentPrompt(p){
- const facts=(p.facts||[]).slice(0,30).map(x=>cap(x,500)),issues=(p.issues||[]).slice(0,10).map(x=>({title:cap(x.title,80),text:cap(x.text,700)}));
- const conclusion=cap(p.conclusion,1200);
+ /* v8.7.4: never trim a judgment — a trimmed list would come back shorter than the record (the client keeps the
+  * engine's own text instead). The check below compares against exactly what was sent. */
+ const F=p.facts||[],I=p.issues||[];
+ if(F.length>30||I.length>10||F.some(x=>S(x).length>500)||I.some(x=>S(x?.title).length>80||S(x?.text).length>700)||S(p.conclusion).length>1200)return {error:'too_long'};
+ const facts=F.map(S),issues=I.map(x=>({title:S(x.title),text:S(x.text)}));
+ const conclusion=S(p.conclusion);
  if(!facts.length&&!issues.length&&!conclusion)return {error:'missing_text'};
  return {instructions:`${COMMON}
 지금 할 일: 판사가 쓴 판결문 초안의 문장만 매끄럽게 다듬습니다.

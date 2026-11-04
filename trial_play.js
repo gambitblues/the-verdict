@@ -687,8 +687,18 @@ function askQuestion(c,t,i,qid){
 /* What just happened at the witness stand, so the screen can tell an ordinary answer from a changed story, a clash
  * between witnesses, a witness giving way to evidence or a face-off. Saved per witness as a short list (`moments`). */
 /* v8.7: the words shown for an answer — the AI wording when it came back (t.ai), otherwise the engine's own */
-const shownAnswer=(c,t,i,q)=>t.ai?.[i+':'+q.id]||answerOf(c,t,i,q).text;
-const aiAsk=(c,t,i,qid)=>{const q=qById(c,t,i,qid);if(q)window.VerdictAI?.npc(c,t,{w:i,q:qid,question:tell(c,t,q.q),answer:answerOf(c,t,i,q).text})};
+/* v8.7.4: keyed by the side of the answer too — after a witness changes their story the engine re-renders earlier
+ * answers on the new side, so an AI wording of the old side must not stay on screen. Old saves' side-less keys are used
+ * only for a witness who has not changed their story. */
+const shownAnswer=(c,t,i,q)=>{const a=answerOf(c,t,i,q);return t.ai?.[i+':'+q.id+':'+a.side]||(!t.witnesses[i]?.flipped&&t.ai?.[i+':'+q.id])||a.text};
+/* v8.7.4: AI moments are triggered by the court's own events (a hearing opening, the last required hearing ending),
+ * never by drawing a screen. Each asks once per record state; ai_bridge remembers a failed try in the save. */
+function aiMoments(c,t){
+ const cur=curOf(c);if(!cur||!window.VerdictAI?.on)return;
+ if(t.daysDone===0&&sessionOpen(t)){const l=tell(c,t,cur.claims?.[0]||''),r=tell(c,t,cur.claims?.[1]||'');if(l&&r)window.VerdictAI.opening?.(c,t,l,r)}
+ if(t.daysDone>=t.minDays){const a=tell(c,t,cur.closing||''),b=tell(c,t,cur.claims?.[1]||'');if(a&&b)window.VerdictAI.closing?.(c,t,a,b)}
+}
+const aiAsk=(c,t,i,qid)=>{const q=qById(c,t,i,qid);if(!q)return;const a=answerOf(c,t,i,q);window.VerdictAI?.npc(c,t,{w:i,q:qid,side:a.side,question:tell(c,t,q.q),answer:a.text})};
 const heardText=(c,t,h)=>{if(!h)return '';if(h.text)return h.text;const q=qById(c,t,h.w,h.q);return q?shownAnswer(c,t,h.w,q):''};
 function momentOf(c,t,kind,id,pre){
  const fresh=t.heard.slice(pre.n),h=fresh[fresh.length-1];let moment=null,wi=null,note='';
@@ -744,7 +754,7 @@ document.addEventListener('toggle',e=>{const d=e.target;if(d?.matches?.('details
 function act(kind,id,choice){
  const x=current();if(!x||x.st.verdict)return;
  const {c,st}=x,t=ensure(c,st);
- if(kind==='open'){if(waiting(t)||sessionOpen(t))return;openSession(c,st);resolveOrders(c,t);window.VerdictV6?.onSessionOpen?.(c,t);addLog(t,'개정',`${session(c,t.day)} 개정 · ${dlabel(t.dates[t.day])}`);save();ui.t4tab='day';render();window.scrollTo({top:0,behavior:'instant'});
+ if(kind==='open'){if(waiting(t)||sessionOpen(t))return;openSession(c,st);resolveOrders(c,t);window.VerdictV6?.onSessionOpen?.(c,t);addLog(t,'개정',`${session(c,t.day)} 개정 · ${dlabel(t.dates[t.day])}`);save();aiMoments(c,t);ui.t4tab='day';render();window.scrollTo({top:0,behavior:'instant'});
   if(!askRequests(true))askNotices(false);return}
  if(kind==='handoff')return handoff(c,st);
  if(kind==='cond'){const e=t.evidence.find(v=>v.id===id);if(!e||e.decision!=='conditional'||!choice)return;condSet(c,t,e,String(choice));save();render();return}
@@ -898,6 +908,7 @@ function endDay(){
  (t.mediaLog??=[]).push({s:t.day,O:t.media.O,H:t.media.H,ev:twist||(t.lateDue?'새 증거 제출':'')});
  for(const e of t.evidence)if(e.publicFlaw)e.airedCounted=true;
  t.daysDone++;
+ aiMoments(c,t);
  const desk4=desk(),outlet=REPORTERS[T.hash(c.id+t.day)%REPORTERS.length];
  if(t.media.H>=55)news(`${shortName(c)} · ${session(c,t.daysDone)}`,twist?`${twist}. 법정 안팎이 술렁였다.`:'증거와 증언을 두고 양측 공방이 이어졌다.',outlet.outlet);
  addLog(t,'기일',`${session(c,t.daysDone)} 종료 · 오늘 들은 증언 ${heardToday}건 · 증거 결정 ${decided}/${t.evidence.length}`);
@@ -1239,9 +1250,6 @@ function tick(){
 const byWord={검찰:'검찰 제출',변호인:'변호인 제출',원고:'원고 제출',피고:'피고 제출'};
 function evidenceCard(e,t,locked,c){
  const d=evDetail(c,e),dis=locked?'disabled':'';
- if(d&&window.VerdictAI?.on)void window.VerdictAI.evidence(c,t,e,d);
- const aiSource=[d?.excerpt||e.scope||'',d?.how?'확보 경위: '+d.how:'',e.note?'자료의 한계: '+e.note:''].filter(Boolean).join(' ');
- const aiNote=t.aiEvidence?.[e.id]?.source===aiSource?t.aiEvidence[e.id]?.text:null;
  const opt=(v,l)=>`<button class="t4-chip ${e.decision===v?'on':''}" data-action="t4" data-kind="decide" data-id="${esc(e.id)}" data-choice="${v}" ${dis||e.decision===v?'disabled':''}>${l}</button>`;
  const iss=issuesOf(c).find(i=>i.id===d?.issue);
  return `<article class="t4-card t4-ev"><header><b>${esc(e.title)}</b>${e.late?'<span class="t4-tag new">새로 제출됨</span>':''}</header>
@@ -1250,7 +1258,6 @@ function evidenceCard(e,t,locked,c){
  ${d?.excerpt?(window.VerdictVisuals?.evidence(e,d,tell(c,t,d.excerpt),tell(c,t,d.when||''))||`<blockquote class="t4-excerpt">${esc(tell(c,t,d.excerpt))}</blockquote>`):''}
  ${d?.how?`<p class="small"><b>확보 경위</b> ${esc(tell(c,t,d.how))}</p>`:''}
  ${e.note?`<p class="small"><b>한계</b> ${esc(e.note)}</p>`:''}
- ${aiNote?`<aside class="t4-ai-evidence"><b>AI 증거 해설 · 참고용</b><p>${esc(aiNote)}</p><small>판결 근거에는 위 원본 기록만 사용됩니다.</small></aside>`:''}
  ${compareBox(c,t,e)}
  ${iss?`<p class="t4-issue-tag">쟁점 · ${esc(iss.title)}</p>`:''}
  ${window.VerdictV6?.benchAdvice?.(c,t,e)||''}
@@ -1305,7 +1312,7 @@ function cardBlock(card,t,c){
  return `<div class="t4-event ${done?'done':''}"><b>${card.type==='objection'?'✋':'⏳'} ${esc(x.title)}</b><p>${esc(x.body)}</p>
  ${x.target?`<p class="small"><b>대상</b> ${esc(x.target)}</p><blockquote class="t4-excerpt">${x.ask?`${x.prevQ?`<span class="t4-obj-line"><b>앞 질문</b> ${esc(x.askBy)}: "${esc(x.prevQ)}"</span><span class="t4-obj-line"><b>앞 답변</b> ${esc(x.wn)}: "${esc(x.prevA)}"</span>`:''}<span class="t4-obj-line"><b>${x.prevQ?'덧붙인 질문':'질문'}</b> ${esc(x.askBy)}: "${esc(x.ask)}"</span>${x.answer?`<span class="t4-obj-line"><b>답변</b> ${esc(x.wn)}: "${esc(x.answer)}"</span>`:`<span class="t4-obj-line muted small">${card.live?(card.choice==='accept'?'이의를 받아들여 증인은 답하지 않았습니다.':'증인이 답하기 전에 이의가 나왔습니다.'):'증인이 답하기 전에 이의가 나왔습니다. 받아들이지 않으면 증인 탭에서 이 질문을 할 수 있어요.'}</span>`}`:esc(x.quote)}</blockquote>`:''}
  <p class="small"><b>신청 이유</b> ${esc(exchange?.openingA||x.reason)}</p>${x.opinion?`<p class="small"><b>상대방 의견</b> ${esc(exchange?.openingB||x.opinion)}</p>`:''}
- ${x.reason&&x.opinion?`<div class="t4-row"><button class="btn outline mini" data-action="t4exchange" data-id="${esc(card.id)}" ${exchange||!window.VerdictAI?.on?'disabled':''}>${exchange?'공방 검증 완료':'AI 법정 공방 듣기'}</button></div>`:''}
+ ${x.reason&&x.opinion&&!exchange&&!done&&window.VerdictAI?.on?`<div class="t4-row"><button class="btn outline mini" data-action="t4exchange" data-id="${esc(card.id)}">양측 말 더 듣기</button></div>`:''}
  ${done?`<p class="small">→ ${esc(done==='accept'?x.choices[0]:x.choices[1])}</p>${rulingReply?`<p class="t4-counsel-reply"><b>${esc(NPC[t.opponent]?.name||'변호인')}</b> “${esc(rulingReply)}”</p>`:''}`:`<div class="t4-stack"><button class="btn mini primary" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="accept">${esc(x.choices[0])}</button><button class="btn mini outline" data-action="t4" data-kind="card" data-id="${esc(card.id)}" data-choice="reject">${esc(x.choices[1])}</button></div>`}</div>`;
 }
 /* Where the case stands, issue by issue, from what has been shown in court so far. Nothing hidden is used.
@@ -1404,7 +1411,6 @@ function openingStatements(c,t,cur){
  if(t.daysDone!==0||!cur?.claims)return '';
  const left=tell(c,t,cur.claims[0]||''),right=tell(c,t,cur.claims[1]||'');
  if(!left&&!right)return '';
- if(left&&right&&sessionOpen(t))window.VerdictAI?.opening?.(c,t,left,right);
  const key=c.id+':'+left+':'+right,ai=t.aiOpening?.source===key?t.aiOpening:null;
  const card=(speaker,body,cls)=>body?`<div class="t4-closing ${cls}"><b>${esc(speaker)}</b><p>"${esc(body)}"</p></div>`:'';
  return `<section class="t4-opening" aria-label="첫 기일 양측 주장">
@@ -1450,7 +1456,6 @@ function verdictPage(c,st){
  const opt=c.verdicts.find(o=>o.id===v.opt),dir=opt&&T.direction(opt,c.kind),sp=opt&&sentenceSpec(c,dir);
  const first=cur?tell(c,t,cur.closing):'',second=cur?tell(c,t,cur.claims?.[1]||''):'';
  const closingKey=c.id+':'+first+':'+second;
- if(canVerdict&&first&&second)window.VerdictAI?.closing?.(c,t,first,second);
  const aiClosing=t.aiClosing?.source===closingKey?t.aiClosing:null;
  const closing=cur?`<div class="t4-subhead"><h4>최종 변론 · 양측 입장</h4></div>
   <div class="t4-closing"><b>${esc(sideWord(c,'p'))} 최종 ${crim?'논고':'변론'}</b><p>"${esc(aiClosing?.openingA||first)}"</p>${crim?`<p class="small">구형: <b>${esc(demandText(c))}</b></p>`:(cur.decision?`<p class="small">신청: <b>${esc(tell(c,t,cur.decision.what))}</b></p>`:`<p class="small">청구: <b>${won(cur.claim?.amount||0)}</b> · ${esc(cur.claim?.what||'')}</p>`)}</div>
@@ -1705,8 +1710,8 @@ clicker=function(e){
   const card=t.cards.find(v=>String(v.id)===el.dataset.id);if(!card)return;
   const lines=cardText(card,t,x.c);
   if(!lines.reason||!lines.opinion)return;
-  el.disabled=true;el.textContent='AI 공방 생성 중…';
-  Promise.resolve(window.VerdictAI?.exchange?.(x.c,t,card.id,lines.reason,lines.opinion)).then(ok=>{if(!ok)toast('AI 공방이 적용되지 않았습니다. 기존 신청·의견을 그대로 보여줍니다.')}).catch(()=>toast('AI 공방 연결 실패. 기존 공방 기록은 유지됩니다.')).finally(()=>render());
+  el.disabled=true;el.textContent='양측이 말을 정리하는 중…';
+  Promise.resolve(window.VerdictAI?.exchange?.(x.c,t,card.id,lines.reason,lines.opinion)).then(ok=>{if(!ok)toast('양측 모두 앞서 한 말에서 더 덧붙이지 않았어요.')}).catch(()=>toast('양측 모두 앞서 한 말에서 더 덧붙이지 않았어요.')).finally(()=>render());
   return}
  if(a==='t4hearing'&&el.dataset.id==='defendant_question'){e.preventDefault();const x=current();if(!x)return;ui.t4tab='witness';ui.partyOpen=x.c.id;render();document.querySelector('details.t4-party')?.scrollIntoView({block:'center'});return}
  if(a==='t4hearing'){e.preventDefault();const x=current();if(!x)return;try{const item=window.VerdictHearingEvents.apply(x.c,x.st,el.dataset.id,sessionOpen(x.st.trial4)&&!waiting(x.st.trial4),x.st.trial4?.seed||String(S.rng||0));save();render();toast('공판 기록에 반영했습니다.')}catch(err){toast(err.message)}return}

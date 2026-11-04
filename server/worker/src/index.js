@@ -57,6 +57,8 @@ export function priceOf(env,model){
  let table={};try{table=JSON.parse(env.PRICES||'{}')}catch{}
  return table[model]||table[String(model).replace(/-\d{8}$/,'')]||{in:0,out:0};
 }
+/* v8.7.4: a model with no (or a zero) price would make every estimate 0 and switch the dollar cap off silently */
+export function priced(env,model){const p=priceOf(env,model);return Number(p.in)>0&&Number(p.out)>0}
 export function costOf(env,model,usage){const p=priceOf(env,model);return ((usage?.input_tokens||0)*p.in+(usage?.output_tokens||0)*p.out)/1e6}
 
 async function usageToday(env,uid,fetcher){
@@ -67,6 +69,7 @@ async function usageToday(env,uid,fetcher){
  * transaction per player — so parallel calls cannot pass the limit. undefined = the usage store could not be reached
  * (then no AI call is made at all), null = over the limit. */
 export async function reserve(env,uid,kind,model,est,fetcher){
+ if(!priced(env,model)){console.warn('no price for model',model);return undefined}   // fail closed: no call without a cost cap
  try{const r=await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/ai_reserve`,{method:'POST',headers:svc(env),
    body:JSON.stringify({p_uid:uid,p_kind:kind,p_model:model,p_est:Number(est.toFixed(6)),p_max_calls:Number(env.DAILY_CALLS||300),p_max_usd:Number(env.DAILY_USD||1)})});
   if(!r.ok)return undefined;const id=await r.json();return id==null?null:id}catch{return undefined}
