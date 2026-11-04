@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -307,4 +307,24 @@ test('P4 courtroom begin: server owns day, next hearing requires real prior acti
  assert.equal((await pb('select game_day from public.shared_world_clock')).rows[0].game_day,13);
  await assert.rejects(svc('select * from public.shared_court_begin($1,$2::uuid)',[id,B]),/court_case_not_owned/);
  await assert.rejects(pa('select * from public.shared_court_begin($1,$2::uuid)',[id,A]),/permission denied/);
+});
+
+test('P4 verdict creates news the following world day, never before and never twice',async()=>{
+ const id='case-next-001',hash='c'.repeat(64);
+ const day=(await svc('select game_day,version from public.shared_world_clock')).rows[0];
+ assert.equal(day.game_day,13);
+ const published=(await svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5) as ok',
+ [id,A,'claim_granted','원고의 청구를 인용한다.',hash])).rows[0].ok;
+ assert.equal(published,true);
+ assert.equal((await pb('select count(*)::int as n from public.shared_world_events where event_key=$1',['aftermath:'+id])).rows[0].n,0);
+ const queued=(await svc('select due_game_day,state from public.shared_world_followups where case_id=$1',[id])).rows[0];
+ assert.deepEqual(queued,{due_game_day:14,state:'pending'});
+ await svc('select * from public.shared_clock_advance($1,$2)',[day.version,14]);
+ assert.equal((await pb('select count(*)::int as n from public.shared_world_events where event_key=$1',['aftermath:'+id])).rows[0].n,1);
+ assert.equal((await svc('select state from public.shared_world_followups where case_id=$1',[id])).rows[0].state,'published');
+ const current=(await svc('select version from public.shared_world_clock')).rows[0].version;
+ await svc('select * from public.shared_clock_advance($1,$2)',[current,15]);
+ assert.equal((await pa('select count(*)::int as n from public.shared_world_events where event_key=$1',['aftermath:'+id])).rows[0].n,1);
+ await assert.rejects(svc('select * from public.shared_hearing_open($1,$2::uuid,$3)',[id,A,1]),/case_already_decided/);
+ await assert.rejects(pa('select * from public.shared_world_followups'),/permission denied/);
 });
