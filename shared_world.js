@@ -110,6 +110,21 @@ function renderOffers(){
       esc(Number(c.claim?.amount)||0)+'" step="10" value="'+esc(Number(c.claim?.amount)||0)+'"></div>'
      :''
   ):'';
+ const ancillaryUi=parity&&c.kind==='criminal'&&Array.isArray(c.charge?.orders)?
+  '<div class="vsw-sentence"><h4>부수 명령</h4>'+
+  c.charge.orders.filter(x=>!x.notice).map(x=>
+   '<div class="vsw-ancillary"><label><input data-v-addon="'+esc(x.id)+
+   '" type="checkbox" '+(x.fixed?'checked disabled ':'')+(x.ok===false?'disabled ':'')+
+   '> '+esc(x.label||x.kind||x.id)+'</label>'+
+   (Array.isArray(x.range)?'<input data-v-addon-val="'+esc(x.id)+
+     '" type="number" min="'+esc(x.range[0])+'" max="'+esc(x.range[1])+
+     '" step="'+esc(x.step||1)+'" value="'+esc(x.range[0])+'">':'')+
+   (x.needs?'<small>'+esc(x.needs)+'</small>':'')+
+   (x.ok===false?'<small>이 사건에서는 허용되지 않음</small>':'')+'</div>').join('')+
+  '</div>':parity&&c.kind==='civil'&&Array.isArray(c.claim?.remedies)?
+  '<div class="vsw-sentence"><h4>추가 이행 명령</h4>'+
+  c.claim.remedies.map(x=>'<label><input type="checkbox" data-v-remedy="'+esc(x.id)+
+   '" '+(x.ok===false?'disabled ':'')+'> '+esc(x.label||x.id)+'</label>').join('')+'</div>':'';
  const p5on=window.VERDICT_CONFIG?.p5JointPanel===true;
  const p5controls=!p5on?'':(!panelState
   ?'<section class="vsw-p5"><h4>합의부 구성 · 판사 2명 + NPC 재판관</h4>'+
@@ -188,7 +203,7 @@ function renderOffers(){
        ?'<p><strong>합의 결론: '+esc(panelState.majority||'심의 대기')+'</strong></p>'
        :'<select data-verdict-result>'+choices.map(([value,label])=>
         '<option value="'+esc(value)+'">'+esc(label)+'</option>').join('')+'</select>')+
-      legalForm+
+      legalForm+ancillaryUi+
       citations.map(r=>'<label style="display:block;margin:8px 0"><input type="checkbox" data-cite="'+
         esc(r.key)+'"> '+esc(r.title)+'</label>').join('')+
       (panelState?.state==='majority_ready'||!panelState
@@ -300,6 +315,16 @@ async function confirmSharedVerdict(){
    :selectedCase.card?.kind==='civil'
     ?{amount:Number(region.querySelector('[data-v-amount]')?.value||0)}:undefined)
   :undefined;
+ if(sentence){
+  const addons={};
+  for(const element of region.querySelectorAll('input[data-v-addon]:checked')){
+   if(element.disabled)continue;
+   const value=region.querySelector('input[data-v-addon-val="'+element.dataset.vAddon+'"]');
+   addons[element.dataset.vAddon]=value?Number(value.value):true;
+  }
+  sentence.addons=addons;
+  sentence.remedies=[...region.querySelectorAll('input[data-v-remedy]:checked')].map(x=>x.dataset.vRemedy);
+ }
  const status=document.querySelector('[data-world-native-status]')||panel?.querySelector('[data-world-offers-status]');
  if(!citations.length){if(status)status.textContent='확인한 증거 또는 증언을 하나 이상 선택하세요.';return}
  if(!window.confirm('공유 세계에 판결을 확정할까요? 판결은 되돌릴 수 없습니다.'))return;
