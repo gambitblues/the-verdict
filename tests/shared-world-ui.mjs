@@ -108,7 +108,7 @@ try{
    window.render=()=>{document.querySelector('main').innerHTML=window.VerdictSharedWorld.nativeCourt()};
    document.querySelector('main').insertAdjacentHTML('beforeend',window.VerdictSharedWorld.courtListEntry());
   });
-  await page.locator('main [data-world-open]').click();
+  await page.locator('main [data-world-open]').last().click();
   assert.equal(await page.evaluate(()=>window.ui.p4NativeCourt),true,'shared case enters native court mode');
   assert.equal(await page.locator('main [data-world-native-root] [data-court-tab]').count(),6);
   await page.locator('main [data-court-tab="evidence"]').click();
