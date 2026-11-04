@@ -41,9 +41,16 @@ let booted=false;
 function boot(){
  if(booted)return;booted=true;profiles();
  try{Object.defineProperty(document,'readyState',{configurable:true,get:()=>'loading'})}catch{}
- let i=0;const next=()=>{if(i>=GAME.length){try{delete document.readyState}catch{}document.dispatchEvent(new Event('DOMContentLoaded'));return}
-  const s=document.createElement('script');s.src=GAME[i++];s.async=false;s.onload=next;s.onerror=()=>{console.warn('script failed',s.src);next()};document.body.appendChild(s)};
- next();
+ // Classic scripts are fetched in parallel but executed in insertion order by async=false.
+ // Previously each download waited for the preceding script's onload (31 serial requests).
+ let remaining=GAME.length;
+ const done=()=>{if(--remaining!==0)return;try{delete document.readyState}catch{}
+  document.dispatchEvent(new Event('DOMContentLoaded'))};
+ for(const path of GAME){
+  const s=document.createElement('script');s.async=false;s.src=path;
+  s.onload=done;s.onerror=()=>{console.warn('script failed',s.src);done()};
+  document.body.appendChild(s);
+ }
 }
 
 /* ---------- backups in IndexedDB (bigger than localStorage; never cleared by the game) ---------- */
