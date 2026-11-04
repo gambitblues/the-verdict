@@ -56,14 +56,27 @@
 
 **남은 게임 연동:** 현재 `trial_play.js`의 기존 재판 절차와 공유 서버 액션을 연결하지 않았음. 서버가 승인하는 최초/추가 공판 일정, 후속 자료가 이월되었을 때의 단계별 공개, 판결문 검증 및 선고 확정, AI 답변 후 검증, 개인 NPC 기억 반영을 마쳐야 실제 2인 P4 재판이 완성됨.
 
+## P4 공유 재판 실행 체인 — 이번 develop 추가 구현
+
+- **공유 법정 진입**: `trial_play.js`의 기존 사건 목록에 공유 법정 진입을 연결하고, `shared_world.js` 화면을 기존 재판과 같은 **사건·기일·증거·증인·주문·판결 6개 탭**으로 정리했다. 원본 개인 재판 세이브와 사건 개체는 섞지 않는다.
+- **016 `shared_court_begin`**: 서버가 판사 신원·사건 소유권·개정 기일·공통 세계 시계를 직접 확인한다. 최초 개정은 서버 현재 날짜, 추가 기일은 직전 완료 기일 다음 날 이후. 이전 기일에서 실제 법정 활동을 하지 않았다면 다음 기일로 넘어갈 수 없고 총 6기일 상한을 적용한다. 브라우저는 날짜·판사 ID를 선택할 수 없다.
+- **018 이월 증거**: 증거 제출 명령 당일에는 `delayed`만 기록한다. 후속 기일을 열고 `shared_order_result_record`로 승인한 다음에야 봉인된 분기의 실제 자료·제출 거부·추가 지연 결과를 공개한다. 이전 기일에서 주문하지 않은 자료와 미선택 진실 분기는 공개되지 않는다.
+- **증인신문·기록**: `shared_courtroom.js`가 공개 시점, 선행 질문, 개정 기일을 검증하고 봉인된 사건 원본에서만 답변을 결정한다. immutable `shared_court_actions`에 확정 기록을 저장한다. 클라이언트 임의 답변은 반영하지 않는다.
+- **공유 선고**: `shared_judgment.js`와 Worker `POST /world/court/verdict`는 사건 분야에 허용된 판결 유형인지 확인하고, 최초 제출 또는 법정에서 실제 확인한 증거·증언만 판결 근거로 받는다. 판결 주문과 SHA-256 사건 기록 해시는 서버에서 만들고 `shared_judgment_publish`로 원자적 단일 판결을 확정한다. 판결 후 신문과 재선고는 차단된다. 다만 기존 `trial_play.js`의 상세 판결 점수·양형 산식과 동일한 계산이라는 주장은 할 수 없다.
+- **017 후속 뉴스**: 선고 이후 사건의 공통 후속 소식은 서버 공통 날짜가 다음 게임 날짜에 도달했을 때만 한 번 발행된다. AI가 개별 관계자 인생을 임의 창작하지 않는다.
+- **019 객관적 NPC 판결 연속성**: 서버가 미리 등록한 `publicNpcId`가 세계 시트의 인물에 정확히 연결된 경우에만 판결 사실을 공통 NPC 공개 이력과 뉴스에 추가한다. 개인별 관계·대화 기억 및 기존 사망·직업 상태는 그대로 보존한다. 안정된 NPC ID가 없는 구형 사건은 이름만으로 잘못 병합하지 않으며 자동 연결하지 않는다.
+- **기본 안전장치**: Worker의 `P4_SHARED_DOCKET_ENABLED`, `P4_COURT_ACTIONS_ENABLED`, `P4_JUDGMENTS_ENABLED`는 모두 `"0"`. 게임의 `p4SharedWorld`, `p4SharedDocket`, `p4CourtActions`, `p4SharedVerdicts`는 모두 `false` 기본값. 독립 QA에서만 활성화한다.
+
+**구현 경계:** 기존 `S.cases` 기반 개인 커리어 선고·NPC 감정·상세 점수와 공유 사건의 서버 선고가 자동 병합되는 것은 아니다. 공유 사건은 기존 사건 목록에서 진입하는 별도 서버 관리 재판이며, 개인 저장 체계와의 양방향 동기화, 개별 사건법·양형 엔진의 완전한 동일성, AI가 쓰는 실시간 후속 기사, 실제 2계정 E2E는 아직 검증 또는 구현이 필요하다.
+
 ## 적용과 QA
 
 이 단계의 GitHub 코드 변경은 **운영 DB나 Worker에 적용되지 않았습니다**.
 
-1. 독립 QA 프로젝트에서 SQL `001 → 002 → 003 → 006 → 007 → 008 → 009 → 010 → 011 → 012 → 013 → 014 → 015` 순서로 적용. P3 Terra 기능이 필요한 QA DB라면 기존 `004 → 005`도 해당 절차에 포함.
+1. 독립 QA 프로젝트에서 SQL `001 → 002 → 003 → 006 → 007 → 008 → 009 → 010 → 011 → 012 → 013 → 014 → 015 → 016 → 017 → 018 → 019` 순서로 적용. P3 Terra 기능이 필요한 QA DB라면 기존 `004 → 005`도 해당 절차에 포함.
 2. `cd server/supabase && npm ci && npm test`; `cd server/worker && npm run check`.
-3. 개발 QA Worker 변수 `P4_SHARED_DOCKET_ENABLED="1"`, `P4_COURT_ACTIONS_ENABLED="1"`은 데이터/권한/이벤트 검수 환경에서만 사용. **기존 운영 Worker와 wrangler.toml의 예시 값으로 재배포 금지.**
-4. 별도 QA 게임 설정에 `p4SharedWorld:true`, `p4SharedDocket:true`, `p4CourtActions:true`를 지정하고 UI 확인.
+3. 개발 QA Worker 변수 `P4_SHARED_DOCKET_ENABLED="1"`, `P4_COURT_ACTIONS_ENABLED="1"`, `P4_JUDGMENTS_ENABLED="1"`은 데이터/권한/이벤트 검수 환경에서만 사용. **기존 운영 Worker와 wrangler.toml의 예시 값으로 재배포 금지.**
+4. 별도 QA 게임 설정에 `p4SharedWorld:true`, `p4SharedDocket:true`, `p4CourtActions:true`, `p4SharedVerdicts:true`를 지정하고 UI 확인.
 5. 읽기 전용 실제 두 계정 검사: `SUPABASE_URL=... SUPABASE_ANON_KEY=... VERDICT_API=... node server/live/p4-read-e2e.mjs`. 값은 QA용 공개 설정, 비밀번호는 실행 중 직접 입력. 실계정/운영 데이터 사용 금지.
 6. 쓰기 테스트(배당 수락, 선고, NPC 갱신)는 QA DB의 별도 TEST 데이터에서만. 운영 계정 세이브/전역 사건에 쓰지 않음.
 
