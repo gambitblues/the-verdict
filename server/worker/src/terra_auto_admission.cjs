@@ -38,6 +38,34 @@ function verifyForAdmission(seed,candidate,sheet){
   const record=(sheet?.records||[]).find(r=>r.authorLeadId===l.id);
   if(record?.first===true)errors.push('uncertain_evidence_disclosed_as_initial:'+l.id);
  }
+ // New author cases must be scoreable by the real native trial core.
+ // Legacy cases are NOT rewritten, but new stock cannot silently enter
+ // with guessed evidence strength, evidence legality or sentence bounds.
+ const validReview=r=>r&&Number.isFinite(r.strength)&&r.strength>=0&&r.strength<=100&&
+  Number.isFinite(r.flaw)&&r.flaw>=0&&r.flaw<=100&&
+  ['none','source','timing','illegal'].includes(r.flawType)&&
+  ['p','d','n'].includes(r.side);
+ for(const r of sheet?.records||[]){
+  if(!validReview(r.review))errors.push('ungraded_evidence:'+r.id);
+ }
+ for(const q of sheet?.questions||[]){
+  if(!q.review||!['p','d','n'].includes(q.review.side)||typeof q.review.weak!=='boolean')
+   errors.push('ungraded_question:'+q.id);
+ }
+ const kind=sheet?.card?.kind;
+ if(kind==='criminal'){
+  const ch=sheet.card?.charge;
+  if(!ch||!Number.isInteger(ch.min)||!Number.isInteger(ch.max)||
+   ch.min<0||ch.max<=0||ch.min>ch.max||
+   !Number.isInteger(ch.fine)||ch.fine<0)
+   errors.push('criminal_sentencing_limits_missing');
+ }else if(kind==='civil'){
+  const cl=sheet.card?.claim;
+  if(!cl||!Number.isInteger(cl.amount)||cl.amount<=0||
+   !Array.isArray(cl.fair)||cl.fair.length!==2||
+   cl.fair.some(x=>!Number.isInteger(x)||x<0||x>cl.amount))
+   errors.push('civil_damages_limits_missing');
+ }
  const curated={...candidate,status:'review'};
  const handoff=prepareWorldSheet(curated,sheet);
  if(!handoff.ok)errors.push(...handoff.errors);
