@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -377,4 +377,43 @@ test('P4 public NPC biography follows judgment without leaking judge-private mem
  assert.equal(rec.life_status,'alive','no invented death or status change');
  assert.ok(rec.public_profile.publicCaseIds.includes(id));
  assert.equal((await pb('select public_profile from public.shared_npc_public where npc_id=$1',[npc])).rows[0].public_profile.publicCaseIds[0],id);
+});
+
+test('P5 existing judges and public NPC: private votes until all 3, majority and stalled case',async()=>{
+ const id='case-panel-p5',npc='npc:p5-bench';
+ const day=(await svc('select game_day from public.shared_world_clock')).rows[0].game_day;
+ await svc('select public.shared_npc_public_put($1,$2::jsonb,$3,$4,$5)',
+  [npc,JSON.stringify({name:'가상 합의부 재판관'}),'alive',day,0]);
+ await svc(
+  'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
+  [id,'civil',HASH,HASH,'fingerprint-panel-p5',JSON.stringify({id}),JSON.stringify({passed:true}),A]);
+ const open=()=>svc('select public.shared_joint_open($1,$2::uuid,$3::uuid,$4) as inserted',[id,A,B,npc]);
+ assert.equal((await open()).rows[0].inserted,true);
+ assert.equal((await open()).rows[0].inserted,false,'replay must not create another panel');
+ const vote=(uid,seat,choice)=>svc(
+  'select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6) as inserted',
+  [id,uid,seat,choice,HASH,'비공개 의견']);
+ const view=uid=>svc('select public.shared_joint_status($1,$2::uuid) as state',[id,uid]);
+ assert.equal((await vote(A,'chair','claim_granted')).rows[0].inserted,true);
+ let only=(await view(B)).rows[0].state;
+ assert.equal(only.votesCast,1);
+ assert.equal(only.myVote,null,'peer must not see first judge opinion');
+ assert.equal(only.tally,undefined);
+ await assert.rejects(vote(B,'chair','claim_granted'),/not_panel_member/);
+ await assert.rejects(vote(B,'npc','claim_granted'),/not_panel_member/);
+ await assert.rejects(pa('select * from public.shared_joint_votes'),/permission denied/);
+ await assert.rejects(pb('select * from public.shared_joint_votes'),/permission denied/);
+ await assert.rejects(svc('select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6)',
+  [id,null,'npc','claim_denied',HASH,'']),/human_votes_pending/);
+ assert.equal((await vote(B,'peer','claim_denied')).rows[0].inserted,true);
+ await svc('select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6)',
+  [id,null,'npc','claim_granted',HASH,'']);
+ const complete=(await view(A)).rows[0].state;
+ assert.equal(complete.majority,'claim_granted');
+ assert.equal(complete.tally.claim_granted,2);
+ assert.equal(complete.tally.claim_denied,1);
+ assert.equal((await view(B)).rows[0].state.majority,'claim_granted');
+ await assert.rejects(vote(B,'peer','claim_granted'),/vote_conflict/);
+ await assert.rejects(svc('select public.shared_joint_status($1,$2::uuid)',[
+  id,'00000000-0000-0000-0000-00000000000f']),/not_panel_member/);
 });
