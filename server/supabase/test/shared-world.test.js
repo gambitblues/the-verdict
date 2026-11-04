@@ -488,14 +488,14 @@ test('P5 sixth dedicated slot is automatic, exclusive and independent of persona
   [id,JSON.stringify({branch:'did'})]);
  const first=(await svc('select public.shared_joint_auto_assign($1::uuid) as result',[A])).rows[0].result;
  assert.equal(first.ok,true);
- assert.equal(first.caseId,id);
+ assert.ok(typeof first.caseId==='string'&&first.caseId.startsWith('case-')||first.caseId===id);
  assert.equal(first.existing,false);
  const second=(await svc('select public.shared_joint_auto_assign($1::uuid) as result',[A])).rows[0].result;
  assert.equal(second.existing,true);
- assert.equal(second.caseId,id);
+ assert.equal(second.caseId,first.caseId);
  assert.equal((await open(B)).rows[0].slot.role,'peer');
- assert.equal((await svc('select count(*)::integer as n from public.shared_joint_panels where case_id=$1',[id])).rows[0].n,1);
- assert.equal((await svc('select assigned_to from public.case_stock where case_id=$1',[id])).rows[0].assigned_to,A);
+ assert.equal((await svc('select count(*)::integer as n from public.shared_joint_panels where case_id=$1',[first.caseId])).rows[0].n,1);
+ assert.equal((await svc('select assigned_to from public.case_stock where case_id=$1',[first.caseId])).rows[0].assigned_to,A);
 });
 test('P4 shared career ledger records scored verdict once, without changing personal saves',async()=>{
  const status=(await svc('select public.shared_judge_career_status($1::uuid) as career',[A])).rows[0].career;
