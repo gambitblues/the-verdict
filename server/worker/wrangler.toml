@@ -15,6 +15,7 @@ TERRA_REFILL_ENABLED = "0"
 P4_SHARED_DOCKET_ENABLED = "0"
 P4_JUDGMENTS_ENABLED = "0" # only enable in independent P4 QA
 P4_FREE_ORDERS_ENABLED = "0" # metered AI interpretation; QA-only
+P5_JOINT_PANEL_ENABLED = "0" # QA-only, no production panel votes
 P4_COURT_ACTIONS_ENABLED = "0" # never accept courtroom writes on an unverified deployment
 # These are conservative EXAMPLE caps, not live-spending authorization.
 TERRA_MAX_CALLS_DAY = "4"
