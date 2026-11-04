@@ -167,3 +167,57 @@ test('P5 dedicated joint slot is separate and can auto assign without browser ca
  const sent=JSON.parse(requests.at(-1).opt.body);
  assert.deepEqual(sent,{p_actor:A},'browser cannot inject case IDs or a second participant');
 });
+
+test('P5 bench is server verified: NPC is an associate, not chair; outsiders do not get seats',async()=>{
+ const bench={caseId:'case-p5',myRole:'associate',canOpenHearing:false,canPublishJudgment:false,
+  seats:[
+   {seat:'chair',kind:'human',role:'presiding',id:A,name:'A 판사'},
+   {seat:'peer',kind:'human',role:'associate',id:B,name:'B 판사'},
+   {seat:'npc',kind:'npc',role:'associate',id:'npc:judge',name:'NPC 배석판사'}
+  ]};
+ const calls=[];
+ const mock=async(url,opt)=>{calls.push({url:String(url),opt});return json(bench)};
+ const d=await (await p5PanelRoute(req('/world/panel/bench?caseId=case-p5'),env,mock,B,headers)).json();
+ assert.equal(d.ok,true);
+ assert.equal(d.bench.myRole,'associate');
+ assert.equal(d.bench.seats[2].role,'associate');
+ assert.deepEqual(JSON.parse(calls[0].opt.body),{p_case:'case-p5',p_actor:B});
+ const corrupted={...bench,seats:[...bench.seats.slice(0,2),{seat:'npc',kind:'npc',role:'presiding'}]};
+ const bad=await p5PanelRoute(req('/world/panel/bench?caseId=case-p5'),env,async()=>json(corrupted),B,headers);
+ assert.equal(bad.status,503);
+});
+test('P5 associate observes identical public court actions, but cannot open the hearing',async()=>{
+ const sheet={
+  format:'verdict-world-sheet/v1',id:'case-p5',card:{kind:'civil',title:'공동재판 사건'},
+  people:[],common:{facts:[]},records:[{id:'r1',title:'첫 자료',first:true}],
+  worlds:{did:{records:{r1:'공개된 초기 내용'}},didnt:{},reason:{}},
+  questions:[],orders:[]
+ };
+ const actions=[{action_type:'question',action_key:'q1',response:{status:'done',answer:'증언'},hearing_index:1,game_day:8}];
+ const calls=[];
+ const mock=async(url)=>{
+  const u=String(url);calls.push(u);
+  if(u.includes('/shared_joint_panels?'))return json([{chair_id:A,peer_id:B}]);
+  if(u.includes('/case_stock?'))return json([{case_id:'case-p5',state:'assigned',sheet}]);
+  if(u.includes('/world_secrets?'))return json([{truth:{branch:'did'}}]);
+  if(u.includes('/shared_court_actions?'))return json(actions);
+  if(u.includes('/shared_judge_hearings?'))return json([{state:'completed',hearing_index:1,completed_game_day:8}]);
+  if(u.includes('/shared_world_clock?'))return json([{game_day:8}]);
+  if(u.includes('/shared_case_judgments?'))return json([]);
+  throw Error('unexpected '+u);
+ };
+ const chair=(await p5PanelRoute(req('/world/panel/case?caseId=case-p5'),env,mock,A,headers));
+ const peer=(await p5PanelRoute(req('/world/panel/case?caseId=case-p5'),env,mock,B,headers));
+ assert.equal(chair.status,200);assert.equal(peer.status,200);
+ const a=await chair.json(),b=await peer.json();
+ assert.deepEqual(a.actions,b.actions);
+ assert.deepEqual(a.records,b.records);
+ assert.equal(a.court.canAct,true);
+ assert.equal(b.court.canAct,false);
+ assert.equal(b.court.canObserve,true);
+ assert.equal(b.role,'associate');
+ assert.ok(!JSON.stringify(b).includes('worlds'),'sealed branches are not exposed');
+ const outsider=await p5PanelRoute(req('/world/panel/case?caseId=case-p5'),env,mock,'00000000-0000-0000-0000-00000000000c',headers);
+ assert.equal(outsider.status,403);
+ assert.equal(calls.filter(u=>u.includes('/world_secrets?')).length,2,'nonmember is denied before reading truth');
+});
