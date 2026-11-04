@@ -49,6 +49,9 @@ function renderOffers(){
   const ready=window.VERDICT_CONFIG?.p4CourtActions===true&&courtStatus?.canAct===true;
   const questions=(selectedCase.questions||[]).slice(0,30).map((q,i)=>({
    kind:'question',key:q.id||'index-'+i,label:'신문 · '+String(q.w||'증인')+': '+String(q.q||'질문')}));
+  const dueOrders=courtActions.filter(a=>a.action_type==='order' &&
+    Number(a.hearing_index)<Number(courtStatus?.hearingIndex||0) &&
+    !courtActions.some(x=>x.action_type==='order_result'&&x.action_key===a.action_key));
   const orders=(selectedCase.orders||[]).slice(0,30).map(o=>({
    kind:'order',key:o.record,label:'제출 명령 · '+String(o.ask||o.record)}));
   region.innerHTML='<article class="vsw-event"><strong>'+esc(c.title||selectedCase.caseId)+'</strong><p>'+esc(c.summary||'')+'</p><small>초기 제출 자료</small>'+
@@ -57,7 +60,8 @@ function renderOffers(){
    (window.VERDICT_CONFIG?.p4CourtActions===true
     ?'<p>'+esc(ready?'현재 세계 날짜에 제'+courtStatus.hearingIndex+'회 공판이 열려 있습니다.':'공판 기일을 열면 질문과 제출명령을 진행할 수 있습니다.')+'</p>'+
      '<p><button type="button" data-world-begin>▶ 공유 공판 기일 열기 / 다음 기일</button></p>'+
-     (ready?[...questions,...orders].map(a=>'<p><button type="button" data-court-kind="'+esc(a.kind)+'" data-court-key="'+esc(a.key)+'">'+esc(a.label)+'</button></p>').join(''):'')+
+     (ready?[...questions,...orders].map(a=>'<p><button type="button" data-court-kind="'+esc(a.kind)+'" data-court-key="'+esc(a.key)+'">'+esc(a.label)+'</button></p>').join('')+
+       dueOrders.map(a=>'<p><button type="button" data-order-result="'+esc(a.action_key)+'">📂 '+esc(a.response?.title||a.action_key)+' 제출 결과 확인</button></p>').join(''):'')+
      '<div data-court-outcomes>'+courtActions.map(a=>'<p><strong>'+esc(a.action_key)+'</strong> · '+esc(a.response?.answer||a.response?.text||a.response?.status||'')+'</p>').join('')+'</div>'+
      (window.VERDICT_CONFIG?.p4SharedVerdicts===true&&courtActions.length&&courtStatus?.canAct
       ?'<section data-world-verdict><h4>⚖ 공유 판결 검토</h4><p>서버 법정기록 중 판결 근거를 고르세요.</p>'+
@@ -67,7 +71,7 @@ function renderOffers(){
          .map(([v,l])=>'<option value="'+esc(v)+'">'+esc(l)+'</option>').join(''))+'</select>'+
         [...(selectedCase.records||[]).filter(r=>r.first===true).map(r=>({key:'initial:'+r.id,title:r.title})),
          ...courtActions.filter(a=>a.response?.status==='done').map(a=>({
-          key:a.action_type+':'+a.action_key,title:a.response?.title||a.action_key
+          key:(a.action_type==='order_result'?'order':a.action_type)+':'+a.action_key,title:a.response?.title||a.action_key
          }))].map(r=>'<label style="display:block;margin:6px 0"><input type="checkbox" data-cite="'+esc(r.key)+'"> '+esc(r.title)+'</label>').join('')+
         '<button type="button" data-world-verdict>공유 판결 확정</button><p class="small">확정된 판결은 두 판사의 공개 연혁에 기록되며 취소할 수 없습니다.</p></section>'
       :'')
@@ -128,6 +132,20 @@ async function beginCourt(){
   await refreshCourt();await refresh();
   if(area)area.textContent='제'+d.hearing.hearing_index+'회 기일 · 공통 세계 '+d.hearing.world_day+'일 개정';
  }catch{if(area)area.textContent='기일을 열 수 없습니다. 이전 기일의 신문·주문 기록 또는 복귀 보호를 확인하세요.'}
+}
+async function resolveOrder(key){
+ if(!selectedCase||!courtStatus?.canAct)return;
+ const status=panel?.querySelector('[data-world-offers-status]');
+ if(status)status.textContent='이전 기일의 자료 제출 결과를 확인하고 있습니다…';
+ try{
+  const d=await window.VerdictAuth.api('/world/court/order/resolve',{
+   caseId:selectedCase.caseId,key,hearingIndex:courtStatus.hearingIndex
+  });
+  if(!d?.ok)throw Error('order_not_due');
+  await refreshCourt();
+  if(status)status.textContent=d.response?.status==='done'
+   ?'추가 자료가 법정에 제출됐습니다.':'제출 결과: '+(d.response?.status||'확인 필요');
+ }catch{if(status)status.textContent='이전 기일에서 주문한 자료이거나 기일이 열렸는지 확인하세요.'}
 }
 async function doCourtAction(kind,key){
  if(!selectedCase||courtStatus?.canAct!==true||!['question','order'].includes(kind))return;
@@ -245,6 +263,7 @@ function mount(){
  const id=target.dataset.worldAccept;if(id)acceptOffer(id);
  else if(target.hasAttribute('data-world-begin'))beginCourt();
  else if(target.hasAttribute('data-world-verdict'))confirmSharedVerdict();
+ else if(target.dataset.orderResult)resolveOrder(target.dataset.orderResult);
  else if(target.dataset.courtKind&&target.dataset.courtKey)doCourtAction(target.dataset.courtKind,target.dataset.courtKey)})}
  const style=document.createElement('style');style.textContent=
  '#verdict-shared-world{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:7500;font:inherit}' +
