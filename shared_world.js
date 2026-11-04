@@ -581,8 +581,7 @@ async function refreshCareer(){
   const r=await window.VerdictAuth.api('/world/career');
   if(r?.ok){sharedCareer=r;
    const badge=document.querySelector('[data-shared-career]');
-   if(badge)badge.textContent='공유 경력 '+r.cases+'건 · 평균 평점 '+(r.avgReview??'-')+'점'+
-    ' (개인 세이브는 유지)';
+   if(badge)badge.textContent='공유 커리어 · 누적 판결 '+r.cases+'건 (개인 세이브는 유지)';
   }
  }catch{}finally{careerLoading=false}
 }
@@ -597,7 +596,7 @@ function courtListEntry(){
   '<div class="t4-head"><h3>⚖ 공동재판 <small>0~1건 · 개인 사건 5건과 별도</small></h3></div>'+
   '<p class="muted small" data-joint-slot-description>개시한 실제 판사가 재판장, 다른 실제 판사와 NPC는 배석판사입니다. NPC가 재판장을 맡는 일은 없습니다. 개인 사건 배당 한도를 차지하지 않습니다.</p>'+
   '<p class="muted small" data-joint-slot-status aria-live="polite">'+esc(panelState?.state==='majority_ready'?'합의 판결 대기':selectedCase?'진행 중: '+current:'공동재판 배정 대기')+'</p>'+
-  '<p class="muted small" data-shared-career>'+esc(sharedCareer?'공유 경력 '+sharedCareer.cases+'건 · 평균 평점 '+(sharedCareer.avgReview??'-')+'점':'공유 커리어 확인 전')+'</p>'+
+  '<p class="muted small" data-shared-career>'+esc(sharedCareer?'공유 커리어 · 누적 판결 '+sharedCareer.cases+'건':'공유 커리어 확인 전')+'</p>'+
   '<button class="btn primary" type="button" data-world-open>공동재판 법정 입장</button></section>';
 }
 function toggle(){if(!panel)return;const visible=panel.hidden;panel.hidden=!visible;if(visible)refresh()}
