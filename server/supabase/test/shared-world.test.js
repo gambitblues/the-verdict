@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql','028_joint_associate_court_actions.sql','029_shared_career_nine_month.sql','030_shared_evidence_rulings.sql','031_shared_motion_decisions.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql','028_joint_associate_court_actions.sql','029_shared_career_nine_month.sql','030_shared_evidence_rulings.sql','031_shared_motion_decisions.sql','032_request_role_claims.sql','033_open_hearing_survives_shared_day.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -28,7 +28,7 @@ await db.query(`insert into public.case_stock
  values ('case-p4','civil',$1,$2,$3,$4::jsonb,$5::jsonb,'assigned',$6,now())`,
  [HASH,HASH,FINGER,JSON.stringify({id:'case-p4'}),JSON.stringify({passed:true}),A]);
 async function as(role,uid,sql,params=[]){
- await db.exec(`reset role; select set_config('test.uid','${uid||''}',false),set_config('test.email','${uid===A?'a@test.kr':uid===B?'b@test.kr':''}',false),set_config('request.jwt.claim.role','${role}',false); set role ${role};`);
+ await db.exec(`reset role; select set_config('test.uid','${uid||''}',false),set_config('test.email','${uid===A?'a@test.kr':uid===B?'b@test.kr':''}',false),set_config('request.jwt.claims','${JSON.stringify({role})}',false); set role ${role};`);
  try{return await db.query(sql,params)}finally{await db.exec('reset role')}
 }
 const svc=(sql,p)=>as('service_role',null,sql,p),pa=(sql,p)=>as('authenticated',A,sql,p),pb=(sql,p)=>as('authenticated',B,sql,p),anon=(sql,p)=>as('anon',null,sql,p);
@@ -664,4 +664,22 @@ test('P5 objection and delay decisions: chair-only, server-only and immutable',a
   ['case-p4',B,1,'d1-obj',JSON.stringify({status:'done',type:'objection',valid:true,choice:'accept'})]),/chair_required/);
  await assert.rejects(svc('select public.shared_motion_decision_record($1,$2::uuid,$3,$4,$5::jsonb)',
   ['case-p4',A,1,'d1-obj',JSON.stringify({status:'done',type:'objection',valid:true,choice:'accept'})]),/hearing_not_open_today/);
+});
+
+test('v8.7.4 another judge moving the shared date never locks this judge out of an opened hearing',async()=>{
+ const id='case-async-lock-001';
+ await svc('insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
+  [id,'civil',HASH,HASH,'fingerprint-async-lock',JSON.stringify({id}),JSON.stringify({passed:true}),A]);
+ const begin=()=>svc('select * from public.shared_court_begin($1,$2::uuid)',[id,A]);
+ const act=(h,key)=>svc('select public.shared_court_action_record($1,$2::uuid,$3,$4,$5,$6::jsonb) as r',[id,A,h,'question',key,JSON.stringify({status:'done',answer:'증언'})]);
+ const one=(await begin()).rows[0];assert.equal(one.hearing_index,1);
+ await act(1,'lock-q1');
+ const two=(await begin()).rows[0];assert.equal(two.hearing_index,2);
+ // the other judge's hearing moves the shared date forward while A's second hearing is open and still empty
+ const clock=(await svc('select game_day,version from public.shared_world_clock')).rows[0];
+ await svc('select * from public.shared_clock_advance($1,$2)',[clock.version,clock.game_day+3]);
+ assert.ok((await act(2,'lock-q2')).rows[0].r,'A can still act in the hearing that is open');
+ const three=(await begin()).rows[0];assert.equal(three.hearing_index,3,'and can begin the next hearing');
+ await assert.rejects(act(2,'lock-q2-late'),/hearing_not_open_today/,'an older hearing closes once a later one exists');
+ await act(3,'lock-q3');
 });

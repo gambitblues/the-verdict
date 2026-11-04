@@ -79,7 +79,7 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
     read('shared_case_judgments?select=case_id,result,public_order,game_day,record_hash&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1')
    ]);
    const hearing=hearings[0],worldDay=clock[0]?.game_day;
-   const canAct=!!hearing&&hearing.state==='completed'&&hearing.completed_game_day===worldDay&&!judgments.length;
+   const canAct=!!hearing&&hearing.state==='completed'&&!judgments.length;   // v8.7.4: the latest opened hearing stays open across shared days
    const isChair=bench.chair_id===uid;
    const readiness=sharedDeliberationReadiness(row.sheet,actions,hearing?.hearing_index||0);
    const j=judgments[0];

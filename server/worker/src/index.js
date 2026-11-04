@@ -311,14 +311,16 @@ export async function handle(req,env,fetcher=fetch){
    const role=await courtRole(id,owner);
    if(!role||cases[0]?.state!=='assigned')
     return json({error:'case_not_found'},404,head);
-   const hearings=await query(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encodeURIComponent(id)}&judge_id=eq.${encodeURIComponent(owner)}&state=eq.completed&order=hearing_index.desc&limit=1`);
-   const day=clocks[0]?.game_day,hearing=hearings[0]||null;
+   const hearings=await query(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encodeURIComponent(id)}&judge_id=eq.${encodeURIComponent(owner)}&order=hearing_index.desc&limit=1`);
+   /* v8.7.4: the judge's latest opened hearing stays open until they begin the next one or decide — another judge
+    * moving the shared date forward never closes it (spec 2.5) */
+   const day=clocks[0]?.game_day,latest=hearings[0]||null,hearing=latest?.state==='completed'?latest:null;
    const actions=hearing?await query('shared_court_actions?select=action_type,action_key,response,hearing_index&case_id=eq.'+
     encodeURIComponent(id)+'&order=created_at.asc&limit=250'):[];
    const readiness=sharedDeliberationReadiness(cases[0]?.sheet,actions,hearing?.hearing_index||0);
    return json({ok:true,caseId:id,worldDay:day,role,canBegin:role==='chair',
-     hearingIndex:hearing&&hearing.completed_game_day===day&&!judgments.length?hearing.hearing_index:null,
-     canAct:!!hearing&&hearing.completed_game_day===day&&!judgments.length,
+     hearingIndex:hearing&&!judgments.length?hearing.hearing_index:null,
+     canAct:!!hearing&&!judgments.length,
      minimumHearings:readiness.minimumHearings,
      canDeliberate:!!hearing&&hearing.state==='completed'&&readiness.ready&&!judgments.length,
      pendingOrders:readiness.pendingOrders},200,head);
@@ -369,9 +371,9 @@ export async function handle(req,env,fetcher=fetch){
    const row=cases[0],today=clock[0]?.game_day;
    if(!row||row.state!=='assigned'||!await courtRole(caseId,row.assigned_to))
     return json({error:'case_not_found'},404,head);
-   const hearings=await query(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encodeURIComponent(caseId)}&judge_id=eq.${encodeURIComponent(row.assigned_to)}&hearing_index=eq.${hearing}&limit=1`);
-   const session=hearings[0];
-   if(!session||session.state!=='completed'||session.completed_game_day!==today||judgments.length)
+   const hearings=await query(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encodeURIComponent(caseId)}&judge_id=eq.${encodeURIComponent(row.assigned_to)}&order=hearing_index.desc&limit=1`);
+   const session=hearings[0];   // must be the judge's latest, opened hearing (not a past one)
+   if(!session||session.hearing_index!==hearing||session.state!=='completed'||judgments.length)
     return json({error:'hearing_not_open_today'},409,head);
    const built=freeOrderPrompt(orderText,row.sheet);
    if(built.error)return json({error:built.error},400,head);
@@ -470,7 +472,7 @@ export async function handle(req,env,fetcher=fetch){
     read('shared_court_actions?select=action_type,action_key,response&case_id=eq.'+enc+'&limit=250')
    ]);
    const hearing=hearings[0];
-   if(hearing?.state!=='completed'||hearing.completed_game_day!==clock[0]?.game_day)
+   if(hearing?.state!=='completed')
     return json({ok:true,caseId:id,hearingIndex:null,motions:[]},200,head);
    return json({ok:true,caseId:id,hearingIndex:hearing.hearing_index,
     motions:publicSharedMotions(row.sheet,id,hearing.hearing_index,actions)},200,head);

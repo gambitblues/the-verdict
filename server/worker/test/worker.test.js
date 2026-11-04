@@ -468,7 +468,7 @@ test('P4 free order: AI maps Korean open order to catalog but never writes evide
   if(u.endsWith('/auth/v1/user'))return ok({id:'u1',email:'a@x.kr'});
   if(u.includes('/rest/v1/players'))return ok([{email:'a@x.kr'}]);
   if(u.includes('/rest/v1/case_stock'))return ok([{assigned_to:owner,state:'assigned',sheet}]);
-  if(u.includes('/rest/v1/shared_judge_hearings'))return ok([{state:opened?'completed':'scheduled',completed_game_day:7}]);
+  if(u.includes('/rest/v1/shared_judge_hearings'))return ok([{hearing_index:1,state:opened?'completed':'scheduled',completed_game_day:7}]);
   if(u.includes('/rest/v1/shared_world_clock'))return ok([{game_day:7}]);
   if(u.includes('/rest/v1/shared_case_judgments'))return ok(hasJudgment?[{case_id:'case-p4'}]:[]);
   if(u.includes('/rpc/ai_reserve')){usage.push({});return ok(usage.length)}

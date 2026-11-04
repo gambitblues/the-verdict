@@ -22,6 +22,10 @@
 
 ## 1. Supabase (프로젝트 THE VERDICT, 서울)
 1. SQL Editor에서 `supabase/001_init.sql`을 실행합니다. 섹션 1의 `insert into public.players` 줄에 두 이메일을 넣고 주석을 풀어 함께 실행합니다.
+   - P3~P5(사건 재고·공유 세계·합의부)를 시험할 때는 `002`부터 번호 순서대로 모두 실행합니다(`supabase/test/migration-order.test.js`가 이 순서로 검사).
+   - **반드시 `032_request_role_claims.sql`까지 실행**: Supabase(PostgreSQL 15+)는 `request.jwt.claim.role`을 채우지 않아, 이것이 없으면 Worker 전용 함수가 모두 `service_only`로 거절됩니다. 이미 003~031을 실행한 DB에도 그대로 실행하면 됩니다(여러 번 실행해도 안전).
+   - `033_open_hearing_survives_shared_day.sql`: 다른 판사가 공유 날짜를 넘겨도 내가 연 기일이 닫히지 않게 합니다.
+   - 확인: SQL Editor에서 `select public.request_role();` → 결과가 비어 있으면 정상(편집기에는 JWT가 없음). Worker 배포 뒤 공유 기능 스위치를 켜기 전, `/world/clock` 같은 읽기 호출과 `shared_court_begin` 한 번이 `service_only` 없이 지나가는지 TEST 계정으로 확인합니다.
 2. Authentication → Sign In / Providers → **Allow new users to sign up 끄기**.
 3. Authentication → Users → **Invite user**로 두 사람 초대 → 각자 메일에서 비밀번호 설정.
 4. 확인 사항(SQL로 보장, `supabase/test`에서 검사):
