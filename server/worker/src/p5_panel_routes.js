@@ -97,6 +97,24 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    });
    return response({ok:true,created:inserted===true,caseId});
   }
+  if(url.pathname==='/world/panel/bench'&&req.method==='GET'){
+   const panels=await read('shared_joint_panels?select=chair_id,peer_id,npc_id&case_id=eq.'+
+    encodeURIComponent(caseId)+'&limit=1');
+   const bench=panels[0];
+   if(!bench||(bench.chair_id!==uid&&bench.peer_id!==uid))
+    return response({error:'not_panel_member'},403);
+   const [names,npcs]=await Promise.all([
+    read('players?select=user_id,name&user_id=in.('+bench.chair_id+','+bench.peer_id+')'),
+    read('shared_npc_public?select=npc_id,public_profile&npc_id=eq.'+
+     encodeURIComponent(bench.npc_id)+'&limit=1')
+   ]);
+   const name=id=>String(names.find(p=>p.user_id===id)?.name||'재판관').slice(0,80);
+   return response({ok:true,caseId,role:bench.chair_id===uid?'chair':'peer',
+    chair:{id:bench.chair_id,name:name(bench.chair_id)},
+    peer:{id:bench.peer_id,name:name(bench.peer_id)},
+    npc:{id:bench.npc_id,name:String(npcs[0]?.public_profile?.name||'NPC 재판관').slice(0,80)},
+    presidingRole:'chair',npcRole:'associate'});
+  }
   if(url.pathname==='/world/panel/status'&&req.method==='GET'){
    const status=await rpc('shared_joint_status',{p_case:caseId,p_actor:uid});
    return response({ok:true,...status});
