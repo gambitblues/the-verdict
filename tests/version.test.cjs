@@ -48,3 +48,15 @@ console.log('PASS: version',v);
    throw Error('startup script loader is no longer parallel-ordered');
  console.log('PASS: startup scripts download concurrently and execute in order');
 }
+
+// Newspaper: no accordion, display two-line summaries, and paginate exactly ten.
+{
+ const ui=fs.readFileSync(path.join(root,'game_ui.js'),'utf8');
+ const ai=fs.readFileSync(path.join(root,'ai_bridge.js'),'utf8');
+ if(!ui.includes('const NEWS_SIZE=10')||!ui.includes('articles().slice().sort')||
+    !ui.includes('setNewsPage(p)')||!ui.includes('tv-news-summary')||
+    !ui.includes('data-action="newsPage"'))throw Error('news pagination and two-line article summary not wired');
+ if(!ai.includes('caseName:')||!ai.includes('witnessKnowledge:')||!ai.includes('previousAnswers:'))
+   throw Error('AI witness context not sent');
+ console.log('PASS: ten-story news paging and case-specific witness payload');
+}
