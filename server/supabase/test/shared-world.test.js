@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -416,4 +416,46 @@ test('P5 existing judges and public NPC: private votes until all 3, majority and
  await assert.rejects(vote(B,'peer','claim_granted'),/vote_conflict/);
  await assert.rejects(svc('select public.shared_joint_status($1,$2::uuid)',[
   id,'00000000-0000-0000-0000-00000000000f']),/not_panel_member/);
+});
+
+test('P5 verdict release requires complete consensus and correct majority, not a lone judge',async()=>{
+ const wrong=()=>svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5)',
+  ['case-panel-p5',A,'claim_denied','원고의 청구를 기각한다.','e'.repeat(64)]);
+ await assert.rejects(wrong(),/joint_verdict_mismatch/);
+ const good=()=>svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5) as published',
+  ['case-panel-p5',A,'claim_granted','원고의 청구를 인용한다.','f'.repeat(64)]);
+ assert.equal((await good()).rows[0].published,true);
+ assert.equal((await good()).rows[0].published,false,'replay is idempotent');
+ await assert.rejects(svc('update public.shared_joint_votes set choice=$1 where case_id=$2',
+  ['claim_denied','case-panel-p5']),/permission denied|joint_vote/);
+ const pending='case-panel-pending',npc='npc:p5-bench';
+ await svc(
+  'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
+  [pending,'civil',HASH,HASH,'fingerprint-panel-pending',JSON.stringify({id:pending}),
+   JSON.stringify({passed:true}),A]);
+ await svc('select public.shared_joint_open($1,$2::uuid,$3::uuid,$4)',[pending,A,B,npc]);
+ await svc('select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6)',
+  [pending,A,'chair','claim_granted',HASH,'']);
+ await assert.rejects(svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5)',
+  [pending,A,'claim_granted','원고의 청구를 인용한다.','e'.repeat(64)]),/joint_votes_incomplete/);
+ await assert.rejects(svc('select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6)',
+  [pending,B,'peer','claim_denied','b'.repeat(64),'']),/joint_evidence_snapshot_changed/);
+});
+test('P4 server publishes native-score review atomically and never permits rewriting it',async()=>{
+ const id='case-native-review-001',score={method:'VerdictTrialCore.skill/evaluate',items:[]};
+ await svc(
+  'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
+  [id,'civil',HASH,HASH,'fingerprint-review-001',JSON.stringify({id}),JSON.stringify({passed:true}),A]);
+ const publish=(grade=score)=>svc(
+  'select public.shared_judgment_publish_scored($1,$2::uuid,$3,$4,$5,$6,$7,$8::jsonb) as published',
+  [id,A,'claim_denied','원고의 청구를 기각한다.','e'.repeat(64),72,74,JSON.stringify(grade)]);
+ assert.equal((await publish()).rows[0].published,true);
+ assert.equal((await publish()).rows[0].published,false);
+ const row=(await pa('select skill_score,review_score,grade_data from public.shared_judgment_reviews where case_id=$1',[id])).rows[0];
+ assert.equal(row.skill_score,72);
+ assert.equal(row.review_score,74);
+ assert.equal(row.grade_data.method,'VerdictTrialCore.skill/evaluate');
+ await assert.rejects(publish({method:'forged'}),/review_already_published/);
+ await assert.rejects(pa('update public.shared_judgment_reviews set skill_score=99 where case_id=$1',[id]),/permission denied/);
+ await assert.rejects(svc('update public.shared_judgment_reviews set skill_score=99 where case_id=$1',[id]),/shared_review_immutable/);
 });
