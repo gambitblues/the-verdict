@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -355,4 +355,26 @@ test('P4 order material cannot be delivered until the following real court heari
  await assert.rejects(svc('update public.shared_court_actions set response=$1::jsonb where case_id=$2',
   [JSON.stringify({status:'declined'}),id]),/court_action_immutable/);
  assert.equal((await svc('select count(*)::int as n from public.shared_court_actions where case_id=$1',[id])).rows[0].n,2);
+});
+
+test('P4 public NPC biography follows judgment without leaking judge-private memories',async()=>{
+ const id='case-linked-001',npc='npc:shared-a01',day=(await svc('select game_day from public.shared_world_clock')).rows[0].game_day;
+ await svc('select public.shared_npc_public_put($1,$2::jsonb,$3,$4,$5)',
+  [npc,JSON.stringify({name:'가상 증인',profession:'기술자'}),'alive',day,0]);
+ const sheet={id,people:[{key:'W1',publicNpcId:npc,name:'가상 증인'}],card:{kind:'civil'}};
+ await svc(
+  'insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
+  [id,'civil',HASH,HASH,'fingerprint-linked-001',JSON.stringify(sheet),JSON.stringify({passed:true}),A]);
+ assert.equal((await svc('select count(*)::int as n from public.shared_case_npc_links where case_id=$1',[id])).rows[0].n,1);
+ await assert.rejects(pa('select * from public.shared_case_npc_links'),/permission denied/);
+ await svc('select public.shared_judgment_publish($1,$2::uuid,$3,$4,$5)',
+  [id,A,'claim_denied','원고의 청구를 기각한다.','d'.repeat(64)]);
+ const published=(await pb(`select event_type,public_data from public.shared_world_events where case_id=$1
+ and event_type in ('judgment_published','npc_public_update') order by event_id`,[id])).rows;
+ assert.deepEqual(published.map(x=>x.event_type),['judgment_published','npc_public_update']);
+ assert.deepEqual(published[1].public_data.npcIds,[npc]);
+ const rec=(await pa('select public_profile,life_status from public.shared_npc_public where npc_id=$1',[npc])).rows[0];
+ assert.equal(rec.life_status,'alive','no invented death or status change');
+ assert.ok(rec.public_profile.publicCaseIds.includes(id));
+ assert.equal((await pb('select public_profile from public.shared_npc_public where npc_id=$1',[npc])).rows[0].public_profile.publicCaseIds[0],id);
 });
