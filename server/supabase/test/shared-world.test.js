@@ -568,3 +568,44 @@ test('P5 presiding judge opens shared hearing, human associate can question and 
  await assert.rejects(svc('select public.shared_order_result_record($1,$2::uuid,$3,$4,$5::jsonb)',
   [id,B,2,'r-never-ordered',JSON.stringify(released)]),/order_not_due/);
 });
+
+test('P4/P5 one joint trial links verdict, NPC public continuity and next-day news atomically',async()=>{
+ const active=(await svc(`select p.case_id from public.shared_joint_panels p where p.chair_id=$1
+ and not exists(select 1 from public.shared_case_judgments j where j.case_id=p.case_id)
+ order by p.case_id limit 1`,[A])).rows[0];
+ assert.ok(active);
+ const id=active.case_id,npc='npc:joint-witness-continuity';
+ const day=(await svc('select game_day from public.shared_world_clock')).rows[0].game_day;
+ await svc('select public.shared_npc_public_put($1,$2::jsonb,$3,$4,$5)',[
+  npc,JSON.stringify({name:'공동재판 출석 목격자'}),'alive',day,0
+ ]);
+ await svc('insert into public.shared_case_npc_links(case_id,npc_id,person_key) values($1,$2,$3)',[id,npc,'W1']);
+ const vote=(actor,seat,choice)=>svc(
+  'select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6)',
+  [id,actor,seat,choice,HASH,'법정에서 확인된 기록 검토']);
+ await vote(A,'chair','claim_granted');
+ await vote(B,'peer','claim_granted');
+ await vote(null,'npc','claim_denied');
+ const grade={method:'VerdictTrialCore.skill/evaluate',score:77,review:79};
+ const published=(await svc(
+  'select public.shared_judgment_publish_scored($1,$2::uuid,$3,$4,$5,$6,$7,$8::jsonb) as done',
+  [id,A,'claim_granted','원고의 청구를 인용한다.','b'.repeat(64),77,79,JSON.stringify(grade)]
+ )).rows[0].done;
+ assert.equal(published,true);
+ const events=(await svc('select event_type from public.shared_world_events where case_id=$1',[id])).rows.map(x=>x.event_type);
+ assert.ok(events.includes('judgment_published'));
+ assert.ok(events.includes('npc_public_update'));
+ const updated=(await svc('select public_profile from public.shared_npc_public where npc_id=$1',[npc])).rows[0];
+ assert.ok(updated.public_profile.publicCaseIds.includes(id));
+ const scores=(await svc('select judge_id,seat,skill_score from public.shared_judge_career_events where case_id=$1 order by seat',[id])).rows;
+ assert.deepEqual(scores.map(x=>x.seat).sort(),['chair','peer']);
+ assert.ok(scores.every(x=>x.skill_score===77));
+ const due=(await svc('select due_game_day,state from public.shared_world_followups where case_id=$1',[id])).rows[0];
+ assert.equal(due.state,'pending');
+ await svc('update public.shared_world_clock set game_day=game_day+1 where id=$1',['main']);
+ const later=(await svc('select state from public.shared_world_followups where case_id=$1',[id])).rows[0];
+ assert.equal(later.state,'published');
+ const news=(await svc('select count(*)::integer as n from public.shared_world_events where case_id=$1 and event_type=$2',[id,'aftermath_published'])).rows[0].n;
+ assert.equal(news,1);
+ await assert.rejects(vote(B,'peer','claim_denied'),/panel_closed|vote_conflict/);
+});
