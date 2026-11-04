@@ -130,7 +130,7 @@ function judgeIdentity(){
 window.VerdictJudgeStyle={describe:judgeIdentity};
 /* A career chronicle is a read-only projection from saved journal records. */
 function careerChronicle(){
- const entries=(S.journal||[]).filter(e=>e&&/(판결|선고|승진|인사|부임|이동|상|퇴임|은퇴|커리어|사회 경력|인간관계)/.test(String(e.type||'')+' '+String(e.title||'')))
+ const entries=(S.journal||[]).filter(e=>e&&/(판결|선고|승진|인사|부임|이동|상|퇴임|은퇴|커리어|사회 경력|인간관계)/.test(String(e.type||'')+' '+String(e.title||''))
   && !/(베타|배포|QA|업데이트|버전|테스트|설치|원형|패키지|100개)/i.test(String(e.title||'')+' '+String(e.body||'')))
   .sort((a,b)=>Number(b.week||0)-Number(a.week||0)).slice(0,100);
  const years=Math.floor(Math.max(0,Number(S.week)||0)/52);
