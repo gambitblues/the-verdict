@@ -54,3 +54,33 @@ test('Shared evidence decisions and reasons use the same native legal skill rule
  }],base,'case-evidence');
  assert.equal(excluded.error,'excluded_evidence_cannot_be_cited');
 });
+
+test('same native core recognizes consistent recorded testimony without fictional witness traits',()=>{
+ const doc=structuredClone(sheet);doc.questions=[
+  {id:'q1',q:'계약을 확인했습니까?',review:{side:'p'},issue:'contract'},
+  {id:'q2',q:'계약금 지급을 보았습니까?',review:{side:'p'},issue:'contract'}
+ ];
+ const actions=[
+  {action_type:'question',action_key:'q1',response:{status:'done',answer:'확인했습니다.'}},
+  {action_type:'question',action_key:'q2',response:{status:'done',answer:'지급을 보았습니다.'}}
+ ];
+ const input={result:'claim_granted',citations:['initial:r1','question:q1','question:q2'],
+  reasons:['consistent'],sentence:{amount:1000}};
+ const d=adjudicateSharedJudgment(doc,actions,input,'parity-questions');
+ assert.equal(d.error,undefined);
+ assert.equal(d.grade.method,'VerdictTrialCore.skill/evaluate');
+ const reason=d.grade.items.find(i=>i.key==='reason:consistent');
+ assert.equal(reason?.points,4);
+});
+test('ruling without legal-evidence metadata is rejected, not silently assumed reliable',()=>{
+ const doc=structuredClone(sheet);delete doc.records[0].review;
+ const action={action_type:'evidence_decision',action_key:'r1:1',hearing_index:1,
+  response:{status:'done',recordId:'r1',decision:'exclude'}};
+ // Use testimony as the legal citation so the excluded record is not cited.
+ doc.questions=[{id:'q1',q:'기록을 확인했습니까?',review:{side:'p'}}];
+ const d=adjudicateSharedJudgment(doc,[action,{action_type:'question',action_key:'q1',
+  response:{status:'done',answer:'확인했습니다.'}}],{
+  result:'claim_denied',citations:['question:q1']
+ },'ruling-metadata');
+ assert.equal(d.error,'evidence_review_metadata_required');
+});
