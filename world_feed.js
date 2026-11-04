@@ -296,6 +296,20 @@ const TPL={
   choices:[['thanks','말해 줘서 고맙다고 답한다','들어 주셔서 감사합니다. 이제야 조금 마음이 놓여요.',{rel:6}],
    ['final','판결은 이미 확정됐다고 답한다','네, 압니다. 그래도 판사님은 아셔야 할 것 같았어요.',{rel:0}],
    ['where','필요하면 알려야 할 곳을 안내한다','알려 주신 곳에 정식으로 말해 보겠습니다. 용기를 내 볼게요.',{rel:3}]]},
+ mentor:{from:'senior',text:[
+   '{c} 재판 기록을 읽어 봤네. 이제는 재판장으로서 경험이 쌓였으니, 신임 판사들에게 절차를 설명하는 자리에 함께하지 않겠나?',
+   '{c} 판결 뒤에 후배 법관들끼리 기록 검토 모임을 연다네. 자네가 어려웠던 지점을 이야기해 주면 도움이 될 것 같아.',
+   '{c} 사건을 맡으며 느낀 점을 동료 판사들과 나눠 보게. 결론이 아니라 절차와 경험에 관한 이야기일세.'],
+  choices:[['join','동료 판사들과 실무 경험을 공유한다',['좋아. 정답을 알려 주려는 게 아니라 어떻게 기록을 살폈는지 나누면 되네.','후배들에게도 좋은 배움이 될 걸세.'],{rel:5}],
+   ['observe','이번에는 모임에 참석해 듣는다',['경청하는 것도 훌륭한 태도지. 다음엔 자네 경험도 들려주게.'],{rel:2}],
+   ['decline','재판 업무에 집중하겠다고 답한다',['알겠네. 여유가 생기면 다시 이야기하세.'],{rel:0}]]},
+ colleague:{from:'hyun',text:[
+   '{c} 건으로 고생 많았지? 종결 사건의 공개 판결문을 주제로 동기들과 조촐하게 이야기해 보려고 해. 올래?',
+   '이번에 동기들이 {c} 판결문을 함께 읽어 보기로 했어. 서로 다른 시각을 들어 보는 자리야.',
+   '{c} 판결 이유를 보면서 고민할 부분이 많더라. 비공개 기록은 빼고 판결문에 있는 것만 함께 살펴보자.'],
+  choices:[['discuss','공개 판결문을 함께 검토한다',['좋아. 판결 결론보다 논증 방식을 놓고 이야기해 보자.'],{rel:4}],
+   ['listen','동료들의 견해를 먼저 듣는다',['좋아, 서로 배울 점이 있지.'],{rel:2}],
+   ['later','다음에 참석하겠다고 한다',['알겠어. 다음에 다시 연락할게.'],{rel:0}]]},
  review:{from:'senior',text:[
    '{c} 리뷰 봤다. 너무 신경 쓰지 마. 다음엔 뭘 다르게 해 볼 생각이야?',
    '{c} 평가가 박하게 나왔더라. 나도 그런 해가 있었다. 뭐가 제일 아쉬웠어?',
@@ -361,6 +375,9 @@ function scan(){
   if(t.final&&!has('press')&&(t.final.media?.H??0)>=50){addThread('press',c);added=true}
   if(t.lateDone&&!t.final&&!has('late')){addThread('late',c);added=true}
   if(t.final?.reviewShown&&t.final.review<60&&!has('review')){addThread('review',c);added=true}
+  // Relationship benefits are social/professional only. No private case records or outcome modifiers.
+  if(t.final&&(S.relations?.senior??0)>=65&&!has('mentor')&&hash(c.id+'mentor')%4===0){addThread('mentor',c);added=true}
+  if(t.final&&(S.relations?.hyun??0)>=65&&!has('colleague')&&hash(c.id+'colleague')%4===0){addThread('colleague',c);added=true}
   if(t.final&&!t.final.pressDone){t.final.pressDone=true;added=true;const side=T.sideOf(t.final.dir);
    if(side===1||side===-1)for(const r of reporterPair(c)){const i=REPORTERS.indexOf(r),id=reporterNPC(i);if(!id)continue;
     const up=(side===1)===(r.side==='p');S.relations[id]=Math.max(0,Math.min(100,(S.relations[id]??30)+(up?6:-6)));
