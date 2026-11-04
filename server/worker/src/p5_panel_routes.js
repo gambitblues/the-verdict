@@ -175,7 +175,17 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    const npc=(await read('shared_npc_public?select=npc_id,public_profile,life_status&npc_id=eq.'+
     encodeURIComponent(panel.npc_id)+'&limit=1'))[0];
    if(!npc||npc.life_status!=='alive')return response({error:'npc_unavailable'},409);
-   const built=npcDeliberationPrompt(world.sheet,acts,npc.public_profile);
+   // Retrieve only the sealed branch selector server-side, then project the
+   // already-public first-hearing documents; never send worlds or branch to AI.
+   const sealed=await read('world_secrets?select=truth&case_id=eq.'+
+    encodeURIComponent(caseId)+'&limit=1');
+   const branch=sealed[0]?.truth?.branch;
+   if(!['did','didnt','reason'].includes(branch))
+    return response({error:'case_not_sealed'},409);
+   let initial;
+   try{initial=initialEvidence(world.sheet,caseId,branch)}
+   catch{return response({error:'initial_evidence_unavailable'},409)}
+   const built=npcDeliberationPrompt(world.sheet,acts,npc.public_profile,initial);
    if(built.error)return response({error:built.error},409);
    const model=env.MODEL_TALK,limit=360;
    const ticket=await ai.reserve(env,uid,'npc',model,
