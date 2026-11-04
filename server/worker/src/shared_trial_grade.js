@@ -31,7 +31,7 @@ export function evaluateSharedTrial(sheet,actions,judgment,sentence,seed){
  for(const r of sheet.records||[]){
   if(!r.first&&!delivered.has(r.id))continue;
   const key=(r.first?'initial:':'order:')+r.id;
-  if(citations.has(key)&&!validReview(r.review))
+  if((citations.has(key)||rulings.has(r.id))&&!validReview(r.review))
    return {error:'evidence_review_metadata_required',recordId:r.id};
   const meta=r.review||{};
   evidence.push({
