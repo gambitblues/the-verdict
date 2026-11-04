@@ -77,14 +77,17 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    const secret=await read('world_secrets?select=truth&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1');
    const branch=secret[0]?.truth?.branch;
    if(!['did','didnt','reason'].includes(branch))return response({error:'case_not_sealed'},409);
-   const [actions,hearings,clock,judgments]=await Promise.all([
+   const [actions,hearings,clock,judgments,ballots]=await Promise.all([
     read('shared_court_actions?select=action_type,action_key,response,hearing_index,game_day&case_id=eq.'+encodeURIComponent(caseId)+'&order=created_at.asc&limit=250'),
     read('shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.'+encodeURIComponent(caseId)+'&judge_id=eq.'+encodeURIComponent(bench.chair_id)+'&order=hearing_index.desc&limit=1'),
     read('shared_world_clock?select=game_day&id=eq.main&limit=1'),
-    read('shared_case_judgments?select=case_id,result,public_order,game_day,record_hash&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1')
+    read('shared_case_judgments?select=case_id,result,public_order,game_day,record_hash&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
+    read('shared_joint_votes?select=seat&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1')
    ]);
    const hearing=hearings[0],worldDay=clock[0]?.game_day;
-   const canAct=!!hearing&&hearing.state==='completed'&&!judgments.length;   // v8.7.4: the latest opened hearing stays open across shared days
+   // The first ballot closes the record in SQL 034. Expose the same state to both judges
+   // so the UI does not offer evidence/witness/order actions that the database rejects.
+   const canAct=!!hearing&&hearing.state==='completed'&&!judgments.length&&!ballots.length;
    const isChair=bench.chair_id===uid;
    const readiness=sharedDeliberationReadiness(row.sheet,actions,hearing?.hearing_index||0);
    const j=judgments[0];
