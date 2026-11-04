@@ -6,7 +6,7 @@ const sheet={card:{kind:'criminal'},records:[{id:'r1',title:'처음 공개된 �
 const actions=[
  {action_type:'question',action_key:'q1',response:{status:'done',answer:'보았습니다'}},
  {action_type:'order',action_key:'r2',response:{status:'declined',title:'CCTV'}},
- {action_type:'order',action_key:'r3',response:{status:'done',title:'제출 자료'}}
+ {action_type:'order_result',action_key:'r3',response:{status:'done',title:'제출 자료'}}
 ];
 test('P4 verdict uses only disclosed and successfully obtained evidence',async()=>{
  const x=validateSharedJudgment(sheet,actions,{result:'guilty',citations:['initial:r1','question:q1','order:r3'],order:'ATTACK'});
