@@ -111,6 +111,18 @@ export async function handle(req,env,fetcher=fetch){
  const who=await authUser(req,env,fetcher);
  if(who.error)return json({error:who.error},who.status,head);
  const uid=who.user.id;
+ // A panel's human associate shares the chair's single hearing calendar.
+ // The NPC can never authenticate as a human judge or preside.
+ const courtRole=async(caseId,chairId)=>{
+  if(chairId===uid)return 'chair';
+  if(env.P5_JOINT_PANEL_ENABLED!=='1'||!chairId)return null;
+  const r=await fetcher(env.SUPABASE_URL+'/rest/v1/shared_joint_panels?select=chair_id,peer_id&case_id=eq.'+
+   encodeURIComponent(caseId)+'&limit=1',{headers:svc(env)});
+  if(!r.ok)return null;
+  const rows=await r.json();
+  return rows?.[0]?.chair_id===chairId&&rows[0].peer_id===uid?'peer':null;
+ };
+
  if(url.pathname.startsWith('/world/panel/')){
   const result=await p5PanelRoute(req,env,fetcher,uid,svc(env),{
    respond,reserve,finish,estimate,costOf
@@ -277,16 +289,18 @@ export async function handle(req,env,fetcher=fetch){
     const rows=await r.json();if(!Array.isArray(rows))throw Error('unavailable');
     return rows;
    };
-   const [cases,hearings,clocks,judgments]=await Promise.all([
+   const [cases,clocks,judgments]=await Promise.all([
     query(`case_stock?select=assigned_to,state&case_id=eq.${encodeURIComponent(id)}&limit=1`),
-    query(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encodeURIComponent(id)}&judge_id=eq.${encodeURIComponent(uid)}&state=eq.completed&order=hearing_index.desc&limit=1`),
     query('shared_world_clock?select=game_day&id=eq.main&limit=1'),
     query(`shared_case_judgments?select=case_id&case_id=eq.${encodeURIComponent(id)}&limit=1`)
    ]);
-   if(cases[0]?.assigned_to!==uid||cases[0]?.state!=='assigned')
+   const owner=cases[0]?.assigned_to;
+   const role=await courtRole(id,owner);
+   if(!role||cases[0]?.state!=='assigned')
     return json({error:'case_not_found'},404,head);
+   const hearings=await query(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encodeURIComponent(id)}&judge_id=eq.${encodeURIComponent(owner)}&state=eq.completed&order=hearing_index.desc&limit=1`);
    const day=clocks[0]?.game_day,hearing=hearings[0]||null;
-   return json({ok:true,caseId:id,worldDay:day,
+   return json({ok:true,caseId:id,worldDay:day,role,canBegin:role==='chair',
      hearingIndex:hearing&&hearing.completed_game_day===day&&!judgments.length?hearing.hearing_index:null,
      canAct:!!hearing&&hearing.completed_game_day===day&&!judgments.length},200,head);
   }catch{return json({error:'court_unavailable'},503,head)}
@@ -385,12 +399,12 @@ export async function handle(req,env,fetcher=fetch){
    return v;
   };
   try{
-   const [cases,hearings]=await Promise.all([
-    lookup(`case_stock?select=case_id,assigned_to,state,sheet&case_id=eq.${encoded}&limit=1`),
-    lookup(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encoded}&judge_id=eq.${encodeURIComponent(uid)}&hearing_index=eq.${hearing}&limit=1`)
-   ]);
-   const row=cases[0],open=hearings[0];
-   if(!row||row.assigned_to!==uid||row.state!=='assigned')return json({error:'case_not_found'},404,head);
+   const cases=await lookup(`case_stock?select=case_id,assigned_to,state,sheet&case_id=eq.${encoded}&limit=1`);
+   const row=cases[0];
+   const role=await courtRole(caseId,row?.assigned_to);
+   if(!row||!role||row.state!=='assigned')return json({error:'case_not_found'},404,head);
+   const hearings=await lookup(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encoded}&judge_id=eq.${encodeURIComponent(row.assigned_to)}&hearing_index=eq.${hearing}&limit=1`);
+   const open=hearings[0];
    if(!open||open.state!=='completed')return json({error:'hearing_not_open'},409,head);
    const [truth,actions]=await Promise.all([
     lookup(`world_secrets?select=truth&case_id=eq.${encoded}&limit=1`),
@@ -427,13 +441,15 @@ export async function handle(req,env,fetcher=fetch){
    const rows=await r.json();if(!Array.isArray(rows))throw Error('store_unavailable');return rows;
   };
   try{
-   const [cases,hearings,actions]=await Promise.all([
+   const [cases,actions]=await Promise.all([
     get(`case_stock?select=assigned_to,state,sheet&case_id=eq.${encoded}&limit=1`),
-    get(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encoded}&judge_id=eq.${encodeURIComponent(uid)}&hearing_index=eq.${hearing}&limit=1`),
     get(`shared_court_actions?select=action_type,action_key,hearing_index,response&case_id=eq.${encoded}&action_key=eq.${encodeURIComponent(key)}&limit=10`)
    ]);
-   if(cases[0]?.assigned_to!==uid||cases[0]?.state!=='assigned')
+   const owner=cases[0]?.assigned_to;
+   const role=await courtRole(id,owner);
+   if(!role||cases[0]?.state!=='assigned')
     return json({error:'case_not_found'},404,head);
+   const hearings=await get(`shared_judge_hearings?select=hearing_index,state,completed_game_day&case_id=eq.${encoded}&judge_id=eq.${encodeURIComponent(owner)}&hearing_index=eq.${hearing}&limit=1`);
    if(hearings[0]?.state!=='completed')return json({error:'hearing_not_open'},409,head);
    const request=actions.find(a=>a.action_type==='order');
    if(!request||request.hearing_index>=hearing)return json({error:'order_not_due'},409,head);
@@ -458,7 +474,8 @@ export async function handle(req,env,fetcher=fetch){
    const q=await fetcher(`${env.SUPABASE_URL}/rest/v1/case_stock?select=assigned_to,state&case_id=eq.${encodeURIComponent(id)}&limit=1`,{headers:svc(env)});
    if(!q.ok)return json({error:'court_unavailable'},503,head);
    const rows=await q.json();
-   if(!Array.isArray(rows)||rows[0]?.assigned_to!==uid||rows[0]?.state!=='assigned')
+   const assigned=rows?.[0];
+   if(!Array.isArray(rows)||!await courtRole(id,assigned?.assigned_to)||assigned?.state!=='assigned')
     return json({error:'case_not_found'},404,head);
    const r=await fetcher(`${env.SUPABASE_URL}/rest/v1/shared_court_actions?select=action_type,action_key,response,hearing_index,game_day&case_id=eq.${encodeURIComponent(id)}&order=created_at.asc&limit=250`,{headers:svc(env)});
    if(!r.ok)return json({error:'court_unavailable'},503,head);
