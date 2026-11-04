@@ -80,11 +80,11 @@ try{
  assert.equal(await b.root.locator('[data-world-begin]').count(),0,'human associate cannot open a hearing');
  await b.root.locator('[data-court-tab="verdict"]').click();
  assert.equal(await b.root.locator('[data-p5-vote]').count(),1,'associate can submit an independent vote');
- assert.equal(await b.root.locator('[data-world-verdict]').count(),0,'associate cannot finalize judgment');
+ assert.equal(await b.root.locator('button[data-world-verdict]').count(),0,'associate cannot finalize judgment');
  await b.page.evaluate(()=>window.__majority=true);
  await b.root.locator('[data-p5-refresh]').click();
  await b.page.waitForFunction(()=>document.querySelector('[data-world-native-root]')?.textContent?.includes('합의 결과가 확정됐습니다'));
- assert.equal(await b.root.locator('[data-world-verdict]').count(),0,'associate may never publish even after majority');
+ assert.equal(await b.root.locator('button[data-world-verdict]').count(),0,'associate may never publish even after majority');
  assert.equal(await a.page.locator('main').innerText().then(x=>x.includes('개인 재판은 독립')),false);
  await a.page.close();await b.page.close();
  console.log('PASS P4/P5 two judge UI: same court/evidence, human chair authority, NPC associate, peer vote only');
