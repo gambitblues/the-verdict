@@ -61,7 +61,7 @@ test('P5 NPC AI is metered, sees public evidence not human ballots, and commits 
  const hash=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
  const sheet={card:{kind:'civil',title:'사고 손해배상'},records:[
   {id:'r1',title:'감정서 원본',first:true}],questions:[{id:'q1',q:'신호를 보셨나요?'}],
-  worlds:{did:{act:'SEALED_DONT_SEND'}}};
+  worlds:{did:{act:'SEALED_DONT_SEND',records:{r1:'공개된 감정서에는 사고 당시 위치가 기재되어 있다.'}}}};
  const calls=[];const completed=[];
  const mock=async(url,opt={})=>{
   const u=String(url);calls.push({u,opt});
@@ -71,6 +71,7 @@ test('P5 NPC AI is metered, sees public evidence not human ballots, and commits 
   ]);
   if(u.includes('/case_stock?'))return json([{assigned_to:A,state:'assigned',sheet}]);
   if(u.includes('/shared_court_actions?'))return json(acts);
+  if(u.includes('/world_secrets?'))return json([{truth:{branch:'did',private:'NEVER_EXPOSE_BRANCH'}}]);
   if(u.includes('/shared_npc_public?'))return json([{npc_id:'npc:p5',life_status:'alive',
    public_profile:{name:'NPC 재판관',privateInfo:'NEVER_EXPOSE'}}]);
   if(u.includes('/rpc/shared_joint_vote')){
@@ -91,6 +92,9 @@ test('P5 NPC AI is metered, sees public evidence not human ballots, and commits 
   finish:async(_env,id,usage)=>{completed.push({id,usage})},
   respond:async(_env,prompt)=>{
    assert.ok(prompt.input.includes('신호가 바뀌었습니다.'));
+   assert.ok(prompt.input.includes('공개된 감정서에는 사고 당시 위치가 기재되어 있다.'));
+   assert.ok(!prompt.input.includes('NEVER_EXPOSE_BRANCH'));
+   assert.ok(!prompt.input.includes('SEALED_DONT_SEND'));
    assert.ok(!prompt.input.includes('SEALED_DONT_SEND'));
    assert.ok(!prompt.input.includes('NEVER_EXPOSE'));
    assert.deepEqual(prompt.schema.schema.properties.choice.enum,
