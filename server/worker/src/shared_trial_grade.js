@@ -18,6 +18,14 @@ export function evaluateSharedTrial(sheet,actions,judgment,sentence,seed){
  const citations=new Set(judgment?.citations||[]);
  const delivered=new Set((actions||[])
   .filter(a=>a.action_type==='order_result'&&a.response?.status==='done').map(a=>a.action_key));
+ const rulings=new Map();
+ for(const a of actions||[]){
+  if(a.action_type!=='evidence_decision'||!['use','conditional','exclude'].includes(a.response?.decision))continue;
+  const id=a.response?.recordId;
+  if(typeof id!=='string')continue;
+  if(!rulings.has(id)||Number(a.hearing_index||0)>=rulings.get(id).hearing)
+   rulings.set(id,{decision:a.response.decision,hearing:Number(a.hearing_index||0)});
+ }
  const evidence=[];
  const cites=[];
  for(const r of sheet.records||[]){
@@ -29,7 +37,7 @@ export function evaluateSharedTrial(sheet,actions,judgment,sentence,seed){
   evidence.push({
    id:r.id,title:String(r.title||r.id),strength:meta.strength||0,
    flaw:meta.flaw||0,flawType:meta.flawType||'none',
-   revealed:2,decision:citations.has(key)?'use':null,
+   revealed:2,decision:rulings.get(r.id)?.decision||(citations.has(key)?'use':null),
    publicFlaw:false,surface:meta.strength||0
   });
   if(citations.has(key))cites.push({
@@ -58,7 +66,7 @@ export function evaluateSharedTrial(sheet,actions,judgment,sentence,seed){
  const media=T.pressDay(start,trial,{twist:false});
  trial.media=media;
  const score=T.skill(trial,{
-  dir,criminal:sheet.card.kind==='criminal',cites,
+  dir,criminal:sheet.card.kind==='criminal',cites,reasons:judgment.reasons||[],
   sentence:sentence?.score||null,extra:sentence?.extraScore||[]
  });
  // Neutral audience pressure until public-opinion linkage is implemented.
@@ -71,5 +79,5 @@ export function evaluateSharedTrial(sheet,actions,judgment,sentence,seed){
   method:'VerdictTrialCore.skill/evaluate',
   inputMode:'server_disclosed_court_record',
   publicOpinion:{H:media.H,O:media.O,S:media.S,match:audience},
-  parityLimit:'native trial choices and media reactions not represented in shared schema'};
+  parityLimit:'private opponent-card decisions and media life simulation not stored in shared record'};
 }
