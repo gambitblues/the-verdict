@@ -32,7 +32,7 @@ export function validateSharedJudgment(sheet,actions,input){
  for(const a of actions){
   if(a.response?.status!=='done')continue;
   if(a.action_type==='question')allowed.set('question:'+a.action_key,'증인신문 '+a.action_key);
-  if(a.action_type==='order')allowed.set('order:'+a.action_key,a.response.title||a.action_key);
+  if(a.action_type==='order_result')allowed.set('order:'+a.action_key,a.response.title||a.action_key);
  }
  const citations=[...new Set(input.citations)];
  if(citations.length!==input.citations.length||citations.some(c=>typeof c!=='string'||!allowed.has(c)))
