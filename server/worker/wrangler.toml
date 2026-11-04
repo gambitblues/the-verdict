@@ -13,6 +13,7 @@ crons = ["0 18 * * *"]
 TERRA_REFILL_ENABLED = "0"
 # P4 server-based shared docket remains disabled until QA and explicit deployment approval.
 P4_SHARED_DOCKET_ENABLED = "0"
+P4_JUDGMENTS_ENABLED = "0" # only enable in independent P4 QA
 P4_COURT_ACTIONS_ENABLED = "0" # never accept courtroom writes on an unverified deployment
 # These are conservative EXAMPLE caps, not live-spending authorization.
 TERRA_MAX_CALLS_DAY = "4"
