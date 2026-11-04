@@ -565,11 +565,6 @@ export async function handle(req,env,fetcher=fetch){
    const readiness=sharedDeliberationReadiness(assigned.sheet,actions,hearing.hearing_index);
    if(!readiness.ready)
     return json({error:'deliberation_not_ready',minimumHearings:readiness.minimumHearings},409,head);
-   if(assigned.sheet?.format==='verdict-world-sheet/v1'){
-    const current=await read('shared_world_clock?select=game_day&id=eq.main&limit=1');
-    if(hearing.completed_game_day!==current[0]?.game_day)
-     return json({error:'stale_shared_hearing'},409,head);
-   }
    const scored=env.P4_TRIAL_PARITY_ENABLED==='1';
    const ancillary=[...(assigned.sheet?.card?.charge?.orders||[]),
     ...(assigned.sheet?.card?.claim?.remedies||[])];

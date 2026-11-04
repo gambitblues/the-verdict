@@ -88,7 +88,7 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
     actions,role:isChair?'chair':'associate',court:{
      worldDay,hearingIndex:canAct?hearing.hearing_index:null,
      canAct,canObserve:canAct,canOpenHearing:isChair,
-     canDeliberate:canAct&&readiness.ready,minimumHearings:readiness.minimumHearings,
+     canDeliberate:!judgments.length&&readiness.ready,minimumHearings:readiness.minimumHearings,
      pendingOrders:readiness.pendingOrders,
      judgmentPublished:judgments.length>0
     }});
@@ -151,7 +151,7 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    const {acts,evidenceHash}=await record();
    const readiness=sharedDeliberationReadiness(cases[0]?.sheet,acts,hearing?.hearing_index||0);
    if(cases[0]?.state!=='assigned'||hearing?.state!=='completed'||
-    hearing.completed_game_day!==clock[0]?.game_day||!readiness.ready)
+    !readiness.ready)
     return response({error:'deliberation_not_ready',minimumHearings:readiness.minimumHearings},409);
    const created=await rpc('shared_joint_vote',{
     p_case:caseId,p_actor:uid,p_seat:seat,p_choice:input.choice,
@@ -242,7 +242,7 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    if(!panels[0]||panels[0].chair_id!==uid)return response({error:'chair_required'},403);
    if(!world[0]||world[0].assigned_to!==uid||world[0].state!=='assigned')
     return response({error:'case_not_found'},404);
-   if(hearing[0]?.state!=='completed'||hearing[0].completed_game_day!==clock[0]?.game_day)
+   if(hearing[0]?.state!=='completed')
     return response({error:'hearing_incomplete'},409);
    const hearingReadiness=sharedDeliberationReadiness(world[0].sheet,
     (await record()).acts,hearing[0].hearing_index);
