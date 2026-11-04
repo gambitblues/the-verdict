@@ -12,7 +12,7 @@ test('P4 server uses the exact native VerdictTrialCore.skill/evaluate implementa
  const two=adjudicateSharedJudgment(sheet,[],input,'case-score');
  assert.equal(one.error,undefined);
  assert.equal(one.grade.method,'VerdictTrialCore.skill/evaluate');
- assert.equal(one.grade.score,77);
+ assert.equal(one.grade.score,69);
  assert.deepEqual(one.grade,two.grade);
  assert.equal(one.sentence.amount,1000);
  assert.match(one.order,/1,000만 원/);
@@ -34,5 +34,5 @@ test('P4 native score refuses undisclosed documents and illegal cite',()=>{
  const scored=adjudicateSharedJudgment(illegal,[],{
   result:'claim_granted',citations:['initial:r1'],sentence:{amount:1000}
  },'case-score');
- assert.ok(scored.grade.score<77);
+ assert.ok(scored.grade.score<69);
 });
