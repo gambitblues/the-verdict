@@ -25,6 +25,28 @@ async function npc(c,t,x){
  if(res?.text){(t.ai??={})[key]=res.text;save();redraw()}
 }
 
+/* Evidence AI is non-authoritative: the source exhibit stays unchanged, and
+ * the explanation is only a readability layer. Persist once per visible source. */
+async function evidence(c,t,e,d){
+ if(!on()||!c?.id||!t||!e?.id||!d)return;
+ const original=[
+  d.excerpt||e.scope||'',
+  d.how?'확보 경위: '+d.how:'',
+  e.note?'자료의 한계: '+e.note:''
+ ].filter(Boolean).join(' ');
+ if(original.length<15)return;
+ const key=c.id+':'+e.id+':'+original;
+ if(t.aiEvidence?.[e.id]?.source===original||busy.has(key))return;
+ busy.add(key);
+ try{
+  const res=await ask('evidence',{title:e.title,original,names:namesOf(c,t)});
+  if(res?.text){
+   (t.aiEvidence??={})[e.id]={source:original,text:res.text};
+   save();redraw();
+  }
+ }finally{busy.delete(key)}
+}
+
 /* P1: both first-hearing arguments share one low-cost request; already disclosed text only.
  * The original engine text stays visible while AI runs and on any verification failure. */
 const openingAttempted=new Set();
@@ -90,5 +112,5 @@ async function judgment(c,t){
  if(res?.facts){t.final.judgmentAI={...j,facts:res.facts,issues:res.issues,conclusion:res.conclusion};save();redraw()}
 }
 
-window.VerdictAI={npc,article,articleKey,judgment,opening,closing,exchange,get on(){return on()}};
+window.VerdictAI={evidence,npc,article,articleKey,judgment,opening,closing,exchange,get on(){return on()}};
 })();
