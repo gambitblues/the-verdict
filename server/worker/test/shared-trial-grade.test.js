@@ -84,3 +84,17 @@ test('ruling without legal-evidence metadata is rejected, not silently assumed r
  },'ruling-metadata');
  assert.equal(d.error,'evidence_review_metadata_required');
 });
+
+test('native opponent objection and delay review uses original TrialCore skill keys',()=>{
+ const act=[{action_type:'motion',action_key:'d1-obj',hearing_index:1,
+  response:{status:'done',type:'objection',valid:true,choice:'accept'}}];
+ const yes=adjudicateSharedJudgment(sheet,act,{
+  result:'claim_granted',citations:['initial:r1'],sentence:{amount:1000}
+ },'motions');
+ const no=adjudicateSharedJudgment(sheet,[],{
+  result:'claim_granted',citations:['initial:r1'],sentence:{amount:1000}
+ },'motions');
+ assert.equal(yes.error,undefined);
+ assert.ok(yes.grade.items.some(x=>x.key==='card:d1-obj'&&x.points===3));
+ assert.equal(yes.grade.score,no.grade.score+3);
+});
