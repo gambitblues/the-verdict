@@ -5,6 +5,7 @@
  */
 'use strict';
 const fs=require('node:fs'),path=require('node:path');
+const {createHash}=require('node:crypto');
 const {validateAuthorSeed,seedToTerraInput}=require('../src/terra_author_seed.cjs');
 const {parseAuthorMarkdown}=require('../src/terra_author_markdown.cjs');
 const {generate}=require('../src/terra_case_generator.cjs');
@@ -32,6 +33,10 @@ async function main(args=process.argv.slice(2)){
   seedId:original.id,sourceFile:path.resolve(input),generatedAt:new Date().toISOString(),
   status:'draft_only',autoAdmitted:false,
   seedWarnings:check.warnings,stage:result.stage,
+  immutableAuthorFacts:original.immutableFacts,
+  authorEvidenceLeads:original.evidenceLeads,
+  authorUnknowns:original.unknowns,
+  authorSeedSha256:createHash('sha256').update(JSON.stringify(original)).digest('hex'),
   generatorOk:!!result.ok,errors:result.errors||[],
   authorReviewRequired:[
    '집필자가 고정한 사실의 누락·왜곡·반대 서술 여부',
