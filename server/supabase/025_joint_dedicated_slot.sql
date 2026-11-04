@@ -4,8 +4,8 @@ begin;
 create or replace function public.shared_joint_one_slot() returns trigger
 language plpgsql set search_path=public as $$
 begin
- perform pg_advisory_xact_lock(hashtextextended('joint-slot:'||new.chair_id::text,0));
- perform pg_advisory_xact_lock(hashtextextended('joint-slot:'||new.peer_id::text,0));
+ perform pg_advisory_xact_lock(hashtextextended('joint-slot:'||least(new.chair_id::text,new.peer_id::text),0));
+ perform pg_advisory_xact_lock(hashtextextended('joint-slot:'||greatest(new.chair_id::text,new.peer_id::text),0));
  if exists (
   select 1 from public.shared_joint_panels p
   where p.case_id<>new.case_id
@@ -30,6 +30,7 @@ begin
  then raise exception 'not_invited' using errcode='42501'; end if;
  select p.* into panel from public.shared_joint_panels p
  where (p.chair_id=p_actor or p.peer_id=p_actor)
+ and not exists(select 1 from public.shared_case_judgments j where j.case_id=p.case_id)
  order by p.case_id limit 1;
  if not found then return jsonb_build_object('occupied',false,'limit',1); end if;
  select j.result into result from public.shared_case_judgments j where j.case_id=panel.case_id;
