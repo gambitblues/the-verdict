@@ -452,10 +452,16 @@ function nativeCourt(){
 }
 function courtListEntry(){
  if(window.VERDICT_CONFIG?.p4SharedWorld!==true||!user())return '';
- const current=selectedCase?.card?.title||selectedCase?.caseId||'공유 사건';
- return '<section class="panel tv-inbox"><h3>🌐 공유 세계 법정</h3>'+
- '<p class="muted small">두 판사가 공유하는 사건·기일·증거·증인·주문·판결입니다. 개인 사건 세이브는 별도로 유지됩니다.</p>'+
- '<button class="btn primary" type="button" data-world-open>공유 법정 열기 · '+esc(current)+'</button></section>';
+ const joint=window.VERDICT_CONFIG?.p5JointPanel===true;
+ const current=selectedCase?.card?.title||selectedCase?.caseId||'배정 대기';
+ if(!joint)return '<section class="panel tv-inbox"><h3>🌐 공유 세계 법정</h3>'+
+  '<p class="muted small">공유 사건과 개인 사건의 세이브는 분리됩니다.</p>'+
+  '<button class="btn primary" type="button" data-world-open>공유 법정 열기 · '+esc(current)+'</button></section>';
+ return '<section class="panel tv-inbox joint-court-slot" aria-label="공동재판 전용 슬롯">'+
+  '<div class="t4-head"><h3>⚖ 공동재판 <small>0~1건 · 개인 사건 5건과 별도</small></h3></div>'+
+  '<p class="muted small" data-joint-slot-description>합의부 재판관 3명(실제 판사 2명·NPC 1명)이 심리합니다. 개인 사건 배당 한도를 차지하지 않습니다.</p>'+
+  '<p class="muted small" data-joint-slot-status aria-live="polite">'+esc(panelState?.state==='majority_ready'?'합의 판결 대기':selectedCase?'진행 중: '+current:'공동재판 배정 대기')+'</p>'+
+  '<button class="btn primary" type="button" data-world-open>공동재판 법정 입장</button></section>';
 }
 function toggle(){if(!panel)return;const visible=panel.hidden;panel.hidden=!visible;if(visible)refresh()}
 function mount(){
