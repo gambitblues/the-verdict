@@ -105,7 +105,7 @@ try{
   assert.equal(await page.locator('.vsw-panel').isVisible(),true);
   await page.evaluate(()=>{
    window.ui={tab:'courtList',p4NativeCourt:false};
-   window.render=()=>{document.querySelector('main').innerHTML=window.VerdictSharedWorld.nativeCourt()};
+   window.VerdictNativeCourtRender=()=>{document.querySelector('main').innerHTML=window.VerdictSharedWorld.nativeCourt()};
    document.querySelector('main').insertAdjacentHTML('beforeend',window.VerdictSharedWorld.courtListEntry());
   });
   await page.locator('[data-world-close]').click();
