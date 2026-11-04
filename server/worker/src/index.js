@@ -16,7 +16,7 @@
  */
 import TerraCloud from './terra_cloud_staging.cjs';
 import {publicCaseSheet,initialEvidence} from './public_case_projection.js';
-import {courtroomPlan,resolveCourtOrder} from './shared_courtroom.js';
+import {courtroomPlan,resolveCourtOrder,sharedDeliberationReadiness} from './shared_courtroom.js';
 import {validateSharedJudgment,adjudicateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
 import {freeOrderPrompt,verifyFreeOrderReply} from './free_order_intent.js';
 import {p5PanelRoute} from './p5_panel_routes.js';
@@ -562,6 +562,14 @@ export async function handle(req,env,fetcher=fetch){
     return json({error:'case_not_found'},404,head);
    if(!hearing||hearing.state!=='completed'||!actions.length)
     return json({error:'hearing_incomplete'},409,head);
+   const readiness=sharedDeliberationReadiness(assigned.sheet,actions,hearing.hearing_index);
+   if(!readiness.ready)
+    return json({error:'deliberation_not_ready',minimumHearings:readiness.minimumHearings},409,head);
+   if(assigned.sheet?.format==='verdict-world-sheet/v1'){
+    const current=await read('shared_world_clock?select=game_day&id=eq.main&limit=1');
+    if(hearing.completed_game_day!==current[0]?.game_day)
+     return json({error:'stale_shared_hearing'},409,head);
+   }
    const scored=env.P4_TRIAL_PARITY_ENABLED==='1';
    const ancillary=[...(assigned.sheet?.card?.charge?.orders||[]),
     ...(assigned.sheet?.card?.claim?.remedies||[])];
