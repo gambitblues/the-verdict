@@ -1228,6 +1228,12 @@ function show(){
 if(document.getElementById('verdict-entry'))document.getElementById('verdict-entry').remove();
 release();
 const has=!!S.name,authenticated=!!window.VerdictAuth?.user;
+// A successful server reset reboots into judge creation, not the old main/entry screen.
+const newCareerUid=sessionStorage.getItem('vauth_new_career');
+if(authenticated&&newCareerUid===window.VerdictAuth.user.id){
+ sessionStorage.removeItem('vauth_new_career');
+ if(!has){setup();return}
+}
 const box=document.createElement('div');box.id='verdict-entry';
 box.innerHTML='<div class="entry-card"><div style="font-size:28px">⚖️</div><div class="entry-title">THE VERDICT</div><div class="entry-sub">40년 법관 커리어 · 판사 집무실</div><div class="entry-ver">v'+(window.VERDICT_VERSION||'')+' · '+(window.VERDICT_RELEASED||'')+' 업데이트</div><button class="entry-btn primary" id="profile-continue">이어하기</button><button class="entry-btn" id="profile-reset">새로하기</button><div class="entry-info">'+(authenticated?'로그인한 판사의 경력이 자동 저장됩니다.':(window.VERDICT_CONFIG?.supabaseUrl&&window.VERDICT_CONFIG?.supabaseAnonKey?'이 기기의 진행 기록을 사용합니다.':'현재는 서버 연결이 없어 로그인·AI 없이 이 기기에만 저장됩니다.'))+'</div></div>';
 document.body.appendChild(box);

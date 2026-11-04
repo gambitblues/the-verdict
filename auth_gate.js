@@ -182,6 +182,8 @@ async function resetCareer(){
    if(WORK.test(k)||k.startsWith(stash(uid))||k.startsWith('vauth_rev:'+uid+':')||k.startsWith('vauth_fp:'+uid+':'))keys.push(k)}
   for(const k of keys)localStorage.removeItem(k);
   localStorage.setItem(ACTIVE,'1');
+  // On the next authenticated boot, open the judge setup immediately instead of the old entry overlay.
+  sessionStorage.setItem('vauth_new_career',uid);
   location.reload();
   return true;
  }catch(e){resetting=false;throw e}
