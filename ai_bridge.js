@@ -26,7 +26,17 @@ async function npc(c,t,x){
  if(!on())return;const key=x.w+':'+x.q+':'+(x.side||'n'),id=c.id+key;
  if(t.ai?.[key]||busy.has(id)||failed.has(id))return;busy.add(id);
  const w=t.witnesses[x.w];
- try{const res=await ask('npc',{role:w?.role||'증인',attitude:w?.flipped?'flip':'honest',names:namesOf(c,t),question:x.question,answer:x.answer});
+ // Public case context only. Never send the hidden truth, credibility score or private NPC memories.
+ const context={
+  caseName:String(c.name||'').slice(0,120),
+  issue:String(c.story?.publicDossier?.plea||c.story?.publicDossier?.situation||c.tag||'').slice(0,240),
+  witnessName:String(NPC[w?.id]?.name||w?.name||'').slice(0,50),
+  witnessKnowledge:String(w?.knowledge||w?.story||'').slice(0,220),
+  witnessInterest:String(w?.interest||'').slice(0,160),
+  previousAnswers:(t.heard||[]).filter(h=>h.w===x.w&&!h.struck&&!h.tainted)
+   .slice(-2).map(h=>({question:String(h.label||'').slice(0,140),answer:String(h.text||'').slice(0,220)}))
+ };
+ try{const res=await ask('npc',{role:w?.role||'증인',attitude:w?.flipped?'flip':'honest',names:namesOf(c,t),question:x.question,answer:x.answer,...context});
   if(res?.text){(t.ai??={})[key]=res.text;save();redraw()}else failed.add(id)}
  finally{busy.delete(id)}
 }
