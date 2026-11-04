@@ -47,6 +47,10 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    });
    return response({ok:true,created:inserted===true,caseId});
   }
+  if(url.pathname==='/world/panel/slot'&&req.method==='GET'){
+   const slot=await rpc('shared_joint_slot',{p_actor:uid});
+   return response({ok:true,...slot});
+  }
   if(url.pathname==='/world/panel/status'&&req.method==='GET'){
    const status=await rpc('shared_joint_status',{p_case:caseId,p_actor:uid});
    return response({ok:true,...status});
