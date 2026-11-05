@@ -184,7 +184,7 @@ home=function(){
  '<section class="tv-open-cases"><div class="row between"><h3>⚖ 진행 중인 재판</h3><button class="btn ghost mini" data-action="tab" data-tab="courtList">전체 사건</button></div>'+
  (cases.length?cases.map(hearingCard).join(''):'<p class="muted">배당된 사건이 없습니다.</p>')+'</section>'+
  '<section class="tv-headlines"><div class="row between"><h3>📰 오늘의 기사</h3><button class="btn ghost mini" data-action="tablet" data-sub="news">기사 더보기</button></div>'+
- (articles.length?articles.map(a=>'<article class="tv-headline"><small>'+esc(a.outlet)+'</small><b class="tv-news-title">'+esc(a.title)+'</b><p class="tv-news-summary">'+esc(a.body)+'</p></article>').join(''):'<p class="muted small">사건이 발생하면 언론 보도가 기록됩니다.</p>')+'</section></div>';
+ (articles.length?articles.map(a=>{const p=window.VerdictMedia?.previewArticle?.(a)||{headline:a.title,summary:a.body};return '<article class="tv-headline"><small>'+esc(a.outlet)+'</small><b class="tv-news-title">'+esc(p.headline)+'</b><p class="tv-news-summary">'+esc(p.summary)+'</p></article>'}).join(''):'<p class="muted small">사건이 발생하면 언론 보도가 기록됩니다.</p>')+'</section></div>';
 };
 function ranking(){
  const ids=(S.legalWorld?.people||[]).filter(id=>NPC[id]?.legalCareer);
