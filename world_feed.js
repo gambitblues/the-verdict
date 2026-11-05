@@ -464,12 +464,42 @@ function messagesView(){
 
 // The same one-line title and two-line text in home and tablet news, regardless of older CSS.
 const articleStyle=document.createElement('style');
-articleStyle.textContent='.tv-news-title,.tv-headline .tv-news-title,.tv-media-card .tv-news-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:1!important;line-clamp:2!important;overflow:hidden!important;white-space:normal!important}.tv-news-summary,.tv-headline .tv-news-summary,.tv-media-card .tv-news-summary{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;line-clamp:initial!important;overflow:visible!important;white-space:normal!important;line-height:1.5!important;margin:5px 0 0}.wf-news-compact .tv-reporter{display:block;margin-top:7px}.tv-news-pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding:15px 0}';
-articleStyle.textContent += '.wf-news-opinion{display:flex;flex-wrap:wrap;gap:5px 14px;margin:9px 0 3px;padding:7px 0;border-top:1px solid #e6ddcf;font-size:12px;color:#5c6572}.wf-news-opinion span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.wf-opinion-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#c8442f}.wf-opinion-1{background:#2f62a8}.wf-opinion-2{background:#9a9790}.wf-article-full{margin:6px 0;color:#39465a;font-size:13px}.wf-article-full summary{cursor:pointer;color:#41617f;font-weight:650}.wf-article-full p{white-space:normal;line-height:1.7}';
+/* v10.1.1: CSS line clamps must always clip. Previous -webkit-line-clamp with
+ * overflow:visible and line-clamp:initial made lines paint over following cards
+ * on iOS Safari. Tablet articles expand naturally; only HOME previews clamp. */
+articleStyle.textContent=`
+.tv-media-card.wf-news-compact,.tv-headlines,.tv-headline{height:auto!important;min-height:0!important;max-height:none!important}
+.tv-media-card.wf-news-compact .tv-news-title,.tv-media-card.wf-news-compact .tv-news-summary{
+ display:block!important;-webkit-line-clamp:unset!important;line-clamp:unset!important;
+ -webkit-box-orient:initial!important;overflow:visible!important;
+ white-space:normal!important;overflow-wrap:anywhere;word-break:keep-all;
+ height:auto!important;max-height:none!important;position:static!important
+}
+.tv-media-card.wf-news-compact .tv-news-title{font-size:15px;line-height:1.5!important;margin:10px 0 6px}
+.tv-media-card.wf-news-compact .tv-news-summary{font-size:13px;line-height:1.65!important;margin:6px 0 10px!important}
+.tv-headlines .tv-headline{display:block!important;padding:14px 0!important;overflow:hidden;position:relative}
+.tv-headlines .tv-headline .tv-news-title,.tv-headlines .tv-headline .tv-news-summary{
+ display:-webkit-box!important;-webkit-box-orient:vertical!important;
+ overflow:hidden!important;white-space:normal!important;overflow-wrap:anywhere;word-break:keep-all;
+ height:auto!important;position:static!important
+}
+.tv-headlines .tv-headline .tv-news-title{-webkit-line-clamp:2!important;line-clamp:2!important;line-height:1.5!important;margin:5px 0!important}
+.tv-headlines .tv-headline .tv-news-summary{-webkit-line-clamp:3!important;line-clamp:3!important;line-height:1.6!important;margin:6px 0 0!important}
+.wf-article-full{display:block;margin:9px 0 11px;color:#39465a;font-size:13px;clear:both}
+.wf-article-full summary{display:list-item;cursor:pointer;color:#41617f;font-weight:650;line-height:1.5}
+.wf-article-full p{display:block!important;-webkit-line-clamp:unset!important;line-clamp:unset!important;
+ overflow:visible!important;white-space:normal;overflow-wrap:anywhere;line-height:1.7;margin:10px 0!important}
+.wf-news-compact .tv-reporter{display:block;margin-top:9px;clear:both}
+.wf-news-opinion{display:flex;flex-wrap:wrap;gap:5px 14px;margin:12px 0 8px;padding:9px 0;border-top:1px solid #e6ddcf;font-size:12px;color:#5c6572;clear:both}
+.wf-news-opinion span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.wf-opinion-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#c8442f}
+.wf-opinion-1{background:#2f62a8}.wf-opinion-2{background:#9a9790}
+.tv-news-pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding:15px 0}
+`;
 document.head.appendChild(articleStyle);
 
 /* ---------- hooks ---------- */
-if(window.VerdictMedia){window.VerdictMedia.articles=articles;window.VerdictMedia.newsFeed=newsFeed;window.VerdictMedia.setNewsPage=setNewsPage;window.VerdictMedia.socialFeed=()=>opinionFeed()}
+if(window.VerdictMedia){window.VerdictMedia.articles=articles;window.VerdictMedia.newsFeed=newsFeed;window.VerdictMedia.setNewsPage=setNewsPage;window.VerdictMedia.socialFeed=()=>opinionFeed();window.VerdictMedia.previewArticle=a=>{const c=CASES.find(x=>x.id===a.caseId);return c?articlePreview(a,c):{headline:a.title,summary:a.body}}}
 /* Read-only P4 bridge: the native news tablet receives the same canonical
  * public chronology as the shared courtroom. Local personal articles are kept
  * separate and personal relations/saves never become shared world authority.
