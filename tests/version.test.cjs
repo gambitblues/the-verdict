@@ -79,9 +79,17 @@ console.log('PASS: version',v);
     !feed.includes('window.VerdictMedia.setNewsPage=setNewsPage')||
     !feed.includes('class="tv-news-title"')||!feed.includes('class="tv-news-summary"')||
     !feed.includes('data-action="newsPage"')||feed.includes('class="wf-art"')||
-    !feed.includes('-webkit-line-clamp:1!important')||!feed.includes('-webkit-line-clamp:2!important'))
-   throw Error('last-loaded world article renderer must be compact, 1+2 lines and paged');
- console.log('PASS: final world-feed news UI is 1-line title + 2-line excerpt and 10/page');
+    !feed.includes('.tv-media-card.wf-news-compact .tv-news-title')||
+    !feed.includes('line-clamp:unset!important')||
+    !feed.includes('.tv-headlines .tv-headline .tv-news-summary')||
+    !feed.includes('overflow:hidden!important')||
+    feed.includes('line-clamp:initial!important;overflow:visible!important'))
+   throw Error('news renderer must keep tablet articles in natural flow and clip home previews without overlap');
+ const ui=fs.readFileSync(path.join(root,'game_ui.js'),'utf8');
+ if(!ui.includes('window.VerdictMedia?.previewArticle?.(a)')||
+    !feed.includes('window.VerdictMedia.previewArticle=a=>'))
+   throw Error('home news must reuse case-grounded article summaries');
+ console.log('PASS: news cards use nonoverlapping tablet content and clipped, case-grounded home previews');
 }
 
 {
