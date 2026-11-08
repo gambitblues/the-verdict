@@ -72,7 +72,7 @@ try{
  assert.equal(r.early,0,'a few game weeks after the verdict, not at once');
  assert.equal(r.news.length,1);const art=r.news[0];
  assert.match(art.title,new RegExp(r.name));assert.match(art.body,/범인도피/);
- assert.match(art.body,{did:/벌금 500만 원/,didnt:/무죄/,reason:/벌금 700만 원/}[r.truth],'the result follows this case\'s own world');
+ assert.match(art.body,{did:/벌금 300만 원/,didnt:/무죄/,reason:/벌금 400만 원/}[r.truth],'the result follows this case\'s own world');
  assert.ok(!/\{|undefined/.test(art.title+art.body),'all names filled: '+art.body);
  assert.ok(r.feed.includes('따로 받던 재판 결론'),'shown with the other articles');
  await solo.evaluate(()=>{ui.tab='tablet';ui.tabletTab='news';render()});
@@ -135,6 +135,36 @@ try{
  const sw=await b.evaluate(id=>({referred:S.cases[id].referred,first:S.legalWorld.firstFourCaseIDs,open:openCases().length}),z);
  assert.equal(sw.referred,true);assert.ok(!sw.first.includes(z)&&sw.first.length===4,'replaced in the first four');assert.equal(sw.open,openBefore,'still the same number of cases');
  console.log('  ✓ first four: a case already on a colleague\'s bench is replaced by another one');
+
+ /* 5. stage 3 — a witness's own trial goes to the colleague, in the same story, and comes back as my witness's news */
+ const parent=await take(a,'adv-cr-020');
+ await a.evaluate(id=>{const t=S.cases[id].trial4;t.truth='reason'},parent);
+ await decide(a,parent,'일부만 유죄');await a.evaluate(()=>VerdictColleagues.sync());
+ const sent5=casesT.find(r=>r.case_key==='adv-cr-020'&&r.state==='judged');
+ assert.deepEqual(sent5.summary.links,[{case:'link-cr-020-w1',world:'reason'}],'the linked case and the world that follows from mine');
+ await a.evaluate(()=>{S.week+=12;VerdictColleagues.separateTick()});
+ assert.equal(await a.evaluate(()=>(S.colleagues.news||[]).filter(x=>/따로 받던 재판/.test(x.title)&&/범인도피/.test(x.body)).length),0,'while a colleague may take it, my world waits');
+ assert.equal(await a.evaluate(()=>CasePackEngine.pool(S).some(x=>x.a.id==='link-cr-020-w1')),false,'linked cases never join the open pool');
+ await b.evaluate(()=>VerdictColleagues.sync());
+ const offer=await b.evaluate(()=>{const o=S.realtimeInbox.offers.find(x=>x.linked&&x.status==='available');return o&&{slot:o.slot,opt:o.options[0],news:VerdictMedia.articles().some(x=>/우리 법원에 접수/.test(x.title))}});
+ assert.ok(offer,'B is offered the witness\'s own trial');assert.equal(offer.opt.archetypeId,'link-cr-020-w1');
+ assert.match(offer.opt.logline,/옆 재판부 김가람 판사가 선고한 '운전석 에어백의 다른 DNA' 재판의 증인/);assert.equal(offer.news,true);
+ const spin=await b.evaluate(slot=>{while(openCases().length>=VerdictDocket.MAX_ACTIVE)S.cases[openCases()[0].id].referred=true;   // a free seat on B's bench
+  const btn=document.createElement('button');btn.dataset.action='acceptDocket';btn.dataset.slot=slot;btn.dataset.opt='0';document.body.append(btn);btn.click();btn.remove();
+  const c=CASES.find(x=>x.contentPack?.archetypeId==='link-cr-020-w1');if(!c)return null;S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};
+  const t=VerdictTrialPlay.ensure(c,S.cases[c.id]);return {id:c.id,truth:t.truth,link:c.link}},offer.slot);
+ assert.ok(spin,'accepted from the docket');assert.equal(spin.truth,'reason','the same story: the world follows A\'s case');
+ assert.equal(spin.link.judge,USERS['a@x.kr'].id);
+ await b.evaluate(id=>{ui.tab='court';ui.caseId=id;ui.t4tab='case';render()},spin.id);await b.locator('.t4-tabs').waitFor();
+ const courtText=await b.locator('main').innerText();assert.match(courtText,/범인도피/);assert.ok(!/\{[A-Z]/.test(courtText),'names filled in the linked case');
+ await b.screenshot({path:'qa-visuals/colleague-linked-case-'+W+'.png'});
+ await decide(b,spin.id,'유죄');await b.evaluate(()=>VerdictColleagues.sync());
+ const back=casesT.find(r=>r.case_key==='link-cr-020-w1'&&r.state==='judged');assert.deepEqual(back.summary.from,{judge:USERS['a@x.kr'].id,parent:'adv-cr-020'});
+ await a.evaluate(()=>VerdictColleagues.sync());
+ const told=await a.evaluate(()=>VerdictMedia.articles().filter(x=>x.court&&((/따로 받던 재판/.test(x.title)&&/범인도피/.test(x.body))||/동승자의 대답/.test(x.title))).map(x=>x.title+' | '+x.body));
+ assert.equal(told.length,1,JSON.stringify(told));assert.match(told[0],/이나래 판사가 "유죄"/,'my witness\'s result is the colleague\'s verdict');
+ assert.ok(!/벌금 400만 원/.test(told[0]),'not the NPC-judge version');
+ console.log('  ✓ stage 3: the witness\'s own trial is offered to the colleague in the same world, and comes back as my witness\'s news');
  assert.deepEqual(eA,[]);assert.deepEqual(eB,[]);
  console.log('PASS: colleague court (separate-witness news, colleague judges, no shared cases, verdict news)');
 }finally{await browser.close();server.close()}

@@ -234,7 +234,7 @@ function ensure(c,st){
   return {id,role:w.role,knowledge:w.knowledge,interest:w.interest,story:w.story||''};
  });
  const history=S.trial4History||[],strict=!!curOf(c);
- const rolled=T.roll({id:c.id,archetypeId:c.contentPack?.archetypeId||c.id,truth:T.truthFromStory(c.story?.privateTruth?.kind),evidence:evidenceSeeds(c),witnesses,strict},seed,history);
+ const rolled=T.roll({id:c.id,archetypeId:c.contentPack?.archetypeId||c.id,truth:(['did','didnt','reason'].includes(c.linkedWorld)?c.linkedWorld:null)||T.truthFromStory(c.story?.privateTruth?.kind),evidence:evidenceSeeds(c),witnesses,strict},seed,history);
  rolled.witnesses.forEach((w,i)=>{w.story=witnesses[i]?.story||'';if(strict)behaviour(c,i,w,seed)});
  const opponent=opponentOf(c),style=styleOf(opponent);
  const heat=/살인|치사/.test(c.tag)?20:/연예|celebrity/.test(c.tag+(c.contentPack?.category||''))?25:/성/.test(c.tag)?10:0;

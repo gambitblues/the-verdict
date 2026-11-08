@@ -155,6 +155,7 @@ function factsOf(c){const s=sheetOf(c);if(!s)return null;return {timeline:s.comm
 function reset(st){if(st?.trial4?.match&&!st.verdict){delete st.trial4;return true}return false}
 
 /* ---------- offer pool: sheets that are not one of the 60 curated cases join as a case pack ---------- */
+let linkedCandidate=()=>null;
 if(!off&&typeof CasePackEngine!=='undefined'&&SH.pack?.archetypes?.length){
  const P=SH.pack,prev=CasePackEngine.pool;
  const ensurePack=save=>{if(!save)return;const cur=(save.casePacks||[]).find(p=>p.packId===P.packId);if(cur&&cur.version===P.version)return;
@@ -162,6 +163,8 @@ if(!off&&typeof CasePackEngine!=='undefined'&&SH.pack?.archetypes?.length){
  CasePackEngine.pool=save=>{ensurePack(save);const all=prev(save),ids=new Set(all.map(x=>x.a.id));
   const extra=(save?.casePacks||[]).filter(p=>p.packId===P.packId&&p.enabled!==false).flatMap(pack=>(pack.archetypes||[]).map(a=>({pack,a})));
   return all.concat(extra.filter(x=>!ids.has(x.a.id)&&SH.cases[x.a.id]))};
+ /* a linked case (a witness's own trial), asked for by name when a colleague's verdict brings it */
+ linkedCandidate=id=>{const a=SH.linked?.[id];return a&&SH.cases[id]?{pack:P,a}:null};   // (2026-11-08) not in the open pool
 }
 /* one-line teaser for the offer card (names are not known yet: role words) */
 function logline(id){const s=SH.cases[id];if(!s?.card)return '';const role={A:crim(s)?'피고인':'원고',B:crim(s)?'피해자':'피고'};
@@ -380,5 +383,5 @@ function click(e,el,x){
  if(a==='mpgo'){e.preventDefault();decide(c,st,t);return true}
  return false;
 }
-window.VerdictMatchPlay={bind(api){I=api},toCurated,factsOf,reset,has:c=>!!sheetOf(c),sheetOf,logline,fixParties,witnesses,attach,onOpen,endDay,tabs,page,dock,click};
+window.VerdictMatchPlay={linkedCandidate:id=>linkedCandidate(id),bind(api){I=api},toCurated,factsOf,reset,has:c=>!!sheetOf(c),sheetOf,logline,fixParties,witnesses,attach,onOpen,endDay,tabs,page,dock,click};
 })();

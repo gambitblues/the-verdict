@@ -177,7 +177,7 @@ try{
  net.down=true;await p3.reload({waitUntil:'domcontentloaded'});await loaded(p3);
  net.down=false;net.refuse.add('uid-b');await p3.evaluate(()=>window.dispatchEvent(new Event('online')));
  await p3.locator('#verdict-login form').waitFor({timeout:15000});await msg(p3,/초대된 계정이 아니에요/);
- keys=await p3.evaluate(()=>Object.keys(localStorage));assert.ok(!keys.some(k=>/^(the_verdict|verdict_)/.test(k))&&!keys.includes('vauth_session'),'signed out, saves put away');
+ keys=await p3.evaluate(()=>Object.keys(localStorage));assert.ok(!keys.some(k=>/^(the_verdict|verdict_)/.test(k))&&!keys.includes('vauth_session'),'signed out, saves put away: '+keys.filter(k=>/^(the_verdict|verdict_|vauth_session)/.test(k)));
  net.refuse.clear();await ctx3.close();
  console.log('  ✓ offline: only the recent owner, no AI, signed out at once when the server refuses');
 
