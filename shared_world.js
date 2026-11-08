@@ -100,30 +100,15 @@ function renderOffers(){
    }))
  ];
  const parity=window.VERDICT_CONFIG?.p4TrialParity===true;
- const legalForm=parity?(
-   c.kind==='criminal'
-    ?'<div class="vsw-sentence"><h4>형량 선택</h4>'+
-      '<label>형 종류</label><select data-v-type>'+
-      '<option value="prison">징역</option><option value="suspend">징역·집행유예</option>'+
-      (Number(c.charge?.fine)>0?'<option value="fine">벌금</option>':'')+
-      (c.charge?.life===true?'<option value="life">무기징역</option>':'')+
-      (c.charge?.death===true?'<option value="death">사형</option>':'')+
-      '</select><label>징역 기간(개월, 6개월 단위)</label>'+
-      '<input data-v-months type="number" min="'+esc(Math.max(6,Number(c.charge?.min||0)*12))+
-      '" max="'+esc(Math.max(6,Number(c.charge?.max||1)*12))+
-      '" step="6" value="'+esc(Math.min(Math.max(6,Number(c.charge?.min||0)*12),Number(c.charge?.max||1)*12))+'">'+
-      '<label>벌금(만 원)</label><input data-v-fine type="number" min="0" value="0">'+
-      '<label>집행유예(년)</label><input data-v-susp type="number" min="1" max="5" value="2">'+
-      '<label><input data-v-with-fine type="checkbox"> 벌금 병과</label>'+
-      '<small>법정형과 기록상 사유는 서버가 검증합니다. 입증되지 않은 감경은 허용하지 않습니다.</small></div>'
-    :c.kind==='civil'
-     ?'<div class="vsw-sentence"><h4>배상액</h4><p>청구액: '+esc(c.claim?.amount||0)+'만 원</p>'+
-      '<label>명할 금액(만 원)</label><input data-v-amount type="number" min="0" max="'+
-      esc(Number(c.claim?.amount)||0)+'" step="10" value="'+esc(Number(c.claim?.amount)||0)+'"></div>'
-     :''
-  ):'';
+ const legalForm=parity?sentenceFields(c,'v'):'';
+ // 2026-11-08 P5: a judge who finds liability proposes a sentence/amount with the vote (agreed = the middle of three)
+ const voteSentence=(c.kind==='criminal'&&c.charge)||(c.kind==='civil'&&c.claim)
+  ?'<div data-p5-sentence'+(P5_YES.has(choices[0]?.[0])?'':' hidden')+'>'+sentenceFields(c,'p5s',true)+'</div>':'';
+ const agreedHtml=panelState?.agreedSentence?.order
+  ?'<p class="vsw-agreed"><strong>합의한 형량·금액: '+esc(panelState.agreedSentence.order)+'</strong></p>'+
+   '<p class="vsw-note">세 재판관이 낸 의견을 가벼운 것부터 줄 세워 가운데 의견으로 정했어요.</p>':'';
  const ancillaryUi=parity&&c.kind==='criminal'&&Array.isArray(c.charge?.orders)?
-  '<div class="vsw-sentence"><h4>부수 명령</h4>'+
+ '<div class="vsw-sentence"><h4>부수 명령</h4>'+
   c.charge.orders.filter(x=>!x.notice).map(x=>
    '<div class="vsw-ancillary"><label><input data-v-addon="'+esc(x.id)+
    '" type="checkbox" '+(x.fixed?'checked disabled ':'')+(x.ok===false?'disabled ':'')+
@@ -164,7 +149,7 @@ function renderOffers(){
    (!panelState.myVote&&courtActions.length>0&&
     (courtStatus?.minimumHearings==null||courtStatus.canDeliberate===true)
     ?'<label>판단</label><select data-p5-choice>'+choices.map(([v,label])=>
-       '<option value="'+esc(v)+'">'+esc(label)+'</option>').join('')+'</select>'+
+       '<option value="'+esc(v)+'">'+esc(label)+'</option>').join('')+'</select>'+voteSentence+
       '<label>비공개 심의 의견</label><textarea data-p5-note rows="3" maxlength="1000" placeholder="법정 기록에 근거한 판단 이유를 적으세요"></textarea>'+
       '<button type="button" data-p5-vote>내 의견 비공개 제출</button>':
      !panelState.myVote&&courtStatus?.canDeliberate===false
@@ -178,7 +163,7 @@ function renderOffers(){
    (panelState.state!=='majority_ready'&&jointBench?.myRole==='chair'&&panelState.myVote&&panelState.substituted!=='peer'&&(panelState.pending||[]).includes('peer')
      ?'<button type="button" data-p5-substitute>배석판사를 기다리지 않고 대리 판사 지정</button><p class="vsw-note">배석판사가 오래 의견을 내지 않을 때만 지정할 수 있어요.</p>':'')+
    (panelState.state==='majority_ready'
-     ?'<p><strong>합의 결론: '+esc(p5Label(panelState.majority))+'</strong></p>'+
+     ?'<p><strong>합의 결론: '+esc(p5Label(panelState.majority))+'</strong></p>'+agreedHtml+
       (panelState.rule==='article66'?'<p class="vsw-note">세 의견이 모두 달라, 법(법원조직법 제66조)에 따라 피고에게 가장 유리한 의견부터 더해 과반이 되는 의견으로 정했어요.</p>':'')+
       (Array.isArray(panelState.opinions)?'<ul class="vsw-opinions">'+panelState.opinions.map(o=>'<li><b>'+esc(seatName(o.seat))+'</b> '+esc(p5Label(o.choice))+(o.note?'<small>'+esc(o.note)+'</small>':'')+'</li>').join('')+'</ul>':'')+
       (panelState.canReopen?'<button type="button" data-p5-reopen>의견을 다시 모으기 ('+esc(panelState.round||1)+'/3)</button>':'')
@@ -243,10 +228,10 @@ function renderOffers(){
    :window.VERDICT_CONFIG?.p4SharedVerdicts===true&&(verdictReady||panelState?.state==='majority_ready')&&courtActions.length
     ?'<section data-world-verdict><p>법정에 실제 제출된 증거·증언에서 근거를 고르세요.</p>'+
       (panelState
-       ?'<p><strong>합의 결론: '+esc(panelState.majority||'심의 대기')+'</strong></p>'
+       ?'<p><strong>합의 결론: '+esc(p5Label(panelState.majority)||'심의 대기')+'</strong></p>'
        :'<select data-verdict-result>'+choices.map(([value,label])=>
         '<option value="'+esc(value)+'">'+esc(label)+'</option>').join('')+'</select>')+
-      legalForm+ancillaryUi+
+      (panelState?.agreedSentence?agreedHtml:legalForm)+ancillaryUi+
       '<fieldset class="vsw-verdict-reasons"><legend>판결 이유 · 법정 기록 근거</legend>'+
        [['strong','핵심 증거가 믿을 만하다'],['flawed','핵심 증거에 흠이 있다'],
         ['illegal','위법 수집 증거를 배제했다'],['discord','증언이 서로 엇갈린다'],
@@ -366,6 +351,57 @@ async function refreshPanel(){
  }
  renderOffers();
 }
+/* sentence / damages fields. attr 'v' = the presiding judge's verdict form, 'p5s' = one judge's panel vote */
+function sentenceFields(c,attr,vote){
+ const a=n=>'data-'+attr+'-'+n;
+ if(c.kind==='criminal'){
+  const lo=Math.max(6,Number(c.charge?.min||0)*12),hi=Math.max(6,Number(c.charge?.max||1)*12);
+  return '<div class="vsw-sentence"><h4>'+(vote?'내가 생각하는 형량':'형량 선택')+'</h4>'+
+   '<label>형 종류</label><select '+a('type')+'>'+
+   '<option value="prison">징역</option><option value="suspend">징역·집행유예</option>'+
+   (Number(c.charge?.fine)>0?'<option value="fine">벌금</option>':'')+
+   (c.charge?.life===true?'<option value="life">무기징역</option>':'')+
+   (c.charge?.death===true?'<option value="death">사형</option>':'')+
+   '</select><label>징역 기간(개월, 6개월 단위)</label>'+
+   '<input '+a('months')+' type="number" min="'+esc(lo)+'" max="'+esc(hi)+'" step="6" value="'+esc(Math.min(lo,hi))+'">'+
+   '<label>벌금(만 원)</label><input '+a('fine')+' type="number" min="0" value="0">'+
+   '<label>집행유예(년)</label><input '+a('susp')+' type="number" min="1" max="5" value="2">'+
+   '<label><input '+a('with-fine')+' type="checkbox"> 벌금도 함께</label>'+
+   (vote?'<small>세 재판관 의견 가운데 값이 판결 형량이 돼요. 법이 정한 범위 밖이면 제출되지 않아요.</small>'
+    :'<small>법정형과 기록상 사유는 서버가 검증합니다. 입증되지 않은 감경은 허용하지 않습니다.</small>')+'</div>';
+ }
+ if(c.kind==='civil'){
+  const amt=Number(c.claim?.amount)||0;
+  return '<div class="vsw-sentence"><h4>'+(vote?'내가 생각하는 배상액':'배상액')+'</h4><p>청구액: '+esc(amt)+'만 원</p>'+
+   '<label>명할 금액(만 원)</label><input '+a('amount')+' type="number" min="0" max="'+esc(amt)+'" step="10" value="'+esc(amt)+'">'+
+   (vote?'<small>청구를 모두 인정하면 청구액 그대로, 일부만 인정하면 청구액보다 적게 적어요.</small>':'')+'</div>';
+ }
+ return '';
+}
+function readSentence(region,attr,kind){
+ const q=n=>region.querySelector('[data-'+attr+'-'+n+']');
+ if(kind==='criminal'&&q('type'))return {type:q('type').value||'prison',months:Number(q('months')?.value||0),
+  fine:Number(q('fine')?.value||0),susp:Number(q('susp')?.value||2),withFine:q('with-fine')?.checked||false};
+ if(kind==='civil'&&q('amount'))return {amount:Number(q('amount').value||0)};
+ return undefined;
+}
+const P5_YES=new Set(['guilty','partial','claim_granted']);
+/* show the vote's sentence fields only for a liability opinion */
+document.addEventListener('change',e=>{
+ const sel=e.target.closest?.('[data-p5-choice]');if(!sel)return;
+ const box=sel.parentElement?.querySelector('[data-p5-sentence]');if(!box)return;
+ box.hidden=!P5_YES.has(sel.value);
+ const amount=box.querySelector('[data-p5s-amount]');
+ if(amount&&sel.value==='claim_granted')amount.value=amount.max;
+});
+/* in-app two-step confirmation instead of a browser dialog (which blocks the page and some app shells) */
+function armed(button,text){
+ if(!button)return true;
+ if(button.dataset.armed==='1'){delete button.dataset.armed;button.textContent=button.dataset.label||button.textContent;return true}
+ button.dataset.label=button.textContent;button.dataset.armed='1';button.textContent=text;
+ setTimeout(()=>{if(button.dataset.armed==='1'){delete button.dataset.armed;button.textContent=button.dataset.label}},6000);
+ return false;
+}
 const P5_LABEL={guilty:'유죄',acquittal:'무죄',partial:'일부만 인정',claim_granted:'청구 인용',claim_denied:'청구 기각',settled:'조정·화해',decision_yes:'인용 결정',decision_no:'기각 결정'};
 const p5Label=v=>P5_LABEL[v]||v||'';
 const seatName=s=>({chair:'재판장',peer:'배석판사',npc:'NPC 배석판사'})[s]||s;
@@ -383,9 +419,12 @@ async function p5Action(kind){
   if(kind==='open')data=await window.VerdictAuth.api('/world/panel/open',{
    caseId,peerId:root.querySelector('[data-p5-peer]')?.value,
    npcId:root.querySelector('[data-p5-npc-select]')?.value});
-  else if(kind==='vote')data=await window.VerdictAuth.api('/world/panel/vote',{
-   caseId,choice:root.querySelector('[data-p5-choice]')?.value,
-   note:root.querySelector('[data-p5-note]')?.value||''});
+  else if(kind==='vote'){
+   const choice=root.querySelector('[data-p5-choice]')?.value;
+   const sentence=P5_YES.has(choice)?readSentence(root,'p5s',selectedCase.card?.kind):undefined;
+   data=await window.VerdictAuth.api('/world/panel/vote',{caseId,choice,
+    note:root.querySelector('[data-p5-note]')?.value||'',...(sentence?{sentence}:{})});
+  }
   else if(kind==='npc')data=await window.VerdictAuth.api('/world/panel/npc/decide',{caseId});
   else if(kind==='reopen'||kind==='abstain'||kind==='substitute')data=await window.VerdictAuth.api('/world/panel/'+kind,{caseId});
   if(kind!=='refresh'&&!data?.ok)throw Error('p5_rejected');
@@ -395,7 +434,7 @@ async function p5Action(kind){
   if(status)status.textContent='합의부 요청이 승인되지 않았습니다. 다른 재판관의 투표와 기일을 확인하세요.';
  }
 }
-async function confirmSharedVerdict(){
+async function confirmSharedVerdict(button){
  if(!selectedCase||(!courtStatus?.canDeliberate&&!courtStatus?.canAct&&panelState?.state!=='majority_ready')||window.VERDICT_CONFIG?.p4SharedVerdicts!==true||
   (window.VERDICT_CONFIG?.p5JointPanel===true&&jointBench?.myRole!=='chair'))return;
  const region=(typeof ui!=='undefined'&&ui.p4NativeCourt?
@@ -405,16 +444,11 @@ async function confirmSharedVerdict(){
  const result=panelState?.majority||region.querySelector('[data-verdict-result]')?.value;
  const citations=[...region.querySelectorAll('input[data-cite]:checked')].map(x=>x.dataset.cite);
  const reasons=[...region.querySelectorAll('input[data-verdict-reason]:checked')].map(x=>x.dataset.verdictReason);
- const sentence=window.VERDICT_CONFIG?.p4TrialParity===true&&selectedCase
-  ?(selectedCase.card?.kind==='criminal'
-   ?{type:region.querySelector('[data-v-type]')?.value||'prison',
-     months:Number(region.querySelector('[data-v-months]')?.value||0),
-     fine:Number(region.querySelector('[data-v-fine]')?.value||0),
-     susp:Number(region.querySelector('[data-v-susp]')?.value||2),
-     withFine:region.querySelector('[data-v-with-fine]')?.checked||false,
-     mitigating:false,aggravating:false}
-   :selectedCase.card?.kind==='civil'
-    ?{amount:Number(region.querySelector('[data-v-amount]')?.value||0)}:undefined)
+ // with an agreed panel sentence the server uses it; the chair only adds the add-on orders
+ const kind=selectedCase.card?.kind;
+ const sentence=window.VERDICT_CONFIG?.p4TrialParity===true
+  ?(panelState?.agreedSentence?(kind==='criminal'||kind==='civil'?{}:undefined)
+   :(s=>s&&kind==='criminal'?{...s,mitigating:false,aggravating:false}:s)(readSentence(region,'v',kind)))
   :undefined;
  if(sentence){
   const addons={};
@@ -428,7 +462,7 @@ async function confirmSharedVerdict(){
  }
  const status=document.querySelector('[data-world-native-status]')||panel?.querySelector('[data-world-offers-status]');
  if(!citations.length){if(status)status.textContent='확인한 증거 또는 증언을 하나 이상 선택하세요.';return}
- if(!window.confirm('공유 세계에 판결을 확정할까요? 판결은 되돌릴 수 없습니다.'))return;
+ if(!armed(button,'한 번 더 누르면 선고합니다 · 되돌릴 수 없어요')){if(status)status.textContent='선고는 되돌릴 수 없어요. 확인했다면 버튼을 한 번 더 누르세요.';return}
  if(status)status.textContent='서버 법정 기록과 판결을 확인 중…';
  try{
   const d=await window.VerdictAuth.api(panelState?'/world/panel/finalize':'/world/court/verdict',{caseId:selectedCase.caseId,result,citations,reasons,...(sentence?{sentence}:{})});
@@ -488,8 +522,9 @@ async function interpretFreeOrder(){
      !(selectedCase.orders||[]).some(o=>o.record===record.id)){
    if(status)status.textContent='검증되지 않은 자료 제안은 법정 명령으로 사용할 수 없습니다.';return;
   }
-  if(!window.confirm('AI가 '+String(record.title||record.id)+' 제출 요청으로 해석했습니다. 이 주문을 기록할까요?'))return;
-  await doCourtAction('order',record.id);
+  // confirm inside the page: the judge presses the interpreted order to record it
+  if(status)status.innerHTML=esc('AI가 \''+String(record.title||record.id)+'\' 제출 요청으로 이해했어요. ')+
+   '<button type="button" data-court-kind="order" data-court-key="'+esc(record.id)+'">이 주문 기록하기</button>';
  }catch{if(status)status.textContent='주문 해석을 완료하지 못했습니다. 기존 주문 선택은 계속 사용할 수 있습니다.'}
 }
 async function resolveOrder(key){
@@ -718,7 +753,7 @@ function mount(){
  const id=target.dataset.worldAccept;if(id)acceptOffer(id);
  else if(target.dataset.courtTab){courtTab=target.dataset.courtTab;renderOffers()}
  else if(target.hasAttribute('data-world-begin'))beginCourt();
- else if(target.hasAttribute('data-world-verdict'))confirmSharedVerdict();
+ else if(target.hasAttribute('data-world-verdict'))confirmSharedVerdict(target);
  else if(target.dataset.worldEvidence&&target.dataset.evidenceDecision)decideSharedEvidence(target.dataset.worldEvidence,target.dataset.evidenceDecision);
  else if(target.dataset.worldMotion&&target.dataset.motionChoice)decideSharedMotion(target.dataset.worldMotion,target.dataset.motionChoice);
  else if(target.dataset.worldExplain)explainSharedEvidence(target.dataset.worldExplain);
@@ -748,7 +783,7 @@ function mount(){
   if(id)return acceptOffer(id);
   if(target.dataset.courtTab){courtTab=target.dataset.courtTab;return renderOffers()}
   if(target.hasAttribute('data-world-begin'))return beginCourt();
-  if(target.hasAttribute('data-world-verdict'))return confirmSharedVerdict();
+  if(target.hasAttribute('data-world-verdict'))return confirmSharedVerdict(target);
   if(target.dataset.worldEvidence&&target.dataset.evidenceDecision)return decideSharedEvidence(target.dataset.worldEvidence,target.dataset.evidenceDecision);
   if(target.dataset.worldMotion&&target.dataset.motionChoice)return decideSharedMotion(target.dataset.worldMotion,target.dataset.motionChoice);
   if(target.dataset.worldExplain)return explainSharedEvidence(target.dataset.worldExplain);

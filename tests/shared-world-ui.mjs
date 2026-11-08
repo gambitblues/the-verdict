@@ -80,6 +80,7 @@ try{
   await page.locator('[data-court-tab="orders"]').click();
   await page.locator('[data-free-order]').fill('사고 장소 근처의 CCTV 원본을 제출하도록 명합니다.');
   await page.locator('[data-free-order-check]').click();
+  await page.getByRole('button',{name:'이 주문 기록하기'}).click();
   await page.waitForFunction(()=>window.__court_journal.length===2);
   assert.equal(await page.locator('[data-free-order]').count(),1);
   assert.doesNotMatch(await page.locator('[data-court-outcomes]').innerText(),/새로운 녹화 기록/);
@@ -92,6 +93,7 @@ try{
   assert.match(await page.locator('[data-court-outcomes]').innerText(),/새로운 녹화 기록/);
   await page.locator('[data-court-tab="verdict"]').click();
   await page.locator('[data-cite="initial:r1"]').check();
+  await page.locator('button[data-world-verdict]').click();
   await page.locator('button[data-world-verdict]').click();
   await page.waitForFunction(()=>window.__verdict===true);
   assert.match(await page.locator('[data-world-offers-status]').innerText(),/원고의 청구를 인용한다/);

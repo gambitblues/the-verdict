@@ -46,10 +46,18 @@ try{
  assert.ok(await page.locator('.t4-orders-hint.is-open').count(),'the hearing page points to the orders');
  await tab('orders');assert.ok(await page.locator('.t4-orders-panel.is-open').count(),'orders tab shows the open orders panel');
  const offered=await page.locator('.t4-q.order').allTextContents();
- assert.ok(offered.length>=3,'orders are offered');assert.ok(offered.some(t=>t.includes('검찰 · 자료 제출')),'records order to the prosecution');
+ assert.ok(offered.length>=3,'orders are offered');
+ // v10.1: a party may file a case-authored exhibit on its own (filing card); the order asking for that same exhibit
+ // is then no longer offered. So the prosecution records order is required only while its exhibit is not filed yet.
+ const filedFollow=await page.evaluate(i=>S.cases[i].trial4.evidence.filter(e=>e.follow).map(e=>e.follow),id);
+ if(!filedFollow.includes('f1'))assert.ok(offered.some(t=>t.includes('검찰 · 자료 제출')),'records order to the prosecution');
  assert.ok(offered.every(t=>/쟁점 ·/.test(t)),'every order names its issue');
  const click=key=>U.order(page.locator(`.t4-q.order[data-id="${key}"]`));
- await click('f:f2');await click('f:f3');
+ // issue two orders: f2 and f3 when they are still open; a spontaneously filed exhibit removes its order (see above)
+ const issueTwo=async()=>{const want=['f:f2','f:f3'];
+  for(let n=0;n<2;n++){const open=await page.locator('.t4-q.order').evaluateAll(bs=>bs.map(b=>b.dataset.id));
+   const key=want.find(k=>open.includes(k))||open.find(k=>k.startsWith('f:'))||open[0];if(!key)break;await click(key)}};
+ await issueTwo();
  assert.equal(await page.evaluate(i=>S.cases[i].trial4.courtOrders.length,id),2);
  assert.equal(await page.locator('.t4-q.order').count(),0,'two orders per hearing');
  await U.endSession();   // the end button, its confirmation, the result popup — exactly one hearing
@@ -62,10 +70,10 @@ try{
  const res=await page.evaluate(i=>{const t=S.cases[i].trial4;return {orders:t.courtOrders.map(o=>({k:o.key,s:o.status,o:o.outcome})),ev:t.evidence.length,w:t.witnesses.length,truth:t.truth,
   newEv:t.evidence.filter(e=>e.follow).map(e=>({title:e.title,ex:e.detail.excerpt,side:e.detail.side})),newW:t.witnesses.filter(w=>w.detail).map(w=>({role:w.role,q:w.detail.q.length}))}},id);
  const f3=res.orders.find(o=>o.k==='f:f3');
- if(res.truth==='did')assert.ok(['none','declined'].includes(f3.o)||f3.s==='pending','no alibi record exists when the accused did it: the honest answer is "none"');
- if(f3.o==='done'||f3.o==='partial')assert.equal(res.newEv.length,1,'alibi record arrives as evidence');
+ if(f3&&res.truth==='did')assert.ok(['none','declined'].includes(f3.o)||f3.s==='pending','no alibi record exists when the accused did it: the honest answer is "none"');
+ if(f3&&(f3.o==='done'||f3.o==='partial'))assert.ok(res.newEv.some(e=>e),'alibi record arrives as evidence');
  for(const e of res.newEv)assert.ok(e.ex&&e.ex!=='기록 없음'&&['p','d','n'].includes(e.side),'ordered evidence carries text that matches the truth');
- const f2=res.orders.find(o=>o.k==='f:f2');if(f2.o==='done'||f2.o==='partial'){assert.equal(res.w,before.w+1,'ordered witness appears');assert.equal(res.newW[0].q,3)}
+ const f2=res.orders.find(o=>o.k==='f:f2');if(f2&&(f2.o==='done'||f2.o==='partial')){assert.equal(res.w,before.w+1,'ordered witness appears');assert.equal(res.newW[0].q,3)}
  console.log('  ✓ A orders: '+res.orders.map(o=>`${o.k}=${o.o||o.s}`).join(', ')+` (truth ${res.truth})`);
  // ordered witness can be questioned
  if(res.newW.length){await tab('witness');await page.evaluate(()=>{ui.t4w=3;render()});const q=page.locator('.t4-pager .t4-q:not([disabled]):not(.cf):not(.face)').first();await U.ask(q);

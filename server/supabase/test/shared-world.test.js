@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql','028_joint_associate_court_actions.sql','029_shared_career_nine_month.sql','030_shared_evidence_rulings.sql','031_shared_motion_decisions.sql','032_request_role_claims.sql','033_open_hearing_survives_shared_day.sql','034_joint_panel_rules.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql','028_joint_associate_court_actions.sql','029_shared_career_nine_month.sql','030_shared_evidence_rulings.sql','031_shared_motion_decisions.sql','032_request_role_claims.sql','033_open_hearing_survives_shared_day.sql','034_joint_panel_rules.sql','035_player_career_reset.sql','036_joint_sentence_and_safe_reset.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -745,4 +745,37 @@ test('v8.7.4 P5 panel rules: case-fit ballots, record closes, art.66 on a three-
  await assert.rejects(svc('select public.shared_joint_abstain($1,$2::uuid)',[id3,A]),/not_panel_member/);
  assert.equal((await svc('select public.shared_joint_abstain($1,$2::uuid) as ok',[id3,B])).rows[0].ok,true);
  assert.equal((await view(id3,A)).substituted,'peer');
+});
+
+test('036: a vote keeps its sentence proposal, which is as immutable as the vote; only the Worker sees it',async()=>{
+ const npc='npc:p5-sentence';
+ const day=(await svc('select game_day from public.shared_world_clock')).rows[0].game_day;
+ await svc('select public.shared_npc_public_put($1,$2::jsonb,$3,$4,$5)',[npc,JSON.stringify({name:'형량 검증 재판관'}),'alive',day,0]);
+ const id='case-panel-sentence';
+ await svc('insert into public.case_stock(case_id,category,sheet_hash,candidate_hash,fingerprint,sheet,verification,state,assigned_to,assigned_at) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,\'assigned\',$8,now())',
+  [id,'violence',HASH,HASH,'fingerprint-'+id,JSON.stringify({id,card:{kind:'criminal'}}),JSON.stringify({passed:true}),A]);
+ // test-only: clear the earlier test's still-open panels so these judges have a free joint slot
+ await db.exec(`reset role; delete from public.shared_joint_votes where case_id in (select case_id from public.shared_joint_panels p where not exists(select 1 from public.shared_case_judgments j where j.case_id=p.case_id)); delete from public.shared_joint_panels p where not exists(select 1 from public.shared_case_judgments j where j.case_id=p.case_id);`);
+await svc('select public.shared_joint_open($1,$2::uuid,$3::uuid,$4)',[id,A,B,npc]);
+ const vote=(actor,seat,choice,sentence)=>svc('select public.shared_joint_vote($1,$2::uuid,$3,$4,$5,$6,$7::jsonb) as ok',[id,actor,seat,choice,HASH,'',sentence&&JSON.stringify(sentence)]);
+ assert.equal((await vote(A,'chair','guilty',{type:'prison',months:24})).rows[0].ok,true);
+ assert.equal((await vote(A,'chair','guilty',{type:'prison',months:24})).rows[0].ok,false,'the same vote again is a no-op');
+ await assert.rejects(vote(A,'chair','guilty',{type:'prison',months:30}),/vote_conflict/,'a cast proposal cannot be changed');
+ await assert.rejects(vote(B,'peer','guilty',[1,2]),/invalid_joint_vote/,'a proposal is an object');
+ await vote(B,'peer','acquittal',null);
+ const rows=(await svc('select seat,sentence from public.shared_joint_votes where case_id=$1 order by seat',[id])).rows;
+ assert.deepEqual(rows.find(r=>r.seat==='chair').sentence,{type:'prison',months:24});
+ assert.equal(rows.find(r=>r.seat==='peer').sentence,null);
+ await assert.rejects(pa('select sentence from public.shared_joint_votes'),/permission denied/,'players never read votes directly');
+});
+
+test('036: resetting a career keeps the cloud saves in the backups instead of destroying them',async()=>{
+ await pa(`select * from public.save_put('1','A-career-before-reset',0,'v-test','phone')`);
+ await pb(`select * from public.save_put('1','B-career-untouched',0,'v-test','tablet')`);
+ assert.equal((await pa('select public.reset_player_career() as ok')).rows[0].ok,true);
+ assert.equal((await pa('select * from public.saves')).rows.length,0,'the current career is gone');
+ const kept=(await pa('select data,reason from public.save_backups order by id desc')).rows;
+ assert.ok(kept.some(b=>b.data==='A-career-before-reset'&&b.reason==='reset'),'but it can be brought back');
+ assert.equal((await pb('select data from public.saves')).rows[0].data,'B-career-untouched','another player is never touched');
+ await assert.rejects(anon('select public.reset_player_career()'),/permission denied|not_player/);
 });

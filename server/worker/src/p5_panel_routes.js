@@ -3,6 +3,7 @@ import {sharedDeliberationReadiness} from './shared_courtroom.js';
 import {panelStatus} from './p5_joint_panel.js';
 import {npcDeliberationPrompt,validateNpcOpinion,panelChoices} from './p5_npc_deliberation.js';
 import {validateSharedJudgment,adjudicateSharedJudgment,sharedJudgmentHash} from './shared_judgment.js';
+import {checkProposal,npcProposal,agreedSentence} from './p5_sentence.js';
 
 /* v8.7.4: when the AI cannot give the NPC (or substitute) judge's opinion, the panel still finishes: the judge who
  * cannot reach a conviction from the record decides against the side that must prove its case (in dubio pro reo /
@@ -57,7 +58,16 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
   });
   if(!r.ok)throw Error('rpc_rejected');
   return r.json();
+ }; /* the deciding round's three opinions with their proposals → the agreed sentence (or null) */
+ const agreedFor=async(caseId,majority)=>{
+  const [panels,cases]=await Promise.all([
+   read('shared_joint_panels?select=round&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1'),
+   read('case_stock?select=sheet&case_id=eq.'+encodeURIComponent(caseId)+'&limit=1')]);
+  const votes=await read('shared_joint_votes?select=seat,choice,sentence&case_id=eq.'+encodeURIComponent(caseId)+
+   '&round=eq.'+Number(panels[0]?.round||1)+'&limit=3');
+  return agreedSentence(cases[0]?.sheet,votes,majority);
  };
+
  try{
   if(url.pathname==='/world/panel/bench'&&req.method==='GET'){
    const bench=await rpc('shared_joint_bench',{p_case:caseId,p_actor:uid});
@@ -131,6 +141,10 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
   }
   if(url.pathname==='/world/panel/status'&&req.method==='GET'){
    const status=await rpc('shared_joint_status',{p_case:caseId,p_actor:uid});
+   if(status?.state==='majority_ready'){   // the agreed sentence is shown once the conclusion is reached (votes are no longer secret then)
+    const agreed=await agreedFor(caseId,status.majority);
+    if(agreed)return response({ok:true,...status,agreedSentence:{order:agreed.order,rule:agreed.rule}});
+   }
    return response({ok:true,...status});
   }
   if(url.pathname==='/world/panel/vote'&&isPost){
@@ -161,9 +175,11 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    if(cases[0]?.state!=='assigned'||hearing?.state!=='completed'||
     !readiness.ready)
     return response({error:'deliberation_not_ready',minimumHearings:readiness.minimumHearings},409);
+   const proposal=checkProposal(cases[0]?.sheet,input.choice,input.sentence);   // 2026-11-08: sentence/amount with the vote
+   if(proposal.error)return response({error:proposal.error},400);
    const created=await rpc('shared_joint_vote',{
     p_case:caseId,p_actor:uid,p_seat:seat,p_choice:input.choice,
-    p_hash:evidenceHash,p_note:input.note
+    p_hash:evidenceHash,p_note:input.note,p_sentence:proposal.proposal
    });
    return response({ok:true,created:created===true,caseId,seat});
   }
@@ -244,12 +260,12 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    let usedFallback=false;
    if(subPeer&&!has('peer')){
     const sub=await opinionOf({name:'대리 배석판사'});usedFallback||=!!sub.fallback;
-    await rpc('shared_joint_vote',{p_case:caseId,p_actor:null,p_seat:'peer',p_choice:sub.choice,p_hash:evidenceHash,p_note:sub.reason});
+    await rpc('shared_joint_vote',{p_case:caseId,p_actor:null,p_seat:'peer',p_choice:sub.choice,p_hash:evidenceHash,p_note:sub.reason,p_sentence:npcProposal(world.sheet,sub.choice)});
    }
    let added=false;
    if(!has('npc')){
     const opinion=await opinionOf(npc.public_profile);usedFallback||=!!opinion.fallback;
-    added=await rpc('shared_joint_vote',{p_case:caseId,p_actor:null,p_seat:'npc',p_choice:opinion.choice,p_hash:evidenceHash,p_note:opinion.reason});
+    added=await rpc('shared_joint_vote',{p_case:caseId,p_actor:null,p_seat:'npc',p_choice:opinion.choice,p_hash:evidenceHash,p_note:opinion.reason,p_sentence:npcProposal(world.sheet,opinion.choice)});
    }
    const status=await rpc('shared_joint_status',{p_case:caseId,p_actor:uid});
    return response({ok:true,submitted:added===true,fallback:usedFallback,status});
@@ -287,8 +303,11 @@ export async function p5PanelRoute(req,env,fetcher,uid,serviceHeaders,ai={}){
    const branch=usesFit?secrets[0]?.truth?.branch:undefined;
    if(usesFit&&!['did','didnt','reason'].includes(branch))
     return response({error:'truth_context_unavailable'},503);
+   // the agreed sentence (middle of the three opinions) replaces the presiding judge's numbers; add-on orders stay the chair's
+   const agreed=await agreedFor(caseId,status.majority);
+   const sentence=agreed?{...agreed.sentence,addons:input.sentence?.addons,remedies:input.sentence?.remedies}:input.sentence;
    const submission={result:status.majority,citations:input.citations,
-    reasons:input.reasons,sentence:input.sentence};
+    reasons:input.reasons,sentence};
    const decision=scored?adjudicateSharedJudgment(world[0].sheet,acts,submission,caseId,{branch}):
     validateSharedJudgment(world[0].sheet,acts,submission);
    if(decision.error)return response({error:decision.error},400);
