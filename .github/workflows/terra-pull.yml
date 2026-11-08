@@ -1,0 +1,51 @@
+name: Terra cases into the pool
+# 2026-11-08: the Worker's daily refill stages one AI-made draft at a time (cost caps in wrangler.toml). This job takes
+# waiting drafts, runs the world-sheet rules and the six-tab browser QA, and opens a pull request to develop with every
+# draft that passed (as world-sheets/cases/<id>.json + rebuilt game data). Failing drafts are quarantined in the database.
+# Needs repository variable TERRA_PULL_ENABLED=1 and secrets SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (never in the repo).
+on:
+  schedule:
+    - cron: '30 19 * * *'   # 04:30 KST, after the Worker's 03:00 KST refill
+  workflow_dispatch:
+jobs:
+  pull:
+    if: ${{ vars.TERRA_PULL_ENABLED == '1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test tooling
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Take drafts, run QA, publish or quarantine
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node tests/terra-pull.cjs --limit 2
+      - name: Check the pool still builds and passes the sheet rules
+        run: |
+          node tests/world-sheets.test.cjs
+          node tests/build-sheets.cjs --check
+          node tests/case-data.test.cjs
+      - name: Open a pull request with the new cases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain world-sheets world_sheets.js world_sheets_index.js case-data)" ]; then echo "no new cases"; exit 0; fi
+          branch="terra/cases-$(date -u +%Y%m%d-%H%M)"
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          git switch -c "$branch"
+          git add world-sheets world_sheets.js world_sheets_index.js case-data
+          git commit -m "Terra cases: QA-passed drafts into the pool" -m "Added by the terra-pull workflow after world-sheet rules and six-tab browser QA."
+          git push origin "$branch"
+          gh pr create --base develop --head "$branch" --title "Terra 사건 추가 (자동 QA 통과)" --body "Worker가 만든 초안 중 세계 시트 규칙과 여섯 메뉴 브라우저 QA를 통과한 사건입니다. 문구·성별 단어·사건 내용을 검수한 뒤 develop에 합쳐 주세요."

@@ -79,9 +79,11 @@ function toCurated(s){
   const stake=p.stake&&!/^없음/.test(p.stake)?said(p.stake)[0]:'사건 사람들과 따로 아는 사이는 아닙니다.';
   const opening=per(t=>lines(t)[0]);
   return {role:p.role,...(p.separate?{separate:p.separate}:{}),story:p.job&&p.job!==p.role?p.job:'',stake:p.stake||'',says:typeof opening==='string'?opening:'제가 직접 본 것만 말씀드리겠습니다.',
-   q:(([q1,q2,q3])=>[{id:'q1',q:q1,issue:'i1',a:per(t=>halfOf(lines(t),true))},
-      {id:'q2',q:q2,issue:'i1',a:per(t=>halfOf(lines(t),false))},
-      {id:'q3',q:q3,issue:'i2',side:'n',a:`${p.role}입니다. ${stake}`}])(asksFor(p.role,p.job))};
+   /* auto:true — questions fitted to the witness's role, with answers assembled from the sheet's notes; these are the
+    * only answers the AI may re-voice (the sheet's own questions and the written cases are already in people's words) */
+   q:(([q1,q2,q3])=>[{id:'q1',q:q1,issue:'i1',auto:true,a:per(t=>halfOf(lines(t),true))},
+      {id:'q2',q:q2,issue:'i1',auto:true,a:per(t=>halfOf(lines(t),false))},
+      {id:'q3',q:q3,issue:'i2',side:'n',auto:true,a:`${p.role}입니다. ${stake}`}])(asksFor(p.role,p.job))};
  });
  for(const w of witnesses)for(const q of w.q)if(typeof q.a==='string'&&!q.side)q.side='n';
  const followUps=more.map((r,k)=>{const sd=sideOfBy(r.by),who=cr?(sd==='p'?'검찰':'변호인'):(sd==='p'?'원고 측':'피고 측');

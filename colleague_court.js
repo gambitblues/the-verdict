@@ -53,7 +53,9 @@ function summary(c){
  return {title:titleOf(c).slice(0,60),kind:['criminal','civil'].includes(c.kind)?c.kind:'other',
   label:String(f.label||'판결').slice(0,60),sentence:typeof f.sentence==='string'?f.sentence.slice(0,60):'',days:Number(t.daysDone)||0,
   ...(links.length?{links}:{}),
-  ...(c.link?.judge&&c.link?.from?{from:{judge:c.link.judge,parent:c.link.from}}:{})};
+  ...(c.link?.judge&&c.link?.from&&!c.appeal?{from:{judge:c.link.judge,parent:c.link.from}}:{}),
+  ...(S.cases[c.id].appeal?.by?{appeal:{by:S.cases[c.id].appeal.by,world:t.truth,first:{label:String(f.label||'').slice(0,60),sentence:typeof f.sentence==='string'?f.sentence.slice(0,60):''}}}:{}),
+  ...(c.appeal?.judge?{appealOf:{judge:c.appeal.judge,parent:c.appeal.from}}:{})};
 }
 /* (stage 3) a colleague judged a case whose witness was separately indicted: the witness's own trial is offered to me
  * for a day (a docket offer that says where it came from). Taken by one colleague only (one bench per case). */
@@ -77,6 +79,69 @@ function offerLinked(r,j){
  }
  return added;
 }
+/* ---------- criminal appeals (2026-11-08, planner: criminal cases only, once) ----------
+ * After a criminal verdict the side that lost may appeal (decided once, from the case's own seed; more likely when the
+ * verdict went against what really happened). The appeal is heard by another bench: a colleague player if one takes it
+ * within a day, otherwise an NPC appellate bench a few game weeks later. An appellate case is never appealed again. */
+const sideOf=f=>window.VerdictTrialCore?.sideOf?.(f?.dir)??0;
+const truthSide=t=>t==='did'?'p':t==='didnt'?'d':'m';
+function decideAppeals(){
+ let n=0;const m=mem();m.appealsFrom??=Date.now();   // verdicts given before appeals existed stay final (no flood on an old save)
+ for(const c of CASES){
+  const x=S.cases[c.id],t=x?.trial4,f=t?.final;
+  if(c.kind!=='criminal'||!x?.verdict||x.referred||!f||x.appeal!==undefined)continue;
+  if(c.appeal||!(Number(f.at)>=m.appealsFrom)){x.appeal=false;continue}   // the appellate judgment is final; so is a verdict from before appeals
+  const side=sideOf(f),by=side<0?'p':'d',ts=truthSide(t.truth),wrong=(side>0&&ts==='d')||(side<0&&ts==='p');
+  const chance=(by==='d'?50:30)+(wrong?(by==='d'?25:30):0);
+  if(hashOf(c.id+':appeal')%100>=chance){x.appeal=false;continue}
+  x.appeal={by,week:S.week,at:Date.now(),status:'filed'};n++;
+  addNews({outlet:'법조일보',title:`[법원 소식] ${shortName(c)}, ${by==='d'?'피고인':'검찰'} 쪽 항소`,day:S.week+0.5,index:'ap'+hashOf(c.id),phase:'after',frame:'법원 소식 · 항소',lean:'',court:true,
+   body:`${by==='d'?'피고인 쪽이':'검찰이'} 1심 판결 "${String(f.label||'판결').slice(0,40)}"에 불복해 항소했다. 항소심은 같은 법원의 다른 재판부가 맡는다.`});
+ }
+ return n;
+}
+/* a colleague's criminal verdict was appealed: the appeal is offered to me for a day */
+function offerAppeal(r,j){
+ const db=S.realtimeInbox,A0=r.summary?.appeal;if(!db?.enabled||!A0||!['did','didnt','reason'].includes(A0.world))return false;
+ const s=mem(),tag='appeal:'+r.case_key+':'+r.judge_id+':'+r.judged_at;if(s.links[tag])return false;s.links[tag]=1;
+ if(othersOpen.has(r.case_key)||CASES.some(c=>keyOf(c)===r.case_key))return false;   // a case I already heard is not mine to review
+ const cand=(typeof CasePackEngine!=='undefined'?CasePackEngine.pool(S):[]).find(x=>x.a?.id===r.case_key);if(!cand)return false;
+ const now=Date.now(),d=new Date(now),day=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+ const first=`"${String(A0.first?.label||'판결').slice(0,30)}"${A0.first?.sentence?` (${String(A0.first.sentence).slice(0,30)})`:''}`;
+ db.offers.push({slot:'appeal-'+r.case_key+'-'+hashOf(tag).toString(36),day,created:now,expires:now+24*3600000,status:'available',linked:true,
+  options:[{title:String(cand.a.title)+' (항소심)',tag:cand.a.tag,category:cand.a.category,kind:cand.a.kind,archetypeId:r.case_key,packId:cand.pack.packId,
+   importance:cand.a.importance||3,legal:cand.a.legal||'',
+   logline:`옆 재판부 ${j.judge_name} 판사가 1심에서 ${first}을 선고한 사건이다. ${A0.by==='d'?'피고인':'검찰'} 쪽이 항소해 우리 법원 항소심으로 왔다.`,
+   link:{world:A0.world,from:r.case_key,judge:r.judge_id,parent:String(r.summary.title||'').slice(0,60),appeal:{by:A0.by,first:A0.first||{},judgeName:j.judge_name}}}]});
+ addNews({outlet:'법조일보',title:`[법원 소식] '${cand.a.title}' 항소심, 배당 후보에`,day:S.week+0.5,index:'apo'+hashOf(tag),phase:'after',frame:'법원 소식 · 항소',lean:'',court:true,
+  body:`옆 재판부 ${j.judge_name} 판사가 선고한 이 사건에 ${A0.by==='d'?'피고인':'검찰'} 쪽이 항소했다. 항소심 배당 후보에 하루 동안 올라 있다.`});
+ return true;
+}
+/* my appealed verdicts: the colleague's appellate judgment, or an NPC appellate bench after a while */
+function appealTick(){
+ let added=0;const me=linked()?A()?.user?.id:null;
+ for(const c of CASES){
+  const x=S.cases[c.id],ap=x?.appeal,t=x?.trial4,f=t?.final;if(!ap?.by||ap.status==='decided'||!f)continue;
+  if(me){const r=judgedRows.find(y=>y.case_key===keyOf(c)&&y.summary?.appealOf?.judge===me&&y.summary.appealOf.parent===keyOf(c));
+   if(r){const j=judges.get(r.judge_id),x2=r.summary;ap.status='decided';ap.result={judge:j?.judge_name||'',label:x2.label,sentence:x2.sentence||''};
+    const same=String(x2.label||'')===String(f.label||'')&&String(x2.sentence||'')===String(f.sentence||'');
+    if(addNews({outlet:'법조일보',title:`[법원 소식] ${shortName(c)} 항소심 — ${same?'1심 판결 유지':'1심 판결 바뀜'}`,day:S.week+0.5,index:'apr'+hashOf(c.id),phase:'after',frame:'법원 소식 · 항소심',lean:'',court:true,from:mem().npc[r.judge_id]||null,
+     body:`내가 1심에서 "${String(f.label||'').slice(0,40)}"을 선고한 ${shortName(c)} 사건의 항소심에서 같은 법원 ${j?.judge_name||'다른'} 판사가 "${String(x2.label||'판결').slice(0,40)}"${x2.sentence?` (${String(x2.sentence).slice(0,40)})`:''}을 선고했다. ${same?'1심 판단이 그대로 이어졌다.':'항소심은 1심과 다르게 판단했다.'}`}))added++;
+    continue}
+   if(othersOpen.has(keyOf(c))||(judges.size&&Date.now()-(ap.at||0)<LINK_WAIT_MS))continue;   // a colleague may still take it
+  }
+  if(S.week<(ap.week||0)+6+hashOf(c.id+':ap')%7)continue;
+  // an NPC appellate bench: more likely to change a verdict that went against what really happened
+  const side=sideOf(f),ts=truthSide(t.truth),wrong=(side>0&&ts==='d')||(side<0&&ts==='p');
+  const change=hashOf(c.id+':apr')%100<(wrong?70:20),judge=judgeNpcName(c.id+':apj');
+  const how=!change?'항소를 기각했다. 1심 판결이 그대로 확정됐다.':side>0?(ts==='d'?'1심 판결을 깨고 무죄를 선고했다.':'1심 판결을 깨고 형을 다시 정했다.'):'1심 판결을 깨고 유죄로 판단했다.';
+  ap.status='decided';ap.result={judge,npc:true,changed:change};
+  if(addNews({outlet:'법조일보',title:`[법원 소식] ${shortName(c)} 항소심 — ${change?'1심 판결 바뀜':'1심 판결 유지'}`,day:S.week+0.5,index:'apr'+hashOf(c.id),phase:'after',frame:'법원 소식 · 항소심',lean:'',court:true,
+   body:`${ap.by==='d'?'피고인':'검찰'} 쪽이 항소한 ${shortName(c)} 사건에서 ${judge?`항소심 재판부(${judge} 판사)`:'항소심 재판부'}는 ${how}`}))added++;
+ }
+ return added;
+}
+
 /* the server says a colleague already holds a case I just took: if I have not opened it yet, it goes to their bench */
 function yieldCases(keys){
  let n=0;
@@ -205,8 +270,9 @@ async function sync(force){
   for(const r of judgedRows.slice().reverse()){
    const tag=r.case_key+':'+r.judge_id+':'+r.judged_at;if(s.seen[tag])continue;s.seen[tag]=1;changed=true;
    const j=judges.get(r.judge_id);if(!j||Date.parse(r.judged_at)<s.since)continue;
-   if(r.summary?.from?.judge===me)continue;   // the trial of one of my witnesses: told with my case (separateTick)
+   if(r.summary?.from?.judge===me||r.summary?.appealOf?.judge===me)continue;   // my witness's trial / my verdict's appeal: told with my case
    if(offerLinked(r,j))changed=true;
+   if(offerAppeal(r,j))changed=true;
    if(n<3&&addNews(colleagueArticle(r,j)))n++;
   }
   const tags=Object.keys(s.seen);if(tags.length>600)for(const k of tags.slice(0,tags.length-400))delete s.seen[k];
@@ -222,8 +288,9 @@ async function tick(force){
  let changed=false;
  // my bench changed (a case taken, a verdict delivered): tell the colleagues now, not at the next round
  if(S.name){const sig=myOpen().join()+'|'+myJudged().length;if(sig!==lastSig){lastSig=sig;force=true}}
+ if(S.name)try{if(decideAppeals()>0){changed=true;force=true}}catch(e){console.warn('appeals',e)}   // before the verdict goes out
  try{if(await sync(force))changed=true}catch{}   // first: a colleague's verdict on my witness's trial is then known
- if(S.name)try{if(separateTick()>0)changed=true}catch(e){console.warn('court news',e)}
+ if(S.name)try{if(separateTick()>0)changed=true;if(appealTick()>0)changed=true}catch(e){console.warn('court news',e)}
  if(changed){if(typeof save==='function')save();refresh()}
 }
 
@@ -241,7 +308,7 @@ async function ready(ms=4000){
  if(readOnce||!linked())return;
  await Promise.race([sync(true),new Promise(r=>setTimeout(r,ms))]);
 }
-window.VerdictColleagues={ready,taken:()=>othersOpen,judged:()=>othersJudged,people,articles,sync:()=>tick(true),separateTick,keyOf};
+window.VerdictColleagues={ready,decideAppeals,appealTick,taken:()=>othersOpen,judged:()=>othersJudged,people,articles,sync:()=>tick(true),separateTick,keyOf};
 const start=()=>{setTimeout(()=>tick(true),1500);setInterval(()=>tick(false),TICK_MS);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick(false)})};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();

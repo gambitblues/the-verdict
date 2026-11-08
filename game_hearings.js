@@ -274,7 +274,8 @@ clicker=function(e){const b=e.target.closest('[data-action]');if(!b)return;
    if(!candidate){revalidate(db);save();render();return toast('지금은 이 사건을 배당할 수 없어요. 다른 사건으로 바꿔 드렸어요.')}
    let c;try{c=createGeneratedCase(candidate||null)}catch(err){console.error(err);toast('사건 구성 오류로 배당하지 못했습니다.');return;}
    if(!c)return toast('현재 사건을 배당할 수 없습니다.');
-   if(pickd.link){c.linkedWorld=pickd.link.world;c.link={from:pickd.link.from,judge:pickd.link.judge,parent:pickd.link.parent};c.week=Math.min(c.week,S.week)}   // (2026-11-08) a witness's own trial, from a colleague's case
+   if(pickd.link){c.linkedWorld=pickd.link.world;c.link={from:pickd.link.from,judge:pickd.link.judge,parent:pickd.link.parent};c.week=Math.min(c.week,S.week);
+    if(pickd.link.appeal)c.appeal={judge:pickd.link.judge,from:pickd.link.from,by:pickd.link.appeal.by,first:pickd.link.appeal.first||{},judgeName:pickd.link.appeal.judgeName||''}}   // an appellate hearing of a colleague's verdict   // (2026-11-08) a witness's own trial, from a colleague's case
    o.status='accepted';o.caseId=c.id;o.picked=which;(o.options||[]).forEach((x,i)=>{if(i!==which)transfer(db,{...o,options:o.options},i)});
    const today=dateKey(Date.now());db.acceptedByDay[today]=(db.acceptedByDay[today]||0)+1;
    remember(c.who[0],'배당 수락',c.name+'의 재판이 시작됨',c.id);save();ui.caseId=c.id;changeTab('court');toast('사건을 맡았어요 · '+c.name);return;

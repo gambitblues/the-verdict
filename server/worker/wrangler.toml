@@ -10,7 +10,7 @@ compatibility_flags = ["nodejs_compat"]
 crons = ["0 18 * * *"]
 
 [vars]
-TERRA_REFILL_ENABLED = "0"
+TERRA_REFILL_ENABLED = "1" # 2026-11-08: daily trickle of drafts (caps below); published through .github/workflows/terra-pull.yml
 # P4 server-based shared docket remains disabled until QA and explicit deployment approval.
 P4_SHARED_DOCKET_ENABLED = "0"
 P4_TRIAL_PARITY_ENABLED = "0" # native verdict score+legal sentence; QA-only

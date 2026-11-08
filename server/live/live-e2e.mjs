@@ -11,7 +11,7 @@
  *     theirs alone (checked through the database API with each player's own token)
  *   2 the same player on two browsers ("devices"): a newer save is not overwritten, the player picks, the other side is
  *     kept (server save_backups / browser backups) and can be brought back from "보관된 기록"
- *   3 one article and one witness answer from the real models; model id, tokens, cost; the failure path keeps the
+ *   3 one first-hearing statement pair and one witness answer from the real models; model id, tokens, cost; the failure path keeps the
  *     game's own text (API blocked in the browser; plus ALLOW_TEST_FAIL on the Worker if it is "1")
  *   4 over-rejection: 20 real witness answers from the game through the checks — how many are refused and why
  *   5 one full case in the game: a case on the bench → hearings → questions (AI answers) → verdict → AI judgment
@@ -160,10 +160,9 @@ try{
  const AI={};
  await step('3-1','모델 ID와 사용 권한',async()=>{const r=await api(A.access_token,'/ai/check');facts.models=r.data.models;if(!Object.values(r.data.models||{}).every(m=>m.ok))throw new Error(JSON.stringify(r.data));return {detail:JSON.stringify(r.data.models)}});
  await step('3-2','토큰 없이 AI 호출 → 401',async()=>{const r=await api(null,'/ai/npc',{});if(r.status!==401)throw new Error(String(r.status));return {}});
- await step('3-3','기사 1건 생성',async()=>{const r=await api(A.access_token,'/ai/article',{outlet:'법조일보',reporter:'한지수',style:'사실 위주, 짧은 문장',lean:'p',phase:'before',caseName:'친목 모임의 공동투자금',names:['김혜진'],
-   title:'동창 돈 3억, 7천만 원은 어디로',body:'동창 12명이 모은 3억 원 가운데 7천만 원이 개업 엿새 만에 빚 갚는 데 쓰였다. 검찰은 처음부터 속일 생각이었다고 본다. 김혜진 씨는 사업을 살리려 했다고 말한다.'});
-  AI.article=r.data;if(!r.data.ok)throw new Error(JSON.stringify(r.data));
-  return {detail:`${r.data.model} · 입력 ${r.data.usage.input_tokens} · 출력 ${r.data.usage.output_tokens} · $${r.data.cost_usd} · 「${r.data.result.title}」 ${r.data.result.body.length}자`}});
+ await step('3-3','첫 기일 양측 입장 1건 생성',async()=>{const r=await api(A.access_token,'/ai/opening',{names:['김혜진'],openingA:'검찰은 김혜진 씨가 동창 12명에게 받은 투자금 3억 원 가운데 7천만 원을 개업 엿새 만에 자기 빚을 갚는 데 썼다며 처음부터 속일 생각이었다고 주장합니다.',openingB:'김혜진 씨는 가게를 살리려고 잠시 돌려 쓴 돈이고 석 달 안에 갚을 계획이었다며 속일 생각은 없었다고 말합니다.'});
+  AI.opening=r.data;if(!r.data.ok)throw new Error(JSON.stringify(r.data));
+  return {detail:`${r.data.model} · 입력 ${r.data.usage.input_tokens} · 출력 ${r.data.usage.output_tokens} · $${r.data.cost_usd}`}});
  await step('3-4','NPC 답변 1건 생성',async()=>{const r=await api(A.access_token,'/ai/npc',{role:'카페 매니저',attitude:'honest',names:['김혜진'],question:'그날 현금은 어떻게 처리했습니까?',answer:'매일 밤 10시에 김혜진 대표님이 현금을 직접 가져갔어요. 3천만 원쯤 됐을 거예요.'});
   AI.npc=r.data;if(!r.data.ok)throw new Error(JSON.stringify(r.data));return {detail:`${r.data.model} · 입력 ${r.data.usage.input_tokens} · 출력 ${r.data.usage.output_tokens} · $${r.data.cost_usd} · "${r.data.result.text}"`}});
  await step('3-5','AI 오류 시 원래 문장 유지 (게임 화면, AI 서버 차단)',async()=>{
@@ -222,10 +221,9 @@ try{
   await p.waitForFunction(()=>!!S.cases[ui.caseId].verdict,null,{timeout:20000});await U.settle().catch(()=>{});
   const ai=await p.waitForFunction(()=>!!S.cases[ui.caseId].trial4.final?.judgmentAI,null,{timeout:90000}).then(()=>true).catch(()=>false);
   await p.evaluate(()=>{ui.modal=null;render()}).catch(()=>{});shots.push(await shot(p,'5-4-result-judgment'));
-  const arts=await p.evaluate(async id=>{const list=VerdictMedia.articles().filter(a=>a.caseId===id).slice(0,2);for(const a of list)await VerdictAI.article(a);return list.map(a=>!!S.aiArticles?.[VerdictAI.articleKey(a)])},id);
-  facts.fullCase={how,aiAnswers,judgmentAI:ai,articlesAI:arts};
-  if(!ai)return {status:'fail',detail:`${how} · AI 답변 ${aiAnswers}건 · 판결문 AI 문장 실패(엔진 판결문 유지) · 기사 AI ${arts.filter(Boolean).length}/${arts.length}`,shots};
-  return {detail:`${how} · AI 답변 ${aiAnswers}건 · 판결문 AI 문장 적용 · 기사 AI ${arts.filter(Boolean).length}/${arts.length}`,shots};
+  facts.fullCase={how,aiAnswers,judgmentAI:ai};
+  if(!ai)return {status:'fail',detail:`${how} · AI 답변 ${aiAnswers}건 · 판결문 AI 문장 실패(엔진 판결문 유지)`,shots};
+  return {detail:`${how} · AI 답변 ${aiAnswers}건 · 판결문 AI 문장 적용`,shots};
  });
  await step('5-2','오늘 사용량 기록',async()=>{const u=[await api(A.access_token,'/ai/usage'),await api(B.access_token,'/ai/usage')];facts.usage=u.map(x=>x.data);
   const rows=(await rest(A.access_token,`ai_usage?select=kind,model,input_tokens,output_tokens,cost_usd,ok,reason&user_id=eq.${A.user.id}&order=id.desc&limit=60`)).data||[];facts.usageRows=rows;

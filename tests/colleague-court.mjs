@@ -57,8 +57,9 @@ const take=(p,key)=>p.evaluate(k=>{const cand=CasePackEngine.pool(S).find(x=>x.a
  const c=createGeneratedCase(cand);S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};c.week=Math.min(c.week,S.week);
  VerdictTrialPlay.ensure(c,S.cases[c.id]);return c.id},key);
 /* deliver a verdict without the 5-step window (the verdict path itself is covered by verdict-v82/v83) */
-const decide=(p,id,label)=>p.evaluate(([id,label])=>{const st=S.cases[id],t=st.trial4;t.daysDone=t.daysDone||3;
- t.final={label,dir:1,sentence:'징역 2년',at:Date.now()};st.verdict='v';st.closedWeek=S.week},[id,label]);
+const decide=(p,id,label,dir='convict',appeal)=>p.evaluate(([id,label,dir,appeal])=>{const st=S.cases[id],t=st.trial4;t.daysDone=t.daysDone||3;
+ t.final={label,dir,sentence:dir==='convict'?'징역 2년':'',at:Date.now()};st.verdict='v';st.closedWeek=S.week;
+ if(appeal!==undefined)st.appeal=appeal?{by:appeal,week:S.week,at:Date.now(),status:'filed'}:false},[id,label,dir,appeal]);   // appeal: force the seed's decision in a test
 try{
  /* 1. separately indicted witness, no login */
  const solo=await (await browser.newContext({viewport:{width:W,height:844}})).newPage();const errs=[];solo.on('pageerror',e=>errs.push(e.message));
@@ -77,7 +78,17 @@ try{
  assert.ok(r.feed.includes('따로 받던 재판 결론'),'shown with the other articles');
  await solo.evaluate(()=>{ui.tab='tablet';ui.tabletTab='news';render()});
  await solo.screenshot({path:'qa-visuals/colleague-witness-news-'+W+'.png'});
+ // a criminal verdict that is appealed, with no colleague: an NPC appellate bench a few game weeks later
+ const ap=await take(solo,'adv-cr-016');await decide(solo,ap,'유죄','convict','d');
+ const apr=await solo.evaluate(id=>{VerdictColleagues.appealTick();const early=(S.colleagues.news||[]).some(x=>x.index==='apr'+0||/항소심 —/.test(x.title));S.week+=13;VerdictColleagues.appealTick();
+  return {early,news:(S.colleagues.news||[]).filter(x=>/항소심 —/.test(x.title)).map(x=>x.title+' | '+x.body),st:S.cases[id].appeal}},ap);
+ assert.equal(apr.early,false,'not at once');assert.equal(apr.news.length,1);assert.match(apr.news[0],/항소심 재판부\(.+ 판사\)|항소심 재판부는/);assert.equal(apr.st.status,'decided');
+ // verdicts are decided once; with no forced value the seed decides and the result is kept
+ const freeId=await take(solo,'adv-cr-001');await decide(solo,freeId,'무죄','acquit');
+ const once=await solo.evaluate(id=>{VerdictColleagues.decideAppeals();const a=JSON.stringify(S.cases[id].appeal);VerdictColleagues.decideAppeals();return [a,JSON.stringify(S.cases[id].appeal)]},freeId);
+ assert.equal(once[0],once[1]);assert.ok(once[0]==='false'||/"by":"p"/.test(once[0]),'an acquittal can only be appealed by the prosecution: '+once[0]);
  assert.deepEqual(errs,[]);await solo.context().close();
+ console.log('  ✓ appeals without a colleague: an NPC appellate bench decides a few game weeks later; decided once');
  console.log('  ✓ separately indicted witness: news only after my verdict, weeks later, result from the case\'s world');
 
  /* 2–3. two players */
@@ -105,15 +116,17 @@ try{
  // A delivers the verdict → B reads it as court news
  await decide(a,caseA,'유죄');await a.evaluate(()=>VerdictColleagues.sync());
  const judged=casesT.find(r=>r.case_key===K1&&r.state==='judged');assert.ok(judged);
- assert.deepEqual(Object.keys(judged.summary).sort(),['days','kind','label','sentence','title']);
+ assert.ok(['days','kind','label','sentence','title'].every(k=>k in judged.summary)&&Object.keys(judged.summary).every(k=>['days','kind','label','sentence','title','appeal'].includes(k)),JSON.stringify(Object.keys(judged.summary)));
  const names=await a.evaluate(id=>{const c=CASES.find(x=>x.id===id);return [...(c.who||[]),...S.cases[id].trial4.witnesses.map(w=>w.id)].map(i=>NPC[i]?.name).filter(Boolean)},caseA);
  assert.ok(names.every(n=>!JSON.stringify(sent).includes(n)),'no names of A\'s world reach the server');
- assert.ok(!/truth|did|didnt|reason|worlds|seed|skill/.test(JSON.stringify(sent.map(s=>s.body))),'no hidden truth or scores');
+ // the only world that ever leaves is the one an appeal or a linked case needs, after the verdict
+ const scrub=b=>JSON.parse(JSON.stringify(b),(k,v)=>k==='world'?undefined:v);
+ assert.ok(!/truth|did|didnt|reason|worlds|seed|skill/.test(JSON.stringify(sent.map(s=>scrub(s.body)))),'no hidden truth or scores');
  await b.evaluate(()=>VerdictColleagues.sync());
  const newsB=await b.evaluate(()=>VerdictMedia.articles().filter(x=>x.court&&/ 판사, '/.test(x.title)));   // (a first case that collided is handed over with its own line)
  assert.equal(newsB.length,1,JSON.stringify(newsB.map(x=>x.title)));assert.ok(newsB[0].title.includes(`김가람 판사, '${T1}' 사건 선고`),newsB[0].title);assert.match(newsB[0].body,/"유죄" \(징역 2년\)/);
  await b.evaluate(()=>{ui.tab='tablet';ui.tabletTab='news';render()});
- const card=b.locator('.wf-news-compact',{hasText:'김가람 판사'});
+ const card=b.locator('.wf-news-compact',{hasText:"김가람 판사, '"});
  assert.equal(await card.count(),1);assert.equal(await card.locator('[data-action="wfopen"]').count(),0,'no comment thread on court news');
  await b.screenshot({path:'qa-visuals/colleague-news-'+W+'.png'});
  assert.equal(await b.evaluate(k1=>VerdictDocket.freshPool().some(x=>x.a.id===k1),K1),false,'a case the colleague judged is not offered while fresh cases remain');
@@ -146,7 +159,7 @@ try{
  assert.equal(await a.evaluate(()=>(S.colleagues.news||[]).filter(x=>/따로 받던 재판/.test(x.title)&&/범인도피/.test(x.body)).length),0,'while a colleague may take it, my world waits');
  assert.equal(await a.evaluate(()=>CasePackEngine.pool(S).some(x=>x.a.id==='link-cr-020-w1')),false,'linked cases never join the open pool');
  await b.evaluate(()=>VerdictColleagues.sync());
- const offer=await b.evaluate(()=>{const o=S.realtimeInbox.offers.find(x=>x.linked&&x.status==='available');return o&&{slot:o.slot,opt:o.options[0],news:VerdictMedia.articles().some(x=>/우리 법원에 접수/.test(x.title))}});
+ const offer=await b.evaluate(()=>{const o=S.realtimeInbox.offers.find(x=>x.linked&&x.status==='available'&&x.options[0].archetypeId==='link-cr-020-w1');return o&&{slot:o.slot,opt:o.options[0],news:VerdictMedia.articles().some(x=>/우리 법원에 접수/.test(x.title))}});
  assert.ok(offer,'B is offered the witness\'s own trial');assert.equal(offer.opt.archetypeId,'link-cr-020-w1');
  assert.match(offer.opt.logline,/옆 재판부 김가람 판사가 선고한 '운전석 에어백의 다른 DNA' 재판의 증인/);assert.equal(offer.news,true);
  const spin=await b.evaluate(slot=>{while(openCases().length>=VerdictDocket.MAX_ACTIVE)S.cases[openCases()[0].id].referred=true;   // a free seat on B's bench
@@ -166,5 +179,30 @@ try{
  assert.ok(!/벌금 400만 원/.test(told[0]),'not the NPC-judge version');
  console.log('  ✓ stage 3: the witness\'s own trial is offered to the colleague in the same world, and comes back as my witness\'s news');
  assert.deepEqual(eA,[]);assert.deepEqual(eB,[]);
+
+ /* 6. appeals between the two judges: A's criminal verdict is appealed, B hears it in the same world, A reads the result */
+ const K3=await free();const ac=await take(a,K3);
+ await a.evaluate(id=>{S.cases[id].trial4.truth='didnt'},ac);
+ await decide(a,ac,'유죄','convict','d');await a.evaluate(()=>VerdictColleagues.sync());
+ const sentA=casesT.find(r=>r.case_key===K3&&r.state==='judged');
+ assert.deepEqual(sentA.summary.appeal,{by:'d',world:'didnt',first:{label:'유죄',sentence:'징역 2년'}},'the appeal goes out with the verdict');
+ await b.evaluate(()=>VerdictColleagues.sync());
+ const apo=await b.evaluate(k=>{const o=S.realtimeInbox.offers.find(x=>x.linked&&x.status==='available'&&x.options[0].archetypeId===k);return o&&{slot:o.slot,opt:o.options[0]}},K3);
+ assert.ok(apo,'B is offered the appeal');assert.match(apo.opt.title,/\(항소심\)$/);assert.match(apo.opt.logline,/김가람 판사가 1심에서 "유죄" \(징역 2년\)을 선고한 사건/);
+ const bc=await b.evaluate(slot=>{while(openCases().length>=VerdictDocket.MAX_ACTIVE)S.cases[openCases()[0].id].referred=true;
+  const btn=document.createElement('button');btn.dataset.action='acceptDocket';btn.dataset.slot=slot;btn.dataset.opt='0';document.body.append(btn);btn.click();btn.remove();
+  const c=CASES.slice().reverse().find(x=>x.appeal);if(!c)return null;S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};const t=VerdictTrialPlay.ensure(c,S.cases[c.id]);
+  ui.tab='court';ui.caseId=c.id;ui.t4tab='case';render();return {id:c.id,truth:t.truth,appeal:c.appeal}},apo.slot);
+ assert.ok(bc,'accepted');assert.equal(bc.truth,'didnt','the same world as the first trial');assert.equal(bc.appeal.by,'d');
+ await b.locator('.t4-appeal').waitFor();assert.match(await b.locator('.t4-appeal').innerText(),/1심: 같은 법원 김가람 판사 · "유죄" \(징역 2년\) · 항소한 쪽: 피고인/);
+ await b.screenshot({path:'qa-visuals/colleague-appeal-'+W+'.png'});
+ await decide(b,bc.id,'무죄','acquit');
+ assert.equal(await b.evaluate(id=>{VerdictColleagues.decideAppeals();return S.cases[id].appeal},bc.id),false,'an appellate judgment is never appealed again');
+ await b.evaluate(()=>VerdictColleagues.sync());
+ assert.deepEqual(casesT.find(r=>r.case_key===K3&&r.judge_id===USERS['b@x.kr'].id&&r.state==='judged').summary.appealOf,{judge:USERS['a@x.kr'].id,parent:K3});
+ await a.evaluate(()=>VerdictColleagues.sync());
+ const res=await a.evaluate(id=>({st:S.cases[id].appeal,news:VerdictMedia.articles().filter(x=>/항소심 —/.test(x.title)).map(x=>x.title+' | '+x.body),generic:VerdictMedia.articles().some(x=>/이나래 판사, '/.test(x.title)&&x.title.includes(S.cases[id].trial4?'':''))}),ac);
+ assert.equal(res.st.status,'decided');assert.ok(res.news.some(n=>/1심 판결 바뀜/.test(n)&&/이나래 판사가 "무죄"/.test(n)),JSON.stringify(res.news));
+ console.log('  ✓ appeals between judges: offered to the colleague, same world, banner in the courtroom, result back as news, never appealed twice');
  console.log('PASS: colleague court (separate-witness news, colleague judges, no shared cases, verdict news)');
 }finally{await browser.close();server.close()}

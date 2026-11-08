@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {handle,costOf,outputText,estimate} from '../src/index.js';
-import {checkNpc,checkArticle,checkJudgment,npcPrompt,numbersIn,sentencesIn,guard,negated} from '../src/prompts.js';
+import {checkNpc,checkJudgment,npcPrompt,numbersIn,sentencesIn,guard,negated} from '../src/prompts.js';
 
 const env={SUPABASE_URL:'https://sb.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'svc',OPENAI_API_KEY:'sk-test',
  ALLOWED_ORIGINS:'https://gambitblues.github.io',ALLOWED_EMAILS:'a@x.kr,b@x.kr',MODEL_CASE:'gpt-6.1-terra',MODEL_TALK:'gpt-6-luna',
@@ -73,14 +73,6 @@ test('deliberate failure for the live fallback test only works when the deployme
  f=fake({reply:GOOD});d=await (await handle(req('/ai/npc',{...NPC,test:'fail'}),{...env,ALLOW_TEST_FAIL:'1'},f)).json();
  assert.deepEqual([d.ok,d.fallback,d.why],[false,true,'test_fail']);assert.equal(f.openai,0);
 });
-test('article: title and 2~4 sentences of about 100~200 characters, same facts',async()=>{
- const base={outlet:'법조일보',reporter:'김기자',lean:'p',phase:'before',caseName:'친목 모임의 공동투자금',names:['김혜진'],title:'동창 돈 3억, 7천만 원은 어디로',body:'동창 12명이 모은 3억 원 가운데 7천만 원이 개업 엿새 만에 빚 갚는 데 쓰였다. 검찰은 처음부터 속일 생각이었다고 본다. 김혜진 씨는 사업을 살리려 했다고 말한다.'};
- const good={title:'동창 12명의 3억, 엿새 만에 사라진 7천만 원',body:'동창 12명이 모은 3억 원 중 7천만 원이 카페 문을 연 지 엿새 만에 빚 갚는 데 쓰였다. 검찰은 처음부터 속일 생각이었다고 본다. 김혜진 씨는 가게를 살리려 했을 뿐이라고 맞선다.'};
- assert.equal(checkArticle(base,good).ok,true);
- assert.equal(checkArticle(base,{...good,body:'짧다.'}).why,'sentences');
- assert.equal(checkArticle(base,{...good,body:good.body.replace('7천만','8천만')}).why,'numbers');
- const f=fake({reply:good});const d=await (await handle(req('/ai/article',base),env,f)).json();assert.equal(d.ok,true);
-});
 test('opening: two sides share one verified and metered call',async()=>{
  const base={openingA:'검사는 현장 출입 기록을 근거로 주장했다.',openingB:'변호인은 기록이 부정확하다고 반박했다.',names:[]};
  const reply={openingA:base.openingA,openingB:base.openingB};
@@ -136,20 +128,6 @@ test('closing: original two sides share one verified metered call',async()=>{
  assert.equal(f.openai,2);
  assert.equal(f.usage[0].p_ok,true);
 });
-test('bench: factual memo is verified before it is returned',async()=>{
- const source='쟁점 사고 경위 — 검사·원고 측 자료 1건, 변호·피고 측 자료 1건. 현장 기록은 2026.12.21에 작성됐다. 남은 확인: 미결정 증거 1건.';
- const base={source,names:[]};
- let f=fake({reply:{text:source}});
- let d=await (await handle(req('/ai/bench',base),env,f)).json();
- assert.equal(d.ok,true);
- assert.equal(f.openai,2);
- f=fake({reply:{text:source.replace('자료 1건','자료 2건')}});
- d=await (await handle(req('/ai/bench',base),env,f)).json();
- assert.equal(d.ok,false);
- assert.equal(d.why,'numbers');
- assert.equal(f.openai,1,'invalid response is rejected before paying for second verifier');
-});
-
 test('objection exchange uses one generation and one verification for two known arguments',async()=>{
  const base={openingA:'검사는 기록이 부정확하다고 이의를 신청했다.',openingB:'변호인은 기록이 정확하다고 반박했다.',names:[]};
  const f=fake({reply:{openingA:base.openingA,openingB:base.openingB}});

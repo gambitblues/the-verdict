@@ -67,11 +67,13 @@ export function npcPrompt(p){
 - 사건의 공개 쟁점과 증인의 관찰·이해관계는 표현의 맥락일 뿐, 원래 답에 없는 증거·사실·인정·부인을 만들 근거가 아닙니다.
 - 원래 답의 내용, 인정·부인 방향, 인물, 숫자, 시각, 확신 정도를 그대로 유지합니다.
 - 이전 질문과 진술이 있다면 연결은 하되 새로운 모순이나 일치 사실을 꾸미지 않습니다.
-- 존댓말 구어체 1~3문장, 원래 답과 비슷한 분량으로 말합니다.`,
+- 존댓말 구어체 1~3문장, 원래 답과 비슷한 분량으로 말합니다.
+- 말투는 이 증인의 나이·직업·이 사건과의 관계에 맞춥니다(예: 경찰관은 보고하듯 시각과 조치를 짧게, 오래 일한 기사는 투박한 입말, 의료인은 관찰한 상태를 차분히). 직업에서 나올 법한 낱말을 한두 개 쓰되, 원래 답에 없는 사실은 더하지 않습니다.
+- 원래 답이 메모처럼 딱딱하면(…했음, …입니다. 같은 나열) 그 사람이 법정에서 실제로 말하듯 바꿉니다.`,
   input:`사건: ${cap(p.caseName,120)}
 공개된 사건 쟁점: ${cap(p.issue,240)}
 증인: ${cap(p.witnessName,50)} · ${cap(p.role,40)}${p.years?` (${cap(p.years,20)})`:''}
-증인이 알고 있다고 공개된 범위: ${cap(p.witnessKnowledge,220)}
+${p.age||p.job?`증인의 나이·직업: ${cap(p.age,10)}${p.age?'세':''} ${cap(p.job,60)}\n`:''}증인이 알고 있다고 공개된 범위: ${cap(p.witnessKnowledge,220)}
 공개된 이해관계: ${cap(p.witnessInterest,160)}
 법정에서 앞서 한 진술(참고용): ${prior||'없음'}
 태도: ${ATT[p.attitude]||ATT.honest}
@@ -138,62 +140,6 @@ export function closingPrompt(p){
   schema:{...r.schema,name:'closing_statements'}};
 }
 export const checkClosing=checkOpening;
-
-/* P1 bench clerk: rewrite only the disclosed issue-by-issue record. Never suggest a verdict. */
-export function benchPrompt(p){
- const source=cap(p.source,1300);
- if(source.length<15)return {error:'missing_text'};
- return {instructions:`${COMMON}
-현재 할 일: 재판연구원으로서 재판장이 이미 열람한 쟁점 정리만 쉬운 한국어로 다시 써 줍니다.
-- 새 사실, 법률, 사람, 증거, 평가, 결론, 유죄·무죄 추천을 만들지 않습니다.
-- 기존 각 쟁점의 찬반 근거 수와 미확인 과제를 그대로 보존합니다.
-- 원문 순서와 수치를 유지하고, 최대 8문장으로 간결하게 작성합니다.
-- 재판장에게 판결 방향이나 형량을 권하지 않습니다.`,
- input:source,
- schema:{name:'bench_note',schema:{type:'object',additionalProperties:false,required:['text'],properties:{text:{type:'string'}}}}};
-}
-export function checkBench(p,out){
- const src=S(p.source),text=S(out?.text);
- if(!src||!text)return {ok:false,why:'empty'};
- if(text.length>src.length*1.7+60||text.length<Math.min(src.length*0.45,24))return {ok:false,why:'length'};
- if(!sameDates(src,text))return {ok:false,why:'dates'};
- if(JSON.stringify(numbersWithoutDates(src))!==JSON.stringify(numbersWithoutDates(text)))return {ok:false,why:'numbers'};
- if(sentencesIn(text).length>8)return {ok:false,why:'sentences'};
- const g=guard(src,text,{names:namesOf(p),keep:0.5});if(g)return {ok:false,why:g};
- return {ok:true,value:{text},compare:[src,text]};
-}
-
-/* ---------- a reporter's article: title + 2~4 sentences, about 100~200 characters ---------- */
-export function articlePrompt(p){
- const body=cap(p.body,700),title=cap(p.title,80);
- if(!body||!title)return {error:'missing_text'};
- const lean=p.lean==='p'?'원고·검찰 쪽 시각':p.lean==='d'?'피고·변호인 쪽 시각':'중립';
- return {instructions:`${COMMON}
-지금 할 일: 신문 기사 한 편을 다시 씁니다.
-- 제목 1개(40자 이내)와 본문 2~4문장, 본문 전체 100~200자.
-- 기자의 시각과 말투를 살리되, 바탕 기사에 있는 사실만 씁니다. 원문에 적힌 사건 날짜(연·월·일)는 반드시 모두 유지하며 추가하거나 변경하지 않습니다. 날짜 표기 방식만 바꿀 수 있습니다. 다른 숫자도 바꾸지 않습니다.
-- 기사 문체(~했다, ~이다)로 씁니다.`,
-  input:`언론사: ${cap(p.outlet,30)}
-기자: ${cap(p.reporter,20)}${p.style?` · 문체: ${cap(p.style,60)}`:''}
-시각: ${lean}
-시점: ${p.phase==='after'?'선고 뒤 평가':'재판 전·중 전망'}${p.tone?` · 논조: ${cap(p.tone,10)}`:''}
-사건: ${cap(p.caseName,60)}
-바탕 기사 제목: ${title}
-바탕 기사 본문: ${body}`,
-  schema:{name:'news_article',schema:{type:'object',additionalProperties:false,required:['title','body'],properties:{title:{type:'string'},body:{type:'string'}}}}};
-}
-export function checkArticle(p,out){
- const title=S(out?.title),body=S(out?.body),src=S(p.title)+' '+S(p.body);
- if(!title||title.length>45)return {ok:false,why:'title'};
- const n=sentencesIn(body).length;
- if(n<2||n>4)return {ok:false,why:'sentences'};
- if(body.length<80||body.length>240)return {ok:false,why:'length'};
- if(!sameDates(src,title+' '+body))return {ok:false,why:'dates'};
- const b=numbersWithoutDates(title+' '+body),a=numbersWithoutDates(src);if(!b.every(x=>a.includes(x)))return {ok:false,why:'numbers'};
- for(const n of namesOf(p))if(!src.includes(n)&&(title+body).includes(n))return {ok:false,why:'person_added'};
- if(negated(S(p.body))!==negated(body))return {ok:false,why:'polarity'};
- return {ok:true,value:{title,body},compare:[src,title+' '+body]};
-}
 
 /* ---------- a judgment: the engine's order, sections and every number stay; only sentences change ---------- */
 export function judgmentPrompt(p){

@@ -19,6 +19,14 @@
 - [x] 합의부 형량·배상액 합의 — 2026-11-08 기획 확정 '3인 의견의 가운데 값'으로 구현(아래)
 - [ ] 합의부 대기 시간(72시간)·최대 심의 3번 — 기획 확인 필요
 
+## 2026-11-08 v10.5.0 (Claude · main 배포 안 함)
+- [x] AI 문장 규칙: 보여 준 문장 교체 금지, 증인 답은 시트 기본 질문만 미리 받기(나이·직업), 첫 기일·최종 변론·판결문 짧은 대기 후 잠금. `tests/ai-wording.mjs`
+- [x] 기사·배석판사 메모 AI 경로 삭제(클라이언트·Worker·테스트)
+- [x] 재판장 주문: 조사 오류 수정, 자발 제출과 주문 결과 중복 방지
+- [x] 형사 항소 1회: 동료 항소심 배당·같은 세계·결과 통보, NPC 항소심. `tests/colleague-court.mjs` 6번
+- [x] Terra: Worker 크론 켬(하루 1건·0.3달러), 소재 다양화, DB `038`, `tests/terra-pull.cjs`(+test), 워크플로 `terra-pull.yml`(PR 생성)
+- [ ] 실서버: 038 실행, Worker 배포(TERRA_REFILL_ENABLED=1 반영, SUPABASE_SERVICE_ROLE_KEY 비밀값 확인), GitHub 저장소 변수·비밀값 등록 후 첫 PR 확인
+
 ## 2026-11-08 법원 동료 — 가벼운 공유 세계 (Claude, v10.3.0 · main 배포 안 함, 기획 확정)
 - [x] DB `037`: `court_judges`(판사 카드), `court_cases`(한 사건 한 재판부 · 공개 판결 요약), RPC `court_judge_put`·`court_case_sync`·`court_case_judge`(플레이어가 자기 줄만, 14일 지난 보유는 풀림). PGlite 테스트.
 - [x] `colleague_court.js`: 동료 판사 NPC(인맥 '법원 동료'), 동료 판결 → '법원 소식' 기사, 배당 후보·첫 네 건에서 동료 보유 사건 제외, 동시 배당 충돌 시 안 연 쪽이 넘김(첫 네 건이면 대체 사건). 로그인·037 없으면 쉼.

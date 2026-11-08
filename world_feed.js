@@ -203,7 +203,7 @@ function writeArticle(c,t,r){
  else lines.push(pk('l',[`그러나 재판부는 ${Pj(ignored.title,'을')} 충분히 따지지 않았다. ${ignored.decision==='exclude'?'판단 자료에서 아예 빠졌다.':'판결 이유에서 그 무게는 가볍게 다뤄졌다.'}`,`${ignored.title}에 대한 판단이 아쉽다. ${ignored.decision==='exclude'?'재판부는 이 자료를 아예 쓰지 않았다.':'판결문은 이 자료를 몇 줄로 지나갔다.'}`,`가장 큰 의문은 ${cop(ignored.title)}. ${ignored.decision==='exclude'?'재판부는 이를 판단에서 뺐다.':'재판부는 그 의미를 작게 봤다.'}`]));
  if(q)lines.push(pk('q',[`법정에서 ${q.role} ${Pj(q.who,'이')} "${q.text}"라고 했던 말이 ${won?'결국 받아들여진 셈이다':'판결에 얼마나 반영됐는지는 의문이다'}.`,`"${q.text}" — ${q.role} ${q.who}의 이 증언은 ${won?'판결과 같은 방향을 가리켰다':'끝내 무게를 얻지 못했다'}.`]));
  lines.push(hash(c.id+r.name+'cr')%3?crit:pk('cr2',['판결문은 남고, 그 무게는 당사자들이 진다.','이번 선고가 남긴 질문은 법정 밖에서 계속될 것이다.','기록은 판결보다 오래 남는다.']));
- lines.push(half?pk('e',['판결은 확정됐고, 남은 쪽들은 각자의 몫을 감당하게 됐다.','누구도 웃지 못한 판결이 그대로 확정됐다.']):won?pk('e',[`${judge} 재판장의 판결 이유는 기록에 충실했다는 평가를 받는다.`,`증거를 따라간 ${judge} 재판장의 판단에 힘이 실린다.`,`${judge} 재판장은 여론이 아니라 기록으로 답했다.`]):pk('e',[`${judge} 재판장의 판단은 비판을 피하기 어렵다. 이 세계에는 항소가 없고, 판결은 그대로 확정된다.`,`항소가 없는 세계에서 ${judge} 재판장의 이 판결은 그대로 확정된다. 그래서 더 아쉽다.`,`${judge} 재판장은 이 판결에 대한 질문에 답해야 한다. 판결은 이미 확정됐다.`]));
+ lines.push(half?pk('e',['판결은 확정됐고, 남은 쪽들은 각자의 몫을 감당하게 됐다.','누구도 웃지 못한 판결이 그대로 확정됐다.']):won?pk('e',[`${judge} 재판장의 판결 이유는 기록에 충실했다는 평가를 받는다.`,`증거를 따라간 ${judge} 재판장의 판단에 힘이 실린다.`,`${judge} 재판장은 여론이 아니라 기록으로 답했다.`]):pk('e',[`${judge} 재판장의 판단은 비판을 피하기 어렵다.${c.kind==='criminal'?' 항소심에서 다시 다퉈질지 지켜볼 일이다.':' 판결은 그대로 확정된다.'}`,`${judge} 재판장의 이 판결이 ${c.kind==='criminal'?'항소심을 견딜 수 있을지는 의문이다':'그대로 확정된다는 점이 더 아쉽다'}.`,`${judge} 재판장은 이 판결에 대한 질문에 답해야 한다. 판결은 이미 확정됐다.`]));
  return {title,body:lines.filter(Boolean).join(' '),phase:'after',tone:half?'mixed':won?'praise':'blame'};
 }
 /* Only cases on my own bench (assigned to me, not handed on): no coverage of cases I never took,
@@ -220,8 +220,8 @@ function articles(){
   for(const iv of t?.final?.interviews||[])out.push({caseId:c.id,outlet:iv.outlet,title:iv.title,body:iv.body,day:st?.closedWeek||c.week,index:'iv'+out.length,phase:'after',tone:iv.tone==='논란'?'blame':'praise',frame:'인터뷰 · ',lean:''});
   if(!TP.curOf(c))continue;
   const [rp,rd]=reporterPair(c);
-  for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r),ai=S.aiArticles?.[window.VerdictAI?.articleKey?.({caseId:c.id,index:idx,phase:a.phase,base:a})];   // AI wording of exactly this text (v8.7.4: key follows the engine text, so struck evidence never survives in an old wording)
-   out.push({caseId:c.id,outlet:r.outlet,title:ai?.title||a.title,body:ai?.body||a.body,base:{title:a.title,body:a.body},day:st?.closedWeek||c.week,index:idx,phase:a.phase,tone:a.tone||null,frame:(a.phase==='after'?(a.tone==='praise'?'판결 호평 · ':a.tone==='blame'?'판결 비판 · ':'판결 평가 · '):'재판 전망 · ')+(lean==='p'?(crim?'검찰 측 시각':'원고 측 시각'):(crim?'변호인 측 시각':'피고 측 시각')),reporter:r,lean})}
+  for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r);
+   out.push({caseId:c.id,outlet:r.outlet,title:a.title,body:a.body,base:{title:a.title,body:a.body},day:st?.closedWeek||c.week,index:idx,phase:a.phase,tone:a.tone||null,frame:(a.phase==='after'?(a.tone==='praise'?'판결 호평 · ':a.tone==='blame'?'판결 비판 · ':'판결 평가 · '):'재판 전망 · ')+(lean==='p'?(crim?'검찰 측 시각':'원고 측 시각'):(crim?'변호인 측 시각':'피고 측 시각')),reporter:r,lean})}
  }
  // (2026-11-08) court news: a colleague judge's verdict, a separately indicted witness's own trial (colleague_court.js)
  out.push(...(window.VerdictColleagues?.articles?.()||[]));
@@ -249,7 +249,7 @@ function articlePreview(a,c){
  const context=sideStatement|| (evidence?`법정 자료 '${e.title}'의 내용은 ${evidence}.`:`'${angle}'에 대한 심리가 이어지고 있다.`);
  const summary=a.phase==='after'
   ? `${facts.f?.label||'선고'} 판결이 나왔다. ${side} 측 보도는 '${angle}'에 대한 판단을 중심으로 평가한다.`
-  : `주요 쟁점은 '${angle}'이다. ${side} 측 입장: ${context}`;
+  : `주요 쟁점은 '${angle}'${Pj(angle,'이').slice(angle.length)}다. ${side} 측 입장: ${context}`;
  return {headline,summary};
 }
 function opinionStats(c){
