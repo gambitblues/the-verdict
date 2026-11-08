@@ -223,6 +223,8 @@ function articles(){
   for(const [r,lean,idx] of [[rp,'p',0],[rd,'d',1]]){const a=writeArticle(c,t,r),ai=S.aiArticles?.[window.VerdictAI?.articleKey?.({caseId:c.id,index:idx,phase:a.phase,base:a})];   // AI wording of exactly this text (v8.7.4: key follows the engine text, so struck evidence never survives in an old wording)
    out.push({caseId:c.id,outlet:r.outlet,title:ai?.title||a.title,body:ai?.body||a.body,base:{title:a.title,body:a.body},day:st?.closedWeek||c.week,index:idx,phase:a.phase,tone:a.tone||null,frame:(a.phase==='after'?(a.tone==='praise'?'판결 호평 · ':a.tone==='blame'?'판결 비판 · ':'판결 평가 · '):'재판 전망 · ')+(lean==='p'?(crim?'검찰 측 시각':'원고 측 시각'):(crim?'변호인 측 시각':'피고 측 시각')),reporter:r,lean})}
  }
+ // (2026-11-08) court news: a colleague judge's verdict, a separately indicted witness's own trial (colleague_court.js)
+ out.push(...(window.VerdictColleagues?.articles?.()||[]));
  return out;
 }
 /* ---------- news with comments and case-specific opinion ---------- */
@@ -279,7 +281,7 @@ function newsFeed(limit=60){
    ${c?(()=>{const copy=articlePreview(a,c);return `<strong class="tv-news-title">${esc(copy.headline)}</strong><p class="tv-news-summary">${esc(copy.summary)}</p><details class="wf-article-full"><summary>기사 전문 보기</summary><p>${esc(a.body)}</p></details>`})():`<strong class="tv-news-title">${esc(a.title)}</strong><p class="tv-news-summary">${esc(a.body)}</p>`}
    ${c?opinionLine(c):''}
    ${a.reporter?`<button class="tv-reporter" data-action="reporter" data-i="${REPORTERS.indexOf(a.reporter)}">✍ ${esc(a.reporter.name)} 기자</button>`:''}
-   <button class="wf-link" data-action="wfopen" data-id="${esc(id)}">💬 ${open.has(id)?'댓글 접기':`댓글 ${n}개`}</button>
+   ${c?`<button class="wf-link" data-action="wfopen" data-id="${esc(id)}">💬 ${open.has(id)?'댓글 접기':`댓글 ${n}개`}</button>`:''}
    ${open.has(id)&&c?`<div class="wf-thread">${threadView(thread(c,'art'+a.index,n))}</div>`:''}</article>`;
  }).join('')+'</div>'+
  (pages>1?`<nav class="tv-news-pagination" aria-label="기사 페이지"><button class="btn outline mini" data-action="newsPage" data-page="${newsPage-1}" ${newsPage===0?'disabled':''}>이전</button><span>${newsPage+1} / ${pages} · 전체 ${list.length}건</span><button class="btn outline mini" data-action="newsPage" data-page="${newsPage+1}" ${newsPage===pages-1?'disabled':''}>다음</button></nav>`:'');

@@ -19,7 +19,7 @@
 (()=>{
 'use strict';
 const CFG=window.VERDICT_CONFIG||{};
-const GAME=['./names.js','./deep_case_engine.js','./story_engine.js','./case_pack_engine.js','./curated_index.js','./continuity_engine.js','./npc_life_justice.js','./family_engine.js','./save_store.js','./court_visuals.js','./career_balance.js','./avatar_system.js','./game_runtime.js','./game_hearings.js','./game_professions.js','./chambers_art.js','./game_ui.js','./trial_core.js','./hearing_events.js','./media_desk.js','./match_engine.js','./world_sheets_index.js','./match_play.js','./npc_court_memory.js','./trial_play.js','./world_feed.js','./people_map.js','./v6_world.js','./ai_bridge.js','./app_install.js','./shared_world.js'];
+const GAME=['./names.js','./deep_case_engine.js','./story_engine.js','./case_pack_engine.js','./curated_index.js','./continuity_engine.js','./npc_life_justice.js','./family_engine.js','./save_store.js','./court_visuals.js','./career_balance.js','./avatar_system.js','./game_runtime.js','./game_hearings.js','./game_professions.js','./chambers_art.js','./game_ui.js','./trial_core.js','./hearing_events.js','./media_desk.js','./match_engine.js','./world_sheets_index.js','./match_play.js','./npc_court_memory.js','./trial_play.js','./world_feed.js','./people_map.js','./v6_world.js','./colleague_court.js','./ai_bridge.js','./app_install.js','./shared_world.js'];
 const OFFLINE_DAYS=7;
 const SESSION='vauth_session',OWNER='vauth_owner',LEGACY='vauth_legacy_done',VERIFIED='vauth_verified',DEVICE='vauth_device',GUEST='vauth_guest';
 const REV=(u,s)=>`vauth_rev:${u}:${s}`,PUSHED=(u,s)=>`vauth_fp:${u}:${s}`;
@@ -332,6 +332,14 @@ window.VerdictAuth={
    if(r.status===401||r.status===403){try{await verify()}catch(e){if(e.refused){signOutNow(e.message);throw new Error('refused')}}
     const d=await r.json().catch(()=>({}));throw Object.assign(new Error(d?.error||'refused'),{status:r.status})}
    return await r.json()}finally{clearTimeout(t)}
+ },
+ /* (2026-11-08) the signed-in player's own rows in Supabase (colleague court). Same rules as the saves: only after
+  * this visit's online check; the database's own functions decide what a player may write. */
+ async db(path,{method='GET',body}={}){
+  if(solo||!session||!online)throw new Error('offline');
+  const r=await rest(path,{method,...(body===undefined?{}:{body:JSON.stringify(body)})});
+  if(!r.ok)throw Object.assign(new Error('db_'+r.status),{status:r.status});
+  return r.status===204?null:r.json();
  },
  logout
 };

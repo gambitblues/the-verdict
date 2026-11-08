@@ -48,6 +48,14 @@ for(const file of files){
  for(const k of ['A','B'])for(const x of ['yes','no','part'])if(s.after?.[k]?.[x]!=null&&typeof s.after[k][x]!=='string')err(`after.${k}.${x}는 문장`);
  // people, places, devices, records
  const P=new Map();for(const p of s.people||[]){need(p,['key','name','role','age'],'people');if(P.has(p.key))err('people 중복 key '+p.key);P.set(p.key,p)}
+ // (2026-11-08) a separately indicted witness: their own trial's result per world, read as news after my verdict
+ for(const p of s.people||[])if(p.separate!==undefined){const x=p.separate;
+  if(!/^W\d+$/.test(p.key))err(`people ${p.key}: separate는 증인(W)에게만`);
+  if(!x||typeof x.charge!=='string'||!x.charge.trim())err(`people ${p.key}: separate.charge 필요`);
+  for(const w of ['did','didnt','reason']){const t=x?.worlds?.[w];
+   if(typeof t!=='string'||t.length<20)err(`people ${p.key}: separate.worlds.${w} 문장 필요`);
+   else{if(!/\{W[|}]/.test(t))err(`people ${p.key}: separate.worlds.${w}에 증인 이름 {W|은} 필요`);
+    if(/\{W\d/.test(t))err(`people ${p.key}: separate 문장에서는 {W1} 대신 {W}를 쓴다`)}}}
  for(const k of [c.accused,c.complainant])if(k&&!P.has(k))err(`card가 가리키는 인물 ${k} 없음`);
  const witnesses=[...P.keys()].filter(k=>/^W\d+$/.test(k));if(!witnesses.length)err('증인(W1, W2 …)이 한 명 이상 필요');
  const PL=new Set((s.places||[]).map(x=>x.id)),D=new Map((s.devices||[]).map(x=>[x.id,x]));

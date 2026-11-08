@@ -32,8 +32,14 @@ try{
  await page.waitForFunction(()=>(S.generatedCases||[]).length>0,null,{timeout:30000});await U.settle();
 
  // ---- A. the case's own questions come first; a question tied to an order opens only when that record arrives
- await newCase('adv-cr-001','didnt');
- await U.tab('day');await U.openSession();await U.tab('witness');await page.evaluate(()=>{ui.t4w=0;render()});
+ // v10.1: a party may file the hallway video on its own at the first hearing (filing card). This part checks the order
+ // path, so it uses a case where that did not happen (a different case id gives a different filing roll).
+ for(let n=0;n<6;n++){
+  await newCase('adv-cr-001','didnt');
+  await U.tab('day');await U.openSession();
+  if(!await page.evaluate(()=>S.cases[ui.caseId].trial4.evidence.some(e=>e.follow==='s3')))break;
+ }
+ await U.tab('witness');await page.evaluate(()=>{ui.t4w=0;render()});
  const first=await page.locator('.t4-pager .t4-card').first().locator('.t4-q').first().innerText();
  assert.match(first,/1월 11일 받은 30만 원/,'the sheet\'s own question is first');
  const hidden=await page.evaluate(()=>{const c=CASES.find(x=>x.id===ui.caseId),t=S.cases[ui.caseId].trial4;return VerdictTrialPlay.qBy?null:t.witnesses.length});

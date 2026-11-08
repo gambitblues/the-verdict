@@ -15,7 +15,7 @@
  "people": [
   { "key": "A", "name": "{A}", "role": "피고인", "age": 34, "job": "통신사 대리점 영업 직원", "edu": "전문학사", "family": "기혼, 자녀 1", "state": "대리점 근무 5년. 지난해 전세 보증금 문제로 돈이 급했음.", "traits": { "composure": "보통", "honesty": "보통", "legalStance": "부인" } },
   { "key": "B", "name": "국가(검찰)", "role": "공소 제기", "age": 0, "job": "—", "traits": {} },
-  { "key": "W1", "name": "{W1}", "role": "휴대전화 판매점 운영자 (별건 입건)", "age": 45, "job": "휴대전화 판매점 운영 9년", "stake": "개인정보를 사들인 혐의로 따로 수사받으며 협조 중", "leans": "B", "traits": { "honesty": "낮음", "pressure": "약함", "memoryAccuracy": "보통" } },
+  { "key": "W1", "name": "{W1}", "role": "휴대전화 판매점 운영자 (별건 입건)", "age": 45, "job": "휴대전화 판매점 운영 9년", "stake": "개인정보를 사들인 혐의로 따로 수사받으며 협조 중", "separate": {"charge": "개인정보를 사들인 혐의", "worlds": {"did": "{W|은} 해지 고객 87명의 개인정보를 사들인 혐의로 징역 1년에 집행유예 2년을 선고받았다. 봉투를 누구에게서 받았는지에 대한 말은 처음과 같았다.", "didnt": "{W|은} 개인정보를 넘겨받아 영업에 쓴 혐의로 벌금 1,500만 원을 선고받았다. 재판에서는 서류 사본이 어떤 경로로 넘어왔는지를 두고 처음과 다른 말이 나왔다.", "reason": "{W|은} 개인정보를 넘겨받은 혐의로 징역 10개월에 집행유예 2년을 선고받았다. 재판부는 서류가 한 번에 온 것이 아니라 두 번에 나뉘어 왔다고 봤다."}}, "leans": "B", "traits": { "honesty": "낮음", "pressure": "약함", "memoryAccuracy": "보통" } },
   { "key": "W2", "name": "{W2}", "role": "대리점 점장", "age": 48, "job": "통신사 대리점 점장 11년", "stake": "서류 관리 책임자. 자기 책임이 드러나면 계약이 끊김", "leans": "B", "traits": { "honesty": "보통", "pressure": "보통", "memoryAccuracy": "높음" } },
   { "key": "W3", "name": "{W3}", "role": "본사 정보보호팀 조사 담당", "age": 39, "job": "통신사 정보보호팀 과장", "stake": "없음", "traits": { "honesty": "높음", "pressure": "강함", "memoryAccuracy": "높음" } }
  ],

@@ -19,7 +19,7 @@ alter default privileges in schema public grant all on tables to anon,authentica
 alter default privileges in schema public grant all on sequences to anon,authenticated,service_role;
 insert into auth.users values ('${A}','a@test.kr'),('${B}','b@test.kr');
 `);
-for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql','028_joint_associate_court_actions.sql','029_shared_career_nine_month.sql','030_shared_evidence_rulings.sql','031_shared_motion_decisions.sql','032_request_role_claims.sql','033_open_hearing_survives_shared_day.sql','034_joint_panel_rules.sql','035_player_career_reset.sql','036_joint_sentence_and_safe_reset.sql'])
+for(const name of ['001_init.sql','002_api_privileges.sql','003_case_stock.sql','006_shared_world_events.sql','007_shared_world_clock_npc.sql','008_shared_docket_publication.sql','009_shared_docket_offers.sql','010_shared_judgment_ledger.sql','011_sealed_case_admission.sql','012_asynchronous_judge_calendar.sql','013_shared_hearing_progress.sql','014_world_chronology_guards.sql','015_shared_court_actions.sql','016_shared_court_begin.sql','017_shared_verdict_aftermath.sql','018_deferred_order_results.sql','019_shared_public_npc_verdict_links.sql','020_joint_panel_deliberation.sql','021_joint_panel_rpc.sql','022_joint_verdict_release_gate.sql','023_scored_shared_judgments.sql','024_joint_vote_immutability.sql','025_joint_dedicated_slot.sql','026_joint_auto_assignment.sql','027_shared_career_ledger.sql','028_joint_bench_roles.sql','028_joint_associate_court_actions.sql','029_shared_career_nine_month.sql','030_shared_evidence_rulings.sql','031_shared_motion_decisions.sql','032_request_role_claims.sql','033_open_hearing_survives_shared_day.sql','034_joint_panel_rules.sql','035_player_career_reset.sql','036_joint_sentence_and_safe_reset.sql','037_colleague_court.sql'])
  await db.exec(await readFile(new URL('../'+name,import.meta.url),'utf8'));
 await db.exec(`insert into public.players(email,user_id,name) values ('a@test.kr','${A}','A'),('b@test.kr','${B}','B');`);
 const HASH='a'.repeat(64),FINGER='fingerprint-one';
@@ -778,4 +778,32 @@ test('036: resetting a career keeps the cloud saves in the backups instead of de
  assert.ok(kept.some(b=>b.data==='A-career-before-reset'&&b.reason==='reset'),'but it can be brought back');
  assert.equal((await pb('select data from public.saves')).rows[0].data,'B-career-untouched','another player is never touched');
  await assert.rejects(anon('select public.reset_player_career()'),/permission denied|not_player/);
+});
+
+test('037 colleague court: one bench per case, own rows only, public summaries, stale holds lapse',async()=>{
+ assert.equal((await pa(`select public.court_judge_put('김가람','형사 3부') as ok`)).rows[0].ok,true);
+ await pb(`select public.court_judge_put('이나래','민사 1부')`);
+ assert.equal((await pb('select judge_name,bench from public.court_judges order by judge_name')).rows.length,2,'colleagues see each other');
+ await assert.rejects(anon('select * from public.court_judges'),/permission denied/);
+ // A holds two cases; B cannot take one of them
+ assert.deepEqual((await pa(`select public.court_case_sync(array['cur-1','sheet-adv-cr-020']) as r`)).rows[0].r,[]);
+ assert.deepEqual((await pb(`select public.court_case_sync(array['cur-1','cur-2']) as r`)).rows[0].r,['cur-1'],'the same case is never on two benches');
+ assert.equal((await pb(`select count(*)::int n from public.court_cases where judge_id='${B}' and state='open'`)).rows[0].n,1);
+ // players never write the table directly, nor someone else's rows
+ await assert.rejects(pb(`update public.court_cases set state='judged' where case_key='cur-1'`),/permission denied/);
+ await assert.rejects(pb(`insert into public.court_cases(case_key,judge_id,state) values('x','${A}','open')`),/permission denied/);
+ // A delivers the verdict: the case is free again and the summary is readable by B
+ await pa(`select public.court_case_judge('cur-1','{"title":"냉동 창고 사망 사건","label":"유죄","kind":"criminal"}'::jsonb)`);
+ await pa(`select public.court_case_sync(array['sheet-adv-cr-020'])`);
+ const seen=(await pb(`select c.case_key,c.summary->>'label' as label,j.judge_name from public.court_cases c join public.court_judges j on j.user_id=c.judge_id where c.state='judged'`)).rows;
+ assert.deepEqual(seen,[{case_key:'cur-1',label:'유죄',judge_name:'김가람'}]);
+ await assert.rejects(pa(`select public.court_case_judge('bad key!','{}'::jsonb)`),/invalid_judgment/);
+ // a new career drops the old holds (sync with an empty list)
+ await pa(`select public.court_case_sync(array[]::text[])`);
+ assert.equal((await pa(`select count(*)::int n from public.court_cases where judge_id='${A}' and state='open'`)).rows[0].n,0);
+ // a hold not refreshed for 14 days lapses
+ await pa(`select public.court_case_sync(array['cur-9'])`);
+ await svc(`update public.court_cases set touched_at=now()-interval '15 days' where case_key='cur-9'`);
+ assert.deepEqual((await pb(`select public.court_case_sync(array['cur-2','cur-9']) as r`)).rows[0].r,[]);
+ await assert.rejects(anon(`select public.court_case_sync(array['cur-3'])`),/permission denied|not_player/);
 });

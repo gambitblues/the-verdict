@@ -174,10 +174,13 @@ function seen(){const ids=new Map(),titles=new Set();CASES.forEach((c,i)=>{const
 function offered(exceptSlot){const ids=new Set(),titles=new Set();for(const o of S.realtimeInbox?.offers||[])if(o.status==='available'&&o.slot!==exceptSlot)for(const x of o.options||[]){if(x.archetypeId)ids.add(x.archetypeId);titles.add(normTitle(x.title))}return {ids,titles}}
 function freshPool(exceptSlot){
  const all=candidates(),taken=busy(),on=offered(exceptSlot),past=seen();
- const blocked=x=>taken.has(x.a.id)||on.ids.has(x.a.id)||on.titles.has(normTitle(x.a.title));
+ /* (2026-11-08) colleague judges: a case on another player's bench is never offered; one they already judged is
+  * treated like a case I have seen (it can come back only after the fresh ones run out) */
+ const held=window.VerdictColleagues?.taken?.()||new Set(),done=window.VerdictColleagues?.judged?.()||new Set();
+ const blocked=x=>taken.has(x.a.id)||held.has(x.a.id)||on.ids.has(x.a.id)||on.titles.has(normTitle(x.a.title));
  /* cases that recently went to another bench are not offered again soon either */
  const gone=new Map();(S.realtimeInbox?.otherCourt||[]).slice(-60).forEach((x,i)=>gone.set(normTitle(x.title),CASES.length+i));
- const fresh=all.filter(x=>!blocked(x)&&!past.ids.has(x.a.id)&&!past.titles.has(normTitle(x.a.title))&&!gone.has(normTitle(x.a.title)));
+ const fresh=all.filter(x=>!blocked(x)&&!past.ids.has(x.a.id)&&!done.has(x.a.id)&&!past.titles.has(normTitle(x.a.title))&&!gone.has(normTitle(x.a.title)));
  if(fresh.length>=2)return fresh;
  /* everything has been seen: reuse the cases heard (or passed on) longest ago — the oldest third */
  const rank=x=>Math.max(past.ids.get(x.a.id)??-1,gone.get(normTitle(x.a.title))??-1);
@@ -212,9 +215,9 @@ function dedupeOpen(){let n=0;const first=new Map();
  return n}
 /* an open offer made before a case was taken (or by an older version) is re-drawn when it would repeat a case */
 function revalidate(db){
- const past=seen(),taken=busy();
+ const past=seen(),taken=busy(),held=window.VerdictColleagues?.taken?.()||new Set();
  for(const o of db.offers){if(o.status!=='available')continue;
-  const bad=(o.options||[]).some((x,i,arr)=>!x.archetypeId||taken.has(x.archetypeId)||past.ids.has(x.archetypeId)||arr.findIndex(y=>normTitle(y.title)===normTitle(x.title))!==i||
+  const bad=(o.options||[]).some((x,i,arr)=>!x.archetypeId||taken.has(x.archetypeId)||held.has(x.archetypeId)||past.ids.has(x.archetypeId)||arr.findIndex(y=>normTitle(y.title)===normTitle(x.title))!==i||
    db.offers.some(p=>p!==o&&p.status==='available'&&db.offers.indexOf(p)<db.offers.indexOf(o)&&(p.options||[]).some(y=>y.archetypeId===x.archetypeId||normTitle(y.title)===normTitle(x.title))));
   if(!bad)continue;
   const fresh=freshPool(o.slot).filter(x=>!past.ids.has(x.a.id));if(fresh.length<1)continue;   // late career: keep what was offered
