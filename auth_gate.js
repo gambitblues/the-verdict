@@ -12,13 +12,16 @@
  *   kept in this browser's IndexedDB ("verdict-backups"); replaced cloud saves are also kept server-side (save_backups).
  * - The game itself is unchanged: it starts only after sign-in, reading the same local keys it always has.
  *   On a local test server (localhost / 127.0.0.1, without ?auth=1) the gate is skipped so the test suite runs as before.
+ * - Login is optional (2026-11-08, planner decision): "로그인 없이 혼자 하기" plays on this device only, without cloud
+ *   saves or AI, as the public game always did. The choice is remembered. The guest's careers are the device's own
+ *   (unowned) saves — the same ones a first login offers to move into the account — so nothing is mixed between people.
  */
 (()=>{
 'use strict';
 const CFG=window.VERDICT_CONFIG||{};
-const GAME=['./names.js','./deep_case_engine.js','./story_engine.js','./case_pack_engine.js','./curated_index.js','./continuity_engine.js','./npc_life_justice.js','./family_engine.js','./save_store.js','./court_visuals.js','./career_balance.js','./avatar_system.js','./game_runtime.js','./game_hearings.js','./game_professions.js','./chambers_art.js','./game_ui.js','./trial_core.js','./hearing_events.js','./media_desk.js','./match_engine.js','./world_sheets_index.js','./match_play.js','./npc_court_memory.js','./trial_play.js','./world_feed.js','./people_map.js','./v6_world.js','./ai_bridge.js','./app_install.js','./shared_world.js'];
+const GAME=['./names.js','./deep_case_engine.js','./story_engine.js','./case_pack_engine.js','./curated_index.js','./continuity_engine.js','./npc_life_justice.js','./family_engine.js','./save_store.js','./court_visuals.js','./career_balance.js','./avatar_system.js','./game_runtime.js','./game_hearings.js','./game_professions.js','./chambers_art.js','./game_ui.js','./trial_core.js','./hearing_events.js','./media_desk.js','./match_engine.js','./world_sheets_index.js','./match_play.js','./npc_court_memory.js','./trial_play.js','./world_feed.js','./people_map.js','./v6_world.js','./colleague_court.js','./ai_bridge.js','./app_install.js','./shared_world.js'];
 const OFFLINE_DAYS=7;
-const SESSION='vauth_session',OWNER='vauth_owner',LEGACY='vauth_legacy_done',VERIFIED='vauth_verified',DEVICE='vauth_device';
+const SESSION='vauth_session',OWNER='vauth_owner',LEGACY='vauth_legacy_done',VERIFIED='vauth_verified',DEVICE='vauth_device',GUEST='vauth_guest';
 const REV=(u,s)=>`vauth_rev:${u}:${s}`,PUSHED=(u,s)=>`vauth_fp:${u}:${s}`;
 const KEY='the_verdict_alpha_1',ACTIVE='verdict_player_active',slotKey=id=>'verdict_player_save_'+id;
 const WORK=/^(the_verdict|verdict_)/;   // every key the game owns (the game's own wipe uses the same pattern)
@@ -172,14 +175,18 @@ async function push(uid,{ask:askNow=true}={}){
 let syncing=false;
 function sync(uid){if(syncing)return;syncing=true;setInterval(()=>push(uid),20000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')push(uid,{ask:false})})}
 
-/* Server-authoritative personal career reset. This RPC is introduced by 035_player_career_reset.sql.
- * Never clear local data when the server has not confirmed its own delete. */
+/* Server-authoritative personal career reset (035, made recoverable in 036: the cloud saves move to save_backups).
+ * Never clear local data when the server has not confirmed it. */
 async function resetCareer(){
  if(solo||!session?.user?.id||!online)throw new Error('서버에 로그인된 상태에서만 초기화할 수 있어요.');
  if(pushing||resetting)throw new Error('저장 동기화가 진행 중이에요. 잠시 후 다시 시도해 주세요.');
  resetting=true;
  const uid=session.user.id;
  try{
+  // 2026-11-08: keep this device's copy first ("보관된 기록"); the server keeps its copy too (036). No copy → no reset.
+  try{window.VerdictStore?.flush()}catch{}
+  const mine={};for(const s of ['1','2']){const v=slotValue(s);if(v!=null)mine[slotKey(s)]=v}
+  if(Object.keys(mine).length&&!await backup('replaced',uid,mine))throw new Error('이 기기에 지금 기록을 보관하지 못해서 초기화하지 않았어요. 저장 공간을 확인해 주세요.');
   const r=await rest('rpc/reset_player_career',{method:'POST',body:'{}'});
   if(!r.ok){const detail=await r.json().catch(()=>({}));throw new Error(r.status===404?'서버에 초기화 기능(035 SQL)이 아직 설치되지 않았어요.':(detail.message||'서버 세이브 삭제에 실패했어요.'))}
   if(await r.json()!==true)throw new Error('서버가 초기화를 확인하지 않았어요.');
@@ -203,17 +210,19 @@ const close=()=>document.getElementById('verdict-login')?.remove();
 function ask(html,yes,no){return new Promise(res=>{const b=card(`<p class="entry-sub">${html}</p><button class="entry-btn primary" data-a="y">${esc(yes)}</button><button class="entry-btn" data-a="n">${esc(no)}</button>`);
  b.querySelector('[data-a="y"]').onclick=()=>{close();res(true)};b.querySelector('[data-a="n"]').onclick=()=>{close();res(false)}})}
 function loginForm(msg=''){
- const b=card(`<div class="entry-sub">초대받은 판사만 들어올 수 있어요.</div>
+ const b=card(`<div class="entry-sub">로그인은 초대받은 판사만 할 수 있어요.</div>
   <form id="vl-form" autocomplete="on"><label class="vl-label">이메일<input class="vl-input" type="email" name="email" autocomplete="username" required></label>
   <label class="vl-label">비밀번호<input class="vl-input" type="password" name="password" autocomplete="current-password" required></label>
   <p class="vl-msg" role="alert">${esc(msg)}</p><button class="entry-btn primary" type="submit">로그인</button></form>
-  <div class="entry-info">계정은 초대로만 만들어져요. 비밀번호를 잊었다면 관리자에게 물어보세요.</div>`);
+  <button class="entry-btn" type="button" data-vl="guest">로그인 없이 혼자 하기</button>
+  <div class="entry-info">로그인하지 않으면 이 기기에만 저장되고 AI 문장은 쓰지 않아요.<br>계정은 초대로만 만들어져요. 비밀번호를 잊었다면 관리자에게 물어보세요.</div>`);
+ b.querySelector('[data-vl="guest"]').onclick=()=>{localStorage.setItem(GUEST,'1');keep(null);close();enterGuest()};
  const f=b.querySelector('#vl-form');
  f.onsubmit=async e=>{e.preventDefault();const btn=f.querySelector('button');btn.disabled=true;btn.textContent='확인 중…';
   const fail=m=>{keep(null);btn.disabled=false;btn.textContent='로그인';f.querySelector('.vl-msg').textContent=m};
   try{await signIn(f.email.value.trim(),f.password.value);await verify()}           // both must pass, online, now
   catch(err){return fail(err.offline?'서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.':err.message)}
-  enter().catch(()=>{})};
+  localStorage.removeItem(GUEST);enter().catch(()=>{})};
 }
 /* the server refused this account: put its saves away and go back to the login screen */
 function signOutNow(msg){
@@ -239,6 +248,22 @@ async function enter(){
   close();sync(uid)}
  else{close();offlineBanner()}
  boot();logoutButton();
+}
+/* playing without login: the device's own careers (an account's careers are put away first) */
+function enterGuest(){
+ const owner=localStorage.getItem(OWNER);
+ if(owner){putAway(owner);localStorage.removeItem(OWNER)}
+ if(!hasGame())bringBack('legacy');
+ boot();guestLine();
+}
+function guestLine(){
+ const add=()=>{const box=document.querySelector('#verdict-entry .entry-card');if(!box||box.querySelector('.vl-out'))return;
+  const d=document.createElement('div');d.className='entry-info vl-out';
+  d.innerHTML='로그인하면 다른 기기에서도 이어 할 수 있어요 · <button type="button" class="vl-link" data-vl="in">로그인</button>';
+  d.querySelector('[data-vl="in"]').onclick=()=>{try{window.VerdictStore?.flush()}catch{}try{window.VerdictStore?.halt()}catch{}
+   localStorage.removeItem(GUEST);location.reload()};   // the login offers to move this device's career into the account
+  box.appendChild(d)};
+ new MutationObserver(add).observe(document.body,{childList:true});add();
 }
 async function logout(){
  const uid=session?.user?.id;if(!uid)return;
@@ -308,10 +333,19 @@ window.VerdictAuth={
     const d=await r.json().catch(()=>({}));throw Object.assign(new Error(d?.error||'refused'),{status:r.status})}
    return await r.json()}finally{clearTimeout(t)}
  },
+ /* (2026-11-08) the signed-in player's own rows in Supabase (colleague court). Same rules as the saves: only after
+  * this visit's online check; the database's own functions decide what a player may write. */
+ async db(path,{method='GET',body}={}){
+  if(solo||!session||!online)throw new Error('offline');
+  const r=await rest(path,{method,...(body===undefined?{}:{body:JSON.stringify(body)})});
+  if(!r.ok)throw Object.assign(new Error('db_'+r.status),{status:r.status});
+  return r.status===204?null:r.json();
+ },
  logout
 };
 
 if(solo){boot();return}
+if(!session?.refresh_token&&localStorage.getItem(GUEST)==='1'){enterGuest();return}
 const shown=sessionStorage.getItem('vauth_msg');sessionStorage.removeItem('vauth_msg');
 if(session?.refresh_token){
  card('<div class="entry-sub">로그인 확인 중…</div>');

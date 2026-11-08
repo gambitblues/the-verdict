@@ -270,13 +270,15 @@ async function firstFour(){
  launching=true;
  try{
  await ensurePack();
+ try{await window.VerdictColleagues?.ready?.()}catch{}   // (2026-11-08) know the colleagues' benches before picking
  // Preserve existing judge records; suppress only untouched legacy starter cases on a genuinely new game.
  for(const c of CASES){if(c.generated||c.week>0)continue;const st=S.cases[c.id];if(st&&!st.verdict&&!(st.actions||[]).length)st.referred=true;}
  // Replace untouched generic starter cases so all four come from the curated 100-case pack.
  for(const c of CASES){if(c.generated&&!c.contentPack?.archetypeId&&S.cases[c.id]&&!S.cases[c.id].verdict&&!(S.cases[c.id].actions||[]).length)S.cases[c.id].referred=true;}
  const active=CASES.filter(c=>c.generated&&c.contentPack?.archetypeId&&S.cases[c.id]&&!S.cases[c.id].verdict&&!S.cases[c.id].referred&&c.week<=S.week);
  const chosen=new Set(active.map(c=>c.contentPack?.archetypeId).filter(Boolean));
- const pool=CasePackEngine.pool(S).filter(x=>!chosen.has(x.a.id));
+ const held=window.VerdictColleagues?.taken?.()||new Set();   // (2026-11-08) not a case already on a colleague's bench
+ const pool=CasePackEngine.pool(S).filter(x=>!chosen.has(x.a.id)&&!held.has(x.a.id));
  const picks=[];
  while(pool.length&&picks.length<4-active.length){const idx=Math.floor(rand()*pool.length);picks.push(pool.splice(idx,1)[0])}
  let done=active.length;

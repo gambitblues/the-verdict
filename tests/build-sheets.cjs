@@ -42,23 +42,24 @@ function archetype(s){
   causalTags:[c.category,ch.name||c.title,'세계 시트'].map(x=>String(x).slice(0,40))};
 }
 
-const sheets={},pack={format:'the-verdict-casepack/v1',packId:'world-sheets-v1',version:'1.0.0',title:'세계 시트 사건',archetypes:[]};
+const sheets={},linked={},pack={format:'the-verdict-casepack/v1',packId:'world-sheets-v1',version:'1.0.0',title:'세계 시트 사건',archetypes:[]};
 for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.json')).sort()){
  const s=JSON.parse(fs.readFileSync(path.join(dir,f),'utf8'));
  if(!['review','ready'].includes(s.status))continue;
  const g=tokenize(s);delete g.source;delete g.traps;delete g.screen;delete g.open;
  /* a written case keeps its own text in the game; only its undisputed facts come from the sheet */
  sheets[g.id]=curatedIds.has(g.id)?{format:g.format,id:g.id,status:g.status,written:true,card:{kind:g.card.kind,title:g.card.title},common:g.common,alleged:g.worlds?.did?.act}:g;
- if(!curatedIds.has(g.id))pack.archetypes.push(archetype(g));
+ /* (2026-11-08) a linked case (a witness's own trial) never joins the open pool: it is assigned only through a colleague */
+ if(!curatedIds.has(g.id))(g.linked?linked[g.id]=archetype(g):pack.archetypes.push(archetype(g)));
 }
 const n=pack.archetypes.length;pack.version=`1.${n}.${Object.keys(sheets).length}`;
 const head='/* THE VERDICT — world sheets for the match engine (game data). Built from world-sheets/cases/*.json by\n * node tests/build-sheets.cjs — do not edit by hand. Only sheets marked review or ready are here. */\n';
-const out=head+'window.VerdictSheets={cases:'+JSON.stringify(sheets)+',\npack:'+JSON.stringify(pack)+'};\n',file=path.join(root,'world_sheets.js');
+const out=head+'window.VerdictSheets={cases:'+JSON.stringify(sheets)+',\npack:'+JSON.stringify(pack)+',\nlinked:'+JSON.stringify(linked)+'};\n',file=path.join(root,'world_sheets.js');
 /* v8.2.3: the game loads only an index (each sheet's card, for the offer pool) and fetches the sheet itself from
  * case-data/sheet-<id>.json when the case is assigned or opened. world_sheets.js (everything) stays for tests and tools. */
-const stub=Object.fromEntries(Object.entries(sheets).map(([id,g])=>[id,{id,status:g.status,written:!!g.written,stub:true,card:g.written?g.card:{kind:g.card.kind,title:g.card.title,summary:g.card.summary,charge:g.card.charge,claim:g.card.claim,decision:g.card.decision,accused:g.card.accused,complainant:g.card.complainant}}]));
+const stub=Object.fromEntries(Object.entries(sheets).map(([id,g])=>[id,{id,status:g.status,written:!!g.written,stub:true,card:g.written?g.card:{kind:g.card.kind,title:g.card.title,summary:g.card.summary,charge:g.card.charge,claim:g.card.claim,decision:g.card.decision,accused:g.card.accused,complainant:g.card.complainant},...(g.linked?{linked:g.linked}:{})}]));
 const idx='/* THE VERDICT — world-sheet index (built by node tests/build-sheets.cjs; do not edit). Full sheets: case-data/sheet-<id>.json. */\n'
- +'window.VerdictSheets={cases:'+JSON.stringify(stub)+',\npack:'+JSON.stringify(pack)+',lazy:true};\n';
+ +'window.VerdictSheets={cases:'+JSON.stringify(stub)+',\npack:'+JSON.stringify(pack)+',\nlinked:'+JSON.stringify(linked)+',lazy:true};\n';
 const files={[file]:out,[path.join(root,'world_sheets_index.js')]:idx};
 for(const [id,g] of Object.entries(sheets))files[path.join(root,'case-data','sheet-'+id+'.json')]=JSON.stringify(g)+'\n';
 /* every file the game may fetch, for the service worker to keep offline (case-data/manifest.json) */

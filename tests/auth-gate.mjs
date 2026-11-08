@@ -9,7 +9,9 @@
  *     and the side not picked is kept (this browser's backups / the server's save_backups).
  *  7. Offline: only the player who owns this device's saves, confirmed online within 7 days; no cloud, no AI; when the
  *     connection returns and the server refuses the account, it is signed out at once.
- *  8. The AI bridge calls the API with the player's token and only visible text; without a confirmed login, no call. */
+ *  8. The AI bridge calls the API with the player's token and only visible text; without a confirmed login, no call.
+ *  9. (2026-11-08) Login is optional: "로그인 없이 혼자 하기" plays this device's own career (no cloud, no AI), is
+ *     remembered, and never mixes with an account's career. A signed-in reset keeps the old career first (device + server). */
 import { chromium } from 'playwright';
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
@@ -47,6 +49,8 @@ async function routes(ctx){
    if(cur.rev!==b.p_base_rev&&!b.p_force)return j([{ok:false,conflict:true,rev:cur.rev,updated_at:cur.updated_at,device:cur.device}]);
    if(cur.rev!==b.p_base_rev)serverBackups.push({...cur});
    Object.assign(cur,{data:b.p_data,rev:cur.rev+1,device:b.p_device,updated_at:now});return j([{ok:true,conflict:false,rev:cur.rev,updated_at:now,device:b.p_device}])}
+  if(u.pathname==='/rest/v1/rpc/reset_player_career'){   // like 036: the saves go to the backups first
+   for(const [k,r] of [...cloud]){if(r.user_id!==uid)continue;serverBackups.push({...r,reason:'reset'});cloud.delete(k)}return j(true)}
   if(u.pathname==='/rest/v1/save_backups'){const id=u.searchParams.get('user_id').replace('eq.','');assert.equal(id,uid);
    return j(serverBackups.filter(b=>b.user_id===id).map(b=>({slot:b.slot,data:b.data,rev:b.rev,device:b.device,created_at:b.updated_at})).reverse())}
   return j({},404)});
@@ -173,7 +177,7 @@ try{
  net.down=true;await p3.reload({waitUntil:'domcontentloaded'});await loaded(p3);
  net.down=false;net.refuse.add('uid-b');await p3.evaluate(()=>window.dispatchEvent(new Event('online')));
  await p3.locator('#verdict-login form').waitFor({timeout:15000});await msg(p3,/초대된 계정이 아니에요/);
- keys=await p3.evaluate(()=>Object.keys(localStorage));assert.ok(!keys.some(k=>/^(the_verdict|verdict_)/.test(k))&&!keys.includes('vauth_session'),'signed out, saves put away');
+ keys=await p3.evaluate(()=>Object.keys(localStorage));assert.ok(!keys.some(k=>/^(the_verdict|verdict_)/.test(k))&&!keys.includes('vauth_session'),'signed out, saves put away: '+keys.filter(k=>/^(the_verdict|verdict_|vauth_session)/.test(k)));
  net.refuse.clear();await ctx3.close();
  console.log('  ✓ offline: only the recent owner, no AI, signed out at once when the server refuses');
 
@@ -208,6 +212,35 @@ try{
  assert.equal(await solo.evaluate(async()=>{try{await VerdictAuth.api('/ai/npc',{});return 'called'}catch(e){return e.message}}),'ai_unavailable');
  await solo.context().close();
  console.log('  ✓ no login server set: plays as before (solo, offline, no AI)');
+
+ // 9. optional login: play without an account, then sign in, then come back as the guest
+ const ctx6=await browser.newContext({viewport:{width:390,height:844}});await routes(ctx6);const g=await ctx6.newPage();const e6=[];g.on('pageerror',e=>e6.push(e.message));
+ const aiBefore=aiCalls.length;
+ await g.goto(url+'?auth=1',{waitUntil:'networkidle'});await g.locator('#verdict-login [data-vl="guest"]').click();
+ await g.locator('#profile-continue').click();await g.locator('#playerName').fill('손님 판사');await g.locator('[data-action="start"]').last().click();
+ await g.waitForFunction(()=>typeof S!=='undefined'&&S.name==='손님 판사'&&S.legalWorld?.firstFour===true,null,{timeout:30000});await gameSave(g);
+ assert.equal(await g.evaluate(async()=>{try{await VerdictAuth.api('/ai/npc',{});return 'called'}catch(e){return e.message}}),'ai_unavailable');
+ assert.equal(await g.evaluate(()=>VerdictAuth.user),null);
+ await g.reload({waitUntil:'networkidle'});await loaded(g,'손님 판사');
+ assert.equal(await g.locator('#verdict-login').count(),0,'the choice is remembered');
+ await g.locator('#verdict-entry .vl-out [data-vl="in"]').click();await g.locator('#verdict-login form').waitFor();
+ await login(g,'a@x.kr','pw-a');await g.locator('#verdict-login [data-a="n"]').waitFor();
+ assert.match(await g.locator('#verdict-login').innerText(),/손님 판사/,'a first login offers to move the guest career');
+ await g.locator('#verdict-login [data-a="n"]').click();await loaded(g);
+ assert.notEqual(await g.evaluate(()=>S.name),'손님 판사','the account does not get the guest career it did not take');
+ assert.equal(cloud.has('uid-a:1')&&cloud.get('uid-a:1').data.includes('손님 판사'),false,'the guest career never reaches the cloud');
+ // a signed-in reset keeps the current career on this device and on the server before starting over
+ await g.locator('#verdict-entry #profile-reset').click();await g.locator('[data-reset-confirm]').click();
+ for(let i=0;i<100&&!serverBackups.some(b=>b.user_id==='uid-a'&&b.reason==='reset');i++)await new Promise(r=>setTimeout(r,100));
+ await g.waitForLoadState('networkidle');
+ assert.ok((await backups(g)).some(b=>b.kind==='replaced'&&b.uid==='uid-a'&&b.keys.includes('verdict_player_save_1')),'the reset career is kept on this device');
+ assert.ok(serverBackups.some(b=>b.user_id==='uid-a'&&b.reason==='reset'),'and on the server');
+ await g.waitForFunction(()=>window.VerdictAuth?.online===true,null,{timeout:30000});
+ g.evaluate(()=>VerdictAuth.logout()).catch(()=>{});await g.locator('#verdict-login form').waitFor();
+ await g.locator('#verdict-login [data-vl="guest"]').click();await loaded(g,'손님 판사');
+ assert.equal(aiCalls.length,aiBefore,'no AI call while playing without login');
+ assert.deepEqual(e6,[]);await ctx6.close();
+ console.log('  ✓ optional login: guest career on this device only, remembered, kept apart from accounts; reset keeps a copy');
 
  // 8b. no login, no AI
  const before=aiCalls.length;const p4=await (await browser.newContext()).newPage();

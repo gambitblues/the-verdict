@@ -58,7 +58,8 @@ try{
     if(!state.created)throw Error('panel_not_found');
     return {ok:true,state:state.votes===3?'majority_ready':'deliberating',
      votesCast:state.votes,myVote:state.votes>=1?'claim_granted':null,
-     majority:state.votes===3?'claim_granted':null};
+     majority:state.votes===3?'claim_granted':null,
+     ...(state.votes===3?{agreedSentence:{order:'피고는 원고에게 1,000만 원을 지급하라.',rule:'middle'}}:{})};
    }
    if(path.startsWith('/world/panel/partners'))return {ok:true,players:[{
     id:'00000000-0000-0000-0000-00000000000b',name:'다른 기존 판사'
@@ -70,6 +71,7 @@ try{
    }
    if(path==='/world/panel/vote'){
     if(!state.created||body.choice!=='claim_granted'||!body.note)throw Error('bad_vote');
+    if(body.sentence?.amount!==1000)throw Error('the vote carries this judge\'s amount (full claim for claim_granted)');
     state.votes=1;return {ok:true,created:true};
    }
    if(path==='/world/panel/npc/decide'){
@@ -78,7 +80,7 @@ try{
    }
    if(path==='/world/panel/finalize'){
     if(state.votes!==3||body.result!=='claim_granted'||
-       !body.citations.includes('initial:r1')||body.sentence?.amount!==1000)
+       !body.citations.includes('initial:r1')||body.sentence?.amount!=null)
      throw Error('invalid_finalization');
     state.published=true;
     return {ok:true,judgment:{order:'피고는 원고에게 1,000만 원을 지급하라.',
@@ -109,6 +111,11 @@ try{
  assert.match(await root.innerText(),/나는 재판장/);
  await page.waitForFunction(()=>window.__p5.created===true);
  await root.locator('[data-p5-choice]').selectOption('claim_granted');
+ assert.equal(await root.locator('[data-p5-sentence]').isVisible(),true,'a liability opinion asks for an amount');
+ assert.equal(await root.locator('[data-p5s-amount]').inputValue(),'1000');
+ await root.locator('[data-p5-choice]').selectOption('claim_denied');
+ assert.equal(await root.locator('[data-p5-sentence]').isVisible(),false);
+ await root.locator('[data-p5-choice]').selectOption('claim_granted');
  await root.locator('[data-p5-note]').fill('제출된 계약서와 증인의 진술을 검토했습니다.');
  await root.locator('[data-p5-vote]').click();
  await page.waitForFunction(()=>window.__p5.votes===1);
@@ -121,7 +128,10 @@ try{
  assert.match(await root.innerText(),/합의 결론/);
  assert.equal(await root.locator('button[data-world-verdict]').count(),1,'delayed bench may finalize after global clock moves');
  await root.locator('[data-cite="initial:r1"]').check();
- await root.locator('[data-v-amount]').fill('1000');
+ assert.match(await root.innerText(),/합의한 형량·금액: 피고는 원고에게 1,000만 원/);
+ assert.equal(await root.locator('[data-v-amount]').count(),0,'the agreed amount replaces the presiding judge\'s own numbers');
+ await root.locator('button[data-world-verdict]').click();
+ assert.match(await root.locator('button[data-world-verdict]').innerText(),/한 번 더/,'two-step confirmation inside the page, no browser dialog');
  await root.locator('button[data-world-verdict]').click();
  await page.waitForFunction(()=>window.__p5.published===true);
  assert.doesNotMatch(await root.innerText(),/종합 평점 74점/,'individual grades remain hidden until the nine-month career review');

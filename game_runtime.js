@@ -1235,7 +1235,7 @@ if(authenticated&&newCareerUid===window.VerdictAuth.user.id){
  if(!has){setup();return}
 }
 const box=document.createElement('div');box.id='verdict-entry';
-box.innerHTML='<div class="entry-card"><div style="font-size:28px">⚖️</div><div class="entry-title">THE VERDICT</div><div class="entry-sub">40년 법관 커리어 · 판사 집무실</div><div class="entry-ver">v'+(window.VERDICT_VERSION||'')+' · '+(window.VERDICT_RELEASED||'')+' 업데이트</div><button class="entry-btn primary" id="profile-continue">이어하기</button><button class="entry-btn" id="profile-reset">새로하기</button><div class="entry-info">'+(authenticated?'로그인한 판사의 경력이 자동 저장됩니다.':(window.VERDICT_CONFIG?.supabaseUrl&&window.VERDICT_CONFIG?.supabaseAnonKey?'이 기기의 진행 기록을 사용합니다.':'현재는 서버 연결이 없어 로그인·AI 없이 이 기기에만 저장됩니다.'))+'</div></div>';
+box.innerHTML='<div class="entry-card"><div style="font-size:28px">⚖️</div><div class="entry-title">THE VERDICT</div><div class="entry-sub">40년 법관 커리어 · 판사 집무실</div><div class="entry-ver">v'+(window.VERDICT_VERSION||'')+' · '+(window.VERDICT_RELEASED||'')+' 업데이트</div><button class="entry-btn primary" id="profile-continue">이어하기</button><button class="entry-btn" id="profile-reset">새로하기</button><div class="entry-info">'+(authenticated?'로그인한 판사의 경력이 자동 저장됩니다.':(window.VERDICT_CONFIG?.supabaseUrl&&window.VERDICT_CONFIG?.supabaseAnonKey?'로그인하지 않아 이 기기에만 저장되고, AI 문장은 쓰지 않아요.':'현재는 서버 연결이 없어 로그인·AI 없이 이 기기에만 저장됩니다.'))+'</div></div>';
 document.body.appendChild(box);
 const scene=document.createElement('div');scene.className='verdict-brand-scene';scene.setAttribute('aria-label','일러스트 법정과 판사');scene.innerHTML='<span class="scene-flag">🇰🇷</span><span class="scene-seal">⚖</span><span class="scene-judge">👨🏻‍⚖️</span><span class="scene-bench"></span><span class="scene-caption">THE VERDICT · JUDICIAL LIFE</span>';const subtitle=box.querySelector('.entry-sub');if(subtitle)subtitle.insertAdjacentElement('afterend',scene);
 box.querySelector('#profile-continue').onclick=()=>{box.remove();if(!has&&typeof setup==='function')setup()};
@@ -1243,7 +1243,7 @@ box.querySelector('#profile-continue').onclick=()=>{box.remove();if(!has&&typeof
 const resetBtn=box.querySelector('#profile-reset');let armed=false;
 resetBtn.onclick=()=>{if(box.querySelector('.entry-reset-dialog'))return;
  const dialog=document.createElement('div');dialog.className='entry-reset-dialog';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
- dialog.innerHTML='<p><b>새로운 판사 커리어를 시작할까요?</b></p><p>현재 진행 기록이 교체될 수 있습니다. 기존 기록은 백업 후 진행하는 것을 권장합니다.</p><button type="button" class="entry-btn" data-reset-cancel>닫기 · 이전으로</button><button type="button" class="entry-btn danger" data-reset-confirm>새로 시작</button>';
+ dialog.innerHTML='<p><b>새로운 판사 커리어를 시작할까요?</b></p><p>'+(window.VerdictAuth?.user?'지금 기록은 \'보관된 기록\'에 남아서 나중에 되돌릴 수 있어요.':'이 기기의 지금 진행 기록이 새 기록으로 바뀝니다.')+'</p><button type="button" class="entry-btn" data-reset-cancel>닫기 · 이전으로</button><button type="button" class="entry-btn danger" data-reset-confirm>새로 시작</button>';
  resetBtn.insertAdjacentElement('afterend',dialog);
  dialog.querySelector('[data-reset-cancel]').onclick=()=>{dialog.remove();resetBtn.focus()};
  dialog.querySelector('[data-reset-confirm]').onclick=async()=>{

@@ -24,6 +24,8 @@ function circles(){
  const b=window.VerdictV6?.bench?.();
  if(b){add('court',b.assoc?.id,'배석판사 · 우리 재판부');add('court',b.clerk?.id,'재판연구원 · 우리 재판부');add('court',b.officer?.id,'참여관 · 우리 재판부');
   for(const x of (b.alumni||[]).slice().reverse())add('court',x.id,`${x.now} · 전 ${x.was}`)}
+ /* (2026-11-08) other players: colleague judges at the same court (colleague_court.js) */
+ for(const x of window.VerdictColleagues?.people?.()||[])add('court',x.id,x.role);
  /* lawyers: one entry per person, with how many of my cases they appeared in */
  const met={};
  for(const c of myCases()){const t=S.cases[c.id].trial4,crim=isCrim(c);

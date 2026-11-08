@@ -32,10 +32,12 @@ try{
  await page.locator('[data-action="start"]').last().click();
  await page.waitForFunction(()=>typeof S!=='undefined'&&S.legalWorld?.firstFour===true,{timeout:30000});await page.evaluate(()=>VerdictCurated.loadAll());   // engine-level checks read every case at once; the game itself fetches one case at a time
  // ---- A ----
- const reg=await page.evaluate(()=>{const ids=Object.keys(VerdictSheets.cases),pool=new Set(CasePackEngine.pool(S).map(x=>x.a.id));
+ const reg=await page.evaluate(()=>{const ids=Object.keys(VerdictSheets.cases).filter(id=>!VerdictSheets.cases[id].linked),pool=new Set(CasePackEngine.pool(S).map(x=>x.a.id));
   return {all:ids.length,inPool:ids.filter(id=>pool.has(id)).length,shaped:ids.filter(id=>VerdictCurated.cases[id]?.evidence?.length>=3&&VerdictCurated.cases[id]?.witnesses?.length>=2).length,
    fromSheet:ids.filter(id=>VerdictCurated.cases[id]?.fromSheet).length,written:ids.filter(id=>VerdictCurated.cases[id]&&!VerdictCurated.cases[id].fromSheet).length}});
- assert.equal(reg.inPool,reg.all,'every sheet case can be offered');assert.equal(reg.shaped,reg.all,'every sheet case has evidence and witnesses');
+ assert.equal(reg.inPool,reg.all,'every sheet case can be offered');
+ assert.equal(await page.evaluate(()=>Object.keys(VerdictSheets.linked||{}).filter(id=>CasePackEngine.pool(S).some(x=>x.a.id===id)).length),0,'linked cases never join the open pool');
+ assert.deepEqual(await page.evaluate(()=>Object.keys(VerdictSheets.linked||{}).filter(id=>!(VerdictCurated.cases[id]?.evidence?.length>=3&&VerdictCurated.cases[id]?.witnesses?.length>=2))),[],'linked cases are shaped for the courtroom too');assert.equal(reg.shaped,reg.all,'every sheet case has evidence and witnesses');
  console.log(`  ✓ ${reg.all} sheet cases: ${reg.fromSheet} from sheets + ${reg.written} written cases keep their own text, all in the pool`);
  // ---- B ----
  await page.evaluate(()=>{for(const c of S.generatedCases)S.cases[c.id].referred=true});
