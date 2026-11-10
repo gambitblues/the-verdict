@@ -26,7 +26,8 @@ await new Promise(o=>server.listen(0,'127.0.0.1',o));
 const url='http://127.0.0.1:'+server.address().port+'/';
 
 /* fake Supabase: two invited players, one stranger; saves with versions like save_put in 001_init.sql */
-const USERS={'a@x.kr':{id:'uid-a',pw:'pw-a'},'b@x.kr':{id:'uid-b',pw:'pw-b'},'c@x.kr':{id:'uid-c',pw:'pw-c',stranger:true}};
+const USERS={'a@x.kr':{id:'uid-a',pw:'pw-a'},'b@x.kr':{id:'uid-b',pw:'pw-b'},'c@x.kr':{id:'uid-c',pw:'pw-c',stranger:true},'d@x.kr':{id:'uid-d',pw:null}};   // d: invited by email, no password yet
+const recovers=[];
 const cloud=new Map(),serverBackups=[],aiCalls=[],cors={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'*'};
 const net={down:false,claimBroken:false,refuse:new Set()};
 const who=req=>{const t=(req.headers()['authorization']||'').replace('Bearer ','');return Object.entries(USERS).find(([,u])=>'tok-'+u.id===t)};
@@ -39,7 +40,10 @@ async function routes(ctx){
     return j({access_token:'tok-'+x.id,refresh_token:'ref-'+x.id,expires_in:3600,user:{id:x.id,email:b.email}})}
    const id=String(b.refresh_token).replace('ref-',''),e=Object.keys(USERS).find(k=>USERS[k].id===id);return j({access_token:'tok-'+id,refresh_token:'ref-'+id,expires_in:3600,user:{id,email:e}})}
   if(u.pathname==='/auth/v1/logout')return route.fulfill({status:204,headers:cors});
+  if(u.pathname==='/auth/v1/recover'){recovers.push({email:JSON.parse(req.postData()||'{}').email,redirect:u.searchParams.get('redirect_to')});return j({})}
   const me=who(req);if(!me)return j({message:'JWT'},401);const uid=me[1].id;
+  if(u.pathname==='/auth/v1/user'){if(req.method()==='PUT'){const b=JSON.parse(req.postData()||'{}');if(String(b.password).length<8)return j({error_code:'weak_password',msg:'Password should be at least 8 characters'},422);me[1].pw=b.password}
+   return j({id:uid,email:me[0]})}
   if(u.pathname==='/rest/v1/rpc/claim_player'){if(net.claimBroken)return j({message:'boom'},500);return j(!me[1].stranger&&!net.refuse.has(uid))}
   if(u.pathname==='/rest/v1/saves'&&req.method()==='GET'){const id=u.searchParams.get('user_id').replace('eq.','');assert.equal(id,uid,'a player only asks for their own saves');
    const slot=u.searchParams.get('slot')?.replace('eq.','');
@@ -64,7 +68,7 @@ const ctx=await browser.newContext({viewport:{width:390,height:844}});await rout
 const page=await ctx.newPage();const errs=[];page.on('pageerror',e=>errs.push(e.message));
 const login=async(p,email,pw)=>{await p.locator('#verdict-login input[type=email]').fill(email);await p.locator('#verdict-login input[type=password]').fill(pw);await p.locator('#verdict-login button[type=submit]').click()};
 const msg=(p,re)=>p.waitForFunction(r=>new RegExp(r).test(document.querySelector('.vl-msg')?.textContent||''),re.source);
-const loaded=(p,name)=>p.waitForFunction(n=>typeof S!=='undefined'&&(n==null||S.name===n),name??null,{timeout:30000});
+const loaded=(p,name)=>p.waitForFunction(n=>typeof S!=='undefined'&&S&&(n==null||S.name===n),name??null,{timeout:30000});   // S exists before the save is read: wait for it to be filled
 const backups=p=>p.evaluate(()=>new Promise(res=>{const r=indexedDB.open('verdict-backups',1);r.onupgradeneeded=()=>r.result.createObjectStore('b',{keyPath:'id'});r.onsuccess=()=>{const q=r.result.transaction('b').objectStore('b').getAll();q.onsuccess=()=>res(q.result.map(x=>({kind:x.kind,uid:x.uid,keys:Object.keys(x.keys)})))}}));
 const gameSave=p=>p.evaluate(()=>{save();VerdictStore.flush()});
 try{
@@ -192,7 +196,8 @@ try{
  await p5.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'visible'})});
  const up=cloud.get('uid-b:1');assert.ok(up,'player B\'s save is in the cloud');
  net.down=true;await p5.reload({waitUntil:'domcontentloaded'});await loaded(p5,'오프라인 판사');
- const newer=await p5.evaluate(()=>{const v=VerdictStore.parse(localStorage.getItem('verdict_player_save_1'));v.name='다른 기기 판사';return JSON.stringify(v)});
+ // read the slot in one step (it can be rewritten while the page settles)
+ const newer=await (await p5.waitForFunction(()=>{const v=VerdictStore.parse(localStorage.getItem('verdict_player_save_1')||localStorage.getItem('the_verdict_alpha_1')||'null');if(!v)return null;v.name='다른 기기 판사';return JSON.stringify(v)},null,{timeout:30000})).jsonValue();
  cloud.set('uid-b:1',{...up,data:newer,rev:up.rev+1,device:'PC-zz',updated_at:new Date().toISOString()});
  net.down=false;await p5.evaluate(()=>window.dispatchEvent(new Event('online')));
  // if this device also changed something while offline the player is asked first; take the other device's record
@@ -248,5 +253,24 @@ try{
  assert.equal(aiCalls.length,before);
  console.log('  ✓ without login the AI is never called');
  assert.deepEqual(errs,[]);
+ // 10. (2026-11-10) invite email → set a password → in; expired link → a clear message; forgotten password → new link
+ const ctx7=await browser.newContext({viewport:{width:390,height:844}});await routes(ctx7);const p7=await ctx7.newPage();const e7=[];p7.on('pageerror',e=>e7.push(e.message));
+ await p7.goto(url+'?auth=1#access_token=tok-uid-d&refresh_token=ref-uid-d&expires_in=3600&token_type=bearer&type=invite',{waitUntil:'networkidle'});
+ await p7.locator('#vl-pw').waitFor();assert.ok(!/access_token/.test(await p7.evaluate(()=>location.href)),'the one-time token leaves the address at once');
+ assert.match(await p7.locator('#verdict-login').innerText(),/d@x\.kr/);await p7.screenshot({path:'qa-visuals/invite-password.png'}).catch(()=>{});
+ await p7.locator('#vl-pw [name=pw]').fill('newpass123');await p7.locator('#vl-pw [name=pw2]').fill('newpass124');await p7.locator('#vl-pw button[type=submit]').click();
+ await msg(p7,/같지 않아요/);
+ await p7.locator('#vl-pw [name=pw2]').fill('newpass123');await p7.locator('#vl-pw button[type=submit]').click();
+ await p7.locator('#verdict-entry').waitFor({timeout:30000});
+ assert.equal(USERS['d@x.kr'].pw,'newpass123','the password is set on the account');
+ assert.equal(await p7.evaluate(()=>VerdictAuth.user?.email),'d@x.kr');
+ await p7.evaluate(()=>{localStorage.removeItem('vauth_session')});
+ await p7.goto(url+'?auth=1&from=mail#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired',{waitUntil:'networkidle'});
+ await msg(p7,/만료됐거나 이미 쓰였어요/);assert.ok(!/error/.test(new URL(await p7.evaluate(()=>location.href)).hash),'the error leaves the address too');
+ await p7.locator('#verdict-login [data-vl="forgot"]').click();await p7.locator('#vl-forgot [name=email]').fill('d@x.kr');await p7.locator('#vl-forgot button[type=submit]').click();
+ await msg(p7,/메일을 보냈어요/);assert.equal(recovers.at(-1).email,'d@x.kr');assert.ok(recovers.at(-1).redirect.startsWith(url),'the reset link comes back to this page');
+ await login(p7,'d@x.kr','newpass123');await p7.locator('#verdict-entry').waitFor({timeout:30000});
+ assert.deepEqual(e7,[]);await ctx7.close();
+ console.log('  ✓ invite link: set a password and start; expired link explained; forgotten password sends a new link');
  console.log('PASS: private login, per-user saves, conflicts, offline rules, AI bridge');
 }finally{await browser.close();server.close()}

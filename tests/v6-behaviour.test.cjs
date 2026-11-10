@@ -99,16 +99,16 @@ assert.ok(T.nodeOpen({after:{miss:'n1'}},st({orders:{n1:'none'}}))&&T.nodeOpen({
 assert.ok(T.nodeOpen({after:{contra:'i1'}},st({heard:[{issue:'i1',side:'p'},{issue:'i1',side:'d'}]}))&&!T.nodeOpen({after:{contra:'i1'}},st({heard:[{issue:'i1',side:'p'}]})),'contra needs testimony pointing both ways');
 assert.ok(T.nodeOpen({after:{any:[{got:'n1'},{heard:'0:q1'}]}},st({heard:[{w:0,q:'q1'}]}))&&!T.nodeOpen({after:{all:[{got:'n1'},{heard:'0:q1'}]}},st({heard:[{w:0,q:'q1'}]})),'any / all');
 
-// ---- v10.6 석명 요구: the side whose story is not what happened runs into the record; with nothing on the point, nothing ----
-{const ev={key:'e:e0',label:'출입 기록',side:'p',kind:'evidence'},wd={key:'h:0',label:'증인 갑의 증언',side:'d',kind:'testimony'};
- assert.deepEqual(T.explainCheck({truth:'did',anchors:[]}),{kind:'open'},'no record on the point: the stories cannot be told apart');
- const a=T.explainCheck({truth:'did',anchors:[wd,ev]});assert.equal(a.kind,'clash');assert.equal(a.side,'d','the defence story is the false one when it happened');assert.equal(a.anchor,ev);
- const b=T.explainCheck({truth:'didnt',anchors:[ev,wd]});assert.equal(b.side,'p');assert.equal(b.anchor,wd);
- assert.deepEqual(T.explainCheck({truth:'didnt',anchors:[ev]}),{kind:'open'},'only material pointing the false way: nothing to run into');
- assert.equal(T.explainCheck({truth:'reason',anchors:[ev]}).kind,'both','a mixed world: each story fits only part');
- const held=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t'].map(x=>T.explainCheck({truth:'did',anchors:[ev],skill:95,seed:x}).kind);
+// ---- 석명 요구 (v10.8): each side's story meets the court record — no hidden truth goes in ----
+{const ev={key:'e:e0',label:'출입 기록',side:'p',kind:'evidence',weight:2},wd={key:'h:0',label:'증인 갑의 증언',side:'d',kind:'testimony',weight:1};
+ assert.deepEqual(T.explainCheck({anchors:[]}),{kind:'open',clashes:[]},'no record on the point: the stories cannot be told apart');
+ assert.equal(T.explainCheck.length,1);
+ const a=T.explainCheck({anchors:[ev]});assert.equal(a.kind,'clash');assert.deepEqual(a.clashes,[{side:'d',anchor:ev}],'the defence story runs into a record pointing the other way');
+ const b=T.explainCheck({anchors:[wd,ev]});assert.equal(b.kind,'both','records on both sides: both stories run into something');
+ assert.equal(b.clashes.find(x=>x.side==='p').anchor,wd);assert.equal(b.clashes.find(x=>x.side==='d').anchor,ev,'strongest record first');
+ const same=['did','didnt','reason'].map(truth=>JSON.stringify(T.explainCheck({truth,anchors:[ev,wd],seed:'s'})));
+ assert.ok(same.every(x=>x===same[0]),'the hidden truth changes nothing');
+ const held=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t'].map(x=>T.explainCheck({anchors:[ev],skill:{d:95},seed:x}).kind);
  assert.ok(held.includes('held')&&held.includes('clash'),'a strong lawyer sometimes words the story around the record, never always');
- assert.ok(['a','b','c','d','e','f','g','h'].every(x=>T.explainCheck({truth:'did',anchors:[ev],skill:40,seed:x}).kind==='clash'),'an ordinary lawyer cannot');
- const g0=T.gauge({evidence:[],witnesses:[],heard:[]}),g1=T.gauge({evidence:[],witnesses:[],heard:[],writs:[{check:{kind:'clash',side:'d'}}]});
- assert.ok(g1.P>g0.P,'a defence explanation that ran into the record weighs for the prosecution');}
+ assert.ok(['a','b','c','d','e','f','g','h'].every(x=>T.explainCheck({anchors:[ev],skill:{d:40},seed:x}).kind==='clash'),'an ordinary lawyer cannot');}
 console.log('v6 behaviour tests passed · attitude, lawyer skill, confrontation, face-off, judge orders, follow-up triggers, 180 written witnesses');

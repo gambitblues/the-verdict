@@ -657,24 +657,29 @@ function explainText(c,t,f){
  const A=f.answer||{},line=k=>A[k]?`${sideWord(c,k)}: "${tell(c,t,pick(A[k],t.truth))}"`:'';
  return [line('p'),line('d')].filter(Boolean).join(' / ');
 }
-/* v10.6: what is already in court on one issue — evidence not set aside (illegal never), testimony still standing */
+/* v10.6: what is already in court on one issue — evidence not set aside (illegal never), testimony still standing.
+ * v10.8: evidence whose flaw the court has seen counts only as much as testimony; nothing reads the hidden truth. */
 function explainAnchors(c,t,issue){
  const ev=(t.evidence||[]).filter(e=>e.revealed>0&&e.decision!=='exclude'&&e.flawType!=='illegal').map(e=>({e,d:evDetail(c,e)}))
-  .filter(x=>x.d?.issue===issue&&(x.d.side==='p'||x.d.side==='d')).map(x=>({key:'e:'+x.e.id,label:x.e.title,side:x.d.side,kind:'evidence'}));
+  .filter(x=>x.d?.issue===issue&&(x.d.side==='p'||x.d.side==='d'))
+  .map(x=>({key:'e:'+x.e.id,label:x.e.title,side:x.d.side,kind:'evidence',weight:x.e.publicFlaw||x.e.decision==='conditional'?1:2}));
  const hd=(t.heard||[]).map((h,i)=>({h,i})).filter(({h})=>h.issue===issue&&!h.struck&&!h.tainted&&!h.silent&&(h.side==='p'||h.side==='d'))
-  .map(({h,i})=>({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label||'증언'}`,side:h.side,kind:'testimony'}));
+  .map(({h,i})=>({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label||'증언'}`,side:h.side,kind:'testimony',weight:1}));
  return [...ev,...hd];
 }
+/* a saved check, old (v10.6: one side) or new (v10.8: a list) */
+const clashesOf=ck=>ck?.clashes||(ck?.kind==='clash'&&ck.side?[{side:ck.side,anchor:ck.anchor}]:[]);
 function explainCheckText(c,ck){
- if(ck.kind==='clash')return `기록과 견줘 보니 ${P(sideWord(c,ck.side),'의')} 설명은 ${qt(ck.anchor.label,'과')} 맞지 않아요. 판결 이유로 쓸 수 있어요.`;
- if(ck.kind==='both')return '기록과 견줘 보니 양쪽 설명이 모두 기록의 일부와만 맞아요. 어느 한쪽 말이 다 맞다고 보기는 어려워요.';
- if(ck.kind==='held')return '기록과 견줘 봤지만 두 설명 모두 지금 기록과 뚜렷하게 부딪히지 않아요. 설명만으로는 어느 쪽이 맞는지 가려지지 않았어요.';
+ const cl=clashesOf(ck),one=x=>`${P(sideWord(c,x.side),'의')} 설명은 ${qt(x.anchor.label,'과')}`;
+ if(cl.length===2)return `기록과 견줘 보니 ${one(cl[0])}, ${one(cl[1])} 맞지 않아요. 두 기록 가운데 어느 쪽을 더 믿을 수 있는지가 관건이에요.`;
+ if(cl.length===1)return `기록과 견줘 보니 ${one(cl[0])} 맞지 않아요. 설명이 틀렸는지 그 기록이 틀렸는지는 기록이 얼마나 믿을 만한지로 따져 보세요. 판결 이유로 쓸 수 있어요.`;
+ if(ck?.kind==='held')return '기록과 견줘 봤지만 두 설명 모두 지금 기록과 뚜렷하게 부딪히지 않아요. 설명만으로는 어느 쪽이 맞는지 가려지지 않았어요.';
  return '기록과 견줘 봤지만 지금 법정에 나온 자료로는 어느 쪽 설명이 맞는지 가릴 수 없어요. 이 쟁점의 증거나 증언이 더 나오면 다시 요구할 수 있어요.';
 }
 function explainResult(c,t,o,issue,said){
- const anchors=explainAnchors(c,t,issue),ts=T.truthSide(t.truth);
- const ck=T.explainCheck({truth:t.truth,anchors,skill:ts==='m'?null:orderSkill(c,t,ts==='p'?'d':'p'),seed:t.seed+':'+o.key});
- const check=ck.kind==='open'||ck.kind==='held'?{kind:ck.kind}:{kind:ck.kind,...(ck.side?{side:ck.side}:{}),anchor:{key:ck.anchor.key,label:ck.anchor.label,kind:ck.anchor.kind}};
+ const anchors=explainAnchors(c,t,issue);
+ const ck=T.explainCheck({anchors,skill:{p:orderSkill(c,t,'p'),d:orderSkill(c,t,'d')},seed:t.seed+':'+o.key});
+ const check={kind:ck.kind,clashes:ck.clashes.map(x=>({side:x.side,anchor:{key:x.anchor.key,label:x.anchor.label,kind:x.anchor.kind}}))};
  o.check=check.kind;o.anchors=anchors.length;
  (t.writs??=[]).push({...(o.follow?{follow:o.follow}:{}),order:o.key,day:t.day,issue,text:said||'',check});
  return explainCheckText(c,check);
@@ -1151,9 +1156,9 @@ function citables(c,t){
   const q=qById(c,t,h.w,h.q);if(!q)return;
   out.push({key:'h:'+i,label:`${wName(t,h.w)}의 증언`,text:shownAnswer(c,t,h.w,q),side:h.side==='m'?'n':h.side,issue:h.issue,kind:'testimony',name:wName(t,h.w)})});
  /* v10.6: an explanation that ran into the record. It points against the side that gave it. */
- (t.writs||[]).forEach((w,i)=>{if(w.check?.kind!=='clash')return;const who=sideWord(c,w.check.side);
-  out.push({key:'w:'+i,label:`석명 결과 · ${who} 설명이 기록과 어긋남`,text:`${P(who,'의')} 설명이 ${qt(w.check.anchor.label,'과')} 맞지 않았다`,
-   origin:`재판장 석명 요구에 대한 ${session(c,w.day)} 답변`,side:w.check.side==='p'?'d':'p',issue:w.issue,kind:'writ',who,anchor:w.check.anchor.label})});
+ (t.writs||[]).forEach((w,i)=>clashesOf(w.check).forEach((x,k)=>{const who=sideWord(c,x.side);
+  out.push({key:'w:'+i+(k?':'+k:''),label:`석명 결과 · ${who} 설명이 기록과 어긋남`,text:`${P(who,'의')} 설명이 ${qt(x.anchor.label,'과')} 맞지 않았다`,
+   origin:`재판장 석명 요구에 대한 ${session(c,w.day)} 답변`,side:x.side==='p'?'d':'p',issue:w.issue,kind:'writ',who,anchor:x.anchor.label})}));
  return out;
 }
 function addonOrders(c,v){
@@ -1593,8 +1598,8 @@ function clerkNotes(c,t){
  const more=n=>n>1?` 등 ${n}개 쟁점`:'';
  if(clash.length)lines.push(`${P(`'${clash[0].is.title}'${more(clash.length)}`,'은')} 양쪽 근거가 맞서 있습니다. 어느 쪽 말을 더 믿을 수 있는지가 판단의 중심이 될 것 같습니다.`);
  if(open.length)lines.push(`${P(`'${open[0].is.title}'${more(open.length)}`,'은')} 아직 어느 쪽 주장도 뒷받침할 만한 자료가 법정에 나오지 않았습니다.`);
- const cl=(t.writs||[]).find(w=>w.check?.kind==='clash');
- if(cl)lines.push(`석명 요구에서 ${P(sideWord(c,cl.check.side),'의')} 설명이 ${qt(cl.check.anchor.label,'과')} 맞지 않았습니다. 판결 이유로 쓸 수 있습니다.`);
+ const cl=(t.writs||[]).flatMap(w=>clashesOf(w.check))[0];
+ if(cl)lines.push(`석명 요구에서 ${P(sideWord(c,cl.side),'의')} 설명이 ${qt(cl.anchor.label,'과')} 맞지 않았습니다. 그 기록을 믿을 수 있다면 판결 이유로 쓸 수 있습니다.`);
  const weak=citables(c,t).filter(i=>i.weak).length;
  if(weak)lines.push(`이의가 있었지만 남겨 둔 말이 ${weak}개 있습니다. 그대로 믿기보다 다른 자료와 맞춰 보시는 게 좋겠습니다.`);
  if(!lines.length)lines.push('쟁점마다 법정에 나온 근거가 정리돼 있습니다. 판결 이유로 쓸 자료가 믿을 만한지만 한 번 더 확인하시면 됩니다.');
