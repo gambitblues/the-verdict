@@ -61,7 +61,7 @@ try{
   await U.tab('day');await U.openSession();
   orderState=await page.evaluate(()=>{const t=S.cases[ui.caseId].trial4,o=t.courtOrders[0];return {day:t.day,due:o?.due,status:o?.status,outcome:o?.outcome,delayed:o?.delayed}});
  }
- assert.equal(orderState.status,'done','the order is eventually completed');
+ assert.equal(orderState.status,'done','the order is eventually completed: '+JSON.stringify(orderState)+' '+JSON.stringify(await page.evaluate(()=>{const t=S.cases[ui.caseId].trial4;return {truth:t.truth,orders:t.courtOrders,sess:t.dates,daysDone:t.daysDone}})));
  assert.equal(orderState.outcome,'done','didnt world: the defence hands the video over');
  await U.tab('witness');const after=await page.evaluate(()=>{ui.t4w=1;render();return document.querySelector('.t4-pager')?.innerText||''});
  assert.match(after,/영상에서 다시 보면/,'the video question opens once the video is in');

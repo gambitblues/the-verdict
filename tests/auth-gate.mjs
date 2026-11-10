@@ -263,6 +263,11 @@ try{
  await p7.locator('#vl-pw [name=pw2]').fill('newpass123');await p7.locator('#vl-pw button[type=submit]').click();
  await p7.locator('#verdict-entry').waitFor({timeout:30000});
  assert.equal(USERS['d@x.kr'].pw,'newpass123','the password is set on the account');
+ // tokens and the password never land in the game's saves, the cloud copies, the page text or the address
+ const leak=await p7.evaluate(()=>{const out=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!/^vauth_session$/.test(k)&&/tok-uid-d|ref-uid-d|newpass123/.test(localStorage.getItem(k)||''))out.push(k)}
+  if(/tok-uid-d|newpass123/.test(document.body.innerText+location.href))out.push('page');return out});
+ assert.deepEqual(leak,[],'no token or password outside the login session key');
+ assert.ok(![...cloud.values()].some(v=>/tok-uid-d|ref-uid-d|newpass123/.test(JSON.stringify(v))),'no token or password in cloud saves');
  assert.equal(await p7.evaluate(()=>VerdictAuth.user?.email),'d@x.kr');
  await p7.evaluate(()=>{localStorage.removeItem('vauth_session')});
  await p7.goto(url+'?auth=1&from=mail#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired',{waitUntil:'networkidle'});

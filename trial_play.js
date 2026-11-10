@@ -298,23 +298,40 @@ function needsMet(t,n){
  * and the facts once they settle. What a witness said is kept on the answer (heard.mode), so it never changes later. */
 const VAGUE=['그게… 정확하게는 기억이 잘 안 납니다. 그때 저도 정신이 없어서요.','제가 뭘 잘못 말하면 어떻게 되는 건가요… 잘 모르겠습니다.',
  '솔직히 그날 일은 떠올리고 싶지가 않아서요. 확실한 건 말씀 못 드리겠습니다.','본 것 같기도 한데… 지금은 단정해서 말씀드리기가 어렵습니다.'];
+/* v10.9: no manner gives the case away. How long a frightened witness stays vague depends on their nerve (1~3 answers,
+ * some never open up until shown something); a nervous honest witness can also start vague; an honest witness with a
+ * poor memory sometimes mixes up one point in good faith (another account's line from the sheet — never a new fact) and
+ * corrects it when shown the record. Each choice is drawn once from the seed and the person, and kept. */
+function nerve(c,t,i){const w=t.witnesses[i];if(w.nerve)return w.nerve;
+ const tr=NPC[w.id]?.traits||{},sc=Number(tr.stressControl??50),u=T.unit(t.seed+':nerve:'+i);
+ const vague=w.attitude==='fear'?(u<0.2?99:1+(sc<35?1:0)+(u>0.7?1:0)):w.attitude==='honest'&&sc<30&&u<0.5?1:0;
+ const slip=w.attitude==='honest'?Math.max(0,Math.min(0.25,(85-Number(w.memory??85))/60)):0;   // memory 85+ never, 70 or less one answer in four
+ return w.nerve={vague,slip}}
 function answerMode(c,t,i,q){
  const h=(t.heard||[]).find(x=>x.w===i&&x.q===q.id&&x.mode);if(h)return h.mode;
  const w=t.witnesses[i];
  if(!w||!curOf(c)?.fromSheet||typeof q.a!=='object'||!('did' in q.a)||!('didnt' in q.a))return 'plain';
  if(w.attitude==='protect'&&!w.owned&&wDetail(c,i)?.covers)return 'cover';
- if(w.attitude==='fear'&&!(t.heard||[]).some(x=>x.w===i&&!x.struck&&x.q!==q.id))return 'vague';
+ const nv=nerve(c,t,i),said=(t.heard||[]).filter(x=>x.w===i&&!x.struck&&x.q!==q.id&&!/^(cf|face):/.test(x.q));
+ if(!w.owned&&said.length<nv.vague)return 'vague';
+ if(nv.slip&&!w.owned&&q.a.did!==q.a.didnt&&T.unit(t.seed+':slip:'+i+':'+q.id)<nv.slip)return 'slip';
  return 'plain';
 }
+const sideOfKey=k=>k==='did'?'p':k==='didnt'?'d':'m';
 function answerOf(c,t,i,q){
  if(typeof q.a!=='object')return {text:tell(c,t,q.a),side:q.side||'n'};
+ /* v10.9: what was said stays said — the account a witness answered from is kept on the answer (heard.k), so a witness
+  * who later changes their story (or goes back to it) never rewrites what the court already heard */
+ const kept=(t.heard||[]).find(x=>x.w===i&&x.q===q.id&&x.k&&x.k in q.a);if(kept)return {text:tell(c,t,q.a[kept.k]),side:sideOfKey(kept.k),k:kept.k,...(kept.mode?{mode:kept.mode}:{})};
  const mode=answerMode(c,t,i,q);
  if(mode==='vague')return {text:VAGUE[T.hash(t.seed+':v:'+i+':'+q.id)%VAGUE.length],side:'n',mode};
- if(mode==='cover'){const k=wDetail(c,i).covers==='p'?'did':'didnt';return {text:tell(c,t,q.a[k]),side:k==='did'?'p':'d',mode}}
+ if(mode==='cover'){const k=wDetail(c,i).covers==='p'?'did':'didnt';return {text:tell(c,t,q.a[k]),side:k==='did'?'p':'d',mode,k}}
+ if(mode==='slip'){const ks=['did','didnt','reason'].filter(k=>k in q.a&&k!==(t.truth in q.a?t.truth:'reason')&&q.a[k]!==q.a[t.truth]);
+  if(ks.length){const k=ks[T.hash(t.seed+':slipk:'+i+':'+q.id)%ks.length];return {text:tell(c,t,q.a[k]),side:sideOfKey(k),mode,k}}}
  let key=t.truth in q.a?t.truth:'reason';
  const w=t.witnesses[i];
  if(w?.flipped&&key!=='reason')key=key==='did'?'didnt':'did';
- return {text:tell(c,t,q.a[key]),side:key==='did'?'p':key==='didnt'?'d':'m'};
+ return {text:tell(c,t,q.a[key]),side:sideOfKey(key),k:key};
 }
 /* Trial dates on the game calendar. A session is dated when it opens; the next one is set two weeks later
  * (more when a delay is granted). Opening a session moves the world calendar forward to that date. */
@@ -423,6 +440,9 @@ function filingPool(c,t){
  for(const f of cur.followUps||[]){
   if(!f.evidence||f.now||!['p','d'].includes(f.to)||!T.nodeOpen(f,nodeState(t)))continue;
   if(t.evidence?.some(e=>e.follow===f.id)||(t.courtOrders||[]).some(o=>o.follow===f.id))continue;
+  // 2026-11-10: material that does not exist in this case's world (have:false, or a fixed 'none'/'declined' result) is
+  // never filed on a party's own — it used to arrive as an exhibit reading '기록 없음'
+  if(pick(f.have,t.truth)===false||['none','declined'].includes(f.result?pick(f.result,t.truth):''))continue;
   pool.push({source:'follow',followId:f.id,by:f.to,title:tell(c,t,f.evidence.title)});
  }
  return pool;
@@ -521,7 +541,9 @@ function confront(c,t,i,eid){
  const w=t.witnesses[i],e=t.evidence.find(x=>x.id===eid),d=e&&evDetail(c,e);if(!w||!d)return '';
  if(t.qLeft<1){toast('오늘 신문 시간이 끝났어요.');return ''}
  t.qLeft--;(w.shown??=[]).push(eid);
- const name=wName(t,i),o=T.confrontOutcome({attitude:w.attitude,flipped:w.flipped,traits:NPC[w.id]?.traits||{}},t.truth,t.seed+':cf:'+i+':'+eid);
+ const against=(t.heard||[]).some(h=>h.w===i&&!h.struck&&h.issue===d.issue&&h.side!=='n'&&h.side!==d.side);
+ const force=(against?1:0.45)*(0.7+0.6*Math.min(100,Number(e.strength??60))/100)*(e.publicFlaw?0.7:1);
+ const name=wName(t,i),o=T.confrontOutcome({attitude:w.attitude,flipped:w.flipped,traits:NPC[w.id]?.traits||{},force},t.truth,t.seed+':cf:'+i+':'+eid);
  let text,side=o.side,label,strike=o.strike;
  const cw=confrontWords(c,t,i,e,d),at=cw.row?`${e.title}에 적힌 '${cw.row}' 부분`:P(e.title,'을');
  if(o.kind==='hold'){text=cw.earlier?(cw.pick?`${cw.row?at+'이 있어도':P(e.title,'이')+' 있어도'}, 제가 "${cw.earlier}"라고 한 건 직접 겪은 대로 말씀드린 겁니다. 바꿀 게 없습니다`
@@ -533,7 +555,7 @@ function confront(c,t,i,eid){
  else if(o.kind==='revert'){w.flipped=false;text=cw.first&&cw.first!==cw.earlier?`${cw.row?at+'을 보니':'기록을 보니'} 처음에 말씀드린 "${cw.first}"라는 말이 맞습니다. 중간에 말이 흔들렸어요`:'기록을 보니 처음에 말씀드린 게 맞습니다. 중간에 말이 흔들렸어요';label='처음 진술로 돌아온 말'}
  else{const pool=ADMIT[t.truth]||ADMIT.reason;text=(cw.earlier?`"${cw.earlier}"라고 한 건 다 말씀드린 게 아니었습니다. `:'')+pool[T.hash(t.seed+i+eid)%pool.length];label=w.attitude==='fear'?'두려움을 털어놓으며 한 말':'감싸던 것을 털어놓은 말';w.revealed=2;w.owned=true}
  if(strike)t.heard.forEach(h=>{if(h.w===i&&h.issue===d.issue&&!h.text&&(h.side==='p'||h.side==='d')&&h.side!==d.side)h.struck=true});
- t.heard.push({w:i,q:'cf:'+eid,side,issue:d.issue,day:t.day,text,label});
+ t.heard.push({w:i,q:'cf:'+eid,side,issue:d.issue,day:t.day,text,label,...(against?{pressed:true}:{})});
  addLog(t,'증거 대조',`${name}에게 ${P(e.title,'을')} 보여 줌 — "${text}"`);
  remember(w.id,'법정',`${shortName(c)} 재판에서 ${P(e.title,'을')} 보고 "${short(text,30)}"라고 말함`,c.id);
  return `📁 ${name}: "${short(text,44)}"`;
@@ -657,29 +679,48 @@ function explainText(c,t,f){
  const A=f.answer||{},line=k=>A[k]?`${sideWord(c,k)}: "${tell(c,t,pick(A[k],t.truth))}"`:'';
  return [line('p'),line('d')].filter(Boolean).join(' / ');
 }
-/* v10.6: what is already in court on one issue — evidence not set aside (illegal never), testimony still standing.
- * v10.8: evidence whose flaw the court has seen counts only as much as testimony; nothing reads the hidden truth. */
+/* v10.6 → v10.9: what is already in court on one issue, held fact by fact against each side's own account.
+ * Each side's account is the world it argues for (prosecution / plaintiff: 'did', defence: 'didnt') as written in the
+ * case. A record fits a side when every line of it, as it stands in court, is what that side's account says it would
+ * be; a line the account cannot hold is a concrete clash, shown word for word. A record that reads the same under both
+ * accounts (the CCTV shows the accused going in — both sides agree on that) never clashes, so taking different sides is
+ * not a contradiction. The hidden truth is not read: only the text in court and the two written accounts. Evidence whose
+ * flaw the court has seen counts only as much as testimony; set-aside and illegal material and struck words never count. */
+const ACC={p:'did',d:'didnt'};
+const rowsOf=x=>String(x||'').split(/\s+\/\s+/).map(r=>r.trim()).filter(Boolean);
+function rawExcerpt(c,e){const cur=curOf(c);if(!cur)return null;
+ if(e.follow){const f=(cur.followUps||[]).find(x=>x.id===e.follow);return f?.evidence?.excerpt??null}
+ if(e.late)return cur.late?.excerpt??null;const i=Number(String(e.id).slice(1));return cur.evidence?.[i]?.excerpt??null}
 function explainAnchors(c,t,issue){
- const ev=(t.evidence||[]).filter(e=>e.revealed>0&&e.decision!=='exclude'&&e.flawType!=='illegal').map(e=>({e,d:evDetail(c,e)}))
-  .filter(x=>x.d?.issue===issue&&(x.d.side==='p'||x.d.side==='d'))
-  .map(x=>({key:'e:'+x.e.id,label:x.e.title,side:x.d.side,kind:'evidence',weight:x.e.publicFlaw||x.e.decision==='conditional'?1:2}));
- const hd=(t.heard||[]).map((h,i)=>({h,i})).filter(({h})=>h.issue===issue&&!h.struck&&!h.tainted&&!h.silent&&(h.side==='p'||h.side==='d'))
-  .map(({h,i})=>({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label||'증언'}`,side:h.side,kind:'testimony',weight:1}));
- return [...ev,...hd];
+ const out=[];
+ for(const e of t.evidence||[]){if(!(e.revealed>0)||e.decision==='exclude'||e.flawType==='illegal'||/\(일부\)$/.test(e.title))continue;
+  const d=evDetail(c,e);if(d?.issue!==issue)continue;const raw=rawExcerpt(c,e);
+  if(!raw||typeof raw!=='object'||!('did' in raw)||!('didnt' in raw))continue;   // the same text under every account: nothing to clash with
+  const shown=rowsOf(tell(c,t,d.excerpt)),fits={},line={};
+  for(const sd of ['p','d']){const acc=new Set(rowsOf(tell(c,t,raw[ACC[sd]])));const miss=shown.find(r=>!acc.has(r));fits[sd]=!miss;if(miss)line[sd]=miss}
+  out.push({key:'e:'+e.id,label:e.title,kind:'evidence',fits,line,weight:e.publicFlaw||e.decision==='conditional'?1:2});
+ }
+ (t.heard||[]).forEach((h,i)=>{if(h.issue!==issue||h.struck||h.tainted||h.silent||h.text||h.mode==='vague'||h.w==='party')return;
+  const q=qById(c,t,h.w,h.q);if(!q||typeof q.a!=='object'||!('did' in q.a)||!('didnt' in q.a))return;
+  const said=answerOf(c,t,h.w,q).text,fits={},line={};
+  for(const sd of ['p','d']){fits[sd]=tell(c,t,q.a[ACC[sd]])===said;if(!fits[sd])line[sd]=shownAnswer(c,t,h.w,q)}
+  out.push({key:'h:'+i,label:`${wName(t,h.w)}의 증언`,kind:'testimony',fits,line,weight:1});
+ });
+ return out;
 }
 /* a saved check, old (v10.6: one side) or new (v10.8: a list) */
 const clashesOf=ck=>ck?.clashes||(ck?.kind==='clash'&&ck.side?[{side:ck.side,anchor:ck.anchor}]:[]);
 function explainCheckText(c,ck){
- const cl=clashesOf(ck),one=x=>`${P(sideWord(c,x.side),'의')} 설명은 ${qt(x.anchor.label,'과')}`;
+ const cl=clashesOf(ck),one=x=>`${P(sideWord(c,x.side),'의')} 설명은 ${qt(x.anchor.label,'의')}${x.anchor.line?` "${short(x.anchor.line,60)}" 부분`:''}과`;
  if(cl.length===2)return `기록과 견줘 보니 ${one(cl[0])}, ${one(cl[1])} 맞지 않아요. 두 기록 가운데 어느 쪽을 더 믿을 수 있는지가 관건이에요.`;
  if(cl.length===1)return `기록과 견줘 보니 ${one(cl[0])} 맞지 않아요. 설명이 틀렸는지 그 기록이 틀렸는지는 기록이 얼마나 믿을 만한지로 따져 보세요. 판결 이유로 쓸 수 있어요.`;
  if(ck?.kind==='held')return '기록과 견줘 봤지만 두 설명 모두 지금 기록과 뚜렷하게 부딪히지 않아요. 설명만으로는 어느 쪽이 맞는지 가려지지 않았어요.';
- return '기록과 견줘 봤지만 지금 법정에 나온 자료로는 어느 쪽 설명이 맞는지 가릴 수 없어요. 이 쟁점의 증거나 증언이 더 나오면 다시 요구할 수 있어요.';
+ return '기록과 견줘 봤지만 지금 법정에 나온 자료에는 두 설명 가운데 한쪽만 맞는 구체적인 사실이 없어요. 입장이 다를 뿐 기록과 어긋나는 대목은 아직 없어요. 이 쟁점의 증거나 증언이 더 나오면 다시 요구할 수 있어요.';
 }
 function explainResult(c,t,o,issue,said){
  const anchors=explainAnchors(c,t,issue);
  const ck=T.explainCheck({anchors,skill:{p:orderSkill(c,t,'p'),d:orderSkill(c,t,'d')},seed:t.seed+':'+o.key});
- const check={kind:ck.kind,clashes:ck.clashes.map(x=>({side:x.side,anchor:{key:x.anchor.key,label:x.anchor.label,kind:x.anchor.kind}}))};
+ const check={kind:ck.kind,clashes:ck.clashes.map(x=>({side:x.side,anchor:{key:x.anchor.key,label:x.anchor.label,kind:x.anchor.kind,line:x.anchor.line?.[x.side]||''}}))};
  o.check=check.kind;o.anchors=anchors.length;
  (t.writs??=[]).push({...(o.follow?{follow:o.follow}:{}),order:o.key,day:t.day,issue,text:said||'',check});
  return explainCheckText(c,check);
@@ -762,7 +803,7 @@ function askQuestion(c,t,i,qid){
  t.qLeft--;w.askedIds.push(q.id);w.asked=(w.asked||0)+1;w.revealed=T.reveal(w.revealed);
  if(w.attitude==='flip'&&w.asked>=2&&!w.flipped){w.flipped=true;w.flipAt=t.heard.length-1;addLog(t,'번복',`${P(wName(t,i),'이')} 앞서 한 말을 바꾸기 시작했다`)}
  const a=answerOf(c,t,i,q),ready=q.auto?t.ai?.[i+':'+q.id+':'+a.side]:null,said=ready||a.text;
- t.heard.push({w:i,q:q.id,side:a.side,issue:q.issue,day:t.day,...(a.mode&&a.mode!=='plain'?{mode:a.mode}:{}),...(ready?{ai:ready,aiSide:a.side}:{})});
+ t.heard.push({w:i,q:q.id,side:a.side,issue:q.issue,day:t.day,...(a.k?{k:a.k}:{}),...(a.mode&&a.mode!=='plain'?{mode:a.mode}:{}),...(ready?{ai:ready,aiSide:a.side}:{})});
  for(const n of q.next||[])if(!w.opened.includes(n))w.opened.push(n);
  addLog(t,'증언',`${wName(t,i)} — 문: ${tell(c,t,q.q)} / 답: "${said}"`);
  const iss=issuesOf(c).find(v=>v.id===q.issue);
@@ -896,7 +937,7 @@ function act(kind,id,choice){
    if(card.live&&card.otype==='lead'&&choice==='accept'&&w){w.objections??=[];w.objections.push({id:card.id,ask:xt.ask,answer:null,by:xt.askBy,kind:OBJ[card.otype],kept:false,day:t.day})}
    if(xt.answer&&w&&!(plain&&choice!=='accept')){w.objections??=[];w.objections.push({id:card.id,ask:xt.ask,answer:xt.answer,by:xt.askBy,kind:OBJ[card.otype],kept:choice!=='accept',day:t.day})}
    if(plain&&choice!=='accept'&&w&&card.q&&!w.askedIds.includes(card.q)){const q=questionsOf(c,t,card.w).find(v=>v.id===card.q);
-    if(q){w.askedIds.push(q.id);const a=answerOf(c,t,card.w,q);t.heard.push({w:card.w,q:q.id,side:a.side,issue:q.issue,day:t.day});for(const n of q.next||[])if(!w.opened.includes(n))w.opened.push(n);
+    if(q){w.askedIds.push(q.id);const a=answerOf(c,t,card.w,q);t.heard.push({w:card.w,q:q.id,side:a.side,issue:q.issue,day:t.day,...(a.k?{k:a.k}:{}),...(a.mode&&a.mode!=='plain'?{mode:a.mode}:{})});for(const n of q.next||[])if(!w.opened.includes(n))w.opened.push(n);
      addLog(t,'증언',`${wn} — 문: ${tell(c,t,q.q)} / 답: "${a.text}"`)}}
    if(choice==='accept'){
     if(plain){if(card.q&&w){w.blocked??=[];if(!w.blocked.includes(card.q))w.blocked.push(card.q)}say=`✋ 이의를 받아들였어요 · 그 답은 판단에서 빠졌고, 증인 ${wn}에게 그 질문은 더 할 수 없어요`}
@@ -1158,7 +1199,7 @@ function citables(c,t){
  /* v10.6: an explanation that ran into the record. It points against the side that gave it. */
  (t.writs||[]).forEach((w,i)=>clashesOf(w.check).forEach((x,k)=>{const who=sideWord(c,x.side);
   out.push({key:'w:'+i+(k?':'+k:''),label:`석명 결과 · ${who} 설명이 기록과 어긋남`,text:`${P(who,'의')} 설명이 ${qt(x.anchor.label,'과')} 맞지 않았다`,
-   origin:`재판장 석명 요구에 대한 ${session(c,w.day)} 답변`,side:x.side==='p'?'d':'p',issue:w.issue,kind:'writ',who,anchor:x.anchor.label})}));
+   origin:`재판장 석명 요구에 대한 ${session(c,w.day)} 답변`,side:x.side==='p'?'d':'p',issue:w.issue,kind:'writ',who,anchor:x.anchor.label,anchorKey:x.anchor.key,excerpt:x.anchor.line||''})}));
  return out;
 }
 function addonOrders(c,v){
@@ -1235,7 +1276,9 @@ function confirmVerdict(){
  const sent=sentenceOf(c,sp,v);
  const fs=(v.factors||[]).map(f=>(sp?.mode==='civil'?CIVIL_FACTORS:CRIM_FACTORS).find(x=>x[0]===f)).filter(Boolean);
  const score=sent?.score?{...sent.score,mitig:fs.filter(f=>f[2]<0).length,aggr:fs.filter(f=>f[2]>0).length}:null;
- const res=T.skill(t,{dir,criminal:isCriminal(c),cites:cites.map(i=>({label:i.label,side:i.side,illegal:i.illegal,weak:i.weak})),sentence:score,extra:extraScore(c,t,v,dir,sp)});
+ /* v10.9: a 석명 result rests on a record; citing both counts that record once */
+ const scored=cites.filter(i=>!(i.kind==='writ'&&cites.some(x=>x.key===i.anchorKey)));
+ const res=T.skill(t,{dir,criminal:isCriminal(c),cites:scored.map(i=>({label:i.label,side:i.side,illegal:i.illegal,weak:i.weak})),sentence:score,extra:extraScore(c,t,v,dir,sp)});
  const judgment=writeJudgment(c,t,opt,dir,cites,sp,sent,fs);
  /* what was actually ordered, as plain data: the people's lives follow it (npc_life_justice.applyVerdict) */
  const side=T.sideOf(dir);

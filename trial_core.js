@@ -273,8 +273,10 @@ const truthSide=truth=>truth==='did'?'p':truth==='didnt'?'d':'m';
 /* A witness shown evidence that contradicts them. kind: hold | correct (honest witness retracts) | revert (flipped
  * witness returns to the first story) | admit (protecting or scared witness tells what really happened).
  * Whatever is admitted points the way the hidden truth points. */
-function confrontOutcome({attitude,flipped,traits={}},truth,seed){
- const odds={flip:flipped?85:40,protect:30+(100-Number(traits.stressControl??50))*0.35,fear:45+Number(traits.honesty??50)*0.3,honest:70}[attitude]??50;
+/* v10.9 force: how hard the shown record presses this witness (does it contradict what they said, how strong it is,
+ * whether its flaw is known) — weak or beside-the-point material moves people less. 1 = as before. */
+function confrontOutcome({attitude,flipped,traits={},force=1},truth,seed){
+ const odds=Math.min(95,({flip:flipped?85:40,protect:30+(100-Number(traits.stressControl??50))*0.35,fear:45+Number(traits.honesty??50)*0.3,honest:70}[attitude]??50)*clamp(force,0.3,1.3));
  if(between(0,99,seed)>=odds)return {kind:'hold',side:'n',strike:false};
  if(attitude==='honest')return {kind:'correct',side:'n',strike:true};
  if(attitude==='flip'&&flipped)return {kind:'revert',side:truthSide(truth),strike:false};
@@ -293,16 +295,17 @@ function faceOffOutcome(pw,dw,truth,seed){
 
 /* ---------- v10.6 → v10.8: a request to explain (석명 요구) meets the record ----------
  * Both sides explain one disputed point, and each explanation is held against what is already in court on it — never
- * against the hidden truth. An explanation runs into a record that points the other way: evidence not set aside and
- * not shown to be flawed (strongest first), or testimony still standing. Records can themselves be wrong (a witness
- * shielding someone, a flawed exhibit), so a clash only says that the story and that record do not fit; which one to
- * believe stays the judge's call. Both sides may run into something; with nothing on the point neither does. A skilled
- * lawyer sometimes words a story around the record ('held', at most a third). anchors: [{key,label,side,kind,weight}];
+ * against the hidden truth. v10.9: an explanation runs into a record only where a concrete line of that record cannot
+ * be what that side's own account says (anchor.fits[side]===false); a record both accounts agree on never clashes, so
+ * merely pointing the other way is not a contradiction. Strongest record first. Records can themselves be wrong (a
+ * witness shielding someone, a flawed exhibit), so a clash says the story and that line do not fit; which to believe
+ * stays the judge's call. A skilled lawyer sometimes words a story around it ('held', at most a third).
+ * anchors: [{key,label,kind,weight,fits:{p,d},line:{p,d}}];
  * skill: {p,d}. Returns {kind:'clash'|'both'|'held'|'open', clashes:[{side,anchor}]}. */
 function explainCheck({anchors=[],skill={},seed}){
- const list=(anchors||[]).filter(a=>a&&(a.side==='p'||a.side==='d')).sort((a,b)=>(b.weight||1)-(a.weight||1));
+ const list=(anchors||[]).filter(a=>a&&a.fits).sort((a,b)=>(b.weight||1)-(a.weight||1));
  const clashes=[];let held=0;
- for(const side of ['p','d']){const a=list.find(x=>x.side!==side);if(!a)continue;
+ for(const side of ['p','d']){const a=list.find(x=>x.fits[side]===false);if(!a)continue;
   const sk=skill?.[side];if(sk!=null&&seed!=null&&unit(seed+':explain:'+side)<clamp((Number(sk)-40)/150,0,0.33)){held++;continue}
   clashes.push({side,anchor:a})}
  return {kind:clashes.length===2?'both':clashes.length?'clash':held?'held':'open',clashes};
