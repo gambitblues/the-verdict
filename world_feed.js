@@ -587,11 +587,15 @@ clicker=function(e){
  const el=e.target.closest('[data-action]'),a=el?.dataset.action;
  if(a==='wfopen'){e.preventDefault();const id=el.dataset.id;open.has(id)?open.delete(id):open.add(id);render();return}
  if(a==='reporter'){e.preventDefault();const id=reporterNPC(Number(el.dataset.i));if(id)popupNPC(id);return}
+ /* v11.0.3: tapping 메시지 again (or any tablet app) goes back to the list of people, not the last open conversation */
+ if(a==='tablet')ui.msgWith=null;
  if(a==='wfreply'){e.preventDefault();answer(el.dataset.id,el.dataset.choice);return}
  if(a==='wfwith'){e.preventDefault();ui.msgWith=el.dataset.id||null;if(ui.modal&&typeof closeModal==='function')closeModal();else if(ui.modal){ui.modal=null;const r=document.getElementById('modal-root');if(r)r.innerHTML=''}
   ui.tabletTab='messages';if(typeof changeTab==='function'&&ui.tab!=='tablet')changeTab('tablet');else render();return}
  return priorClick(e);
 };
+/* leaving the tablet closes the open conversation too, so the next visit starts at the list */
+if(typeof changeTab==='function'){const priorTab=changeTab;changeTab=function(tab){if(tab!=='tablet')ui.msgWith=null;return priorTab.apply(this,arguments)}}
 setInterval(()=>{if(scan()&&!ui.modal&&(ui.tab==='home'||ui.tab==='tablet'))render()},30000);
 setTimeout(()=>{if(scan()&&!ui.modal)render()},2500);
 window.VerdictWorld={addSocial,contacts,addTruth,addCustom,scan,thread,opinionFeed,newsFeed,answer,reporters:()=>REPORTERS,reporterNPC};
