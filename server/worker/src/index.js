@@ -11,7 +11,7 @@
  * The hidden truth of a case is never sent here: the browser only sends text the player can already see.
  *
  * Secrets (wrangler secret put): OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY
- * Vars (wrangler.toml):           SUPABASE_URL, SUPABASE_ANON_KEY, ALLOWED_ORIGINS, ALLOWED_EMAILS,
+ * Vars (wrangler.toml):           SUPABASE_URL, SUPABASE_ANON_KEY, ALLOWED_ORIGINS (ALLOWED_EMAILS is a secret),
  *                                 MODEL_CASE, MODEL_TALK, PRICES, DAILY_CALLS, DAILY_USD
  */
 import TerraCloud from './terra_cloud_staging.cjs';

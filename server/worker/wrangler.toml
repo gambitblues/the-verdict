@@ -26,12 +26,13 @@ TERRA_MAX_USD_CASE = "0.30"
 TERRA_TARGET_STOCK = "1"
 TERRA_MAX_BATCH = "1"
 # Supabase project "THE VERDICT" (Seoul). The anon key is public by design; the service role key is a secret.
-SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
-SUPABASE_ANON_KEY = "YOUR-ANON-KEY"
+SUPABASE_URL = "https://ppftjylzpppchuoijlif.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwZnRqeWx6cHBwY2h1b2lqbGlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2ODM3NDcsImV4cCI6MjEwOTI1OTc0N30.Kw1An-GNE-4cwwKTS1h3ovLzEhY_h7CxBe0ThljWxXg"
 # pages allowed to call this API (comma separated). localhost is always allowed for testing.
 ALLOWED_ORIGINS = "https://gambitblues.github.io"
 # the two invited players — must ALSO be in the Supabase table public.players (both lists are checked)
-ALLOWED_EMAILS = "player1@example.com,player2@example.com"
+# ALLOWED_EMAILS is a Cloudflare secret (2026-11-10): the invite list stays out of this public file.
+#   npx wrangler secret put ALLOWED_EMAILS   → type: first@example.com,second@example.com
 MODEL_CASE = "gpt-6.1-terra"
 MODEL_TALK = "gpt-6-luna"
 # USD per 1M tokens — check against OpenAI's price page and edit here; cost logging follows this table

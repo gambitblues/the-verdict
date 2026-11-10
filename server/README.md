@@ -13,7 +13,7 @@
 | Supabase Project URL | `config.js` `supabaseUrl`, `wrangler.toml` `SUPABASE_URL` | 공개 가능 | 커밋해도 됨 |
 | Supabase anon public key | `config.js` `supabaseAnonKey`, `wrangler.toml` `SUPABASE_ANON_KEY` | 공개 가능(행 단위 보안이 지킴) | 커밋해도 됨 |
 | Worker 주소 | `config.js` `apiBase` | 공개 | 커밋해도 됨 |
-| 초대할 두 이메일 | `public.players` 표(SQL), `wrangler.toml` `ALLOWED_EMAILS` | 비공개 권장 | 기획자 |
+| 초대할 두 이메일 | `public.players` 표(SQL), Cloudflare Secret `ALLOWED_EMAILS` | 비공개 | 기획자가 `npx wrangler secret put ALLOWED_EMAILS`로 입력 |
 | **OpenAI API key** | Cloudflare Secret `OPENAI_API_KEY` | **비밀** | 등록 완료 |
 | **Supabase service_role key** | Cloudflare Secret `SUPABASE_SERVICE_ROLE_KEY` | **비밀** | 기획자가 `npx wrangler secret put` 으로 직접 입력 |
 | 두 사람의 비밀번호 | Supabase 초대 메일에서 각자 설정 | **비밀** | 각 플레이어 |
@@ -34,7 +34,7 @@
    - `ai_reserve`·`ai_finish`·`ai_usage_today`: Worker만 / `claim_player`·`save_put`·`is_player`: 로그인한 사용자만 / 비로그인(anon)은 아무것도 못 함
 
 ## 2. Cloudflare Worker (`server/worker`)
-1. `wrangler.toml`의 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ALLOWED_EMAILS`, `ALLOWED_ORIGINS`(게임을 열 주소)를 채웁니다. `PRICES`는 OpenAI 가격표와 맞춰 주세요.
+1. `wrangler.toml`에는 공개 값(`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ALLOWED_ORIGINS`)이 이미 들어 있습니다. 초대 이메일은 `npx wrangler secret put ALLOWED_EMAILS`(쉼표로 이어서)로 넣습니다. `PRICES`는 OpenAI 가격표와 맞춰 주세요.
 2. `npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY` (입력 칸에 붙여 넣기)
 3. `npx wrangler deploy`
 
@@ -59,7 +59,7 @@
 2. SQL Editor에서 테스트 계정 2개를 이름이 `TEST`로 시작하게 등록합니다.
    `insert into public.players(email,name) values ('테스트1 이메일','TEST-1'),('테스트2 이메일','TEST-2');`
    (초대 명단에 없는 계정은 등록하지 않습니다.)
-3. Worker `ALLOWED_EMAILS`에 테스트 계정 2개를 잠시 더하고, `ALLOW_TEST_FAIL="1"`로 배포합니다.
+3. `npx wrangler secret put ALLOWED_EMAILS`로 테스트 계정 2개를 잠시 더하고, `ALLOW_TEST_FAIL="1"`로 배포합니다.
 
 실행:
 ```
@@ -74,7 +74,7 @@ VERDICT_API=https://the-verdict-api.<계정>.workers.dev node live-e2e.mjs
 - 결과: `server/live/out/<시각>/report.md`·`report.json`·캡처. 캡처 직전에 화면의 비밀번호 칸을 비우고 이메일을 `a***@도메인`으로 가리며, 보고서 파일은 저장 직전에 이번 실행의 비밀번호·토큰·키·이메일을 찾아 `[가림]`으로 바꿉니다. 이 폴더를 그대로 공유하면 됩니다.
 
 끝나면:
-- Worker `ALLOWED_EMAILS`에서 테스트 계정을 빼고 `ALLOW_TEST_FAIL="0"`으로 배포합니다.
+- `npx wrangler secret put ALLOWED_EMAILS`로 테스트 계정을 빼고 `ALLOW_TEST_FAIL="0"`으로 배포합니다.
 - 다시 돌리려면 `supabase/cleanup_test_accounts.sql`로 TEST 계정의 세이브·보관본만 지웁니다(실제 플레이어 데이터는 대상이 아님). 테스트 계정을 아예 없애려면 players에서 TEST 행을 지우고 Authentication에서 사용자를 삭제합니다.
 
 ## API
