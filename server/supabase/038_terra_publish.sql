@@ -6,6 +6,15 @@
 -- refill makes the next one — a steady trickle within the daily cap.
 -- Needs 005. Service role only; no browser role ever sees a draft.
 
+do $check$ begin
+ if to_regclass('public.terra_pending_drafts') is null then
+  raise exception '038: Terra 초안 표가 없습니다. 먼저 003_case_stock.sql, 004_case_refill_budget.sql, 005_terra_private_staging.sql을 순서대로 실행하세요.';
+ end if;
+ if to_regprocedure('public.request_role()') is null then
+  raise exception '038: request_role 함수가 없습니다. 먼저 032_request_role_claims.sql을 실행하세요.';
+ end if;
+end $check$;
+
 alter table public.terra_pending_drafts drop constraint if exists terra_pending_drafts_state_check;
 alter table public.terra_pending_drafts add constraint terra_pending_drafts_state_check
  check (state in ('qa_pending','audit','quarantine','verified','published'));

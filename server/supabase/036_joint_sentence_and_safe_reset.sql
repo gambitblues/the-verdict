@@ -4,18 +4,27 @@
 -- 2) reset_player_career no longer destroys the cloud record: the current saves are first kept in save_backups
 --    (reason 'reset', last 5 per slot as before), so "보관된 기록" can bring them back.
 
+-- Part 1 only where the shared-court tables (020~034) are installed. A server that never installed them skips it
+-- (2026-11-10: the first live run stopped here with "relation public.shared_joint_votes does not exist").
+do $do$
+begin
+ if to_regclass('public.shared_joint_votes') is null or to_regclass('public.shared_joint_panels') is null then
+  raise notice '036: 합의부 표(020~034)가 없어 형량 합의 부분은 건너뜁니다. 새로하기 보관 부분만 적용합니다.';
+  return;
+ end if;
+ execute $sql$
 alter table public.shared_joint_votes add column if not exists sentence jsonb;
-do $$ begin
+do $fn$ begin
  if not exists(select 1 from pg_constraint where conname='shared_joint_votes_sentence_object') then
   alter table public.shared_joint_votes add constraint shared_joint_votes_sentence_object
    check (sentence is null or (jsonb_typeof(sentence)='object' and length(sentence::text)<=500));
  end if;
-end $$;
+end $fn$;
 
 drop function if exists public.shared_joint_vote(text,uuid,text,text,text,text);
 create or replace function public.shared_joint_vote(
  p_case text,p_actor uuid,p_seat text,p_choice text,p_hash text,p_note text default '',p_sentence jsonb default null
-) returns boolean language plpgsql security definer set search_path=public as $$
+) returns boolean language plpgsql security definer set search_path=public as $fn$
 declare panel public.shared_joint_panels%rowtype; prev public.shared_joint_votes%rowtype;
 begin
  if public.request_role() is distinct from 'service_role'
@@ -47,9 +56,11 @@ begin
  insert into public.shared_joint_votes(case_id,seat,actor_id,choice,evidence_hash,private_note,round,sentence)
  values(p_case,p_seat,p_actor,p_choice,p_hash,p_note,panel.round,p_sentence);
  return true;
-end $$;
+end $fn$;
 revoke all on function public.shared_joint_vote(text,uuid,text,text,text,text,jsonb) from public,anon,authenticated;
 grant execute on function public.shared_joint_vote(text,uuid,text,text,text,text,jsonb) to service_role;
+ $sql$;
+end $do$;
 
 create or replace function public.reset_player_career()
 returns boolean language plpgsql security definer
