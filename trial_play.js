@@ -317,17 +317,21 @@ function answerMode(c,t,i,q){
  if(nv.slip&&!w.owned&&q.a.did!==q.a.didnt&&T.unit(t.seed+':slip:'+i+':'+q.id)<nv.slip)return 'slip';
  return 'plain';
 }
+const sideOfKey=k=>k==='did'?'p':k==='didnt'?'d':'m';
 function answerOf(c,t,i,q){
  if(typeof q.a!=='object')return {text:tell(c,t,q.a),side:q.side||'n'};
+ /* v10.9: what was said stays said — the account a witness answered from is kept on the answer (heard.k), so a witness
+  * who later changes their story (or goes back to it) never rewrites what the court already heard */
+ const kept=(t.heard||[]).find(x=>x.w===i&&x.q===q.id&&x.k&&x.k in q.a);if(kept)return {text:tell(c,t,q.a[kept.k]),side:sideOfKey(kept.k),k:kept.k,...(kept.mode?{mode:kept.mode}:{})};
  const mode=answerMode(c,t,i,q);
  if(mode==='vague')return {text:VAGUE[T.hash(t.seed+':v:'+i+':'+q.id)%VAGUE.length],side:'n',mode};
- if(mode==='cover'){const k=wDetail(c,i).covers==='p'?'did':'didnt';return {text:tell(c,t,q.a[k]),side:k==='did'?'p':'d',mode}}
+ if(mode==='cover'){const k=wDetail(c,i).covers==='p'?'did':'didnt';return {text:tell(c,t,q.a[k]),side:k==='did'?'p':'d',mode,k}}
  if(mode==='slip'){const ks=['did','didnt','reason'].filter(k=>k in q.a&&k!==(t.truth in q.a?t.truth:'reason')&&q.a[k]!==q.a[t.truth]);
-  if(ks.length){const k=ks[T.hash(t.seed+':slipk:'+i+':'+q.id)%ks.length];return {text:tell(c,t,q.a[k]),side:k==='did'?'p':k==='didnt'?'d':'m',mode}}}
+  if(ks.length){const k=ks[T.hash(t.seed+':slipk:'+i+':'+q.id)%ks.length];return {text:tell(c,t,q.a[k]),side:sideOfKey(k),mode,k}}}
  let key=t.truth in q.a?t.truth:'reason';
  const w=t.witnesses[i];
  if(w?.flipped&&key!=='reason')key=key==='did'?'didnt':'did';
- return {text:tell(c,t,q.a[key]),side:key==='did'?'p':key==='didnt'?'d':'m'};
+ return {text:tell(c,t,q.a[key]),side:sideOfKey(key),k:key};
 }
 /* Trial dates on the game calendar. A session is dated when it opens; the next one is set two weeks later
  * (more when a delay is granted). Opening a session moves the world calendar forward to that date. */
@@ -551,7 +555,7 @@ function confront(c,t,i,eid){
  else if(o.kind==='revert'){w.flipped=false;text=cw.first&&cw.first!==cw.earlier?`${cw.row?at+'을 보니':'기록을 보니'} 처음에 말씀드린 "${cw.first}"라는 말이 맞습니다. 중간에 말이 흔들렸어요`:'기록을 보니 처음에 말씀드린 게 맞습니다. 중간에 말이 흔들렸어요';label='처음 진술로 돌아온 말'}
  else{const pool=ADMIT[t.truth]||ADMIT.reason;text=(cw.earlier?`"${cw.earlier}"라고 한 건 다 말씀드린 게 아니었습니다. `:'')+pool[T.hash(t.seed+i+eid)%pool.length];label=w.attitude==='fear'?'두려움을 털어놓으며 한 말':'감싸던 것을 털어놓은 말';w.revealed=2;w.owned=true}
  if(strike)t.heard.forEach(h=>{if(h.w===i&&h.issue===d.issue&&!h.text&&(h.side==='p'||h.side==='d')&&h.side!==d.side)h.struck=true});
- t.heard.push({w:i,q:'cf:'+eid,side,issue:d.issue,day:t.day,text,label});
+ t.heard.push({w:i,q:'cf:'+eid,side,issue:d.issue,day:t.day,text,label,...(against?{pressed:true}:{})});
  addLog(t,'증거 대조',`${name}에게 ${P(e.title,'을')} 보여 줌 — "${text}"`);
  remember(w.id,'법정',`${shortName(c)} 재판에서 ${P(e.title,'을')} 보고 "${short(text,30)}"라고 말함`,c.id);
  return `📁 ${name}: "${short(text,44)}"`;
@@ -799,7 +803,7 @@ function askQuestion(c,t,i,qid){
  t.qLeft--;w.askedIds.push(q.id);w.asked=(w.asked||0)+1;w.revealed=T.reveal(w.revealed);
  if(w.attitude==='flip'&&w.asked>=2&&!w.flipped){w.flipped=true;w.flipAt=t.heard.length-1;addLog(t,'번복',`${P(wName(t,i),'이')} 앞서 한 말을 바꾸기 시작했다`)}
  const a=answerOf(c,t,i,q),ready=q.auto?t.ai?.[i+':'+q.id+':'+a.side]:null,said=ready||a.text;
- t.heard.push({w:i,q:q.id,side:a.side,issue:q.issue,day:t.day,...(a.mode&&a.mode!=='plain'?{mode:a.mode}:{}),...(ready?{ai:ready,aiSide:a.side}:{})});
+ t.heard.push({w:i,q:q.id,side:a.side,issue:q.issue,day:t.day,...(a.k?{k:a.k}:{}),...(a.mode&&a.mode!=='plain'?{mode:a.mode}:{}),...(ready?{ai:ready,aiSide:a.side}:{})});
  for(const n of q.next||[])if(!w.opened.includes(n))w.opened.push(n);
  addLog(t,'증언',`${wName(t,i)} — 문: ${tell(c,t,q.q)} / 답: "${said}"`);
  const iss=issuesOf(c).find(v=>v.id===q.issue);
@@ -933,7 +937,7 @@ function act(kind,id,choice){
    if(card.live&&card.otype==='lead'&&choice==='accept'&&w){w.objections??=[];w.objections.push({id:card.id,ask:xt.ask,answer:null,by:xt.askBy,kind:OBJ[card.otype],kept:false,day:t.day})}
    if(xt.answer&&w&&!(plain&&choice!=='accept')){w.objections??=[];w.objections.push({id:card.id,ask:xt.ask,answer:xt.answer,by:xt.askBy,kind:OBJ[card.otype],kept:choice!=='accept',day:t.day})}
    if(plain&&choice!=='accept'&&w&&card.q&&!w.askedIds.includes(card.q)){const q=questionsOf(c,t,card.w).find(v=>v.id===card.q);
-    if(q){w.askedIds.push(q.id);const a=answerOf(c,t,card.w,q);t.heard.push({w:card.w,q:q.id,side:a.side,issue:q.issue,day:t.day});for(const n of q.next||[])if(!w.opened.includes(n))w.opened.push(n);
+    if(q){w.askedIds.push(q.id);const a=answerOf(c,t,card.w,q);t.heard.push({w:card.w,q:q.id,side:a.side,issue:q.issue,day:t.day,...(a.k?{k:a.k}:{}),...(a.mode&&a.mode!=='plain'?{mode:a.mode}:{})});for(const n of q.next||[])if(!w.opened.includes(n))w.opened.push(n);
      addLog(t,'증언',`${wn} — 문: ${tell(c,t,q.q)} / 답: "${a.text}"`)}}
    if(choice==='accept'){
     if(plain){if(card.q&&w){w.blocked??=[];if(!w.blocked.includes(card.q))w.blocked.push(card.q)}say=`✋ 이의를 받아들였어요 · 그 답은 판단에서 빠졌고, 증인 ${wn}에게 그 질문은 더 할 수 없어요`}

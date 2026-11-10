@@ -101,15 +101,18 @@ try{
     if(h.mode==='cover'){covers++;const q=VP.qById(c,t,h.w,h.q),k=cur.witnesses[h.w].covers==='p'?'did':'didnt';if(!q||typeof q.a!=='object'||!(k in q.a))bad.push(sid+': a cover answer not borrowed from the sheet')}}
    // show a contradicting exhibit to a shielding witness until they own up; earlier words stay as they were
    t.witnesses.forEach((w,i)=>{if(w.attitude!=='protect'||!t.heard.some(h=>h.w===i&&h.mode==='cover'))return;
-    for(const e of t.evidence){if(w.owned)break;const n=t.heard.length;VP.confront?.(c,t,i,e.id);const h=t.heard[n];if(h){bt.cf++;if(/바꾸지 않은/.test(h.label||''))bt.hold++}}
+    for(const e of t.evidence){if(w.owned)break;const n=t.heard.length;VP.confront?.(c,t,i,e.id);}
     if(w.owned){owned++;const q=VP.questions(c,t,i).find(v=>!w.askedIds.includes(v.id)&&typeof v.a==='object');if(q){VP.ask(c,t,i,q.id);const h=t.heard[t.heard.length-1];if(h.mode==='cover')bad.push(sid+': still lying after owning up')}}});
+   // every witness, shown every record: how often do they stand firm when it contradicts them?
+   t.qLeft=99;t.witnesses.forEach((w,i)=>{for(const e of t.evidence){if(w.owned)break;const n=t.heard.length;VP.confront?.(c,t,i,e.id);const h=t.heard[n];if(h?.pressed){bt.cf++;if(/바꾸지 않은/.test(h.label||''))bt.hold++}}});
    for(const x of before){const now=VP.citables(c,t).find(y=>y.key==='h:'+x.j);if(now&&x.txt&&now.text!==x.txt)bad.push(sid+': an answer changed after it was given')}
    st.referred=true}
   return {bad:[...new Set(bad)].slice(0,10),modes,owned,covers,byTruth}});
  assert.deepEqual(C2.bad,[],'person-driven testimony');
  assert.ok((C2.modes.cover||0)>0&&(C2.modes.vague||0)>0,'shielding and frightened witnesses both appear: '+JSON.stringify(C2.modes));
  /* v10.9: a witness's manner is no answer key — how often witnesses hedge, and how often they stand firm when shown
-  * a record, must look the same whichever way the case really went */
+  * a record that contradicts what they said, must look the same whichever way the case really went (a record that
+  * agrees with them moves nobody, in any world) */
  const share=x=>Object.fromEntries(Object.entries(C2.byTruth).map(([k,v])=>[k,+(x(v)).toFixed(3)]));
  const vg=share(v=>v.vague/Math.max(1,v.n)),hd=share(v=>v.hold/Math.max(1,v.cf));
  const spread=o=>Math.max(...Object.values(o))-Math.min(...Object.values(o));
