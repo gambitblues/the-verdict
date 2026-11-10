@@ -112,7 +112,7 @@ window.VerdictMedia={outlets:OUTLETS,articles,comments,newsFeed,socialFeed,setNe
 (()=>{
 const esc=x=>h(String(x??''));
 const tabletBase=tabletInner,baseShell=shell,priorClick=clicker;
-const APP=[['news','📰','기사'],['messages','💬','메시지'],['archives','⚖','판결 기록'],['career','🎖','나의 커리어'],['notes','📝','메모'],];
+const APP=[['news','📰','기사'],['messages','💬','메시지'],['archives','⚖','판결 기록'],['career','🎖','나의 커리어'],];   // 2026-11-10: memo tab removed (planner)
 function clockData(){
  const d=new Date(),sharedDay=window.VERDICT_CONFIG?.p4SharedWorld===true?Number(window.VerdictSharedWorld?.clock?.game_day):NaN;
  const isSharedClock=Number.isSafeInteger(sharedDay)&&sharedDay>=0;
@@ -176,15 +176,13 @@ function hearingCard(c){
 }
 home=function(){
  if(!S.name)return '<div class="panel">판사 프로필을 생성해 커리어를 시작하세요.</div>';
- const t=clockData(),cases=openCases().slice(0,5),articles=(window.VerdictMedia?.articles()||[]).slice().sort((a,b)=>(Number(b.day)||0)-(Number(a.day)||0)).slice(0,4);
+ const t=clockData(),cases=openCases().slice(0,5);   // 2026-11-10: the news lives in the tablet only (planner)
  const judgeStyle=window.VerdictJudgeStyle?.describe?.(S)||'판결은 기록으로 말합니다.';
  return '<div class="tv-home tv-chambers"><section class="tv-welcome">'+(window.VerdictChambersArt?.scene?.()||'')+'<div><span class="eyebrow">THE VERDICT · JUDICIAL CAREER <span class="ver-badge">v'+esc(window.VERDICT_VERSION||'')+' · '+esc(window.VERDICT_RELEASED||'')+'</span></span><h2>'+esc(judgeStyle)+'</h2><p>'+esc(S.name)+' 판사 · '+esc(S.post)+' · 진행 중 '+openCases().length+'건</p></div><div class="tv-judge-photo">'+avatar('self')+'</div></section>'+
  '<section class="tv-clock tv-office-clock"><div class="tv-clockface"><small>집무실 시계</small><strong class="tv-clock-local">'+esc(t.time)+'</strong><span>'+esc(t.weekday)+'</span></div><div class="tv-calendar"><small>'+(t.sharedClock?'공유 세계 달력':'재판 일정표')+'</small><strong>'+esc(t.gameDate)+'</strong><span>공판이 열릴 때 흘러요</span></div><div><small>다음 배당</small><strong class="tv-clock-next">'+esc(t.next)+'</strong><span>10:00–22:00 · 매시 정각</span></div></section>'+
  priority()+
  '<section class="tv-open-cases"><div class="row between"><h3>⚖ 진행 중인 재판</h3><button class="btn ghost mini" data-action="tab" data-tab="courtList">전체 사건</button></div>'+
- (cases.length?cases.map(hearingCard).join(''):'<p class="muted">배당된 사건이 없습니다.</p>')+'</section>'+
- '<section class="tv-headlines"><div class="row between"><h3>📰 오늘의 기사</h3><button class="btn ghost mini" data-action="tablet" data-sub="news">기사 더보기</button></div>'+
- (articles.length?articles.map(a=>{const p=window.VerdictMedia?.previewArticle?.(a)||{headline:a.title,summary:a.body};return '<article class="tv-headline"><small>'+esc(a.outlet)+'</small><b class="tv-news-title">'+esc(p.headline)+'</b><p class="tv-news-summary">'+esc(p.summary)+'</p></article>'}).join(''):'<p class="muted small">사건이 발생하면 언론 보도가 기록됩니다.</p>')+'</section></div>';
+ (cases.length?cases.map(hearingCard).join(''):'<p class="muted">배당된 사건이 없습니다.</p>')+'</section></div>';
 };
 function ranking(){
  const ids=(S.legalWorld?.people||[]).filter(id=>NPC[id]?.legalCareer);
@@ -201,6 +199,7 @@ function ranking(){
 }
 tabletInner=function(){
  if(ui.tabletTab==='rank')ui.tabletTab='career';
+ if(ui.tabletTab==='notes')ui.tabletTab='news';
   if(ui.tabletTab==='social')ui.tabletTab='news';
  if(ui.tabletTab==='career')return careerChronicle();
  if(ui.tabletTab==='news')return '<h2>📰 법조·사회 뉴스 · 최신순</h2><p class="muted small">가상 언론사 20곳의 사건별 보도. 각 기사는 게임 내 사건에 기반합니다.</p>'+(window.VerdictMedia?.newsFeed(70)||'');
