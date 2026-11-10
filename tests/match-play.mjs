@@ -85,6 +85,25 @@ try{
   return out});
  assert.deepEqual(many,[],'every sheet case builds a normal trial');
  console.log(`  ✓ ${reg.all} sheet cases × 3 seeds build normal trials (witness answers, evidence, orders)`);
+ // ---- C2 v10.7: witnesses answer as the person they are; facts never invented, what was said never changes ----
+ const C2=await page.evaluate(()=>{const VP=VerdictTrialPlay,bad=[],modes={};let owned=0,covers=0;
+  for(const sid of Object.keys(VerdictSheets.cases))for(let k=0;k<6;k++){S.rng=(S.rng||1)+7;const cand=CasePackEngine.pool(S).find(x=>x.a.id===sid);if(!cand)continue;
+   const c=createGeneratedCase(cand);S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};const st=S.cases[c.id],t=VP.ensure(c,st),cur=VP.curOf(c);
+   VP.openSession(c,st);t.qLeft=40;
+   t.witnesses.forEach((w,i)=>{for(const q of VP.questions(c,t,i).slice(0,3))VP.ask(c,t,i,q.id)});
+   const before=t.heard.map((h,j)=>({j,txt:(()=>{if(h.text)return h.text;const q=VP.qById(c,t,h.w,h.q);return q?VP.citables(c,t).find(x=>x.key==='h:'+j)?.text:''})()}));
+   for(const h of t.heard){modes[h.mode||'plain']=(modes[h.mode||'plain']||0)+1;
+    if(h.mode==='cover'){covers++;const q=VP.qById(c,t,h.w,h.q),k=cur.witnesses[h.w].covers==='p'?'did':'didnt';if(!q||typeof q.a!=='object'||!(k in q.a))bad.push(sid+': a cover answer not borrowed from the sheet')}}
+   // show a contradicting exhibit to a shielding witness until they own up; earlier words stay as they were
+   t.witnesses.forEach((w,i)=>{if(w.attitude!=='protect'||!t.heard.some(h=>h.w===i&&h.mode==='cover'))return;
+    for(const e of t.evidence){if(w.owned)break;VP.confront?.(c,t,i,e.id)}
+    if(w.owned){owned++;const q=VP.questions(c,t,i).find(v=>!w.askedIds.includes(v.id)&&typeof v.a==='object');if(q){VP.ask(c,t,i,q.id);const h=t.heard[t.heard.length-1];if(h.mode==='cover')bad.push(sid+': still lying after owning up')}}});
+   for(const x of before){const now=VP.citables(c,t).find(y=>y.key==='h:'+x.j);if(now&&x.txt&&now.text!==x.txt)bad.push(sid+': an answer changed after it was given')}
+   st.referred=true}
+  return {bad:[...new Set(bad)].slice(0,10),modes,owned,covers}});
+ assert.deepEqual(C2.bad,[],'person-driven testimony');
+ assert.ok((C2.modes.cover||0)>0&&(C2.modes.vague||0)>0,'shielding and frightened witnesses both appear: '+JSON.stringify(C2.modes));
+ console.log(`  ✓ witnesses answer as the person they are · ${JSON.stringify(C2.modes)} · owned up after evidence ${C2.owned}`);
  // ---- D ----
  const d=await page.evaluate(()=>{const cand=CasePackEngine.pool(S).find(x=>x.a.id==='adv-cr-010');const c=createGeneratedCase(cand);S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};
   const st=S.cases[c.id];const t=VerdictTrialPlay.ensure(c,st);t.match={format:'verdict-match/v1',truth:t.truth,log:[],records:{},witnesses:{}};ui.tab='court';ui.caseId=c.id;render();

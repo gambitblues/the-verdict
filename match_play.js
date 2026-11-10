@@ -74,11 +74,20 @@ function toCurated(s){
  const evidence=ev.map((r,i)=>({title:r.title,kind:r.kind,by:r.by,when:'',excerpt:content(r),
   shows:`${r.kind} — 법정에 처음 나온 자료`,caveat:devOf(r)?.note||trapFor(r)||'이 자료 하나만으로는 단정하기 어렵다',how:r.how,flaw:flawOf(r),
   issue:i===0?'i1':i===1?'i1':'i2',side:sideOfBy(r.by),check:'증인의 말과 시각·내용이 맞는지 맞춰 보세요.'}));
+ const sideOfWho=w=>/^(A|피고|변호)/.test(w||'')?(cr?'d':(ac==='A'?'p':'d')):/^(B|검찰|원고)/.test(w||'')?'p':sideOfBy(w);
+ /* without covers, the stake says whose side a witness is on (the victim's friend shields the victim's story) */
+ const nameOf=k=>String(person(s,k)?.name||'').replace(/\{|\}/g,'');
+ const leansTo=st=>{st=String(st||'');const a=nameOf('A'),b=nameOf('B');
+  if(/수사에 협조|검찰에 협조/.test(st))return 'p';
+  if(/피해자|고소인|원고/.test(st)||st.includes('{B')||(b.length>1&&st.includes(b)))return sideOfWho('B');
+  if(/피고인|피고|가해/.test(st)||st.includes('{A')||(a.length>1&&st.includes(a)))return sideOfWho('A');return null};
  const witnesses=W.map(p=>{
   const lines=t=>said(s.worlds[t].saw[p.key]);
   const stake=p.stake&&!/^없음/.test(p.stake)?said(p.stake)[0]:'사건 사람들과 따로 아는 사이는 아닙니다.';
   const opening=per(t=>lines(t)[0]);
-  return {role:p.role,...(p.separate?{separate:p.separate}:{}),story:p.job&&p.job!==p.role?p.job:'',stake:p.stake||'',says:typeof opening==='string'?opening:'제가 직접 본 것만 말씀드리겠습니다.',
+  /* v10.7: whom this person would shield (sheet people[].leans 'A'/'B'/null — the field the match engine uses; else read from the stake; none: no shielding) */
+  const covers=p.leans!==undefined?(p.leans==='A'||p.leans==='B'?sideOfWho(p.leans):null):leansTo(p.stake);
+  return {role:p.role,...(covers?{covers}:{}),...(p.separate?{separate:p.separate}:{}),story:p.job&&p.job!==p.role?p.job:'',stake:p.stake||'',says:typeof opening==='string'?opening:'제가 직접 본 것만 말씀드리겠습니다.',
    /* auto:true — questions fitted to the witness's role, with answers assembled from the sheet's notes; these are the
     * only answers the AI may re-voice (the sheet's own questions and the written cases are already in people's words) */
    q:(([q1,q2,q3])=>[{id:'q1',q:q1,issue:'i1',auto:true,a:per(t=>halfOf(lines(t),true))},
@@ -93,7 +102,6 @@ function toCurated(s){
  /* v8.3: the sheet's own orders (what each is meant to check, what comes back in each world) take over the
   * automatic order of the same record; records without one keep the automatic order */
  const nodeOf={};more.forEach((r,k)=>{nodeOf[r.id]='s'+(k+1)});
- const sideOfWho=w=>/^(A|피고|변호)/.test(w||'')?(cr?'d':(ac==='A'?'p':'d')):/^(B|검찰|원고)/.test(w||'')?'p':sideOfBy(w);
  for(const o of s.orders||[]){const f=followUps.find(x=>x.id===nodeOf[o.record]);if(!f)continue;
   if(o.ask)f.ask=o.ask;if(o.issue)f.issue=o.issue;if(o.to)f.to=sideOfWho(o.to);if(o.day)f.day=o.day;
   if(o.result){f.result=o.result;f.have=per(t=>o.result[t]!=='none')}
