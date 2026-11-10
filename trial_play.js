@@ -1581,20 +1581,23 @@ function tabsFor(c,st){
  * not yet questioned. ui.t4ev / ui.t4w keep the item's own index, so the rest of the screen is unaffected. */
 const isNewEv=e=>!!(e.follow||e.late)&&!e.decision;
 const isNewW=w=>!!w.follow&&!(w.askedIds||[]).length;
+const isNewOf=kind=>kind==='evidence'?isNewEv:isNewW;
+/* v11.0.2: a fixed order — what arrived at the latest hearing first, items of the same hearing in the order they came,
+ * the first-day record last. Deciding on an item (or asking a new witness) never moves it: before, a new exhibit
+ * jumped from the front to the end once it was decided, so two new ones ended up at opposite ends. */
+const arrivedOf=x=>x.follow||x.late||x.filedEvent?(Number(x.arrivedDay)||1):0;
 function orderOf(kind,items){
- const isNew=kind==='evidence'?isNewEv:isNewW,idx=items.map((_,k)=>k);
- const fresh=idx.filter(k=>isNew(items[k])).sort((x,y)=>(items[y].arrivedDay||0)-(items[x].arrivedDay||0)||y-x);
- return [...fresh,...idx.filter(k=>!fresh.includes(k))];
+ return items.map((_,k)=>k).sort((x,y)=>arrivedOf(items[y])-arrivedOf(items[x])||x-y);
 }
 function pager(kind,items,render,label){
  if(!items.length)return `<p class="muted">${label}이(가) 없습니다.</p>`;
  const key=kind==='evidence'?'t4ev':'t4w',ord=orderOf(kind,items);
- let cur=ui[key];if(cur==null||cur<0||cur>=items.length)cur=ord[0];ui[key]=cur;const pos=ord.indexOf(cur);
+ let cur=ui[key];if(cur==null||cur<0||cur>=items.length)cur=ord.find(k=>isNewOf(kind)(items[k]))??ord[0];ui[key]=cur;const pos=ord.indexOf(cur);
  const isNew=kind==='evidence'?isNewEv:isNewW;
  const dots=ord.map((k,n)=>`<button class="t4-dot ${k===cur?'on':''} ${isNew(items[k])?'new':''}" data-action="t4page" data-kind="${kind}" data-i="${k}" aria-label="${n+1}번째${isNew(items[k])?' (새로 나옴)':''}"></button>`).join('');
  const it=items[cur],badge=isNew(it)?`<div class="t4-newflag">🆕 ${kind==='evidence'?(it.filedEvent?'당사자가 추가 제출한 증거':it.late?'새로 제출된 증거':'재판장 주문으로 들어온 증거'):'재판장 주문으로 새로 나온 증인'}${it.arrivedDay?` · ${esc(String(it.arrivedDay))}번째 기일`:''} — 먼저 확인하세요</div>`:'';
  const nNew=ord.filter(k=>isNew(items[k])).length;
- return `<div class="t4-pager" data-kind="${kind}" data-n="${items.length}">${nNew&&!isNew(it)?`<button class="t4-newjump" data-action="t4page" data-kind="${kind}" data-i="${ord[0]}">🆕 새로 나온 ${kind==='evidence'?'증거':'증인'} ${nNew}건 먼저 보기</button>`:''}${badge}${render(it)}
+ return `<div class="t4-pager" data-kind="${kind}" data-n="${items.length}">${nNew&&!isNew(it)?`<button class="t4-newjump" data-action="t4page" data-kind="${kind}" data-i="${ord.find(k=>isNew(items[k]))}">🆕 새로 나온 ${kind==='evidence'?'증거':'증인'} ${nNew}건 먼저 보기</button>`:''}${badge}${render(it)}
  <div class="t4-pagenav"><button class="t4-chip" data-action="t4page" data-kind="${kind}" data-i="${ord[pos-1]??cur}" ${pos<=0?'disabled':''}>‹ 이전</button><div class="t4-dots">${dots}<span>${pos+1} / ${items.length}</span></div><button class="t4-chip" data-action="t4page" data-kind="${kind}" data-i="${ord[pos+1]??cur}" ${pos>=items.length-1?'disabled':''}>다음 ›</button></div></div>`;
 }
 /* Today's checklist: what to do in this session, in order. */

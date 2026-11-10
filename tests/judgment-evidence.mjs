@@ -41,6 +41,16 @@ try{
  assert.match(R.ordered[0],/재판장의 .+ 주문에 따라 (검찰|변호인)이 \d+회 공판에 낸 .+(이다|다)\. 여기에는 ".+"(이)?라는/,R.ordered[0]);
  assert.ok(R.written.every(l=>/에 따르면 .+\(.+(처음부터|추가로|주문에 따라).+\)\.$/.test(l)),'written cases: own wording + where it came from: '+R.written[0]);
  for(const l of [...R.sheet,...R.ordered])assert.ok(!/[음함됨임]"라는/.test(l),'이라는 after a final consonant: '+l);
+ /* v11.0.2: two exhibits arriving at the same hearing stay side by side at the front, deciding one moves nothing */
+ const O=await page.evaluate(()=>{const TP=VerdictTrialPlay;const cand=CasePackEngine.pool(S).find(x=>x.a.id==='adv-cr-030');const c=createGeneratedCase(cand);
+  S.cases[c.id]??={phase:0,actions:[],clues:[],flags:[],verdict:null};const st=S.cases[c.id],t=TP.ensure(c,st);const n0=t.evidence.length;
+  for(const f of (TP.curOf(c).followUps||[]).filter(x=>x.type==='records'&&x.evidence).slice(0,2))t.evidence.push({id:'e'+t.evidence.length,title:TP.tell(c,t,f.evidence.title),follow:f.id,arrivedDay:2,ordered:true,decision:null,detail:{kind:f.evidence.kind,by:f.evidence.by,excerpt:'',shows:''}});
+  ui.tab='court';ui.caseId=c.id;ui.t4ev=null;render();document.querySelector('[data-action="t4tab"][data-tab="evidence"]')?.click();
+  const dots=()=>[...document.querySelectorAll('.t4-pager[data-kind="evidence"] .t4-dot')].map(b=>+b.dataset.i);
+  const before=dots(),first=+document.querySelector('.t4-pager[data-kind="evidence"] .t4-dot.on')?.dataset.i;t.evidence[n0].decision='use';render();const after=dots();return {n0,before,after,first}});
+ assert.deepEqual(O.before.slice(0,2),[O.n0,O.n0+1],'the two new exhibits first, in the order they came: '+O.before);
+ assert.deepEqual(O.after,O.before,'deciding one moves nothing');assert.equal(O.first,O.n0,'opens on the first new exhibit');
+ console.log('  ✓ evidence order: '+O.before.join(',')+' (unchanged after a decision)');
  assert.deepEqual(errs,[],errs.join('; '));
  console.log('  e.g. '+cctv);if(R.ordered[0])console.log('  e.g. '+R.ordered[0]);console.log('  e.g. '+R.written[0]);
  console.log('PASS: judgment exhibits say what each one is and what it records');
