@@ -211,16 +211,16 @@ try{
  couplesT.push({user_id:ida,spouse:idb,sex:'남',age:35,since},{user_id:idb,spouse:ida,sex:'여',age:35,since});
  for(const p of [a,b])await p.evaluate(()=>VerdictColleagues.sync());
  const cp=p=>p.evaluate(()=>{const sp=VerdictColleagues.people()[0],kid=NPC.couple_child_0;
-  return {age:age(),sex:NPC.self.gender,spouse:sp&&NPC[sp.id].spouseOfPlayer,role:sp&&NPC[sp.id].role,kid:kid?.name,kids:S.couple.kids,msg:S.msgs.some(m=>/태어났어요/.test(m.body)),list:VerdictColleagues.spouseVerdicts().length}});
+  return {age:age(),spouseAge:sp&&year()-NPC[sp.id].bornYear,sex:NPC.self.gender,spouse:sp&&NPC[sp.id].spouseOfPlayer,role:sp&&NPC[sp.id].role,kid:kid?.name,kids:S.couple.kids,msg:S.msgs.some(m=>/태어났어요/.test(m.body)),list:VerdictColleagues.spouseVerdicts().length}});
  const ca=await cp(a),cb=await cp(b);
- assert.equal(ca.age,35);assert.equal(cb.age,35);assert.equal(ca.sex,'남');assert.equal(cb.sex,'여');
+ assert.equal(ca.age,35);assert.equal(cb.age,35);assert.equal(ca.spouseAge,35,'the spouse on my card is 35 too');assert.equal(cb.spouseAge,35);assert.equal(ca.sex,'남');assert.equal(cb.sex,'여');
  assert.ok(ca.spouse&&cb.spouse&&/^배우자/.test(ca.role),'the spouse comes first among the court colleagues: '+ca.role);
  assert.ok(ca.kid&&ca.kid===cb.kid,'one child, the same name in both games: '+ca.kid+' / '+cb.kid);assert.ok(ca.msg&&cb.msg,'the spouse tells of the birth');
  assert.ok(ca.list>0,'my spouse\'s verdicts are on their card');
  await a.evaluate(()=>VerdictColleagues.sync());assert.equal((await cp(a)).kids,1,'no second child before its time');
  await a.evaluate(()=>{const sp=VerdictColleagues.people()[0];popupNPC(sp.id)});
  assert.match(await a.locator('#modal-root').innerText(),/배우자 · 같은 법원 판사[\s\S]*판결 기록 \d+건/);
- await a.screenshot({path:'qa-visuals/couple-card-'+W+'.png'});
+ await a.screenshot({path:'qa-visuals/couple-card-'+W+'.png'});console.log('    card: '+(await a.locator('#modal-root').innerText()).replace(/\s+/g,' ').slice(0,700));
  console.log(`  ✓ couple of judges: 35 years old, spouse first, ${ca.list} verdicts on the card, child ${ca.kid} in both games`);
  console.log('PASS: colleague court (separate-witness news, colleague judges, no shared cases, verdict news)');
 }finally{await browser.close();server.close()}

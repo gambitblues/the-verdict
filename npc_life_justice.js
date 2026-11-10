@@ -149,7 +149,7 @@ window.LifeJustice=(()=>{
   // Imprisoned NPCs do not participate in ordinary job switching or marriage event pools.
   // Employment/financial progression stays tied to a dated history.
   for(const p of Object.values(NPC)){
-   if(!p||!p.biographyVersion||!isFree(p,w))continue;
+   if(!p||!p.biographyVersion||!isFree(p,w)||p.coupleOwned)continue;
    if(p.financialHistory?.at(-1)?.year!==yr)p.financialHistory.push({year:yr,wealth:p.wealth||0,reason:'연도별 재산 상태 기록'});
    if(p.jobHistory?.at(-1)?.job!==p.career)p.jobHistory.push({year:yr,job:p.career||p.role,reason:'직업 상태 변경'});
    if(p.life?.marital&&p.maritalStatus!==p.life.marital){p.maritalStatus=p.life.marital;p.relationshipHistory.push({year:yr,type:'혼인 상태 변화',detail:p.life.marital});}

@@ -202,6 +202,13 @@ function applyCouple(rows,me){
  if(j){const id=colleagueNpc(mine.spouse,j);if(id){const p=NPC[id];
   p.role='배우자 · '+roleOf(j);p.bond='배우자 · 같은 법원 판사';p.spouseOfPlayer=true;p.maritalStatus='기혼';p.partnerId='self';
   if(other?.sex)p.gender=other.sex;if(NPC.self)NPC.self.partnerId=id;
+  /* the spouse was first made as a colleague judge of random age: they are as old as the age set for them (040), from
+   * the day the couple was set, and age with my calendar after that (v10.10.1 — the card showed 66) */
+  /* a judge like me: law school, a judge's pay and home, our own children — not the random profile of a made-up colleague */
+  Object.assign(p,{coupleOwned:true,career:'판사',degree:'법학전문대학원 졸업',educationField:'법학',residence:'자가 아파트',children:S.couple.kids||0});
+  p.wealth=Math.max(Number(p.wealth)||0,60);p.jobHistory=[{year:Number(String(since).slice(0,4))||2027,job:'판사',reason:'같은 법원 판사'}];
+  if(p.life)Object.assign(p.life,{marital:'기혼',career:'판사',partner:'self',children:S.couple.kids||0});
+  if(other&&p.coupleAgeSince!==since){p.bornYear=(typeof year==='function'?year():2027)-Number(other.age);p.ageAtStart=Number(other.age);p.coupleAgeSince=since;changed=true}
   if((S.relations[id]??0)<80){S.relations[id]=85;changed=true}
   if(!S.couple.told){S.couple.told=true;changed=true;
    if(typeof log==='function')log('가족',`${j.judge_name} 판사와 부부`,'배우자와 같은 법원에서 일한다. 서로의 판결 소식을 가장 먼저 듣는다.');}
@@ -218,6 +225,8 @@ function kidsTick(spouseId,j){
   const id='couple_child_'+k,name=VN?.make?VN.make({seed:'couple:'+pair+':'+k,gender:g,bornYear:2028,surname:sur}):sur+'아기';   // the name must not depend on either game's own calendar
   NPC[id]={id,name,bornYear:by,gender:g,role:'자녀',career:'아기',alive:true,maritalStatus:'미혼',parentIds:['self',spouseId],familyIds:[],relationships:{},origin:'family',bond:'우리 아이'};
   if(S.npcDB)S.npcDB[id]=NPC[id];S.relations[id]=95;
+  const sp=NPC[spouseId];if(sp){sp.relationships=sp.relationships&&typeof sp.relationships==='object'&&!Array.isArray(sp.relationships)?sp.relationships:{};sp.relationships[id]={kind:'child'};
+   sp.familyIds=[...new Set([...(sp.familyIds||[]),id])];NPC[id].relationships[spouseId]={kind:'parent'};NPC[id].familyIds.push(spouseId);sp.children=c.kids}
   if(typeof message==='function')message(spouseId,k?`둘째 ${name}${P(name,'이').slice(name.length)} 건강하게 태어났어요. 오늘은 일찍 들어와요.`:`우리 아이 ${name}${P(name,'이').slice(name.length)} 태어났어요. 고생 많았어요, 우리.`);
   if(typeof log==='function')log('가족',`${name} 출생`,k?'둘째 아이가 태어났다.':'첫아이가 태어났다.');
  }
