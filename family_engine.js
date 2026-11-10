@@ -70,7 +70,7 @@ window.FamilyEngine=(()=>{
   // the very old pass away over time, unless they are part of a trial that is still running
   const open=new Set();for(const c of S.generatedCases||[])if(!S.cases?.[c.id]?.verdict)for(const id of [...(c.who||[]),...(c.side||[])])open.add(id);
   for(const [pid,p] of Object.entries(NPC)){if(!p?.bornYear||p.alive===false||pid==='self'||open.has(pid))continue;const a=year-p.bornYear;if(a>=88&&random()<Math.min(.9,.08+(a-88)*.04)){p.alive=false;p.deathYear=year;trace(S,p,'사망','고령에 따른 사망',year,week)}}
-  const pool=Object.values(NPC).filter(p=>p?.id&&p.alive!==false&&p.bornYear&&year-p.bornYear>=18&&year-p.bornYear<85);
+  const pool=Object.values(NPC).filter(p=>p?.id&&p.alive!==false&&!p.coupleOwned&&p.bornYear&&year-p.bornYear>=18&&year-p.bornYear<85);   // coupleOwned: a player spouse (colleague_court) lives their own life
   for(let i=0;i<Math.min(5,pool.length);i++){
    const p=pool[Math.floor(random()*pool.length)];if(p.lastFamilyYear===year)continue;p.lastFamilyYear=year;ensure(S,NPC,p.id,year);
    const a=year-p.bornYear;if(a>=78&&random()<Math.min(.8,.025+(a-78)*.028)){p.alive=false;p.deathYear=year;trace(S,p,'사망','고령에 따른 사망',year,week);continue;}
