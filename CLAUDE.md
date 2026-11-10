@@ -106,4 +106,5 @@ ln -sfn "$(npm root -g)" node_modules && node tests/browser-smoke.mjs; node test
 - v11.0.0(main 배포): `career_life.js`(문자 생성 socialTick·법관 성향 judgeProfile(S.judgeProfile 캐시)·5년 회고 S.retros·판결 뒤 이야기 afterEvents·쟁점 태그 tagsOf/echo·인물카드 '인연'), 저장 때 게임 1주 1번. 문자는 `world_feed.js` 사람별 대화(contacts/conversation, `ui.msgWith`, `S.msgSeen`, 일상 문자 kind 'social' + thread.choices), `message()`에 at. 자녀는 `colleague_court.js` familyPlan(pair)·kidsTick(게임 달력 day0=2027-03-01). 사건 화면 `issueMemo`(trial_play, 한 줄 소개 아래). 쟁점 공급 `issueWeight`(×1.5, 판결 5건부터) → `game_hearings.js` offerPair.
 - v11.0.1: 판결문 증거 문장 `evLine`(trial_play) — citables의 `from`(누가 언제 낸 어떤 자료)·`says`(시트 `match_play` says: 세계별 기록 한 줄 + 찍혀/적혀/녹음돼 있다). 집필 사건은 shows + (출처).
 - v11.0.2: 증거·증인 페이지 순서 `orderOf`는 고정(최근 기일 도착 먼저·같은 기일은 도착순·첫날 자료 뒤), 결정해도 자리 안 바뀜.
+- v11.0.3: `ui.msgWith`는 태블릿 앱을 누르거나 다른 화면으로 가면 비움(world_feed clicker·changeTab 감쌈) → 메시지는 늘 목록부터.
 - 다음 후보 아이디어: 기자와의 관계를 문자·인터뷰 외 이벤트로 확장.

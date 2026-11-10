@@ -81,6 +81,14 @@ try{
  assert.match(card,/🤝 인연[\s\S]*법원 동기/);assert.match(card,/문자 대화 보기/);
  await page.evaluate(()=>{const b=[...document.querySelectorAll('#modal-root [data-action="wfwith"]')][0];b.click()});
  assert.equal(await page.evaluate(()=>[ui.tab,ui.tabletTab,ui.msgWith,!!ui.modal].join()),'tablet,messages,hyun,false','the card opens the conversation');
+ // v11.0.3: reply inside the conversation, then tap 메시지 again → the list of people (not the old conversation)
+ const back=await page.evaluate(()=>{VerdictWorld.addSocial({from:'hyun',key:'back-test',text:'오늘 저녁 어때?',choices:[['a','좋아','그래 7시에 보자',{rel:1}],['b','다음에','알았어',{}]]});ui.msgWith='hyun';render();
+  document.querySelector('[data-action="wfreply"]')?.click();const stay=[ui.tabletTab,ui.msgWith,!!document.querySelector('.wf-convo')].join();
+  document.querySelector('[data-action="tablet"][data-sub="messages"]')?.click();const list=document.querySelectorAll('.wf-contact').length;
+  document.querySelector('[data-action="wfwith"][data-id="hyun"]')?.click();changeTab('home');changeTab('tablet');ui.tabletTab='messages';render();
+  return {stay,list,again:[ui.msgWith,document.querySelectorAll('.wf-contact').length>0].join()}});
+ assert.equal(back.stay,'messages,hyun,true','after a reply the conversation stays on screen');assert.ok(back.list>=1,'tapping 메시지 shows the list again');
+ assert.equal(back.again,',true','leaving the tablet and coming back shows the list');
  console.log(`  ✓ B texts: ${soc.length} in two game years (≤2 a month, ≥45 days per person), reply ok, ${V.n} conversations, card → conversation`);
 
  /* D: five years, retro once; after-verdict story only with real events */
