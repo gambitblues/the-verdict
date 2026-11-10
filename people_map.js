@@ -11,19 +11,23 @@ const trust=id=>S.relations?.[id]??30;
 const isCrim=c=>c.kind==='criminal';
 const short=c=>String(c.name||'').split(' · ')[0];
 
-/* Cases I took: a trial was opened and the case was not handed to another bench. */
-function myCases(){return CASES.filter(c=>{const st=S.cases[c.id];return st?.trial4&&!st.referred})
- .sort((a,b)=>(!!S.cases[a.id].verdict-!!S.cases[b.id].verdict)||(b.week-a.week))}
+/* Cases I took: a trial was opened and the case was not handed to another bench.
+ * 2026-11-10 (planner: no endless scrolling): every case in progress, plus the 20 most recent verdicts. */
+const RECENT_JUDGED=20;
+function myCases(){const all=CASES.filter(c=>{const st=S.cases[c.id];return st?.trial4&&!st.referred})
+ .sort((a,b)=>(!!S.cases[a.id].verdict-!!S.cases[b.id].verdict)||(b.week-a.week));
+ const open=all.filter(c=>!S.cases[c.id].verdict),done=all.filter(c=>S.cases[c.id].verdict).slice(0,RECENT_JUDGED);return [...open,...done]}
 
 /* Everyone I have met, grouped. Each entry: {id, name, role, trust, act} — act is the click attributes. */
 function circles(){
  const seen=new Set(),g={court:[],bar:[],case:[],press:[]};
- const add=(key,id,role,caseName)=>{if(!id||!NPC[id]||seen.has(id))return;seen.add(id);
+ // people who have died leave the map (their cards stay reachable from the cases they were in)
+ const add=(key,id,role,caseName)=>{if(!id||!NPC[id]||seen.has(id)||NPC[id].alive===false)return;seen.add(id);
   g[key].push({id,name:NPC[id].name,role,caseName,trust:trust(id),act:`data-action="npc" data-id="${esc(id)}"`})};
  for(const id of ['hyun','senior'])add('court',id,NPC[id]?.role||'법원');
  const b=window.VerdictV6?.bench?.();
  if(b){add('court',b.assoc?.id,'배석판사 · 우리 재판부');add('court',b.clerk?.id,'재판연구원 · 우리 재판부');add('court',b.officer?.id,'참여관 · 우리 재판부');
-  for(const x of (b.alumni||[]).slice().reverse())add('court',x.id,`${x.now} · 전 ${x.was}`)}
+  for(const x of (b.alumni||[]).slice(-6).reverse())add('court',x.id,`${x.now} · 전 ${x.was}`)}   // the last six who left the bench
  /* (2026-11-08) other players: colleague judges at the same court (colleague_court.js) */
  for(const x of window.VerdictColleagues?.people?.()||[])add('court',x.id,x.role);
  /* lawyers: one entry per person, with how many of my cases they appeared in */
@@ -35,7 +39,7 @@ function circles(){
  const W=WF(),list=W?.reporters?.()||[];
  const covering=new Set((window.VerdictMedia?.articles?.()||[]).map(a=>list.indexOf(a.reporter)).filter(i=>i>=0));
  for(const i of covering){const r=list[i],id='reporter_'+i;if(seen.has(id))continue;seen.add(id);
-  g.press.push({id,name:r.name,role:r.outlet+' 기자',trust:trust(id),act:`data-action="reporter" data-i="${i}"`})}
+  if(g.press.length>=8)break;g.press.push({id,name:r.name,role:r.outlet+' 기자',trust:trust(id),act:`data-action="reporter" data-i="${i}"`})}
  return g;
 }
 const GROUPS=[['court','법원 동료','#b08a3e',-90],['bar','법정의 법조인','#5b6b82',20],['press','언론','#3f7f72',160]];
@@ -126,5 +130,15 @@ clicker=function(e){
  if(a==='pmcase'){e.preventDefault();ui.pmCase=el.dataset.id;render();return}
  return priorClick(e);
 };
-window.VerdictPeopleMap={circles,myCases};
+/* 2026-11-10 (planner): old texts, news and memories go, oldest first, so lists never grow without end. Runs at most
+ * once per game week inside a save, and only trims arrays (no search over people), so it costs nothing noticeable. */
+const KEEP={msgs:150,news:200,memo:24};
+function tidy(){
+ if(!S?.name||S.tidyWeek===S.week)return 0;S.tidyWeek=S.week;let n=0;
+ if(Array.isArray(S.msgs)&&S.msgs.length>KEEP.msgs){n+=S.msgs.length-KEEP.msgs;S.msgs.length=KEEP.msgs}
+ if(Array.isArray(S.news)&&S.news.length>KEEP.news){n+=S.news.length-KEEP.news;S.news.length=KEEP.news}
+ for(const [id,list] of Object.entries(S.memories||{}))if(Array.isArray(list)&&list.length>KEEP.memo){n+=list.length-KEEP.memo;S.memories[id]=list.slice(-KEEP.memo)}
+ return n}
+if(typeof save==='function'){const prior=save;save=function(...a){try{tidy()}catch(e){console.warn('tidy',e)}return prior.apply(this,a)}}
+window.VerdictPeopleMap={circles,myCases,tidy,KEEP};
 })();

@@ -323,7 +323,7 @@ function createGeneratedCase(selectedCandidate=null,planning=null){
  return c;
 }
 function openCases(){return CASES.filter(c=>c.week<=S.week&&!S.cases[c.id]?.verdict&&!S.cases[c.id]?.referred)}
-function age(){return 35+year()-2027-(month()<2?1:0)}
+function age(){return 35+year()-2027-(month()<2?1:0)+(Number(S?.ageShift)||0)}   // ageShift: an age set from the server (부부 판사, DB 040)
 function yearsServed(){return year()-2027}
 function currentPost(){
  const y=yearsServed();const p=S.professional;
@@ -667,7 +667,7 @@ function assets(){const total=S.cash+investedValue();return `${heading('자산�
  <div class="grid three mt2"><div class="stat-card"><label>총 금융자산</label><strong>${money(total)}</strong><small>현금 + 10개 섹터 평가액</small></div><div class="stat-card"><label>가용 현금</label><strong>${money(S.cash)}</strong><small>월 급여 ${money(S.salary)}</small></div><div class="stat-card"><label>생활 편의</label><strong>${comfort()}/3</strong><small>2 이상이면 주간 심리 여력 +1</small></div></div>
  <div class="shop-tabs mt2">${[['shop','🛍 쇼핑'],['stocks','📈 섹터 투자'],['owned','🗃 소장품']].map(([id,t])=>`<button class="shop-tab ${ui.assetTab===id?'active':''}" data-action="assetTab" data-sub="${id}">${t}</button>`).join('')}</div>
  <div class="mt">${ui.assetTab==='shop'?shop():ui.assetTab==='stocks'?portfolio():ownedItems()}</div><div class="notice mt">쇼핑은 8개 분야로 제한됩니다. 고가 소비가 무조건 유리하지 않으며, 일부 소비는 주변 NPC의 사회적 인식에도 영향을 줍니다. 시장 거래는 주간 1회로 제한됩니다.</div>`}
-const APPS=[['news','📰','뉴스','#6589b3'],['messages','💬','문자','#55ac9c'],['archives','⚖','판결 기록','#c8a266'],['social','＃','SNS','#947fc0'],['notes','📝','메모','#e1b66f'],['photos','🖼','사진첩','#c57f91'],['career','🎖','커리어','#759a9c'],['packs','📚','사건팩','#5389a1'],['backup','💾','백업·공유','#747caa']];
+const APPS=[['news','📰','뉴스','#6589b3'],['messages','💬','문자','#55ac9c'],['archives','⚖','판결 기록','#c8a266'],['social','＃','SNS','#947fc0'],['photos','🖼','사진첩','#c57f91'],['career','🎖','커리어','#759a9c'],['packs','📚','사건팩','#5389a1'],['backup','💾','백업·공유','#747caa']];
 function tablet(){return `${heading('나의 태블릿','문자부터 판결문까지. 법조인으로 살아온 모든 순간이 이곳에 쌓입니다.')}
  <div class="panel mt2" style="background:#e9eee9"><div class="row between"><b>THE VERDICT OS</b><span class="chip">${h(day())}</span></div><p class="muted small" style="margin-bottom:0">보관된 사건 기록 ${completed().length}건 · 메시지 ${S.msgs.length}개 · 뉴스 ${S.news.length}개</p></div>
  <div class="app-grid mt2">${APPS.map(([id,icon,name,color])=>`<button class="app-tile" data-action="tablet" data-sub="${id}"><span class="app-icon" style="background:${color};${ui.tabletTab===id?'outline:3px solid #debd7a;outline-offset:2px':''}">${icon}</span><span>${name}</span></button>`).join('')}</div>

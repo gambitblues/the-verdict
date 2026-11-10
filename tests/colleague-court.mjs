@@ -22,7 +22,7 @@ const url='http://127.0.0.1:'+server.address().port+'/';
 
 /* fake Supabase with 037 semantics */
 const USERS={'a@x.kr':{id:'00000000-0000-0000-0000-00000000000a',pw:'pw-a'},'b@x.kr':{id:'00000000-0000-0000-0000-00000000000b',pw:'pw-b'}};
-const judgesT=new Map(),casesT=[],sent=[],cors={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'*'};
+const judgesT=new Map(),casesT=[],sent=[],couplesT=[],cors={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'*'};
 const who=req=>{const t=(req.headers()['authorization']||'').replace('Bearer ','');return Object.values(USERS).find(u=>'tok-'+u.id===t)};
 async function routes(ctx){
  await ctx.route('https://sb.test/**',async route=>{const req=route.request(),u=new URL(req.url()),j=(d,s=200)=>route.fulfill({status:s,headers:{...cors,'content-type':'application/json'},body:JSON.stringify(d)});
@@ -45,6 +45,7 @@ async function routes(ctx){
    if(mine)Object.assign(mine,{state:'judged',judged_at:at,summary:body.p_summary});else casesT.push({case_key:body.p_key,judge_id:uid,state:'judged',judged_at:at,summary:body.p_summary});return j(true)}
   if(u.pathname==='/rest/v1/court_cases'){const not=u.searchParams.get('judge_id')?.replace('neq.','');return j(casesT.filter(r=>r.judge_id!==not))}
   if(u.pathname==='/rest/v1/court_judges')return j([...judgesT.values()]);
+  if(u.pathname==='/rest/v1/court_couples')return j(couplesT.filter(r=>r.user_id===uid||r.spouse===uid));
   return j({},404)});
 }
 const W=Number(process.env.VIEW_W||390);   // VIEW_W=412 / 884 for the other screen checks
@@ -204,5 +205,22 @@ try{
  const res=await a.evaluate(id=>({st:S.cases[id].appeal,news:VerdictMedia.articles().filter(x=>/항소심 —/.test(x.title)).map(x=>x.title+' | '+x.body),generic:VerdictMedia.articles().some(x=>/이나래 판사, '/.test(x.title)&&x.title.includes(S.cases[id].trial4?'':''))}),ac);
  assert.equal(res.st.status,'decided');assert.ok(res.news.some(n=>/1심 판결 바뀜/.test(n)&&/이나래 판사가 "무죄"/.test(n)),JSON.stringify(res.news));
  console.log('  ✓ appeals between judges: offered to the colleague, same world, banner in the courtroom, result back as news, never appealed twice');
+ /* 7. (2026-11-10) a couple of judges set on the server (DB 040): sex and age, spouse first among colleagues, every
+  *    verdict of the spouse on their card, and a child counted in real days from the same date — the same in both games */
+ const ida=USERS['a@x.kr'].id,idb=USERS['b@x.kr'].id,since=new Date(Date.now()-31*86400000).toISOString();
+ couplesT.push({user_id:ida,spouse:idb,sex:'남',age:35,since},{user_id:idb,spouse:ida,sex:'여',age:35,since});
+ for(const p of [a,b])await p.evaluate(()=>VerdictColleagues.sync());
+ const cp=p=>p.evaluate(()=>{const sp=VerdictColleagues.people()[0],kid=NPC.couple_child_0;
+  return {age:age(),sex:NPC.self.gender,spouse:sp&&NPC[sp.id].spouseOfPlayer,role:sp&&NPC[sp.id].role,kid:kid?.name,kids:S.couple.kids,msg:S.msgs.some(m=>/태어났어요/.test(m.body)),list:VerdictColleagues.spouseVerdicts().length}});
+ const ca=await cp(a),cb=await cp(b);
+ assert.equal(ca.age,35);assert.equal(cb.age,35);assert.equal(ca.sex,'남');assert.equal(cb.sex,'여');
+ assert.ok(ca.spouse&&cb.spouse&&/^배우자/.test(ca.role),'the spouse comes first among the court colleagues: '+ca.role);
+ assert.ok(ca.kid&&ca.kid===cb.kid,'one child, the same name in both games: '+ca.kid+' / '+cb.kid);assert.ok(ca.msg&&cb.msg,'the spouse tells of the birth');
+ assert.ok(ca.list>0,'my spouse\'s verdicts are on their card');
+ await a.evaluate(()=>VerdictColleagues.sync());assert.equal((await cp(a)).kids,1,'no second child before its time');
+ await a.evaluate(()=>{const sp=VerdictColleagues.people()[0];popupNPC(sp.id)});
+ assert.match(await a.locator('#modal-root').innerText(),/배우자 · 같은 법원 판사[\s\S]*판결 기록 \d+건/);
+ await a.screenshot({path:'qa-visuals/couple-card-'+W+'.png'});
+ console.log(`  ✓ couple of judges: 35 years old, spouse first, ${ca.list} verdicts on the card, child ${ca.kid} in both games`);
  console.log('PASS: colleague court (separate-witness news, colleague judges, no shared cases, verdict news)');
 }finally{await browser.close();server.close()}

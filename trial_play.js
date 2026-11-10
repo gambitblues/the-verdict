@@ -307,11 +307,15 @@ function nerve(c,t,i){const w=t.witnesses[i];if(w.nerve)return w.nerve;
  const vague=w.attitude==='fear'?(u<0.2?99:1+(sc<35?1:0)+(u>0.7?1:0)):w.attitude==='honest'&&sc<30&&u<0.5?1:0;
  const slip=w.attitude==='honest'?Math.max(0,Math.min(0.25,(85-Number(w.memory??85))/60)):0;   // memory 85+ never, 70 or less one answer in four
  return w.nerve={vague,slip}}
+/* whom a witness would shield: the sheet's own field (match_play), else read from the stake line of a written case
+ * (2026-11-10: the 60 written cases run on the same engine — planner) */
+function coversOf(c,i){const d=wDetail(c,i);if(!d)return null;if(d.covers)return d.covers;const st=String(d.stake||'');
+ if(/수사에 협조|검찰에 협조/.test(st))return 'p';if(/피해자|고소인|원고|유족/.test(st))return 'p';if(/피고인|피고(?!인)|가해/.test(st))return 'd';return null}
 function answerMode(c,t,i,q){
  const h=(t.heard||[]).find(x=>x.w===i&&x.q===q.id&&x.mode);if(h)return h.mode;
  const w=t.witnesses[i];
- if(!w||!curOf(c)?.fromSheet||typeof q.a!=='object'||!('did' in q.a)||!('didnt' in q.a))return 'plain';
- if(w.attitude==='protect'&&!w.owned&&wDetail(c,i)?.covers)return 'cover';
+ if(!w||w.detail||typeof q.a!=='object'||!('did' in q.a)||!('didnt' in q.a))return 'plain';   // a witness the court called by order answers plainly
+ if(w.attitude==='protect'&&!w.owned&&coversOf(c,i))return 'cover';
  const nv=nerve(c,t,i),said=(t.heard||[]).filter(x=>x.w===i&&!x.struck&&x.q!==q.id&&!/^(cf|face):/.test(x.q));
  if(!w.owned&&said.length<nv.vague)return 'vague';
  if(nv.slip&&!w.owned&&q.a.did!==q.a.didnt&&T.unit(t.seed+':slip:'+i+':'+q.id)<nv.slip)return 'slip';
@@ -325,7 +329,7 @@ function answerOf(c,t,i,q){
  const kept=(t.heard||[]).find(x=>x.w===i&&x.q===q.id&&x.k&&x.k in q.a);if(kept)return {text:tell(c,t,q.a[kept.k]),side:sideOfKey(kept.k),k:kept.k,...(kept.mode?{mode:kept.mode}:{})};
  const mode=answerMode(c,t,i,q);
  if(mode==='vague')return {text:VAGUE[T.hash(t.seed+':v:'+i+':'+q.id)%VAGUE.length],side:'n',mode};
- if(mode==='cover'){const k=wDetail(c,i).covers==='p'?'did':'didnt';return {text:tell(c,t,q.a[k]),side:k==='did'?'p':'d',mode,k}}
+ if(mode==='cover'){const k=coversOf(c,i)==='p'?'did':'didnt';return {text:tell(c,t,q.a[k]),side:k==='did'?'p':'d',mode,k}}
  if(mode==='slip'){const ks=['did','didnt','reason'].filter(k=>k in q.a&&k!==(t.truth in q.a?t.truth:'reason')&&q.a[k]!==q.a[t.truth]);
   if(ks.length){const k=ks[T.hash(t.seed+':slipk:'+i+':'+q.id)%ks.length];return {text:tell(c,t,q.a[k]),side:sideOfKey(k),mode,k}}}
  let key=t.truth in q.a?t.truth:'reason';

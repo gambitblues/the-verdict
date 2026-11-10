@@ -177,7 +177,59 @@ function colleagueNpc(uid,j){
   schedule:'법정과 판사실 근무',colleague:true,...(j.gender?{gender:j.gender}:{})});
  NPC[id]=p;if(S.npcDB)S.npcDB[id]=p;s.npc[uid]=id;return id;
 }
-function people(){const s=mem();return Object.entries(s.npc).filter(([uid,id])=>NPC[id]&&(judges.size===0||judges.has(uid))).map(([,id])=>({id,role:NPC[id].role}))}
+function people(){const s=mem(),sp=S.couple?.spouse;return Object.entries(s.npc).filter(([uid,id])=>NPC[id]&&(judges.size===0||judges.has(uid)))
+ .sort(([a],[b])=>(b===sp)-(a===sp)).map(([,id])=>({id,role:NPC[id].role}))}   // my spouse first
+
+/* ---------- 부부 판사 (2026-11-10, planner request; DB 040) ----------
+ * Two invited players set as a couple in the database: each game takes the sex and age set there (the age counts on
+ * from now), shows the other player as 배우자 at the top of the court colleagues, lets each read all the other's
+ * verdicts on their card, and — counted in real days from the day the couple was set, so both games agree — welcomes a
+ * child (first after 30 days, a second after a year and a half, at most two). Nothing else of either game is shared. */
+const CHILD_DAYS=[30,540];
+let coupleMissing=false;
+const couple=()=>S.couple||null;
+function applyCouple(rows,me){
+ const mine=(rows||[]).find(r=>r.user_id===me),other=mine&&(rows||[]).find(r=>r.user_id===mine.spouse);
+ if(!mine){if(S.couple){S.couple=null;return true}return false}
+ let changed=false;const since=String(mine.since);
+ if(!S.couple||S.couple.spouse!==mine.spouse||S.couple.since!==since||S.couple.sex!==mine.sex||S.couple.age!==mine.age){
+  const base=typeof age==='function'?age()-(S.ageShift||0):35;
+  S.ageShift=Number(mine.age)-base;   // the age counts on from here
+  S.couple={spouse:mine.spouse,since,sex:mine.sex,age:Number(mine.age),spouseSex:other?.sex||'',kids:S.couple?.spouse===mine.spouse?S.couple.kids||0:0};
+  changed=true}
+ S.selfGender=mine.sex;if(NPC.self)NPC.self.gender=mine.sex;
+ const j=judges.get(mine.spouse);
+ if(j){const id=colleagueNpc(mine.spouse,j);if(id){const p=NPC[id];
+  p.role='배우자 · '+roleOf(j);p.bond='배우자 · 같은 법원 판사';p.spouseOfPlayer=true;p.maritalStatus='기혼';p.partnerId='self';
+  if(other?.sex)p.gender=other.sex;if(NPC.self)NPC.self.partnerId=id;
+  if((S.relations[id]??0)<80){S.relations[id]=85;changed=true}
+  if(!S.couple.told){S.couple.told=true;changed=true;
+   if(typeof log==='function')log('가족',`${j.judge_name} 판사와 부부`,'배우자와 같은 법원에서 일한다. 서로의 판결 소식을 가장 먼저 듣는다.');}
+  changed=kidsTick(id,j)||changed}}
+ return changed;
+}
+function kidsTick(spouseId,j){
+ const c=S.couple,days=(Date.now()-Date.parse(c.since))/86400000;let n=0;
+ const due=CHILD_DAYS.filter(d=>days>=d).length;
+ while((c.kids||0)<due){const k=c.kids||0;c.kids=k+1;n++;
+  const pair=[A().user.id,c.spouse].sort().join(':'),father=c.sex==='남'?S.name:j.judge_name;
+  const VN=typeof VerdictNames!=='undefined'?VerdictNames:window.VerdictNames,sur=VN?.split?.(father)?.[0]||String(father).slice(0,1);
+  const g=hashOf(pair+':kid:'+k)%2?'남성':'여성',by=typeof year==='function'?year():2027;
+  const id='couple_child_'+k,name=VN?.make?VN.make({seed:'couple:'+pair+':'+k,gender:g,bornYear:2028,surname:sur}):sur+'아기';   // the name must not depend on either game's own calendar
+  NPC[id]={id,name,bornYear:by,gender:g,role:'자녀',career:'아기',alive:true,maritalStatus:'미혼',parentIds:['self',spouseId],familyIds:[],relationships:{},origin:'family',bond:'우리 아이'};
+  if(S.npcDB)S.npcDB[id]=NPC[id];S.relations[id]=95;
+  if(typeof message==='function')message(spouseId,k?`둘째 ${name}${P(name,'이').slice(name.length)} 건강하게 태어났어요. 오늘은 일찍 들어와요.`:`우리 아이 ${name}${P(name,'이').slice(name.length)} 태어났어요. 고생 많았어요, 우리.`);
+  if(typeof log==='function')log('가족',`${name} 출생`,k?'둘째 아이가 태어났다.':'첫아이가 태어났다.');
+ }
+ return n>0;
+}
+async function syncCouple(db,me){
+ if(coupleMissing)return false;
+ try{return applyCouple(await db(`court_couples?select=user_id,spouse,sex,age,since&or=(user_id.eq.${me},spouse.eq.${me})`),me)}
+ catch(e){if(e?.status===404)coupleMissing=true;return false}
+}
+/* all of my spouse's verdicts, newest first (the court news shows only a few) */
+function spouseVerdicts(){const c=couple();if(!c)return [];return judgedRows.filter(r=>r.judge_id===c.spouse).map(r=>({title:String(r.summary?.title||'사건').slice(0,40),label:String(r.summary?.label||'판결').slice(0,40),sentence:r.summary?.sentence?String(r.summary.sentence).slice(0,40):'',at:r.judged_at}))}
 
 /* ---------- court news ---------- */
 function addNews(item){const s=mem();if(s.news.some(x=>x.index===item.index))return false;s.news.unshift(item);s.news=s.news.slice(0,MAX_NEWS);return true}
@@ -263,6 +315,7 @@ async function sync(force){
   othersOpen=new Set((rows||[]).filter(r=>r.state==='open').map(r=>r.case_key));
   othersJudged=new Set((rows||[]).filter(r=>r.state==='judged').map(r=>r.case_key));readOnce=true;
   if(S.name)for(const [uid,j] of judges){const had=!!(s.npc[uid]&&NPC[s.npc[uid]]);if(colleagueNpc(uid,j)&&!had)changed=true}
+  if(S.name&&await syncCouple(db,me))changed=true;
   if(!S.name)return false;
   s.since??=Date.now()-FIRST_LINK_DAYS*86400000;   // the first link brings only the last few days' verdicts
   let n=0;
@@ -298,6 +351,8 @@ async function tick(force){
 if(typeof popupNPC==='function'){
  const prior=popupNPC;
  popupNPC=function(id){prior(id);if(!NPC[id]?.colleague||!TP()?.addToModal)return;
+  if(NPC[id].spouseOfPlayer){const v=spouseVerdicts();
+   TP().addToModal(`<h4>💍 배우자 · 같은 법원 판사</h4><div class="detail"><p>${esc(NPC[id].role)}</p><p class="small">판결 기록 ${v.length}건</p>${v.length?`<ul class="cc-spouse-verdicts">${v.slice(0,30).map(x=>`<li class="small"><b>${esc(x.title)}</b> · ${esc(x.label)}${x.sentence?` (${esc(x.sentence)})`:''}</li>`).join('')}</ul>`:'<p class="small">아직 선고한 사건이 없어요.</p>'}</div>`);return}
   const mine=mem().news.filter(x=>x.from===id).slice(0,5);
   TP().addToModal(`<h4>⚖ 같은 법원 동료 판사</h4><div class="detail"><p>${esc(NPC[id].role)}</p>${mine.length?mine.map(x=>`<p class="small">· ${esc(x.title.replace(/^\[법원 소식\]\s*/,''))}</p>`).join(''):'<p class="small">아직 선고 소식이 없어요.</p>'}</div>`);
  };
@@ -308,8 +363,9 @@ async function ready(ms=4000){
  if(readOnce||!linked())return;
  await Promise.race([sync(true),new Promise(r=>setTimeout(r,ms))]);
 }
-window.VerdictColleagues={ready,decideAppeals,appealTick,taken:()=>othersOpen,judged:()=>othersJudged,people,articles,sync:()=>tick(true),separateTick,keyOf};
-const start=()=>{setTimeout(()=>tick(true),1500);setInterval(()=>tick(false),TICK_MS);
+window.VerdictColleagues={ready,couple,spouseVerdicts,applyCouple,decideAppeals,appealTick,taken:()=>othersOpen,judged:()=>othersJudged,people,articles,sync:()=>tick(true),separateTick,keyOf};
+const start=()=>{if(S.selfGender&&NPC.self)NPC.self.gender=S.selfGender;   // the sex set for a couple (040) also when offline
+ setTimeout(()=>tick(true),1500);setInterval(()=>tick(false),TICK_MS);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick(false)})};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
