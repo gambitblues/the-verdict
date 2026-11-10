@@ -664,7 +664,7 @@ function followEvidence(c,t,f,partial){
  const E=f.evidence,R=x=>pick(x,t.truth),tl=x=>tell(c,t,x||'');
  const ts=T.truthSide(t.truth),side=R(E.side)||(ts==='m'?'n':ts),part=partial&&E.part?R(E.part):null;
  const detail={kind:E.kind,by:E.by,when:tl(E.when),excerpt:tl(part||R(E.excerpt)),how:tl(E.how)+' '+(E.legal?tl(E.legal):LEGAL_OK)+(partial?' 요청한 범위 가운데 일부만 제출됐고, 빠진 부분은 확인되지 않았다.':''),
-  issue:f.issue,side:partial&&!part?'n':side,check:tl(E.check),flaw:E.flaw||'none',title:tl(E.title)+(partial?' (일부)':''),shows:tl(R(E.shows)),caveat:tl(E.caveat)+(partial?' 일부만 나온 자료라 이것만으로 단정할 수 없다.':'')};
+  issue:f.issue,side:partial&&!part?'n':side,check:tl(E.check),flaw:E.flaw||'none',title:tl(E.title)+(partial?' (일부)':''),shows:tl(R(E.shows)),...(E.says&&!partial?{says:tl(R(E.says))}:{}),caveat:tl(E.caveat)+(partial?' 일부만 나온 자료라 이것만으로 단정할 수 없다.':'')};
  const id='e'+t.evidence.length;
  const ns=T.roll({id:c.id+'-f-'+f.id,strict:true,evidence:[{id,title:detail.title,note:detail.caveat,scope:detail.shows,hintFlaw:detail.flaw}],witnesses:[],truth:t.truth},t.seed+':follow:'+f.id,[]).evidence[0];
  ns.detail=detail;ns.follow=f.id;ns.arrivedDay=t.day;ns.ordered=true;t.evidence.push(ns);return ns;
@@ -1191,7 +1191,18 @@ function citables(c,t){
    :order?`재판장 ${ORDER_LABEL[order.type]||'자료 제출'} 주문에 따라 ${toWord(c,order.to)}이(가) ${e.arrivedDay||order.due}회 공판에 제출`
    :e.late?`${d?.by||'당사자'} · ${e.arrivedDay||t.day}회 공판 추가 제출`
    :`법정에 처음부터 나온 ${d?.kind||'자료'} · ${byWord[d?.by]||d?.by||'제출자 미상'}`;
-  out.push({key:'e:'+e.id,label:e.title,text:part?part.join(' · '):(d?.shows?tell(c,t,d.shows):e.scope||''),
+  /* where the exhibit came from, said plainly for the judgment ("검찰이 처음부터 낸 영상") */
+  const kindW=d?.kind||'자료',byW=String(d?.by||'').replace(/ 측$/,'');
+  const from=e.filedEvent?`${P(toWord(c,e.filedBy||'p'),'이')} ${e.arrivedDay||t.day}회 공판에 추가로 낸 ${kindW}`
+   :order?`재판장의 ${ORDER_LABEL[order.type]||'자료 제출'} 주문에 따라 ${P(toWord(c,order.to),'이')} ${e.arrivedDay||order.due}회 공판에 낸 ${kindW}`
+   :e.late?`${byW?P(byW,'이')+' ':''}${e.arrivedDay||t.day}회 공판에 추가로 낸 ${kindW}`
+   :`${byW?P(byW,'이')+' ':''}처음부터 낸 ${kindW}`;
+  /* a sheet exhibit says what it records; one saved before v11.0.1 (only the label "영상 — 주문으로 받은 자료") reads
+   * its excerpt instead */
+  const label0=/ — (법정에 처음 나온|주문으로 받은) 자료$/.test(String(d?.shows||''));
+  const ex0=label0&&d?.excerpt?String(tell(c,t,d.excerpt)).split(/\s*\/\s*/).filter(Boolean).slice(0,2).join(' · ').replace(/[.。]$/,''):'';
+  const says=!part&&d?.says?tell(c,t,d.says):!part&&ex0?`"${ex0}"${(c0=>c0>=0&&c0<11172&&c0%28?'이라는':'라는')(ex0.slice(-1).charCodeAt(0)-0xAC00)} 내용이 담겨 있다`:'';
+  out.push({key:'e:'+e.id,label:e.title,from,says:!!says,text:part?part.join(' · '):says||(d?.shows?tell(c,t,d.shows):e.scope||''),
    origin,exhibitKind:d?.kind||'자료',excerpt:d?.excerpt?tell(c,t,d.excerpt):'',
    how:d?.how?tell(c,t,d.how):'',part:!!part,cond:e.decision==='conditional',
    side:d?.side==='p'||d?.side==='d'?d.side:'n',issue:d?.issue,illegal:e.flawType==='illegal',kind:'evidence'})});
@@ -1306,9 +1317,15 @@ function finish(c,st,t,opt,dir,res,judgment,sentText){
  after(c,st,t,opt,dir,res,{judgment,sentence:sentText});window.VerdictAI?.judgment(c,t);
 }
 /* The written judgment: what happened, what it rests on, each issue, and the sentence. Only cited material is quoted. */
+/* an exhibit in the judgment: what it is, where it came from, then what it records (or what the court took from it) */
+const isNoun=w=>{const ch=String(w||'').trim().slice(-1).charCodeAt(0)-0xAC00;return ch>=0&&ch<11172};
+const cop=w=>w+(isNoun(w)&&(String(w).trim().slice(-1).charCodeAt(0)-0xAC00)%28?'이다':'다');
+function evLine(i){const txt=String(i.text||'').replace(/[.。]$/,'');
+ if(i.from&&(i.says||i.part))return `${i.label}${P(String(i.label).replace(/\s*\([^)]*\)\s*$/,''),'은').slice(String(i.label).replace(/\s*\([^)]*\)\s*$/,'').length)} ${cop(i.from)}. ${i.part?`재판부는 이 가운데 "${txt}" 부분만 증거로 썼다`:'여기에는 '+txt}.`;
+ return `${i.label}에 따르면 ${txt}${i.from?`(${i.from})`:''}.`}
 function writeJudgment(c,t,opt,dir,cites,sp,sent,fs){
  const crim=isCriminal(c),side=T.sideOf(dir),who=crim?'피고인':'피고',accuser=crim?'검사':'원고';
- const line=i=>i.kind==='writ'?`재판장의 석명 요구에 ${P(i.who,'이')} 낸 설명은 ${qt(i.anchor,'과')} 맞지 않았다.`:i.kind==='evidence'?`${i.label}${i.part?' 가운데 재판부가 증거로 쓴 부분':''}에 따르면 ${i.text.replace(/[.。]$/,'')}.`:i.weak?(i.text?`${P(i.name,'은')} "${i.text}"라고 말했다. 다만 이 말에는 이의가 있어 다른 자료와 함께 보았다.`:`${i.label}이 기록에 남아 있다.`):`${P(i.name,'은')} "${i.text}"라고 진술했다.`;
+ const line=i=>i.kind==='writ'?`재판장의 석명 요구에 ${P(i.who,'이')} 낸 설명은 ${qt(i.anchor,'과')} 맞지 않았다.`:i.kind==='evidence'?evLine(i):i.weak?(i.text?`${P(i.name,'은')} "${i.text}"라고 말했다. 다만 이 말에는 이의가 있어 다른 자료와 함께 보았다.`:`${i.label}이 기록에 남아 있다.`):`${P(i.name,'은')} "${i.text}"라고 진술했다.`;
  const dec=curOf(c)?.decision;
  const order=dec?tell(c,null,side>0?dec.yesOrder:dec.noOrder):side<=0?(crim?'피고인은 무죄.':'원고의 청구를 기각한다.'):(sent?.order||(crim?'피고인을 유죄로 인정한다.':'원고의 청구를 인용한다.'));
  const facts=side===1?[`재판부는 다음 사실을 인정한다.`,...cites.map(line)]:side===0.5?[`재판부는 ${accuser}의 주장 중 증명된 부분만 인정한다.`,...cites.map(line)]
@@ -2082,5 +2099,5 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&tick()&&!
 setTimeout(()=>{if(tick()&&!ui.modal)render()},1500);
 
 window.VerdictMatchPlay?.bind({namesOf,setSex,setAge,setJob,session,dlabel,dateOf,sessionOpen,waiting,openSession,addLog,finish,DAY_WAIT,EXTRA_DAYS,minsLeft,clock,today});
-window.VerdictTrialPlay={ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel,addToModal,orders:{available:availableOrders,issue:issueOrder,resolve:resolveOrders,state:nodeState},qById,questions:(c,t,i)=>questionsOf(c,t,i),ask:askQuestion,confront,conflicts,moment:momentOf,citables,confirm:confirmVerdict,clerk:{notes:clerkNotes,gaps:clerkGaps,law:clerkLaw,legalProblems,draftAdvice}};
+window.VerdictTrialPlay={evLine,ensure,tick,stage,REPORTERS,session,curOf,tell,openSession,dlabel,addToModal,orders:{available:availableOrders,issue:issueOrder,resolve:resolveOrders,state:nodeState},qById,questions:(c,t,i)=>questionsOf(c,t,i),ask:askQuestion,confront,conflicts,moment:momentOf,citables,confirm:confirmVerdict,clerk:{notes:clerkNotes,gaps:clerkGaps,law:clerkLaw,legalProblems,draftAdvice}};
 })();

@@ -67,11 +67,19 @@ function toCurated(s){
  const flawOf=r=>devOf(r)?.clockOffsetSec?'timing':(FLAW.find(([re])=>re.test(r.how||''))||[0,'none'])[1];
  const trapFor=r=>(s.traps||[]).find(x=>x.includes(r.title)||x.includes(r.title.split(' ')[0]));
  const content=r=>per(t=>s.worlds[t].records[r.id]);
+ /* what the record says, in one line for the judgment and the news ("…"라는 장면이 찍혀 있다) — the sheet's own words,
+  * per world like the excerpt; 'shows' stays the short label on the evidence card */
+ const says=r=>per(t=>{let v=String(s.worlds[t].records[r.id]||'');if(v.startsWith(r.title+':'))v=v.slice(r.title.length+1);
+  v=v.replace(/\s*\([^)]*확인 필요\)/g,'').trim();if(!v)return '';const parts=v.split(/\s*\/\s*/).filter(Boolean),out=[];
+  for(const x of parts){if(out.length&&(out.join(' · ')+x).length>110)break;out.push(x)}
+  const k=r.kind+' '+r.title,tail=/영상|CCTV|블랙박스|캠|화면|녹화/.test(k)?'장면이 찍혀 있다':/사진|캡처/.test(k)?'모습이 담겨 있다':/녹음|통화|음성/.test(k)?'내용이 녹음돼 있다':'내용이 적혀 있다';
+  const q=out.join(' · ').replace(/[.。]$/,'')+(out.length<parts.length?' …':''),ch=q.slice(-1).charCodeAt(0)-0xAC00;
+  return `"${q}"${ch>=0&&ch<11172&&ch%28?'이라는':'라는'} ${tail}`});
  const lean=r=>per(t=>{const v=s.worlds[t].records[r.id];return v===s.worlds.did.records[r.id]&&v!==s.worlds.didnt.records[r.id]?'p':v===s.worlds.didnt.records[r.id]&&v!==s.worlds.did.records[r.id]?'d':'n'});
  const firsts=s.records.filter(r=>r.first),rest=s.records.filter(r=>!r.first);
  while(firsts.length<3&&rest.length)firsts.push(rest.shift());
  const ev=firsts.slice(0,3),more=[...firsts.slice(3),...rest];
- const evidence=ev.map((r,i)=>({title:r.title,kind:r.kind,by:r.by,when:'',excerpt:content(r),
+ const evidence=ev.map((r,i)=>({title:r.title,kind:r.kind,by:r.by,when:'',excerpt:content(r),says:says(r),
   shows:`${r.kind} — 법정에 처음 나온 자료`,caveat:devOf(r)?.note||trapFor(r)||'이 자료 하나만으로는 단정하기 어렵다',how:r.how,flaw:flawOf(r),
   issue:i===0?'i1':i===1?'i1':'i2',side:sideOfBy(r.by),check:'증인의 말과 시각·내용이 맞는지 맞춰 보세요.'}));
  const sideOfWho=w=>/^(A|피고|변호)/.test(w||'')?(cr?'d':(ac==='A'?'p':'d')):/^(B|검찰|원고)/.test(w||'')?'p':sideOfBy(w);
@@ -97,7 +105,7 @@ function toCurated(s){
  for(const w of witnesses)for(const q of w.q)if(typeof q.a==='string'&&!q.side)q.side='n';
  const followUps=more.map((r,k)=>{const sd=sideOfBy(r.by),who=cr?(sd==='p'?'검찰':'변호인'):(sd==='p'?'원고 측':'피고 측');
   return {id:'s'+(k+1),issue:k%2?'i2':'i1',type:'records',to:sd,day:1,ask:`${who}은 다음 기일까지 「${r.title}」을(를) 내 주세요.`.replace(/「([^」]+)」을\(를\)/,(m,x)=>`「${x}」${/[가-힣]/.test(x.slice(-1))&&(x.slice(-1).charCodeAt(0)-0xAC00)%28?'을':'를'}`),
-   evidence:{title:r.title,kind:r.kind,by:r.by,when:'',excerpt:content(r),shows:`${r.kind} — 주문으로 받은 자료`,side:lean(r),caveat:devOf(r)?.note||trapFor(r)||'다른 기록과 함께 봐야 한다',how:r.how,check:'앞서 나온 자료·증언과 맞춰 보세요.',flaw:flawOf(r)},
+   evidence:{title:r.title,kind:r.kind,by:r.by,when:'',excerpt:content(r),says:says(r),shows:`${r.kind} — 주문으로 받은 자료`,side:lean(r),caveat:devOf(r)?.note||trapFor(r)||'다른 기록과 함께 봐야 한다',how:r.how,check:'앞서 나온 자료·증언과 맞춰 보세요.',flaw:flawOf(r)},
    rebut:sd==='p'?'이 자료 하나로 모든 것을 단정할 수는 없습니다.':'이 자료는 사건의 일부만 보여 줍니다.'}});
  /* v8.3: the sheet's own orders (what each is meant to check, what comes back in each world) take over the
   * automatic order of the same record; records without one keep the automatic order */
