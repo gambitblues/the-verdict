@@ -223,7 +223,9 @@ function revalidate(db){
   const bad=(o.options||[]).some((x,i,arr)=>!x.archetypeId||taken.has(x.archetypeId)||held.has(x.archetypeId)||past.ids.has(x.archetypeId)||arr.findIndex(y=>normTitle(y.title)===normTitle(x.title))!==i||
    db.offers.some(p=>p!==o&&p.status==='available'&&db.offers.indexOf(p)<db.offers.indexOf(o)&&(p.options||[]).some(y=>y.archetypeId===x.archetypeId||normTitle(y.title)===normTitle(x.title))));
   if(!bad)continue;
-  const fresh=freshPool(o.slot).filter(x=>!past.ids.has(x.a.id));if(fresh.length<1)continue;   // late career: keep what was offered
+  /* late career: an offer of an old, already-seen case may stay — but never one now on a bench (mine or a colleague's) */
+  const onBench=(o.options||[]).some(x=>taken.has(x.archetypeId)||held.has(x.archetypeId));
+  const fresh=freshPool(o.slot).filter(x=>!past.ids.has(x.a.id));if(fresh.length<1&&!onBench)continue;
   o.options=offerPair(o.slot)}
 }
 function transfer(db,o,which){const opts=which==null?o.options||[]:[o.options[which]];opts.forEach((x,i)=>{if(x)db.otherCourt.push({slot:o.slot+(which==null?'-'+i:'-x'),title:x.title,day:o.day,kind:x.kind,category:x.category,at:Date.now()})})}

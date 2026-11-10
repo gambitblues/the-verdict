@@ -86,9 +86,9 @@ console.log('PASS: version',v);
     feed.includes('line-clamp:initial!important;overflow:visible!important'))
    throw Error('news renderer must keep tablet articles in natural flow and clip home previews without overlap');
  const ui=fs.readFileSync(path.join(root,'game_ui.js'),'utf8');
- if(!ui.includes('window.VerdictMedia?.previewArticle?.(a)')||
-    !feed.includes('window.VerdictMedia.previewArticle=a=>'))
-   throw Error('home news must reuse case-grounded article summaries');
+ // 2026-11-10 (planner): the home screen shows no news; articles live in the tablet, still from case-grounded summaries
+if(/tv-headlines|오늘의 기사/.test(ui)||!feed.includes('window.VerdictMedia.previewArticle=a=>'))
+   throw Error('home must not show news (tablet only), and article previews stay case-grounded');
  console.log('PASS: news cards use nonoverlapping tablet content and clipped, case-grounded home previews');
 }
 
