@@ -567,7 +567,7 @@ function news(title,body,category='법조일보',source=null){
  }
  S.news.unshift(item);/* 과거 뉴스 보존 */
 }
-function message(from,body){S.msgs.unshift({week:S.week,from,body});/* 과거 메시지 보존 */}
+function message(from,body){S.msgs.unshift({week:S.week,at:Date.now(),from,body});/* at: v11 unread marks in the conversation list */}
 function modifyRel(id,delta){S.relations[id]=clamp((S.relations[id]||20)+delta,0,100)}
 function rand(){let x=S.rng>>>0;x^=x<<13;x^=x>>>17;x^=x<<5;S.rng=x>>>0;return(S.rng>>>0)/4294967296}
 function abbr(n){return n>=10000?`${(n/10000).toFixed(1)}억`:nice(n)}

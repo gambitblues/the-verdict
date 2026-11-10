@@ -185,7 +185,6 @@ function people(){const s=mem(),sp=S.couple?.spouse;return Object.entries(s.npc)
  * from now), shows the other player as 배우자 at the top of the court colleagues, lets each read all the other's
  * verdicts on their card, and — counted in real days from the day the couple was set, so both games agree — welcomes a
  * child (first after 30 days, a second after a year and a half, at most two). Nothing else of either game is shared. */
-const CHILD_DAYS=[30,540];
 let coupleMissing=false;
 const couple=()=>S.couple||null;
 function applyCouple(rows,me){
@@ -212,26 +211,45 @@ function applyCouple(rows,me){
   if((S.relations[id]??0)<80){S.relations[id]=85;changed=true}
   if(!S.couple.told){S.couple.told=true;changed=true;
    if(typeof log==='function')log('가족',`${j.judge_name} 판사와 부부`,'배우자와 같은 법원에서 일한다. 서로의 판결 소식을 가장 먼저 듣는다.');}
-  changed=kidsTick(id,j)||changed}}
+  changed=kidsTick(id)||changed}}
  return changed;
 }
-function kidsTick(spouseId,j){
- const c=S.couple,days=(Date.now()-Date.parse(c.since))/86400000;let n=0;
- const due=CHILD_DAYS.filter(d=>days>=d).length;
- while((c.kids||0)<due){const k=c.kids||0;c.kids=k+1;n++;
-  const pair=[A().user.id,c.spouse].sort().join(':'),father=c.sex==='남'?S.name:j.judge_name;
+/* v11 (P0): the family lives on the game calendar, not the wall clock. The couple's children are one fixed plan made
+ * from the pair of accounts alone (so both games hold the same children: name, sex, birth date), and each game meets
+ * a child only when its own calendar reaches that date — a judge who plays faster never sees the other's future, a
+ * long break moves nothing, and neither game decides anything on its own. Day 0 is the first day on the bench
+ * (2027-03-01), when both judges are 35 and already married. */
+const DAY0=Date.UTC(2027,2,1);
+function familyPlan(pair){
+ const h=k=>hashOf(pair+':plan:'+k),first=420+h(1)%300,second=first+700+h(2)%400;
+ return [first,second].map((day,k)=>({k,day,year:new Date(DAY0+day*86400000).getUTCFullYear(),sex:hashOf(pair+':kid:'+k)%2?'남성':'여성'}));
+}
+const gameDay=()=>window.VerdictCalendar?.today?.()??((S.week||0)*7);
+function kidsTick(spouseId){
+ const c=S.couple,sp=NPC[spouseId];if(!c||!sp||!A()?.user?.id&&!c.pair)return false;
+ c.pair??=[A().user.id,c.spouse].sort().join(':');
+ const plan=familyPlan(c.pair),today=gameDay();
+ if(c.rule!=='game'){   // children made by the old wall-clock rule before their game date are taken back (v10.10 saves)
+  for(const x of plan)if(x.day>today&&NPC['couple_child_'+x.k]){delete NPC['couple_child_'+x.k];if(S.npcDB)delete S.npcDB['couple_child_'+x.k];
+   if(sp.relationships)delete sp.relationships['couple_child_'+x.k];sp.familyIds=(sp.familyIds||[]).filter(id=>id!=='couple_child_'+x.k)}
+  c.kids=plan.filter(x=>x.day<=today&&NPC['couple_child_'+x.k]).length;c.rule='game'}
+ let n=0;
+ for(const x of plan){if(x.day>today||x.k<(c.kids||0))continue;if(x.k>(c.kids||0))break;
+  const father=c.sex==='남'?S.name:sp.name;
   const VN=typeof VerdictNames!=='undefined'?VerdictNames:window.VerdictNames,sur=VN?.split?.(father)?.[0]||String(father).slice(0,1);
-  const g=hashOf(pair+':kid:'+k)%2?'남성':'여성',by=typeof year==='function'?year():2027;
-  const id='couple_child_'+k,name=VN?.make?VN.make({seed:'couple:'+pair+':'+k,gender:g,bornYear:2028,surname:sur}):sur+'아기';   // the name must not depend on either game's own calendar
-  NPC[id]={id,name,bornYear:by,gender:g,role:'자녀',career:'아기',alive:true,maritalStatus:'미혼',parentIds:['self',spouseId],familyIds:[],relationships:{},origin:'family',bond:'우리 아이'};
+  const id='couple_child_'+x.k,name=VN?.make?VN.make({seed:'couple:'+c.pair+':'+x.k,gender:x.sex,bornYear:x.year,surname:sur}):sur+'아기';
+  const born=window.VerdictCalendar?.label?.(x.day)||String(x.year);
+  NPC[id]={id,name,bornYear:x.year,bornDay:x.day,gender:x.sex,role:'자녀',career:'아기',alive:true,maritalStatus:'미혼',parentIds:['self',spouseId],familyIds:[spouseId],relationships:{[spouseId]:{kind:'parent'}},origin:'family',bond:'우리 아이',coupleOwned:true};
   if(S.npcDB)S.npcDB[id]=NPC[id];S.relations[id]=95;
-  const sp=NPC[spouseId];if(sp){sp.relationships=sp.relationships&&typeof sp.relationships==='object'&&!Array.isArray(sp.relationships)?sp.relationships:{};sp.relationships[id]={kind:'child'};
-   sp.familyIds=[...new Set([...(sp.familyIds||[]),id])];NPC[id].relationships[spouseId]={kind:'parent'};NPC[id].familyIds.push(spouseId);sp.children=c.kids}
-  if(typeof message==='function')message(spouseId,k?`둘째 ${name}${P(name,'이').slice(name.length)} 건강하게 태어났어요. 오늘은 일찍 들어와요.`:`우리 아이 ${name}${P(name,'이').slice(name.length)} 태어났어요. 고생 많았어요, 우리.`);
-  if(typeof log==='function')log('가족',`${name} 출생`,k?'둘째 아이가 태어났다.':'첫아이가 태어났다.');
+  sp.relationships=sp.relationships&&typeof sp.relationships==='object'&&!Array.isArray(sp.relationships)?sp.relationships:{};sp.relationships[id]={kind:'child'};
+  sp.familyIds=[...new Set([...(sp.familyIds||[]),id])];c.kids=x.k+1;sp.children=c.kids;n++;
+  if(typeof message==='function')message(spouseId,x.k?`둘째 ${name}${P(name,'이').slice(name.length)} 건강하게 태어났어요. 오늘은 일찍 들어와요.`:`우리 아이 ${name}${P(name,'이').slice(name.length)} 태어났어요. 고생 많았어요, 우리.`);
+  if(typeof log==='function')log('가족',`${name} 출생`,`${born} · ${x.k?'둘째 아이가 태어났다.':'첫아이가 태어났다.'}`);
  }
  return n>0;
 }
+/* the family moves with my own calendar even offline: checked on every round, not only when the server answers */
+function familyTick(){const c=S.couple;if(!c)return false;const id=mem().npc[c.spouse];return id&&NPC[id]?kidsTick(id):false}
 async function syncCouple(db,me){
  if(coupleMissing)return false;
  try{return applyCouple(await db(`court_couples?select=user_id,spouse,sex,age,since&or=(user_id.eq.${me},spouse.eq.${me})`),me)}
@@ -353,6 +371,7 @@ async function tick(force){
  if(S.name)try{if(decideAppeals()>0){changed=true;force=true}}catch(e){console.warn('appeals',e)}   // before the verdict goes out
  try{if(await sync(force))changed=true}catch{}   // first: a colleague's verdict on my witness's trial is then known
  if(S.name)try{if(separateTick()>0)changed=true;if(appealTick()>0)changed=true}catch(e){console.warn('court news',e)}
+ if(S.name)try{if(familyTick())changed=true}catch(e){console.warn('family',e)}
  if(changed){if(typeof save==='function')save();refresh()}
 }
 
@@ -372,7 +391,7 @@ async function ready(ms=4000){
  if(readOnce||!linked())return;
  await Promise.race([sync(true),new Promise(r=>setTimeout(r,ms))]);
 }
-window.VerdictColleagues={ready,couple,spouseVerdicts,applyCouple,decideAppeals,appealTick,taken:()=>othersOpen,judged:()=>othersJudged,people,articles,sync:()=>tick(true),separateTick,keyOf};
+window.VerdictColleagues={ready,couple,familyPlan,familyTick,spouseVerdicts,applyCouple,decideAppeals,appealTick,taken:()=>othersOpen,judged:()=>othersJudged,people,articles,sync:()=>tick(true),separateTick,keyOf};
 const start=()=>{if(S.selfGender&&NPC.self)NPC.self.gender=S.selfGender;   // the sex set for a couple (040) also when offline
  setTimeout(()=>tick(true),1500);setInterval(()=>tick(false),TICK_MS);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick(false)})};

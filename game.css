@@ -860,3 +860,12 @@ body.t4-court #toast{bottom:168px}
 /* 2026-11-08 appellate hearing banner (colleague_court appeals) */
 .t4-appeal{border:1px solid #c09f6f;background:#fbf5e8;border-radius:12px;padding:10px 12px;margin:0 0 12px}
 .t4-appeal b{display:block;color:#7a5a2b;margin-bottom:4px}.t4-appeal p{margin:0 0 4px;font-size:14px;line-height:1.6}.t4-appeal small{color:#6d6658}
+
+/* v11 핵심 쟁점 메모 (case page) */
+.t4-memo{border:1px solid #e5ddcf;border-radius:11px;padding:8px 11px;background:#fffdf8;margin:10px 0;font-size:13px}
+.t4-memo summary{cursor:pointer;font-weight:700}
+.t4-memo ol{margin:8px 0 6px;padding-left:20px}
+.t4-memo li{margin:5px 0;line-height:1.5}
+.t4-memo li b{display:block;font-weight:600}
+.t4-memo li span{display:inline-block;font-size:12px;border-radius:8px;padding:0 7px;background:#eceae4;color:#4b5563}
+.t4-memo li.clash span{background:#fbe3dc;color:#9a3412}.t4-memo li.need span{background:#fdf1d6;color:#8a5a00}.t4-memo li.ok span{background:#e3efe6;color:#2f6b45}

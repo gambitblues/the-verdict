@@ -215,9 +215,21 @@ try{
  const ca=await cp(a),cb=await cp(b);
  assert.equal(ca.age,35);assert.equal(cb.age,35);assert.equal(ca.spouseAge,35,'the spouse on my card is 35 too');assert.equal(cb.spouseAge,35);assert.equal(ca.sex,'남');assert.equal(cb.sex,'여');
  assert.ok(ca.spouse&&cb.spouse&&/^배우자/.test(ca.role),'the spouse comes first among the court colleagues: '+ca.role);
- assert.ok(ca.kid&&ca.kid===cb.kid,'one child, the same name in both games: '+ca.kid+' / '+cb.kid);assert.ok(ca.msg&&cb.msg,'the spouse tells of the birth');
+ /* v11 P0: children follow the game calendar, not the wall clock (the couple was set 31 real days ago: still no child) */
+ assert.ok(!ca.kid&&!cb.kid&&!ca.msg,'no child before the game calendar reaches the birth date');
+ const plan=await a.evaluate(()=>VerdictColleagues.familyPlan(S.couple.pair||[VerdictAuth.user.id,S.couple.spouse].sort().join(':')));
+ assert.equal(JSON.stringify(plan),JSON.stringify(await b.evaluate(()=>VerdictColleagues.familyPlan([VerdictAuth.user.id,S.couple.spouse].sort().join(':')))),'one family plan in both games');
+ // A plays far ahead: A meets the first child; B, still at the start, does not see A's future
+ await a.evaluate(d=>{S.week=Math.ceil((d+1)/7);VerdictColleagues.familyTick()},plan[0].day);await b.evaluate(()=>VerdictColleagues.familyTick());
+ const ka=await cp(a),kb0=await cp(b);assert.ok(ka.kid&&ka.msg,'A\'s calendar reached the birth');assert.ok(!kb0.kid,'B has not reached that date yet');
+ await b.evaluate(d=>{S.week=Math.ceil((d+1)/7)+3;VerdictColleagues.familyTick()},plan[0].day);const kb=await cp(b);
+ assert.equal(kb.kid,ka.kid,'the same child (name) in both games');
+ const born=await Promise.all([a,b].map(p=>p.evaluate(()=>[NPC.couple_child_0.bornDay,NPC.couple_child_0.gender,NPC.couple_child_0.bornYear].join())));assert.equal(born[0],born[1],'same birth date and sex');
+ for(const p of [a,b])await p.evaluate(()=>{VerdictColleagues.familyTick();save()});assert.equal((await cp(a)).kids,1,'never born twice');
+ Object.assign(ca,{kid:ka.kid});
  assert.ok(ca.list>0,'my spouse\'s verdicts are on their card');
  await a.evaluate(()=>VerdictColleagues.sync());assert.equal((await cp(a)).kids,1,'no second child before its time');
+ assert.equal(await a.evaluate(()=>age()-35),await a.evaluate(()=>year()-2027),'my age moves with my calendar');
  await a.evaluate(()=>{const sp=VerdictColleagues.people()[0];popupNPC(sp.id)});
  assert.match(await a.locator('#modal-root').innerText(),/배우자 · 같은 법원 판사[\s\S]*판결 기록 \d+건/);
  await a.screenshot({path:'qa-visuals/couple-card-'+W+'.png'});console.log('    card: '+(await a.locator('#modal-root').innerText()).replace(/\s+/g,' ').slice(0,700));
