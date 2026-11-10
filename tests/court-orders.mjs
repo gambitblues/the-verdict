@@ -132,6 +132,7 @@ try{
      const w=(t.writs||[]).find(x=>x.order===o.key);if(!w)bad.push(tag+': explain result not kept');
      for(const x of w?.check?.clashes||[]){
       if(!t.evidence.some(e=>e.title===x.anchor.label)&&!/증언|말/.test(x.anchor.label))bad.push(tag+': a clash names something not in court');
+      if(!x.anchor.line)bad.push(tag+': a clash without the line it rests on');
       if(!TP.citables(c,t).some(i=>i.kind==='writ'&&i.anchor===x.anchor.label))bad.push(tag+': a clash cannot be cited');
       if(x.side===(t.truth==='did'?'p':t.truth==='didnt'?'d':'m'))add(exp,'true-side-clash')}}
     for(const o of t.courtOrders||[]){if(o.outcome)add(kinds,'final-'+o.outcome);if(o.outcome==='declined'&&!(c.kind==='criminal'&&o.to==='d'))bad.push(tag+': only the criminal defence may decline')}
@@ -146,6 +147,7 @@ try{
  console.log(`  ✓ B ${B.trials} trials · ${B.hearings} hearings with orders open · case-specific choice available ${(ratio*100).toFixed(1)}% · orders given ${B.issued}, from the case's own nodes ${(own*100).toFixed(1)}%`);
  console.log(`    hearings reached ${JSON.stringify(B.lastDays)} · results ${JSON.stringify(B.kinds)} · 석명 ${JSON.stringify(B.exp)}`);
  assert.ok((B.exp.clash||0)+(B.exp.both||0)>=20,'석명 요구 should often run a story into the record');
+ assert.ok((B.exp.open||0)>=20,'often the two accounts only take different sides — no clash then');
  assert.ok((B.exp['true-side-clash']||0)>0,'records can mislead: a true story sometimes runs into a wrong record');
  assert.ok(ratio>=0.9,'a case-specific choice should be open in 90%+ of hearings');
  assert.ok(own>=0.5,'at least half of the orders given should come from the case\'s own nodes');
