@@ -29,7 +29,7 @@ const url='http://127.0.0.1:'+server.address().port+'/';
 const USERS={'a@x.kr':{id:'uid-a',pw:'pw-a'},'b@x.kr':{id:'uid-b',pw:'pw-b'},'c@x.kr':{id:'uid-c',pw:'pw-c',stranger:true},'d@x.kr':{id:'uid-d',pw:null}};   // d: invited by email, no password yet
 const recovers=[];
 const cloud=new Map(),serverBackups=[],aiCalls=[],cors={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'*'};
-const net={down:false,claimBroken:false,refuse:new Set()};
+const net={down:false,claimBroken:false,refuse:new Set(),fresh:{}};
 const who=req=>{const t=(req.headers()['authorization']||'').replace('Bearer ','');return Object.entries(USERS).find(([,u])=>'tok-'+u.id===t)};
 async function routes(ctx){
  await ctx.route('https://sb.test/**',async route=>{const req=route.request(),u=new URL(req.url()),j=(d,s=200)=>route.fulfill({status:s,headers:{...cors,'content-type':'application/json'},body:JSON.stringify(d)});
@@ -44,6 +44,7 @@ async function routes(ctx){
   const me=who(req);if(!me)return j({message:'JWT'},401);const uid=me[1].id;
   if(u.pathname==='/auth/v1/user'){if(req.method()==='PUT'){const b=JSON.parse(req.postData()||'{}');if(String(b.password).length<8)return j({error_code:'weak_password',msg:'Password should be at least 8 characters'},422);me[1].pw=b.password}
    return j({id:uid,email:me[0]})}
+  if(u.pathname==='/rest/v1/fresh_starts')return j(net.fresh[uid]?[{at:net.fresh[uid]}]:[]);
   if(u.pathname==='/rest/v1/rpc/claim_player'){if(net.claimBroken)return j({message:'boom'},500);return j(!me[1].stranger&&!net.refuse.has(uid))}
   if(u.pathname==='/rest/v1/saves'&&req.method()==='GET'){const id=u.searchParams.get('user_id').replace('eq.','');assert.equal(id,uid,'a player only asks for their own saves');
    const slot=u.searchParams.get('slot')?.replace('eq.','');
@@ -277,5 +278,24 @@ try{
  await login(p7,'d@x.kr','newpass123');await p7.locator('#verdict-entry').waitFor({timeout:30000});
  assert.deepEqual(e7,[]);await ctx7.close();
  console.log('  ✓ invite link: set a password and start; expired link explained; forgotten password sends a new link');
+ // 11. (2026-11-10) a clean start ordered on the server (041): the old career and the listed records go to a hidden
+ //     trash in this browser, the next game is a new career and its first save
+ const ctx8=await browser.newContext({viewport:{width:390,height:844}});await routes(ctx8);const p8=await ctx8.newPage();const e8=[];p8.on('pageerror',e=>e8.push(e.message));
+ await p8.goto(url+'?auth=1',{waitUntil:'networkidle'});await login(p8,'d@x.kr','newpass123');await p8.locator('#verdict-entry').waitFor({timeout:30000});
+ await p8.locator('#profile-continue').click();await p8.locator('#playerName').fill('옛 커리어');await p8.locator('[data-action="start"]').last().click();await loaded(p8,'옛 커리어');
+ await p8.evaluate(()=>{save();VerdictStore.flush()});
+ await p8.evaluate(()=>new Promise(res=>{const r=indexedDB.open('verdict-backups',1);r.onupgradeneeded=()=>r.result.createObjectStore('b',{keyPath:'id'});r.onsuccess=()=>{const tx=r.result.transaction('b','readwrite');tx.objectStore('b').put({id:'replaced:uid-d:1',kind:'replaced',uid:'uid-d',at:Date.now()-1e6,keys:{verdict_player_save_1:'{"name":"더 옛 커리어"}'}});tx.oncomplete=res}}));
+ net.fresh['uid-d']=new Date().toISOString();cloud.delete('uid-d:1');cloud.delete('uid-d:2');
+ await p8.reload({waitUntil:'networkidle'});await p8.locator('#verdict-entry').waitFor({timeout:30000});
+ const fr=await p8.evaluate(()=>({name:typeof S!=='undefined'&&S?S.name:'',keys:Object.keys(localStorage).filter(k=>/^verdict_player_save|^the_verdict_alpha/.test(k)&&localStorage.getItem(k)?.includes('옛 커리어'))}));
+ assert.ok(!fr.name&&!fr.keys.length,'a new career starts: '+JSON.stringify(fr));
+ const bk=await backups(p8);assert.ok(bk.some(x=>x.kind==='trash'&&x.uid==='uid-d'),'the old career is kept in the trash, not deleted');assert.ok(!bk.some(x=>x.kind==='replaced'&&x.uid==='uid-d'),'nothing left to list');
+ await p8.locator('#verdict-login [data-vl="bk"], #verdict-entry [data-vl="bk"]').first().click();await p8.waitForFunction(()=>/보관된 기록/.test(document.body.innerText));
+ assert.match(await p8.locator('#verdict-login').innerText(),/보관된 기록이 없어요/);
+ await p8.reload({waitUntil:'networkidle'});await p8.locator('#verdict-entry').waitFor({timeout:30000});
+ await p8.locator('#profile-continue').click();await p8.locator('#playerName').fill('새 출발');await p8.locator('[data-action="start"]').last().click();await loaded(p8,'새 출발');
+ await p8.evaluate(()=>{save();VerdictStore.flush()});await p8.reload({waitUntil:'networkidle'});await loaded(p8,'새 출발');
+ assert.deepEqual(e8,[]);await ctx8.close();
+ console.log('  ✓ clean start (041): old career and listed records to a hidden trash, a new career is the first save, applied once');
  console.log('PASS: private login, per-user saves, conflicts, offline rules, AI bridge');
 }finally{await browser.close();server.close()}
