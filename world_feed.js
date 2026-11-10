@@ -442,7 +442,7 @@ function answer(id,choiceId){
  if(th.kind==='interview'&&(th.stage!=null||choiceId==='accept')){
   if(th.stage==null){th.lines.push({me:true,text:'짧게 인터뷰에 응한다'},{me:false,text:'감사합니다. 판사님 말씀은 왜곡 없이 그대로 싣겠습니다.'})}
   if(interviewStep(th,choiceId,c)){save();render();return}}
- const tp=TPL[th.kind],ch=tp?.choices.find(x=>x[0]===choiceId);if(!ch)return;
+ const ch=choicesOf(th).find(x=>x[0]===choiceId);if(!ch)return;
  const eff=ch[3]||{};
  th.picked=choiceId;th.lines.push({me:true,text:ch[1]},{me:false,text:replyOf(ch[2],th.id+':'+choiceId)});
  S.relations[th.from]=Math.max(0,Math.min(100,(S.relations[th.from]??30)+(eff.rel||0)));
@@ -450,17 +450,45 @@ function answer(id,choiceId){
  const t=c&&S.cases[c.id]?.trial4;if(eff.heat&&t)t.media.H=Math.min(100,t.media.H+eff.heat);
  if(eff.news&&c){const rr=NPC[th.from]?.reporter!=null?REPORTERS[NPC[th.from].reporter]:null;const [title,body]=eff.news(c,rr);news(title,body,rr?.outlet||'법조일보')}
  window.VerdictV6?.onReply?.(th,choiceId,c);
- if(typeof remember==='function')remember(th.from,'문자',`${c?shortName(c):'사건'}에 대해 "${ch[1]}"라고 답함`,c?.id||null);
+ if(typeof remember==='function'){if(eff.memo)remember(th.from,'인연',eff.memo,c?.id||null);else remember(th.from,'문자',c?`${shortName(c)}에 대해 "${ch[1]}"라고 답함`:`"${ch[1]}"라고 답함`,c?.id||null)}
  save();render();
 }
+/* v11: texts grouped by person — a list of contacts (latest line, unread mark) and one conversation at a time, with the
+ * person's card one tap away. Threads tied to a case and plain notices from the same person read as one conversation.
+ * A thread waiting for a reply always counts as unread; anything newer than the last time the conversation was opened
+ * does too. Nothing here is needed to play a trial. */
+const seenAt=id=>(S.msgSeen||{})[id]||0;
+function contacts(){
+ const map=new Map(),touch=(id,at,text,unread)=>{if(!id||!NPC[id])return;const x=map.get(id)||{id,at:-1,last:'',unread:0};if(at>=x.at){x.at=at;x.last=text}if(unread)x.unread++;map.set(id,x)};
+ for(const th of threads()){const at=th.at||0,l=th.lines[th.lines.length-1];touch(th.from,at,l?.text||'',!th.picked||at>seenAt(th.from))}
+ for(const m of S.msgs||[]){const at=m.at||0;touch(m.from,at,m.body,!!m.at&&at>seenAt(m.from))}
+ return [...map.values()].sort((a,b)=>(b.unread>0)-(a.unread>0)||b.at-a.at);
+}
+function conversation(id){
+ const items=[];
+ for(const th of threads().filter(x=>x.from===id))items.push({at:th.at||0,th});
+ for(const m of (S.msgs||[]).filter(x=>x.from===id))items.push({at:m.at||0,m});
+ items.sort((a,b)=>a.at-b.at);
+ /* only the newest unanswered text offers replies; older ones simply stay unanswered (no pile of buttons) */
+ const open=[...items].reverse().find(x=>x.th&&!x.th.picked)?.th;
+ return items.slice(-30).map(({th,m})=>m?`<p class="wf-bubble">${esc(m.body)}</p>`:`${th.lines.map(l=>`<p class="wf-bubble ${l.me?'me':''}">${esc(l.text)}</p>`).join('')}
+  ${th.picked||th!==open?'':`<div class="wf-choices">${choicesOf(th).map(([k,l])=>`<button class="btn outline mini" data-action="wfreply" data-id="${esc(th.id)}" data-choice="${k}">${esc(l)}</button>`).join('')}</div>`}`).join('');
+}
+const choicesOf=th=>th.kind==='interview'&&typeof th.stage==='number'?IQ[th.stage].a.map(x=>[x[0],x[1]]):(th.choices||TPL[th.kind]?.choices||[]);
 function messagesView(){
- const list=threads(),old=S.msgs||[];
- const box=list.map(th=>{const p=NPC[th.from],tp=TPL[th.kind];
-  return `<article class="wf-msg ${th.picked?'':'new'}"><div class="row">${avatar(th.from)}<div><b>${esc(p?.name||'알림')}</b><div class="xs muted">${esc(p?.role||'')}</div></div></div>
-  ${th.lines.map(l=>`<p class="wf-bubble ${l.me?'me':''}">${esc(l.text)}</p>`).join('')}
-  ${th.picked?'':`<div class="wf-choices">${(th.kind==='interview'&&typeof th.stage==='number'?IQ[th.stage].a.map(x=>[x[0],x[1]]):tp.choices).map(([k,l])=>`<button class="btn outline mini" data-action="wfreply" data-id="${esc(th.id)}" data-choice="${k}">${esc(l)}</button>`).join('')}</div>`}</article>`}).join('');
- return `<h2>💬 문자</h2><p class="muted small">답장에 따라 관계와 언론 반응, 다음 대화가 달라져요.</p>${box||'<p class="muted">아직 답장할 문자가 없어요.</p>'}
- ${old.length?`<details class="mt"><summary>알림 ${old.length}건</summary>${old.slice(0,30).map(m=>`<div class="feed"><b>${esc(NPC[m.from]?.name||'알림')}</b><p>${esc(m.body)}</p></div>`).join('')}</details>`:''}`;
+ const who=ui.msgWith&&NPC[ui.msgWith]?ui.msgWith:null;
+ if(who){(S.msgSeen??={})[who]=Date.now();const p=NPC[who];
+  return `<div class="wf-convo-head"><button class="btn ghost mini" data-action="wfwith" data-id="">‹ 목록</button>${avatar(who)}<div><b>${esc(p.name)}</b><div class="xs muted">${esc(p.role||'')}</div></div><button class="btn outline mini" data-action="npc" data-id="${esc(who)}">인물카드</button></div>
+  <div class="wf-convo">${conversation(who)||'<p class="muted">주고받은 문자가 없어요.</p>'}</div>`}
+ const list=contacts();
+ return `<h2>💬 문자</h2><p class="muted small">답장은 하지 않아도 괜찮아요. 답에 따라 관계가 조금 달라질 수 있어요.</p>
+ ${list.length?`<div class="wf-contacts">${list.map(x=>`<button class="wf-contact" data-action="wfwith" data-id="${esc(x.id)}">${avatar(x.id)}<span><b>${esc(NPC[x.id].name)}</b><small>${esc(String(x.last).slice(0,46))}</small></span>${x.unread?`<i class="wf-unread">${x.unread}</i>`:''}</button>`).join('')}</div>`:'<p class="muted">아직 주고받은 문자가 없어요.</p>'}`;
+}
+/* v11: an everyday text (not tied to a case) with its own 2~3 replies: [id, my words, their answer, {rel, memo}] */
+function addSocial(x){
+ if(!NPC[x.from]||threads().some(t=>t.id==='social:'+x.key))return false;
+ threads().unshift({id:'social:'+x.key,kind:'social',caseId:x.caseId||null,from:x.from,week:S.week,at:Date.now(),lines:[{me:false,text:x.text}],choices:x.choices,picked:null});threads().splice(40);
+ if(typeof toast==='function')toast(`💬 ${NPC[x.from].name}에게서 문자가 왔어요`);return true;
 }
 
 
@@ -492,6 +520,10 @@ articleStyle.textContent=`
 .wf-article-full p{display:block!important;-webkit-line-clamp:unset!important;line-clamp:unset!important;
  overflow:visible!important;white-space:normal;overflow-wrap:anywhere;line-height:1.7;margin:10px 0!important}
 .wf-news-compact .tv-reporter{display:block;margin-top:9px;clear:both}
+.wf-contacts{display:flex;flex-direction:column;gap:6px}.wf-contact{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fffdf8;border:1px solid #e6ddcf;border-radius:12px;padding:8px 10px}
+.wf-contact span{flex:1;min-width:0}.wf-contact b{display:block}.wf-contact small{display:block;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wf-contact .avatar,.wf-convo-head .avatar{width:38px;height:38px;flex:none}.wf-unread{font-style:normal;background:#c8442f;color:#fff;border-radius:10px;padding:1px 7px;font-size:12px}
+.wf-convo-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}.wf-convo-head>div{flex:1;min-width:0}.wf-convo{display:flex;flex-direction:column;gap:6px}
 .wf-news-opinion{display:flex;flex-wrap:wrap;gap:5px 14px;margin:12px 0 8px;padding:9px 0;border-top:1px solid #e6ddcf;font-size:12px;color:#5c6572;clear:both}
 .wf-news-opinion span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .wf-opinion-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#c8442f}
@@ -556,9 +588,11 @@ clicker=function(e){
  if(a==='wfopen'){e.preventDefault();const id=el.dataset.id;open.has(id)?open.delete(id):open.add(id);render();return}
  if(a==='reporter'){e.preventDefault();const id=reporterNPC(Number(el.dataset.i));if(id)popupNPC(id);return}
  if(a==='wfreply'){e.preventDefault();answer(el.dataset.id,el.dataset.choice);return}
+ if(a==='wfwith'){e.preventDefault();ui.msgWith=el.dataset.id||null;if(ui.modal&&typeof closeModal==='function')closeModal();else if(ui.modal){ui.modal=null;const r=document.getElementById('modal-root');if(r)r.innerHTML=''}
+  ui.tabletTab='messages';if(typeof changeTab==='function'&&ui.tab!=='tablet')changeTab('tablet');else render();return}
  return priorClick(e);
 };
 setInterval(()=>{if(scan()&&!ui.modal&&(ui.tab==='home'||ui.tab==='tablet'))render()},30000);
 setTimeout(()=>{if(scan()&&!ui.modal)render()},2500);
-window.VerdictWorld={addTruth,addCustom,scan,thread,opinionFeed,newsFeed,answer,reporters:()=>REPORTERS,reporterNPC};
+window.VerdictWorld={addSocial,contacts,addTruth,addCustom,scan,thread,opinionFeed,newsFeed,answer,reporters:()=>REPORTERS,reporterNPC};
 })();

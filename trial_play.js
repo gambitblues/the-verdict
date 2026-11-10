@@ -1524,6 +1524,16 @@ function faceList(c,t,locked){
  if(locked)return '';const can=issuesOf(c).filter(is=>!(t.faced||[]).includes(is.id)&&clashPair(t,is.id));
  return can.length?`<div class="t4-face">${can.map(is=>{const [a,b]=clashPair(t,is.id);return `<button class="t4-q face" data-action="t4" data-kind="face" data-id="${esc(is.id)}" ${t.qLeft>=2?'':'disabled'}>⚖ 대질 신문 · ${esc(wName(t,a))} ↔ ${esc(wName(t,b))}<small>'${esc(is.title)}'에서 서로 반대쪽을 말해요 · 신문 2번</small></button>`}).join('')}</div>`:'';
 }
+/* v11: 핵심 쟁점 메모 — the issues in one glance, each in one of four plain states, from what is in the record only:
+ * no hidden truth, no direction (which side), nothing a disputed testimony settles. Folded, on the case page. */
+function issueMemo(c,t){
+ const F=window.VerdictMatchPlay?.factsOf?.(c),rows=[],av=canOrder(c,t)?availableOrders(c,t):[];
+ const fact=F?.facts?.[0]||F?.timeline?.[0]?.what;if(fact)rows.push(['ok','기록으로 확인되는 사실',tell(c,t,fact)]);
+ for(const is of issuesOf(c).slice(0,3)){const s=issueStatus(c,t,is),more=s.undecided||s.unasked||av.some(o=>o.issue===is.id);
+  rows.push(s.lean==='clash'?['clash','진술·증거가 엇갈림',is.title]:s.lean==='open'?(more?['need','추가 자료가 필요함',is.title]:['open','아직 확인되지 않음',is.title]):more?['need','추가 자료가 필요함',is.title]:['ok','기록에 근거가 있음',is.title])}
+ if(!rows.length)return '';
+ return `<details class="t4-memo"${t.daysDone?'':' open'}><summary>📌 핵심 쟁점 메모</summary><ol>${rows.map(([k,label,text])=>`<li class="${k}"><b>${esc(text)}</b><span>${label}</span></li>`).join('')}</ol><small class="muted">법정에 나온 기록만으로 정리했어요. 어느 쪽이 맞는지는 판결에서 정해요.</small></details>`;
+}
 function issueView(c,t,brief){
  const issues=issuesOf(c);if(!issues.length)return '';
  const P_=sideWord(c,'p')==='검사'?'검찰':'원고',D_=sideWord(c,'p')==='검사'?'변호인':'피고';
@@ -1922,7 +1932,7 @@ court=function(){
   ?`<div class="t4-news-thread"><p><b>이전에 뉴스에서 봤던 사건입니다.</b> 당시 보도와 지금 법정에서 인정할 사실은 다를 수 있습니다.</p>
   <details class="t4-more"><summary>이전 기사 ${priorNews.length}건 보기</summary>${priorNews.map(n=>`<p class="small"><b>${esc(n.title)}</b> · ${esc(day(n.week))}<span class="t4-article-line">${esc(n.body)}</span></p>`).join('')}</details></div>`
   :'';
- const casePage=`<section class="panel t4 t4-case"><h3>무슨 사건인가?</h3>${c.appeal?`<div class="t4-appeal"><b>⚖ 항소심</b><p>1심: 같은 법원 ${esc(c.appeal.judgeName||'다른')} 판사 · "${esc(c.appeal.first?.label||'판결')}"${c.appeal.first?.sentence?` (${esc(c.appeal.first.sentence)})`:''} · 항소한 쪽: ${c.appeal.by==='d'?'피고인':'검찰'}</p><small>1심 기록과 같은 사건을 이 재판부가 다시 판단해요.</small></div>`:''}${!completed().length&&!st.verdict&&!(t?.daysDone)?HELP:''}${cur?`<p class="t4-logline">${esc(tell(c,t,cur.logline))}</p><p>${esc(tell(c,t,cur.summary))}</p>`:(overviewHtml||`<p>${esc(c.sub||'')}</p>`)}${newsLink}
+ const casePage=`<section class="panel t4 t4-case"><h3>무슨 사건인가?</h3>${c.appeal?`<div class="t4-appeal"><b>⚖ 항소심</b><p>1심: 같은 법원 ${esc(c.appeal.judgeName||'다른')} 판사 · "${esc(c.appeal.first?.label||'판결')}"${c.appeal.first?.sentence?` (${esc(c.appeal.first.sentence)})`:''} · 항소한 쪽: ${c.appeal.by==='d'?'피고인':'검찰'}</p><small>1심 기록과 같은 사건을 이 재판부가 다시 판단해요.</small></div>`:''}${!completed().length&&!st.verdict&&!(t?.daysDone)?HELP:''}${cur?`<p class="t4-logline">${esc(tell(c,t,cur.logline))}</p>${t?issueMemo(c,t):''}${window.VerdictCareerLife?.echo?.(c)||''}<p>${esc(tell(c,t,cur.summary))}</p>`:(overviewHtml||`<p>${esc(c.sub||'')}</p>`)}${newsLink}
   ${c.lifeConnection?.npcId===c.who?.[0]&&c.lifeConnection.detail?`<p class="t4-life-thread"><b>다시 만난 인물</b> · ${esc(NPC[c.who[0]]?.name||'원고')} — ${esc(c.lifeConnection.detail)}. 현재 청구의 성립 여부는 별도로 판단합니다.</p>`:''}
   ${c.repeatDefendant?.personId===c.who?.[0]&&c.repeatDefendant.priorCaseId?`<p class="t4-life-thread"><b>다시 법정에 선 피고인</b> · ${esc(NPC[c.who[0]]?.name||'피고인')}은 과거 ${esc(c.repeatDefendant.priorCaseName||c.repeatDefendant.priorCaseId)} 사건에서 유죄 판결을 받았습니다. 이번은 별개의 공소사실이며, 이전 판결만으로 유죄를 판단할 수 없습니다.</p>`:''}
   <dl class="t4-facts">${facts.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
