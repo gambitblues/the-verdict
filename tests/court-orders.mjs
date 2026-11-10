@@ -95,7 +95,7 @@ try{
  // ---- B: 60 cases × 30 seeds, played through every hearing the case allows ----
  const B=await page.evaluate(SEEDS=>{window.save=()=>true;window.age=()=>40; /* thousands of trials move the calendar decades: keep the judge below retirement */
   const TP=VerdictTrialPlay,O=TP.orders,C=VerdictCurated,bad=[],year_=year();
-  let trials=0,issued=0,ownIssued=0,hearings=0,meaningful=0,lastDays={},kinds={},byDay={},maxDay=0;
+  let exp={},trials=0,issued=0,ownIssued=0,hearings=0,meaningful=0,lastDays={},kinds={},byDay={},maxDay=0;
   const add=(o,k,n=1)=>o[k]=(o[k]||0)+n;
   for(const aid of C.ids){const cand=CasePackEngine.pool(S).find(x=>x.a.id===aid),dec=!!C.cases[aid].decision;
    for(let n=0;n<SEEDS;n++){const c=createGeneratedCase(cand);if(!c){bad.push(aid+': create');continue}
@@ -125,17 +125,26 @@ try{
     const fev=t.evidence.filter(e=>e.follow).map(e=>e.follow),fw=t.witnesses.filter(w=>w.follow).map(w=>w.follow);
     if(new Set(fev).size!==fev.length||new Set(fw).size!==fw.length)bad.push(tag+': one order produced two results');
     for(const w of t.witnesses){const ex=w.extra||[];if(new Set(ex).size!==ex.length)bad.push(tag+': recall questions opened twice')}
+    /* v10.6 석명 요구: every answered request is held against the record; a clash names the false side and real material */
+    for(const o of (t.courtOrders||[]).filter(o=>o.type==='explain'&&o.status==='done')){
+     add(exp,o.check||'none');if(!['clash','both','open','held'].includes(o.check))bad.push(tag+': explain order without a record check');
+     if(!/기록과 견줘/.test(o.result||''))bad.push(tag+': explain result does not say how it met the record');
+     const w=(t.writs||[]).find(x=>x.order===o.key);if(!w)bad.push(tag+': explain result not kept');
+     if(w?.check?.kind==='clash'){const ts=t.truth==='did'?'p':t.truth==='didnt'?'d':'m';
+      if(ts==='m'||w.check.side===ts)bad.push(tag+': the true side was said to clash');
+      if(!TP.citables(c,t).some(i=>i.kind==='writ'&&i.anchor===w.check.anchor.label))bad.push(tag+': a clash cannot be cited')}}
     for(const o of t.courtOrders||[]){if(o.outcome)add(kinds,'final-'+o.outcome);if(o.outcome==='declined'&&!(c.kind==='criminal'&&o.to==='d'))bad.push(tag+': only the criminal defence may decline')}
     for(const e of t.evidence)if(e.follow&&!(e.detail?.excerpt&&e.detail?.how&&e.detail?.title&&e.detail?.caveat&&e.detail.excerpt!=='기록 없음'))bad.push(tag+': ordered evidence without its text or provenance');
     for(const w of t.witnesses)if(w.follow){const p=NPC[w.id];if(!(w.detail?.q?.length>=3&&p))bad.push(tag+': ordered witness without questions');else{if(year()-p.bornYear<20)bad.push(tag+": ordered witness is "+(year()-p.bornYear));if(cast.has(w.id))bad.push(tag+': ordered witness already has a role in this case');if(p.alive===false)bad.push(tag+': ordered witness is dead')}}
     st.referred=true}}
-  return {trials,issued,ownIssued,hearings,meaningful,lastDays,kinds,byDay,maxDay,bad:[...new Set(bad)]}},SEEDS);
+  return {exp,trials,issued,ownIssued,hearings,meaningful,lastDays,kinds,byDay,maxDay,bad:[...new Set(bad)]}},SEEDS);
  if(B.bad.length){const g={};for(const b of B.bad){const k=b.replace(/^[^:]+: /,'').slice(0,50);g[k]=(g[k]||0)+1}console.log(g);console.log(B.bad.slice(0,15).join('\n'))}
  assert.equal(B.bad.length,0,B.bad.length+' order problems');
  assert.equal(B.trials,60*SEEDS);
  const ratio=B.meaningful/B.hearings,own=B.ownIssued/B.issued;
  console.log(`  ✓ B ${B.trials} trials · ${B.hearings} hearings with orders open · case-specific choice available ${(ratio*100).toFixed(1)}% · orders given ${B.issued}, from the case's own nodes ${(own*100).toFixed(1)}%`);
- console.log(`    hearings reached ${JSON.stringify(B.lastDays)} · results ${JSON.stringify(B.kinds)}`);
+ console.log(`    hearings reached ${JSON.stringify(B.lastDays)} · results ${JSON.stringify(B.kinds)} · 석명 ${JSON.stringify(B.exp)}`);
+ assert.ok((B.exp.clash||0)>=20,'석명 요구 should often run one side into the record');
  assert.ok(ratio>=0.9,'a case-specific choice should be open in 90%+ of hearings');
  assert.ok(own>=0.5,'at least half of the orders given should come from the case\'s own nodes');
  // ---- B2: a defence that will not hand material over in a criminal trial — what it says and what it changes ----

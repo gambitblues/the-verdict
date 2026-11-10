@@ -575,17 +575,22 @@ function availableOrders(c,t){
  if(out.filter(o=>!used.has(o.key)).length<3){
   for(const is of issuesOf(c)){
    // A second generic clarification about the same issue is not a new order.
-   if([...(t.courtOrders||[]),...out].some(o=>o.issue===is.id&&o.type==='explain'))continue;
+   const prior=(t.courtOrders||[]).filter(o=>o.issue===is.id&&o.type==='explain');
+   if(out.some(o=>o.issue===is.id&&o.type==='explain'))continue;
+   // v10.6: one request per issue, unless the last one could not tell the stories apart and the record has grown since
+   const last=prior[prior.length-1];
+   if(last&&(last.status==='pending'||last.check!=='open'||explainAnchors(c,t,is.id).length<=(last.anchors||0)))continue;
+   const sfx=prior.length?':'+(prior.length+1):'';
    const e=(t.evidence||[]).find(e=>e.revealed>0&&evDetail(c,e)?.issue===is.id);
    const h=(t.heard||[]).find(h=>h.issue===is.id&&!h.struck&&!h.tainted&&h.w!=='party');
-   if(e&&!used.has('x:e:'+is.id)){
+   if(e&&!used.has('x:e:'+is.id+sfx)){
     const d=evDetail(c,e),content=d?.shows?short(tell(c,t,d.shows),90):short(e.scope||'',90);
-    out.push({key:'x:e:'+is.id,issue:is.id,type:'explain',to:'both',target:e.title,
+    out.push({key:'x:e:'+is.id+sfx,issue:is.id,type:'explain',to:'both',target:e.title,
      text:`자료 ${qt(e.title,'을')} 확인하세요. ${content?`자료 내용: ${content}. `:''}자료에서 직접 확인되는 사실과 아직 입증되지 않은 주장을 구분하고, 그 근거를 서면으로 제출하세요.`});
-   }else if(h&&!used.has('x:h:'+is.id)){
+   }else if(h&&!used.has('x:h:'+is.id+sfx)){
     const name=wName(t,h.w),q=qById(c,t,h.w,h.q);
     const words=h.text||h.said||(q?shownAnswer(c,t,h.w,q):'');
-    out.push({key:'x:h:'+is.id,issue:is.id,type:'explain',to:'both',target:name+' 증언',
+    out.push({key:'x:h:'+is.id+sfx,issue:is.id,type:'explain',to:'both',target:name+' 증언',
      text:`${name} 증언${words?` “${short(words,85)}”`:''}을 검토하세요. 직접 확인한 사실과 전해 듣거나 추측한 내용을 구분해 그 근거를 제출하세요.`});
    }
   }
@@ -635,6 +640,28 @@ function explainText(c,t,f){
  const A=f.answer||{},line=k=>A[k]?`${sideWord(c,k)}: "${tell(c,t,pick(A[k],t.truth))}"`:'';
  return [line('p'),line('d')].filter(Boolean).join(' / ');
 }
+/* v10.6: what is already in court on one issue — evidence not set aside (illegal never), testimony still standing */
+function explainAnchors(c,t,issue){
+ const ev=(t.evidence||[]).filter(e=>e.revealed>0&&e.decision!=='exclude'&&e.flawType!=='illegal').map(e=>({e,d:evDetail(c,e)}))
+  .filter(x=>x.d?.issue===issue&&(x.d.side==='p'||x.d.side==='d')).map(x=>({key:'e:'+x.e.id,label:x.e.title,side:x.d.side,kind:'evidence'}));
+ const hd=(t.heard||[]).map((h,i)=>({h,i})).filter(({h})=>h.issue===issue&&!h.struck&&!h.tainted&&!h.silent&&(h.side==='p'||h.side==='d'))
+  .map(({h,i})=>({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label||'증언'}`,side:h.side,kind:'testimony'}));
+ return [...ev,...hd];
+}
+function explainCheckText(c,ck){
+ if(ck.kind==='clash')return `기록과 견줘 보니 ${P(sideWord(c,ck.side),'의')} 설명은 ${qt(ck.anchor.label,'과')} 맞지 않아요. 판결 이유로 쓸 수 있어요.`;
+ if(ck.kind==='both')return '기록과 견줘 보니 양쪽 설명이 모두 기록의 일부와만 맞아요. 어느 한쪽 말이 다 맞다고 보기는 어려워요.';
+ if(ck.kind==='held')return '기록과 견줘 봤지만 두 설명 모두 지금 기록과 뚜렷하게 부딪히지 않아요. 설명만으로는 어느 쪽이 맞는지 가려지지 않았어요.';
+ return '기록과 견줘 봤지만 지금 법정에 나온 자료로는 어느 쪽 설명이 맞는지 가릴 수 없어요. 이 쟁점의 증거나 증언이 더 나오면 다시 요구할 수 있어요.';
+}
+function explainResult(c,t,o,issue,said){
+ const anchors=explainAnchors(c,t,issue),ts=T.truthSide(t.truth);
+ const ck=T.explainCheck({truth:t.truth,anchors,skill:ts==='m'?null:orderSkill(c,t,ts==='p'?'d':'p'),seed:t.seed+':'+o.key});
+ const check=ck.kind==='open'||ck.kind==='held'?{kind:ck.kind}:{kind:ck.kind,...(ck.side?{side:ck.side}:{}),anchor:{key:ck.anchor.key,label:ck.anchor.label,kind:ck.anchor.kind}};
+ o.check=check.kind;o.anchors=anchors.length;
+ (t.writs??=[]).push({...(o.follow?{follow:o.follow}:{}),order:o.key,day:t.day,issue,text:said||'',check});
+ return explainCheckText(c,check);
+}
 const NONE_TEXT={witness:'증인을 찾았지만 연락이 닿지 않아 출석하지 못했어요. 출석하지 않은 사람의 진술서는 그대로 증언을 대신할 수 없어요.',recall:'증인이 이번 기일에 나오지 못했어요.',expert:'감정인이 지금 자료만으로는 더 말할 수 있는 것이 없다고 회신했어요. 이 점은 확인되지 않은 채로 남아요.'};
 function resolveOrders(c,t){
  const due=(t.courtOrders||[]).filter(o=>o.status==='pending'&&o.due<=t.day);if(!due.length)return;
@@ -658,8 +685,8 @@ function resolveOrders(c,t){
    const n=(f.recall.q||[]).filter(q=>!q.hidden).length;text=`증인 ${P(wName(t,f.recall.w),'이')} 다시 나왔어요. ${f.why?tell(c,t,f.why)+' ':''}새로 물을 수 있는 질문 ${n}개 · 증인 탭에서 물어보세요.`}
   else if(o.type==='recall'){const w=t.witnesses[o.w],d=wDetail(c,o.w);const ids=(d?.q||[]).filter(q=>q.hidden&&q.issue===o.issue).map(q=>q.id);w.opened=[...new Set([...(w.opened||[]),...ids])];
    text=`증인 ${P(wName(t,o.w),'이')} 다시 나왔어요. 새로 물을 수 있는 질문 ${ids.length}개.`}
-  else if(o.type==='explain'&&f?.answer){const x=explainText(c,t,f);text=`${o.now?'그 자리에서 답했어요':'양측이 설명을 냈어요'} — ${x}`;(t.writs??=[]).push({follow:f.id,day:t.day,issue:f.issue,text:x})}
-  else if(o.type==='explain'){const is=issuesOf(c).find(x=>x.id===o.issue);text=`양측이 '${is?.title||'쟁점'}'에 대한 서면을 냈어요. 새로 드러난 사실은 없고, 지금까지의 주장과 근거를 정리한 내용이에요. 기록 탭에서 다시 볼 수 있어요.`}
+  else if(o.type==='explain'&&f?.answer){const x=explainText(c,t,f);text=`${o.now?'그 자리에서 답했어요':'양측이 설명을 냈어요'} — ${x} ⚖ ${explainResult(c,t,o,f.issue,x)}`}
+  else if(o.type==='explain'){const is=issuesOf(c).find(x=>x.id===o.issue);text=`양측이 ${qt(is?.title||'쟁점','에')} 대한 서면 설명을 냈어요. ${explainResult(c,t,o,o.issue,'')}`}
   else if(f?.witness){const w=followWitness(c,t,f);ui.t4w=null;text=`새 증인 ${P(NPC[w.id]?.name||'증인','이')} 채택돼 출석했어요(${f.witness.role}). 증인 탭에서 물어보세요.`}
   else if(f?.evidence&&t.evidence.some(e=>e.follow===f.id)){const e=t.evidence.find(x=>x.follow===f.id);text=`${qt(e.title,'은')} 이미 법정에 나와 있어요. 증거 탭에서 확인하세요.`}   // filed by a party in the meantime: never twice
   else if(f?.evidence){const e=followEvidence(c,t,f,outcome==='partial');ui.t4ev=null;text=`${P(who,'이')} ${P(e.title,'을')} ${outcome==='partial'?'일부만 ':''}냈어요. 증거 탭에서 쓸지 정하세요.`;
@@ -1106,6 +1133,10 @@ function citables(c,t){
   if(h.text){out.push({key:'h:'+i,label:`${wName(t,h.w)}의 ${h.label||'증언'}`,text:h.text,side:h.side==='m'?'n':h.side,issue:h.issue,kind:'testimony',name:wName(t,h.w)});return}
   const q=qById(c,t,h.w,h.q);if(!q)return;
   out.push({key:'h:'+i,label:`${wName(t,h.w)}의 증언`,text:shownAnswer(c,t,h.w,q),side:h.side==='m'?'n':h.side,issue:h.issue,kind:'testimony',name:wName(t,h.w)})});
+ /* v10.6: an explanation that ran into the record. It points against the side that gave it. */
+ (t.writs||[]).forEach((w,i)=>{if(w.check?.kind!=='clash')return;const who=sideWord(c,w.check.side);
+  out.push({key:'w:'+i,label:`석명 결과 · ${who} 설명이 기록과 어긋남`,text:`${P(who,'의')} 설명이 ${qt(w.check.anchor.label,'과')} 맞지 않았다`,
+   origin:`재판장 석명 요구에 대한 ${session(c,w.day)} 답변`,side:w.check.side==='p'?'d':'p',issue:w.issue,kind:'writ',who,anchor:w.check.anchor.label})});
  return out;
 }
 function addonOrders(c,v){
@@ -1208,7 +1239,7 @@ function finish(c,st,t,opt,dir,res,judgment,sentText){
 /* The written judgment: what happened, what it rests on, each issue, and the sentence. Only cited material is quoted. */
 function writeJudgment(c,t,opt,dir,cites,sp,sent,fs){
  const crim=isCriminal(c),side=T.sideOf(dir),who=crim?'피고인':'피고',accuser=crim?'검사':'원고';
- const line=i=>i.kind==='evidence'?`${i.label}${i.part?' 가운데 재판부가 증거로 쓴 부분':''}에 따르면 ${i.text.replace(/[.。]$/,'')}.`:i.weak?(i.text?`${P(i.name,'은')} "${i.text}"라고 말했다. 다만 이 말에는 이의가 있어 다른 자료와 함께 보았다.`:`${i.label}이 기록에 남아 있다.`):`${P(i.name,'은')} "${i.text}"라고 진술했다.`;
+ const line=i=>i.kind==='writ'?`재판장의 석명 요구에 ${P(i.who,'이')} 낸 설명은 ${qt(i.anchor,'과')} 맞지 않았다.`:i.kind==='evidence'?`${i.label}${i.part?' 가운데 재판부가 증거로 쓴 부분':''}에 따르면 ${i.text.replace(/[.。]$/,'')}.`:i.weak?(i.text?`${P(i.name,'은')} "${i.text}"라고 말했다. 다만 이 말에는 이의가 있어 다른 자료와 함께 보았다.`:`${i.label}이 기록에 남아 있다.`):`${P(i.name,'은')} "${i.text}"라고 진술했다.`;
  const dec=curOf(c)?.decision;
  const order=dec?tell(c,null,side>0?dec.yesOrder:dec.noOrder):side<=0?(crim?'피고인은 무죄.':'원고의 청구를 기각한다.'):(sent?.order||(crim?'피고인을 유죄로 인정한다.':'원고의 청구를 인용한다.'));
  const facts=side===1?[`재판부는 다음 사실을 인정한다.`,...cites.map(line)]:side===0.5?[`재판부는 ${accuser}의 주장 중 증명된 부분만 인정한다.`,...cites.map(line)]
@@ -1217,7 +1248,7 @@ function writeJudgment(c,t,opt,dir,cites,sp,sent,fs){
  /* v8.6.5: each issue is judged on the grounds the judge cited for it; when none were cited, on the material the judge
   * chose to use on that issue (evidence kept, testimony heard) — so the reasoning matches what was picked in court */
  const pool=citables(c,t),defense=crim?'변호인':'피고';
- const say=i=>i.kind==='evidence'?`${i.label}(${short(String(i.text||'').replace(/[.。]$/,''),38)})`:`${P(i.name,'의')} 증언("${short(String(i.text||'').replace(/[.。]$/,''),34)}")`;
+ const say=i=>i.kind==='writ'?`${P(i.who,'의')} 석명 설명(${short(i.anchor,24)}과 어긋남)`:i.kind==='evidence'?`${i.label}(${short(String(i.text||'').replace(/[.。]$/,''),38)})`:`${P(i.name,'의')} 증언("${short(String(i.text||'').replace(/[.。]$/,''),34)}")`;
  const list=a=>a.map(say).join(', ');
  const issues=issuesOf(c).map(is=>{
   let mine=cites.filter(i=>i.issue===is.id);const own=mine.length>0;if(!own)mine=pool.filter(i=>i.issue===is.id&&!i.illegal);
@@ -1545,6 +1576,8 @@ function clerkNotes(c,t){
  const more=n=>n>1?` 등 ${n}개 쟁점`:'';
  if(clash.length)lines.push(`${P(`'${clash[0].is.title}'${more(clash.length)}`,'은')} 양쪽 근거가 맞서 있습니다. 어느 쪽 말을 더 믿을 수 있는지가 판단의 중심이 될 것 같습니다.`);
  if(open.length)lines.push(`${P(`'${open[0].is.title}'${more(open.length)}`,'은')} 아직 어느 쪽 주장도 뒷받침할 만한 자료가 법정에 나오지 않았습니다.`);
+ const cl=(t.writs||[]).find(w=>w.check?.kind==='clash');
+ if(cl)lines.push(`석명 요구에서 ${P(sideWord(c,cl.check.side),'의')} 설명이 ${qt(cl.check.anchor.label,'과')} 맞지 않았습니다. 판결 이유로 쓸 수 있습니다.`);
  const weak=citables(c,t).filter(i=>i.weak).length;
  if(weak)lines.push(`이의가 있었지만 남겨 둔 말이 ${weak}개 있습니다. 그대로 믿기보다 다른 자료와 맞춰 보시는 게 좋겠습니다.`);
  if(!lines.length)lines.push('쟁점마다 법정에 나온 근거가 정리돼 있습니다. 판결 이유로 쓸 자료가 믿을 만한지만 한 번 더 확인하시면 됩니다.');

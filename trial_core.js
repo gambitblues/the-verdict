@@ -116,6 +116,8 @@ function gauge(t){
  // v8.2: struck (excluded or taken back) counts for nothing; tainted (kept over an objection) counts half
  for(const h of heard){if(h.struck)continue;const rel=clamp(t.witnesses[h.w]?.reliability??60)/100*(h.tainted?0.5:1);
   if(h.side==='p')p+=6*rel;else if(h.side==='d')d+=7*rel;else if(h.side==='m'){p+=3*rel;d+=3.5*rel}}
+ // v10.6: an explanation the record contradicts (석명 요구) weighs against the side that gave it
+ for(const w of t.writs||[]){if(w.check?.kind!=='clash')continue;if(w.check.side==='d')p+=5;else if(w.check.side==='p')d+=6}
  for(const i of new Set(heard.filter(h=>!h.struck).map(h=>h.issue))){const sides=new Set(heard.filter(h=>!h.struck&&h.issue===i).map(h=>h.side));if(sides.has('p')&&sides.has('d'))discord++}
  d+=discord*15;
  const P=Math.round(clamp(p)),D=Math.round(clamp(d));
@@ -291,6 +293,21 @@ function faceOffOutcome(pw,dw,truth,seed){
  return Math.abs(sp-sd)<7?{result:'draw',sp,sd}:{result:sp<sd?'p-yields':'d-yields',sp,sd};
 }
 
+/* ---------- v10.6: a request to explain (석명 요구) meets the record ----------
+ * Both sides explain one disputed point. The side whose story is not what happened cannot square it with a record that
+ * shows what happened, so the explanation runs into it. Only material already in court counts (evidence not set aside,
+ * testimony still standing): with nothing on the point yet, the two stories cannot be told apart, and a skilled
+ * lawyer sometimes words the false story around the record ('held'). In a mixed world each
+ * story fits only part of the record. anchors: [{key,label,side,kind}], evidence first. */
+function explainCheck({truth,anchors=[],skill,seed}){
+ const ts=truthSide(truth),list=(anchors||[]).filter(a=>a&&(a.side==='p'||a.side==='d'));
+ if(ts==='m'){const a=list[0];return a?{kind:'both',anchor:a}:{kind:'open'}}
+ const a=list.find(x=>x.side===ts);if(!a)return {kind:'open'};
+ // a skilled lawyer for that side can sometimes word the story around the record (never certain, at most a third)
+ if(skill!=null&&seed!=null&&unit(seed+':explain')<clamp((Number(skill)-40)/150,0,0.33))return {kind:'held'};
+ return {kind:'clash',side:ts==='p'?'d':'p',anchor:a};
+}
+
 /* ---------- v6.2: what comes back from a judge's order (pure) ----------
  * none: there is no such material (a proper answer, never a penalty) · late: asks for one more hearing (once)
  * done / partial: material arrives · declined: the defence in a criminal case chooses not to submit (its right). */
@@ -325,7 +342,7 @@ function orderOutcome({type,to,crim,has=true,skill=55,delayed=false},seed){
  return crim&&to==='d'?'declined':'partial';
 }
 
-const api=Object.freeze({orderOutcome,nodeOpen,attitudeOf,objectionValid,truthSide,confrontOutcome,faceOffScore,faceOffOutcome,LABEL,REASONS,EVALUATORS,STYLES,clamp,hash,unit,pick,between,
+const api=Object.freeze({orderOutcome,explainCheck,nodeOpen,attitudeOf,objectionValid,truthSide,confrontOutcome,faceOffScore,faceOffOutcome,LABEL,REASONS,EVALUATORS,STYLES,clamp,hash,unit,pick,between,
  truthFromStory,minDays,twistChance,direction,sideOf,roll,reveal,rangeOf,testimony,gauge,skill,reasonFits,cards,
  pressStart,pressDay,opinionMatch,evaluate});
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
