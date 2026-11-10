@@ -160,8 +160,18 @@ const TAGS=[['digital_evidence','영상·디지털 기록이 무엇을 보여 �
  ['procedural_fairness','증거를 얻은 절차가 적법했는지',/위법|영장|압수|절차|동의 없이/],
  ['credibility','진술을 얼마나 믿을 수 있는지',/진술|증언|기억|번복/]];
 const tagCache=new Map();
+const tagText=a=>{const ix=window.VERDICT_CURATED_INDEX?.[a.id];return [a.title,a.legal,a.tag,ix?.logline,ix?.summary,!ix&&window.VerdictMatchPlay?.logline?.(a.id)].filter(Boolean).join(' ')};
+/* an offered case (index only, before its record is loaded) */
+const archTags=new Map();
+function tagsOfArch(a){if(!a?.id)return [];if(!archTags.has(a.id))archTags.set(a.id,TAGS.filter(([,,re])=>re.test(tagText(a))).map(([k])=>k).slice(0,3));return archTags.get(a.id)}
+/* P3 supply: a case that brings back an issue I settled at least a year ago (in another case) comes up a little more
+ * often — ×1.5, never forced, only once I have five verdicts */
+function issueWeight(a){
+ const past=mine().filter(x=>(S.week-(S.cases[x.id].closedWeek||S.week))>=52&&x.contentPack?.archetypeId!==a?.id);
+ if(past.length<5)return 1;const t=tagsOfArch(a);if(!t.length)return 1;
+ return past.some(x=>tagsOf(x).some(k=>t.includes(k)))?1.5:1}
 function tagsOf(c){if(tagCache.has(c.id))return tagCache.get(c.id);
- const cur=window.VerdictTrialPlay?.curOf?.(c);if(!cur)return [];
+ const cur=window.VerdictTrialPlay?.curOf?.(c);if(!cur){const id=c.contentPack?.archetypeId;return id?tagsOfArch({id,title:c.name,legal:c.legal,tag:c.tag}):[]}
  const text=[c.name,c.legal,c.tag,cur.logline,cur.summary,...(cur.issues||[]).map(i=>i.title),...(cur.evidence||[]).map(e=>e.title+' '+e.kind)].join(' ');
  const tags=TAGS.filter(([,,re])=>re.test(text)).map(([k])=>k).slice(0,3);tagCache.set(c.id,tags);return tags}
 /* a case I have now may recall one I judged at least a year (game time) ago with the same issue — no outcome, no truth */
@@ -203,5 +213,5 @@ const css=document.createElement('style');css.textContent=`
 .cl-after{margin-bottom:12px}.cl-after summary{cursor:pointer}.cl-after-case{margin:10px 0}.cl-after-case ol{margin:4px 0 0;padding-left:18px}
 .cl-echo{background:#f4efe5;border-radius:10px;padding:8px 10px;margin:8px 0}`;
 document.head.appendChild(css);
-window.VerdictCareerLife={candidates,socialTick,judgeProfile,retroTick,afterEvents,tagsOf,echo,cardHtml};
+window.VerdictCareerLife={issueWeight,tagsOfArch,candidates,socialTick,judgeProfile,retroTick,afterEvents,tagsOf,echo,cardHtml};
 })();

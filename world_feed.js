@@ -469,8 +469,10 @@ function conversation(id){
  for(const th of threads().filter(x=>x.from===id))items.push({at:th.at||0,th});
  for(const m of (S.msgs||[]).filter(x=>x.from===id))items.push({at:m.at||0,m});
  items.sort((a,b)=>a.at-b.at);
+ /* only the newest unanswered text offers replies; older ones simply stay unanswered (no pile of buttons) */
+ const open=[...items].reverse().find(x=>x.th&&!x.th.picked)?.th;
  return items.slice(-30).map(({th,m})=>m?`<p class="wf-bubble">${esc(m.body)}</p>`:`${th.lines.map(l=>`<p class="wf-bubble ${l.me?'me':''}">${esc(l.text)}</p>`).join('')}
-  ${th.picked?'':`<div class="wf-choices">${choicesOf(th).map(([k,l])=>`<button class="btn outline mini" data-action="wfreply" data-id="${esc(th.id)}" data-choice="${k}">${esc(l)}</button>`).join('')}</div>`}`).join('');
+  ${th.picked||th!==open?'':`<div class="wf-choices">${choicesOf(th).map(([k,l])=>`<button class="btn outline mini" data-action="wfreply" data-id="${esc(th.id)}" data-choice="${k}">${esc(l)}</button>`).join('')}</div>`}`).join('');
 }
 const choicesOf=th=>th.kind==='interview'&&typeof th.stage==='number'?IQ[th.stage].a.map(x=>[x[0],x[1]]):(th.choices||TPL[th.kind]?.choices||[]);
 function messagesView(){

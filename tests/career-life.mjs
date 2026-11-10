@@ -19,6 +19,7 @@ await new Promise(o=>server.listen(0,'127.0.0.1',o));
 const url='http://127.0.0.1:'+server.address().port+'/';
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:390,height:844}});
+async function shots(name,opts={}){for(const [w,h] of [[390,844],[412,915],[884,1104]]){await page.setViewportSize({width:w,height:h});await page.evaluate(()=>render());await page.waitForTimeout(150);await page.screenshot({path:`qa-visuals/${name}-${w}.png`,...opts})}await page.setViewportSize({width:390,height:844});await page.evaluate(()=>render())}
 const errs=[];page.on('pageerror',e=>errs.push(e.message));
 try{
  await page.goto(url,{waitUntil:'networkidle'});
@@ -33,7 +34,8 @@ try{
  assert.ok(A.has,'the case page has the issue memo: '+A.dbg);assert.ok(A.items.length>=2&&A.items.length<=4,'2~4 lines: '+A.items.length);
  assert.ok(A.items.every(x=>/기록으로 확인되는 사실|진술·증거가 엇갈림|추가 자료가 필요함|아직 확인되지 않음|기록에 근거가 있음/.test(x)),'four plain states only: '+A.items.join(' | '));
  assert.ok(!/유죄|무죄|인용|기각|검찰 쪽|변호인 쪽|원고 쪽|피고 쪽/.test(A.text),'no direction, no verdict word');
- await page.screenshot({path:'qa-visuals/v11-issue-memo-390.png'});
+ const fold=await page.evaluate(()=>{const r=document.querySelector('.t4-memo')?.getBoundingClientRect();return r?r.top:9999});assert.ok(fold<844,'the memo is on the first screen at 390px: '+fold);
+ await shots('v11-issue-memo');
  console.log('  ✓ A issue memo: '+A.items.length+' lines, plain states, no direction');
 
  /* C (below five verdicts) */
@@ -73,8 +75,8 @@ try{
   const first=list.find(x=>x.id==='hyun')||list[0];ui.msgWith=first.id;render();const convo=document.querySelector('.wf-convo')?.innerText||'';ui.msgWith=null;render();
   const after=[...document.querySelectorAll('.wf-contact')].find(b=>b.dataset.id===first.id)?.querySelector('.wf-unread')?.textContent||'';return {n:list.length,first,convo,after,ids:list.map(x=>x.id)}});
  assert.ok(V.n>=2&&new Set(V.ids).size===V.ids.length,'one row per person');assert.ok(V.convo.length>10,'the conversation opens');
- await page.evaluate(()=>{ui.msgWith=null;render()});await page.screenshot({path:'qa-visuals/v11-messages-390.png'});
- await page.evaluate(()=>{ui.msgWith='hyun';render()});await page.screenshot({path:'qa-visuals/v11-conversation-390.png'});
+ await page.evaluate(()=>{ui.msgWith=null;render()});await shots('v11-messages');
+ await page.evaluate(()=>{ui.msgWith='hyun';render()});await shots('v11-conversation');
  const card=await page.evaluate(()=>{ui.msgWith=null;popupNPC('hyun');return document.getElementById('modal-root').innerText});
  assert.match(card,/🤝 인연[\s\S]*법원 동기/);assert.match(card,/문자 대화 보기/);
  await page.evaluate(()=>{const b=[...document.querySelectorAll('#modal-root [data-action="wfwith"]')][0];b.click()});
@@ -90,7 +92,7 @@ try{
  assert.ok(D.retro?.[5]&&D.once,'one retro at five years');assert.match(D.career,/5년 단위 회고[\s\S]*법관 5년 차/);assert.match(D.career,/판단 성향/);
  assert.ok(D.ev.length===2&&/항소심/.test(D.ev[1]),'verdict then the appeal: '+D.ev.join(' / '));assert.equal(D.other,1,'a case with nothing after it has only its verdict');
  assert.match(D.arch,/판결 뒤 이야기/);
- await page.evaluate(()=>{ui.tabletTab='career';render()});await page.screenshot({path:'qa-visuals/v11-career-390.png',fullPage:true});
+ await page.evaluate(()=>{ui.tabletTab='career';render()});await shots('v11-career',{fullPage:true});
  console.log('  ✓ D retro at five years (once), after-verdict story only with real events');
 
  /* E: a recalled issue */
@@ -100,6 +102,10 @@ try{
   const c=window._e;if(!c)return {skip:true};const html=L.echo(c);return {html,names:ids.map(i=>String(CASES.find(x=>x.id===i).name).split(' · ')[0].replace(/\s*\(\d{4}[.\-]\d{1,2}[.\-]\d{1,2}\)/g,'').trim())}},judged);
  if(!E.skip){assert.match(E.html,/예전에 다룬 쟁점/);const nm=(E.html.match(/예전에 다룬 쟁점 · '([^']+)'/)||[])[1];assert.ok(nm&&E.names.includes(nm),'an old case of mine: '+nm);assert.ok(!E.html.includes('판결:'),'never the old outcome');assert.match(E.html,/같은 결론일 필요는 없어요/)}
  console.log('  ✓ E recalled issue: '+(E.skip?'(no shared tag in this run)':'shown without the old outcome'));
+ const W=await page.evaluate(()=>{const L=VerdictCareerLife,pool=CasePackEngine.pool(S),w=pool.map(x=>L.issueWeight(x.a));
+  const past=completed().filter(c=>S.cases[c.id]?.trial4&&!S.cases[c.id].referred).length;return {past,up:w.filter(x=>x>1).length,n:w.length,max:Math.max(...w)}});
+ if(W.past>=5){assert.ok(W.up>0&&W.up<W.n,'some (not all) offered cases bring back an old issue: '+W.up+'/'+W.n);assert.equal(W.max,1.5,'a light nudge only')}
+ console.log(`  ✓ P3 supply: ${W.up}/${W.n} candidate cases weighted ×1.5 for an old issue (${W.past} verdicts)`);
  assert.deepEqual(errs,[],'page errors: '+errs.join('; '));
  console.log('PASS: v11 career life (issue memo, texts, judge profile, retro, after-verdict story, issue tags)');
 }finally{await browser.close();server.close()}
