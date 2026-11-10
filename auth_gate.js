@@ -166,11 +166,34 @@ async function put(uid,s,force=false){
 }
 async function push(uid,{ask:askNow=true}={}){
  if(pushing||resetting||!online||!session)return;pushing=true;
- try{try{window.VerdictStore?.flush()}catch{}
+ try{if(Date.now()-freshSeen>60000){freshSeen=Date.now();if(await freshCheck(uid)){location.reload();return}}   // an open game notices a clean start within a minute
+  try{window.VerdictStore?.flush()}catch{}
   for(const s of ['1','2']){if(!dirty(uid,s)||held.has(s)&&!askNow)continue;
    const c=await put(uid,s);
    if(c?.conflict&&askNow){const which=await settle(uid,s,c);if(which==='cloud'){try{window.VerdictStore?.halt()}catch{}location.reload();return}}}
  }catch(e){if(e.refused)signOutNow(e.message)}finally{pushing=false}
+}
+/* ---------- a clean start ordered on the server (DB 041, 2026-11-10 planner request) ----------
+ * When the planner puts every career away (fresh_start_players), the game notices at sign-in and on its next save
+ * round: this device's copies of that player's careers and the records listed under '보관된 기록' go into a hidden
+ * trash in this browser (kept, never listed), and the game starts as a new career — the first save. Without 041 on the
+ * server nothing happens. */
+const FRESH=uid=>'vauth_fresh_'+uid;
+let freshSeen=0;
+async function freshCheck(uid){
+ let at=0;try{const r=await rest(`fresh_starts?select=at&user_id=eq.${uid}`);if(!r.ok)return false;at=Date.parse((await r.json())?.[0]?.at||'')}catch{return false}
+ if(!at||at<=Number(localStorage.getItem(FRESH(uid))||0))return false;
+ try{window.VerdictStore?.flush()}catch{}try{window.VerdictStore?.halt()}catch{}
+ const mine=localStorage.getItem(OWNER)===uid,p=stash(uid),stashed=snapshot(k=>k.startsWith(p));
+ const kept_=await backup('trash',uid,{...(mine?snapshot(k=>WORK.test(k)):{}),...stashed});
+ if(!kept_)return false;   // could not keep a copy: change nothing, try again next round
+ if(mine)for(const k of workKeys())localStorage.removeItem(k);
+ for(const k of Object.keys(stashed))localStorage.removeItem(k);
+ for(const s of ['1','2']){localStorage.removeItem(REV(uid,s));localStorage.removeItem(PUSHED(uid,s))}
+ try{const db=await idb(),all=await new Promise(res=>{const q=db.transaction('b').objectStore('b').getAll();q.onsuccess=()=>res(q.result||[])});
+  const tx=db.transaction('b','readwrite');for(const x of all)if(x.uid===uid&&x.kind==='replaced')tx.objectStore('b').put({...x,kind:'trash'});
+  await new Promise(res=>{tx.oncomplete=res;tx.onerror=res})}catch{}
+ localStorage.setItem(FRESH(uid),String(at));return true;
 }
 let syncing=false;
 function sync(uid){if(syncing)return;syncing=true;setInterval(()=>push(uid),20000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')push(uid,{ask:false})})}
@@ -245,6 +268,7 @@ async function enter(){
  const uid=session.user.id;
  await claimDevice(uid);
  if(online){card('<div class="entry-sub">기록을 불러오는 중…</div>');
+  if(await freshCheck(uid))freshSeen=Date.now();   // careers put away on the server: this device's copies follow, a new career starts
   /* a slow pull keeps going after the game starts; if it then replaces a slot, adopt() halts saving and the page reloads */
   const pulling=pull(uid);pulling.catch(e=>{if(e?.refused)signOutNow(e.message)});
   try{await Promise.race([pulling,new Promise(r=>setTimeout(r,8000))])}catch(e){if(e.refused)return signOutNow(e.message)}
