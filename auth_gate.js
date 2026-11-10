@@ -215,8 +215,9 @@ function loginForm(msg=''){
   <label class="vl-label">비밀번호<input class="vl-input" type="password" name="password" autocomplete="current-password" required></label>
   <p class="vl-msg" role="alert">${esc(msg)}</p><button class="entry-btn primary" type="submit">로그인</button></form>
   <button class="entry-btn" type="button" data-vl="guest">로그인 없이 혼자 하기</button>
-  <div class="entry-info">로그인하지 않으면 이 기기에만 저장되고 AI 문장은 쓰지 않아요.<br>계정은 초대로만 만들어져요. 비밀번호를 잊었다면 관리자에게 물어보세요.</div>`);
+  <div class="entry-info">로그인하지 않으면 이 기기에만 저장되고 AI 문장은 쓰지 않아요.<br>계정은 초대 메일로만 만들어져요. 메일의 링크를 누르면 비밀번호를 정할 수 있어요.<br><button type="button" class="vl-link" data-vl="forgot">비밀번호를 잊었어요</button></div>`);
  b.querySelector('[data-vl="guest"]').onclick=()=>{localStorage.setItem(GUEST,'1');keep(null);close();enterGuest()};
+ b.querySelector('[data-vl="forgot"]').onclick=()=>forgotForm(b.querySelector('#vl-form').email.value.trim());
  const f=b.querySelector('#vl-form');
  f.onsubmit=async e=>{e.preventDefault();const btn=f.querySelector('button');btn.disabled=true;btn.textContent='확인 중…';
   const fail=m=>{keep(null);btn.disabled=false;btn.textContent='로그인';f.querySelector('.vl-msg').textContent=m};
@@ -227,7 +228,9 @@ function loginForm(msg=''){
 /* the server refused this account: put its saves away and go back to the login screen */
 function signOutNow(msg){
  const uid=session?.user?.id;try{window.VerdictStore?.halt()}catch{}
- if(uid&&localStorage.getItem(OWNER)===uid){putAway(uid);localStorage.removeItem(OWNER)}
+ if(uid&&localStorage.getItem(OWNER)===uid){putAway(uid);localStorage.removeItem(OWNER);
+  // a write that still lands while the page unloads (seen in tests about 1 in 5 runs) goes to the same place
+  addEventListener('pagehide',()=>{try{if(workKeys().length)putAway(uid)}catch{}})}
  keep(null);localStorage.removeItem(VERIFIED);
  if(booted){sessionStorage.setItem('vauth_msg',msg||'');location.reload()}else loginForm(msg);
 }
@@ -344,7 +347,79 @@ window.VerdictAuth={
  logout
 };
 
+/* ---------- 2026-11-10: invite and password links ----------
+ * An invite email (Supabase: Authentication → Users → Invite user) or a password-reset email brings the person back to
+ * this page with a one-time session in the address (#access_token=…&type=invite|recovery), or with an error when the
+ * link has expired or was already used. The address is cleaned at once so the token never stays in the history. The
+ * person sets a password here, the server checks the account (an invited account joins the player list by itself, DB
+ * 039), and the game starts. */
+function readLink(){
+ const h=new URLSearchParams(location.hash.replace(/^#/,'')),q=new URLSearchParams(location.search);
+ const err=h.get('error_description')||q.get('error_description')||h.get('error')||q.get('error');
+ if(!h.get('access_token')&&!err)return null;
+ const clean=[...q].filter(([k])=>!/^(error|error_code|error_description|type|code)$/.test(k));
+ history.replaceState(null,'',location.pathname+(clean.length?'?'+new URLSearchParams(clean):''));
+ return {err,code:h.get('error_code')||q.get('error_code')||'',type:h.get('type')||q.get('type')||'',
+  access:h.get('access_token'),refresh:h.get('refresh_token'),expires:Number(h.get('expires_in')||3600)};
+}
+const LINK_ERR=l=>/expired|otp_expired|invalid/i.test(l.code+' '+l.err)
+ ?'메일의 링크가 만료됐거나 이미 쓰였어요. 아래 "비밀번호를 잊었어요"를 눌러 새 링크를 받으세요.'
+ :'메일의 링크로 들어오지 못했어요. 아래 "비밀번호를 잊었어요"를 눌러 새 링크를 받아 보세요.';
+async function linkSession(l){
+ const r=await call(`${CFG.supabaseUrl}/auth/v1/user`,{headers:H({authorization:`Bearer ${l.access}`})});
+ if(!r.ok)throw r.status>=500?unreachable():refused(LINK_ERR({code:'expired',err:''}));
+ const u=await r.json();keep({access_token:l.access,refresh_token:l.refresh,expires_in:l.expires,user:u});
+}
+async function setPassword(pw){
+ const r=await call(`${CFG.supabaseUrl}/auth/v1/user`,{method:'PUT',headers:H({authorization:`Bearer ${await token()}`}),body:JSON.stringify({password:pw})});
+ const d=await r.json().catch(()=>({}));if(r.ok)return;
+ const m=String(d.error_code||d.code||'')+' '+String(d.msg||d.message||d.error_description||'');
+ if(r.status>=500)throw unreachable();
+ throw refused(/same_password|different from the old/i.test(m)?'예전과 다른 비밀번호를 정해 주세요.':/weak|short|characters/i.test(m)?'비밀번호가 너무 쉬워요. 8자 이상으로, 숫자와 글자를 섞어 주세요.':'비밀번호를 저장하지 못했어요. 다시 시도해 주세요.');
+}
+function passwordForm(kind,msg=''){
+ const first=kind==='invite';
+ const b=card(`<div class="entry-sub">${first?'초대를 받았어요. 이 게임에서 쓸 비밀번호를 정해 주세요.':'새 비밀번호를 정해 주세요.'}<br><small>${esc(session?.user?.email||'')}</small></div>
+  <form id="vl-pw" autocomplete="on"><input type="email" name="email" autocomplete="username" value="${esc(session?.user?.email||'')}" hidden>
+  <label class="vl-label">비밀번호 (8자 이상)<input class="vl-input" type="password" name="pw" autocomplete="new-password" minlength="8" required></label>
+  <label class="vl-label">한 번 더<input class="vl-input" type="password" name="pw2" autocomplete="new-password" minlength="8" required></label>
+  <p class="vl-msg" role="alert">${esc(msg)}</p><button class="entry-btn primary" type="submit">${first?'비밀번호 정하고 시작하기':'비밀번호 바꾸고 시작하기'}</button></form>`);
+ const f=b.querySelector('#vl-pw');
+ f.onsubmit=async e=>{e.preventDefault();const btn=f.querySelector('button'),say=m=>{btn.disabled=false;btn.textContent=first?'비밀번호 정하고 시작하기':'비밀번호 바꾸고 시작하기';f.querySelector('.vl-msg').textContent=m};
+  if(f.pw.value.length<8)return say('비밀번호는 8자 이상이어야 해요.');
+  if(f.pw.value!==f.pw2.value)return say('두 비밀번호가 같지 않아요.');
+  btn.disabled=true;btn.textContent='저장 중…';
+  try{await setPassword(f.pw.value)}catch(err){if(err.refused&&/만료|로그인/.test(err.message)){keep(null);return loginForm(err.message)}return say(err.offline?'서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.':err.message)}
+  try{await verify()}catch(err){if(err.refused){keep(null);return loginForm('비밀번호는 저장됐지만 '+err.message+' 관리자에게 초대를 다시 요청해 주세요.')}
+   return loginForm('비밀번호는 저장됐어요. 서버에 연결되면 이메일과 새 비밀번호로 로그인해 주세요.')}
+  localStorage.removeItem(GUEST);enter().catch(()=>{})};
+}
+function forgotForm(email=''){
+ const b=card(`<div class="entry-sub">초대받은 이메일을 적으면 비밀번호를 새로 정하는 링크를 보내 드려요.</div>
+  <form id="vl-forgot"><label class="vl-label">이메일<input class="vl-input" type="email" name="email" autocomplete="username" value="${esc(email)}" required></label>
+  <p class="vl-msg" role="alert"></p><button class="entry-btn primary" type="submit">링크 받기</button></form>
+  <button class="entry-btn" type="button" data-vl="back">로그인으로 돌아가기</button>`);
+ b.querySelector('[data-vl="back"]').onclick=()=>loginForm('');
+ const f=b.querySelector('#vl-forgot');
+ f.onsubmit=async e=>{e.preventDefault();const btn=f.querySelector('button');btn.disabled=true;btn.textContent='보내는 중…';
+  const back=location.origin+location.pathname;
+  try{const r=await call(`${CFG.supabaseUrl}/auth/v1/recover?redirect_to=${encodeURIComponent(back)}`,{method:'POST',headers:H(),body:JSON.stringify({email:f.email.value.trim()})});
+   if(r.status>=500)throw unreachable();
+   if(r.status===429){btn.disabled=false;btn.textContent='링크 받기';f.querySelector('.vl-msg').textContent='잠시 뒤에 다시 요청해 주세요. 메일은 몇 분에 한 번만 보낼 수 있어요.';return}
+   loginForm('메일을 보냈어요(초대받은 주소일 때만 가요). 메일의 링크를 누르면 새 비밀번호를 정할 수 있어요.')}
+  catch{btn.disabled=false;btn.textContent='링크 받기';f.querySelector('.vl-msg').textContent='서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.'}};
+}
+
 if(solo){boot();return}
+const link=readLink();
+if(link?.err){keep(null);loginForm(LINK_ERR(link));return}
+if(link?.access){
+ card('<div class="entry-sub">메일의 링크를 확인하는 중…</div>');
+ linkSession(link).then(()=>/invite|recovery/.test(link.type)?passwordForm(link.type==='invite'?'invite':'recovery')
+   :verify().then(()=>{localStorage.removeItem(GUEST);return enter()}))
+  .catch(e=>{keep(null);loginForm(e.offline?'서버에 연결하지 못했어요. 인터넷에 연결한 뒤 메일의 링크를 다시 눌러 주세요.':e.message)});
+ return;
+}
 if(!session?.refresh_token&&localStorage.getItem(GUEST)==='1'){enterGuest();return}
 const shown=sessionStorage.getItem('vauth_msg');sessionStorage.removeItem('vauth_msg');
 if(session?.refresh_token){

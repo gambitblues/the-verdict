@@ -33,13 +33,13 @@ const req=(path,body,token='good',origin='https://gambitblues.github.io')=>new R
 const NPC={role:'카페 매니저',attitude:'honest',names:['김혜진','홍슬기'],question:'그날 현금은 어떻게 처리했습니까?',answer:'매일 밤 10시에 김혜진 대표님이 현금을 직접 가져갔어요. 3천만 원쯤 됐을 거예요.'};
 const GOOD={text:'매일 밤 10시쯤 김혜진 대표님이 현금을 직접 챙겨 가셨어요. 3천만 원쯤 됐을 거예요.'};
 
-test('no token, bad token, uninvited, not in the database list: refused before any AI call',async()=>{
+test('no token, bad token, not in the database player list: refused before any AI call',async()=>{
  let f=fake();assert.equal((await handle(req('/ai/npc',NPC,''),env,f)).status,401);
  assert.equal((await handle(req('/ai/npc',NPC,'bad'),env,f)).status,401);
- f=fake({email:'stranger@x.kr'});assert.equal((await handle(req('/ai/npc',NPC),env,f)).status,403);
- f=fake({inDb:false});assert.equal((await handle(req('/ai/npc',NPC),env,f)).status,403,'in the Worker list but not in the database list');
+ f=fake({email:'stranger@x.kr',inDb:false});assert.equal((await handle(req('/ai/npc',NPC),env,f)).status,403,'not in the database list');
  f=fake({playersDown:true});assert.equal((await handle(req('/ai/npc',NPC),env,f)).status,503,'invite list unreachable → refused');
  assert.equal(f.openai,0);
+ f=fake({email:'invited-later@x.kr',reply:GOOD});assert.notEqual((await handle(req('/ai/npc',NPC),env,f)).status,403,'2026-11-10: an invited player in the database list needs no Worker allowlist entry');
 });
 test('usage store unreachable: no AI call at all',async()=>{
  const f=fake({reserveDown:true,reply:GOOD});const r=await handle(req('/ai/npc',NPC),env,f);

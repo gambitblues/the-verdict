@@ -11,7 +11,7 @@
  * The hidden truth of a case is never sent here: the browser only sends text the player can already see.
  *
  * Secrets (wrangler secret put): OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY
- * Vars (wrangler.toml):           SUPABASE_URL, SUPABASE_ANON_KEY, ALLOWED_ORIGINS (ALLOWED_EMAILS is a secret),
+ * Vars (wrangler.toml):           SUPABASE_URL, SUPABASE_ANON_KEY, ALLOWED_ORIGINS (who may play: the database player list, DB 039),
  *                                 MODEL_CASE, MODEL_TALK, PRICES, DAILY_CALLS, DAILY_USD
  */
 import TerraCloud from './terra_cloud_staging.cjs';
@@ -42,9 +42,10 @@ export async function authUser(req,env,fetcher=fetch){
  const r=await fetcher(`${env.SUPABASE_URL}/auth/v1/user`,{headers:{authorization:`Bearer ${token}`,apikey:env.SUPABASE_ANON_KEY}});
  if(!r.ok)return {error:'bad_token',status:401};
  const user=await r.json();
- const invited=String(env.ALLOWED_EMAILS||'').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
- if(!user?.id||!invited.includes(String(user.email||'').toLowerCase()))return {error:'not_invited',status:403};
- // v8.7.1: the database invite list must agree too; if it cannot be checked, nothing is allowed
+ if(!user?.id)return {error:'bad_token',status:401};
+ /* 2026-11-10 (planner decision): the database player list is the only invite list. An invited account adds itself on
+  * first sign-in (DB 039 claim_player); the old ALLOWED_EMAILS secret is no longer read. If the list cannot be checked,
+  * nothing is allowed. */
  let row=null;try{const q=await fetcher(`${env.SUPABASE_URL}/rest/v1/players?select=email&user_id=eq.${encodeURIComponent(user.id)}`,{headers:svc(env)});
   if(!q.ok)return {error:'invite_check_failed',status:503};row=(await q.json())?.[0]||null}catch{return {error:'invite_check_failed',status:503}}
  if(!row)return {error:'not_invited',status:403};

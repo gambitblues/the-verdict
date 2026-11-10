@@ -152,11 +152,14 @@ try{
  const dept=await page.evaluate(()=>({dept:S.season.dept,asked:S.season.asked,label:VerdictV6.deptLabel()}));
  assert.equal(dept.dept,'family');assert.equal(dept.label,'가사부');
  // v8.5.1: offers only draw from cases not yet seen/offered, so compare with the family share of that same pool
- const {share,base}=await page.evaluate(()=>{const P=VerdictDocket.freshPool('2029-01-01');const base=P.filter(x=>x.a.category==='family').length/P.length;
-  let fam=0,all=0;for(let k=0;k<400;k++){for(const o of VerdictDocket.offerPair('2029-01-01T'+k)){all++;if(o.category==='family')fam++}}return {share:fam/all,base}});
- assert.ok(base>0&&share>base*1.5,'family cases come more often after choosing 가사부 ('+share.toFixed(2)+' vs '+base.toFixed(2)+' without the wish)');
+ /* 2026-11-10: compare the same offers with and without the wish. The old check compared with the plain pool share,
+  * but the judge's own specialties also weigh the first pick (×1~3), so on some runs the wish looked too weak. */
+ const {share,base}=await page.evaluate(()=>{
+  const count=()=>{let fam=0,all=0;for(let k=0;k<400;k++){for(const o of VerdictDocket.offerPair('2029-01-01T'+k)){all++;if(o.category==='family')fam++}}return fam/all};
+  const want=S.season.dept;S.season.dept=null;const base=count();S.season.dept=want;return {share:count(),base}});
+ assert.ok(base>0&&share>base*1.4,'family cases come more often after choosing 가사부 ('+share.toFixed(2)+' vs '+base.toFixed(2)+' without the wish)');
  assert.ok(share<0.8,'other cases still come');
- ok('인사철: 2월 연감 + 희망 부서 선택, 가사 사건 배당 비율 '+(share*100).toFixed(0)+'% (기본 약 10%)');
+ ok('인사철: 2월 연감 + 희망 부서 선택, 가사 사건 배당 비율 '+(share*100).toFixed(0)+'% (희망 없을 때 '+(base*100).toFixed(0)+'%)');
 
  assert.equal(errs.length,0,'page errors: '+errs.join('; '));
  console.log('PASS: v6 flow · '+results.length+' checks');

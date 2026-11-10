@@ -31,8 +31,8 @@ SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 # pages allowed to call this API (comma separated). localhost is always allowed for testing.
 ALLOWED_ORIGINS = "https://gambitblues.github.io"
 # the two invited players — must ALSO be in the Supabase table public.players (both lists are checked)
-# ALLOWED_EMAILS is a Cloudflare secret (2026-11-10): the invite list stays out of this public file.
-#   npx wrangler secret put ALLOWED_EMAILS   → type: first@example.com,second@example.com
+# Who may play: the database player list only (DB 039 — an invited account joins it on first sign-in).
+# The old ALLOWED_EMAILS secret is no longer read; it can stay or be deleted (npx wrangler secret delete ALLOWED_EMAILS).
 MODEL_CASE = "gpt-6.1-terra"
 MODEL_TALK = "gpt-6-luna"
 # USD per 1M tokens — check against OpenAI's price page and edit here; cost logging follows this table

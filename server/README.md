@@ -13,7 +13,7 @@
 | Supabase Project URL | `config.js` `supabaseUrl`, `wrangler.toml` `SUPABASE_URL` | 공개 가능 | 커밋해도 됨 |
 | Supabase anon public key | `config.js` `supabaseAnonKey`, `wrangler.toml` `SUPABASE_ANON_KEY` | 공개 가능(행 단위 보안이 지킴) | 커밋해도 됨 |
 | Worker 주소 | `config.js` `apiBase` | 공개 | 커밋해도 됨 |
-| 초대할 두 이메일 | `public.players` 표(SQL), Cloudflare Secret `ALLOWED_EMAILS` | 비공개 | 기획자가 `npx wrangler secret put ALLOWED_EMAILS`로 입력 |
+| 초대할 사람 | Supabase에서 **Invite user** 한 번 (DB `039`가 첫 로그인 때 `public.players`에 자동으로 넣음) | 비공개 | 기획자 |
 | **OpenAI API key** | Cloudflare Secret `OPENAI_API_KEY` | **비밀** | 등록 완료 |
 | **Supabase service_role key** | Cloudflare Secret `SUPABASE_SERVICE_ROLE_KEY` | **비밀** | 기획자가 `npx wrangler secret put` 으로 직접 입력 |
 | 두 사람의 비밀번호 | Supabase 초대 메일에서 각자 설정 | **비밀** | 각 플레이어 |
@@ -27,14 +27,16 @@
    - `033_open_hearing_survives_shared_day.sql`: 다른 판사가 공유 날짜를 넘겨도 내가 연 기일이 닫히지 않게 합니다.
    - 확인: SQL Editor에서 `select public.request_role();` → 결과가 비어 있으면 정상(편집기에는 JWT가 없음). Worker 배포 뒤 공유 기능 스위치를 켜기 전, `/world/clock` 같은 읽기 호출과 `shared_court_begin` 한 번이 `service_only` 없이 지나가는지 TEST 계정으로 확인합니다.
 2. Authentication → Sign In / Providers → **Allow new users to sign up 끄기**.
-3. Authentication → Users → **Invite user**로 두 사람 초대 → 각자 메일에서 비밀번호 설정.
-4. 확인 사항(SQL로 보장, `supabase/test`에서 검사):
+3. Authentication → **URL Configuration**: Site URL을 `https://gambitblues.github.io/the-verdict/`로, Redirect URLs에도 같은 주소를 넣습니다. (기본값 `http://localhost:3000`이면 초대 메일의 링크를 눌렀을 때 오류 화면이 나옵니다.)
+4. SQL Editor에서 `039_invited_players_join.sql`을 실행합니다. 초대받은 계정은 처음 로그인할 때 플레이어 명단에 스스로 들어갑니다(직접 가입한 계정은 안 들어감). `ALLOWED_EMAILS`와 `public.players`에 이메일을 따로 넣을 필요가 없습니다.
+5. Authentication → Users → **Invite user**로 초대 → 메일의 링크를 누르면 게임 화면에서 비밀번호를 정하고 바로 시작합니다. 링크가 만료됐으면 로그인 화면의 '비밀번호를 잊었어요'로 새 링크를 받습니다.
+6. 확인 사항(SQL로 보장, `supabase/test`에서 검사):
    - 세이브: 자기 것만 읽기, 쓰기는 `save_put`만(버전이 다르면 덮어쓰지 않음, 강제로 덮어쓸 때는 이전 것을 `save_backups`에 5개까지 보관)
    - 공유 세계 `world_state`: 플레이어는 읽기만, 쓰기는 Worker(service role)만 / 숨은 진실 `world_secrets`: Worker만
    - `ai_reserve`·`ai_finish`·`ai_usage_today`: Worker만 / `claim_player`·`save_put`·`is_player`: 로그인한 사용자만 / 비로그인(anon)은 아무것도 못 함
 
 ## 2. Cloudflare Worker (`server/worker`)
-1. `wrangler.toml`에는 공개 값(`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ALLOWED_ORIGINS`)이 이미 들어 있습니다. 초대 이메일은 `npx wrangler secret put ALLOWED_EMAILS`(쉼표로 이어서)로 넣습니다. `PRICES`는 OpenAI 가격표와 맞춰 주세요.
+1. `wrangler.toml`에는 공개 값(`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ALLOWED_ORIGINS`)이 이미 들어 있습니다. 누가 쓸 수 있는지는 DB 플레이어 명단만 봅니다(2026-11-10부터 `ALLOWED_EMAILS`는 읽지 않음, 남아 있어도 무해). `PRICES`는 OpenAI 가격표와 맞춰 주세요.
 2. `npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY` (입력 칸에 붙여 넣기)
 3. `npx wrangler deploy`
 
@@ -55,11 +57,11 @@
 **실제 두 플레이어 계정으로는 돌아가지 않습니다.** 서버가 '테스트 계정'이라고 확인한 빈 계정에서만 돌고, 다른 계정이면 아무것도 쓰기 전에 멈춥니다. 덮어쓰기 옵션은 없습니다.
 
 준비(한 번):
-1. Authentication → Users → Invite user로 테스트 계정 2개(필요하면 초대 명단에 없는 계정 1개 더)를 만듭니다.
+1. Authentication → Users → Invite user로 테스트 계정 2개를 만듭니다. 거절 확인용 계정 1개는 **Invite가 아니라 Add user(Create new user)**로 만듭니다 — DB 039부터 초대받은 계정은 첫 로그인 때 스스로 명단에 들어가기 때문입니다.
 2. SQL Editor에서 테스트 계정 2개를 이름이 `TEST`로 시작하게 등록합니다.
    `insert into public.players(email,name) values ('테스트1 이메일','TEST-1'),('테스트2 이메일','TEST-2');`
-   (초대 명단에 없는 계정은 등록하지 않습니다.)
-3. `npx wrangler secret put ALLOWED_EMAILS`로 테스트 계정 2개를 잠시 더하고, `ALLOW_TEST_FAIL="1"`로 배포합니다.
+   (거절 확인용 계정은 등록하지 않습니다.)
+3. `ALLOW_TEST_FAIL="1"`로 배포합니다.
 
 실행:
 ```
@@ -74,7 +76,7 @@ VERDICT_API=https://the-verdict-api.<계정>.workers.dev node live-e2e.mjs
 - 결과: `server/live/out/<시각>/report.md`·`report.json`·캡처. 캡처 직전에 화면의 비밀번호 칸을 비우고 이메일을 `a***@도메인`으로 가리며, 보고서 파일은 저장 직전에 이번 실행의 비밀번호·토큰·키·이메일을 찾아 `[가림]`으로 바꿉니다. 이 폴더를 그대로 공유하면 됩니다.
 
 끝나면:
-- `npx wrangler secret put ALLOWED_EMAILS`로 테스트 계정을 빼고 `ALLOW_TEST_FAIL="0"`으로 배포합니다.
+- `ALLOW_TEST_FAIL="0"`으로 배포합니다.
 - 다시 돌리려면 `supabase/cleanup_test_accounts.sql`로 TEST 계정의 세이브·보관본만 지웁니다(실제 플레이어 데이터는 대상이 아님). 테스트 계정을 아예 없애려면 players에서 TEST 행을 지우고 Authentication에서 사용자를 삭제합니다.
 
 ## API

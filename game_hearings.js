@@ -200,7 +200,10 @@ function offerPair(slot){
  for(const x of weighted){if(pick<x.w){a=x.item;break}pick-=x.w}
  const rest=list.filter(x=>x.a.id!==a.a.id&&normTitle(x.a.title)!==normTitle(a.a.title));if(!rest.length)return [preview(a)];
  const contrast=rest.filter(x=>x.a.kind!==a.a.kind||Math.abs((x.a.importance||3)-(a.a.importance||3))>=2);
- const pool2=contrast.length?contrast:rest,b=pool2[hashOf(slot+'b')%pool2.length];
+ /* 2026-11-10: the judge's wished-for department weighs the second case too (it used to count only for the first, so
+  * the wish showed up much less than the ×3 it promises) */
+ const pool2=contrast.length?contrast:rest,w2=pool2.map(x=>window.VerdictV6?.deptWeight?.(x.a)||1),sum2=w2.reduce((v,x)=>v+x,0);
+ let p2=hashOf(slot+'b')%sum2,b=pool2[0];for(let i=0;i<pool2.length;i++){if(p2<w2[i]){b=pool2[i];break}p2-=w2[i]}
  return [preview(a),preview(b)];
 }
 /* the case generator's own random pick (used when no offer is given) follows the same checks */
