@@ -69,7 +69,7 @@ candidate.immutableFacts 배열이 있으면 그대로 sheet.immutableFacts에 �
 card는 후보 kind/category/title/summary 그대로, accused:"A",complainant:"B",
 형사 card.charge {name,law,min,max,life,fine}, 민사 claim {amount,fair:[min,max],what},
 결정형 decision {what,yes,no};
-people A,B,W1... 각각 key,name,role,age,job,state,traits. 성범죄 형사 피고 A는 남성.
+people A,B,W1... 각각 key,name,role,age,job,state,traits. 증인(W…)에는 stake(이해관계 한 줄, 없으면 "없음")와 leans(편드는 사람 "A"·"B" 또는 null)를 붙인다. 증인이 누군가를 감싸면 엔진이 다른 세계의 같은 saw를 빌려 거짓말을 하게 하므로, saw는 세 세계 모두 시각·위치·본 것까지 구체적으로 쓰고 거짓 문장을 따로 만들지 않는다. 성범죄 형사 피고 A는 남성.
 places [{id,name}], devices 배열, common {date,timeline:[{at,what,who?,place?}],facts:[]}.
 records의 ID/제목/kind/by/how/first 및 authorLeadId는 후보 그대로 보존하고 최초가 아닌 자료는 unlock을 붙인다.
 기존 사건 평점 엔진과 같은 평가 규칙을 실행할 수 있도록 각 records 항목에 검증할 수 있는

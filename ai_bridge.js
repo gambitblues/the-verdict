@@ -41,7 +41,7 @@ async function npc(c,t,x){
   previousAnswers:(t.heard||[]).filter(h=>h.w===x.w&&!h.struck&&!h.tainted)
    .slice(-2).map(h=>({question:String(h.label||'').slice(0,140),answer:String(h.text||'').slice(0,220)}))
  };
- try{const res=await ask('npc',{role:w?.role||'증인',attitude:w?.flipped?'flip':'honest',names:namesOf(c,t),question:x.question,answer:x.answer,...context});
+ try{const res=await ask('npc',{role:w?.role||'증인',attitude:x.mode==='vague'?'unsure':w?.flipped?'flip':'honest',names:namesOf(c,t),question:x.question,answer:x.answer,...context});
   if(res?.text){(t.ai??={})[key]=res.text;save()}else failed.add(id)}   // not shown until the question is asked: no redraw
  finally{busy.delete(id)}
 }

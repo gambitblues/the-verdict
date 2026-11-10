@@ -292,8 +292,25 @@ function needsMet(t,n){
  return true;
 }
 /* The answer depends on what really happened; a witness who changes their story swaps it. */
+/* v10.7: a case-sheet witness answers as the person they are — the facts stay fixed (뼈대), only how much of them is
+ * told changes. Someone shielding a party tells the other world's version of the same slot (a lie is always borrowed
+ * from the sheet, never made up) until shown evidence or faced down; a frightened witness gives a vague first answer
+ * and the facts once they settle. What a witness said is kept on the answer (heard.mode), so it never changes later. */
+const VAGUE=['그게… 정확하게는 기억이 잘 안 납니다. 그때 저도 정신이 없어서요.','제가 뭘 잘못 말하면 어떻게 되는 건가요… 잘 모르겠습니다.',
+ '솔직히 그날 일은 떠올리고 싶지가 않아서요. 확실한 건 말씀 못 드리겠습니다.','본 것 같기도 한데… 지금은 단정해서 말씀드리기가 어렵습니다.'];
+function answerMode(c,t,i,q){
+ const h=(t.heard||[]).find(x=>x.w===i&&x.q===q.id&&x.mode);if(h)return h.mode;
+ const w=t.witnesses[i];
+ if(!w||!curOf(c)?.fromSheet||typeof q.a!=='object'||!('did' in q.a)||!('didnt' in q.a))return 'plain';
+ if(w.attitude==='protect'&&!w.owned&&wDetail(c,i)?.covers)return 'cover';
+ if(w.attitude==='fear'&&!(t.heard||[]).some(x=>x.w===i&&!x.struck&&x.q!==q.id))return 'vague';
+ return 'plain';
+}
 function answerOf(c,t,i,q){
  if(typeof q.a!=='object')return {text:tell(c,t,q.a),side:q.side||'n'};
+ const mode=answerMode(c,t,i,q);
+ if(mode==='vague')return {text:VAGUE[T.hash(t.seed+':v:'+i+':'+q.id)%VAGUE.length],side:'n',mode};
+ if(mode==='cover'){const k=wDetail(c,i).covers==='p'?'did':'didnt';return {text:tell(c,t,q.a[k]),side:k==='did'?'p':'d',mode}}
  let key=t.truth in q.a?t.truth:'reason';
  const w=t.witnesses[i];
  if(w?.flipped&&key!=='reason')key=key==='did'?'didnt':'did';
@@ -514,7 +531,7 @@ function confront(c,t,i,eid){
    :`"${cw.earlier}"라고 말씀드렸는데, 기록을 보니 아니었습니다.${cw.fact?` ${cw.fact}는 쪽이 맞겠네요. 제가 헷갈렸어요`:' 제가 헷갈렸어요'}`)
    :'제 기억이 틀렸을 수 있겠네요. 그 기록이 더 정확할 겁니다';label='증거를 보고 정정한 말'}
  else if(o.kind==='revert'){w.flipped=false;text=cw.first&&cw.first!==cw.earlier?`${cw.row?at+'을 보니':'기록을 보니'} 처음에 말씀드린 "${cw.first}"라는 말이 맞습니다. 중간에 말이 흔들렸어요`:'기록을 보니 처음에 말씀드린 게 맞습니다. 중간에 말이 흔들렸어요';label='처음 진술로 돌아온 말'}
- else{const pool=ADMIT[t.truth]||ADMIT.reason;text=(cw.earlier?`"${cw.earlier}"라고 한 건 다 말씀드린 게 아니었습니다. `:'')+pool[T.hash(t.seed+i+eid)%pool.length];label=w.attitude==='fear'?'두려움을 털어놓으며 한 말':'감싸던 것을 털어놓은 말';w.revealed=2}
+ else{const pool=ADMIT[t.truth]||ADMIT.reason;text=(cw.earlier?`"${cw.earlier}"라고 한 건 다 말씀드린 게 아니었습니다. `:'')+pool[T.hash(t.seed+i+eid)%pool.length];label=w.attitude==='fear'?'두려움을 털어놓으며 한 말':'감싸던 것을 털어놓은 말';w.revealed=2;w.owned=true}
  if(strike)t.heard.forEach(h=>{if(h.w===i&&h.issue===d.issue&&!h.text&&(h.side==='p'||h.side==='d')&&h.side!==d.side)h.struck=true});
  t.heard.push({w:i,q:'cf:'+eid,side,issue:d.issue,day:t.day,text,label});
  addLog(t,'증거 대조',`${name}에게 ${P(e.title,'을')} 보여 줌 — "${text}"`);
@@ -534,7 +551,7 @@ function faceOff(c,t,issue){
  if(o.result==='draw'){text=`${P(wName(t,pi),'과')} ${wName(t,di)} 모두 물러서지 않았다. 누구 말이 맞는지는 다른 근거로 가려야 한다`;
   t.heard.push({w:pi,q:'face:'+issue,side:'n',issue,day:t.day,text:'저는 제가 본 대로 말했습니다. 바꿀 게 없습니다',label:'대질에서 한 말'})}
  else{const lose=o.result==='p-yields'?pi:di,win=lose===pi?di:pi,ls=lose===pi?'p':'d';
-  t.heard.forEach(h=>{if(h.w===lose&&h.issue===issue&&h.side===ls&&!h.text)h.struck=true});
+  t.heard.forEach(h=>{if(h.w===lose&&h.issue===issue&&h.side===ls&&!h.text)h.struck=true});t.witnesses[lose].owned=true;
   t.heard.push({w:lose,q:'face:'+issue,side:'n',issue,day:t.day,text:`${wName(t,win)}의 말을 들으니 제가 잘못 기억했을 수도 있겠습니다`,label:'대질에서 물러선 말'});
   text=`대질 끝에 ${P(wName(t,lose),'이')} 한발 물러섰다. ${P(wName(t,win),'은')} 처음 말을 그대로 지켰다`}
  addLog(t,'대질',`'${iss?.title||'쟁점'}' · ${text}`);
@@ -740,7 +757,7 @@ function askQuestion(c,t,i,qid){
  t.qLeft--;w.askedIds.push(q.id);w.asked=(w.asked||0)+1;w.revealed=T.reveal(w.revealed);
  if(w.attitude==='flip'&&w.asked>=2&&!w.flipped){w.flipped=true;w.flipAt=t.heard.length-1;addLog(t,'번복',`${P(wName(t,i),'이')} 앞서 한 말을 바꾸기 시작했다`)}
  const a=answerOf(c,t,i,q),ready=q.auto?t.ai?.[i+':'+q.id+':'+a.side]:null,said=ready||a.text;
- t.heard.push({w:i,q:q.id,side:a.side,issue:q.issue,day:t.day,...(ready?{ai:ready,aiSide:a.side}:{})});
+ t.heard.push({w:i,q:q.id,side:a.side,issue:q.issue,day:t.day,...(a.mode&&a.mode!=='plain'?{mode:a.mode}:{}),...(ready?{ai:ready,aiSide:a.side}:{})});
  for(const n of q.next||[])if(!w.opened.includes(n))w.opened.push(n);
  addLog(t,'증언',`${wName(t,i)} — 문: ${tell(c,t,q.q)} / 답: "${said}"`);
  const iss=issuesOf(c).find(v=>v.id===q.issue);
@@ -767,7 +784,7 @@ function aiMoments(c,t){
 const aiPrefetch=(c,t,i)=>{if(!window.VerdictAI?.on||!sessionOpen(t)||!t.witnesses[i])return;
  const asked=t.witnesses[i].askedIds||[];
  for(const q of questionsOf(c,t,i).filter(v=>v.auto&&!asked.includes(v.id)).slice(0,3)){const a=answerOf(c,t,i,q);
-  if(!t.ai?.[i+':'+q.id+':'+a.side])window.VerdictAI.npc(c,t,{w:i,q:q.id,side:a.side,question:tell(c,t,q.q),answer:a.text})}};
+  if(!t.ai?.[i+':'+q.id+':'+a.side])window.VerdictAI.npc(c,t,{w:i,q:q.id,side:a.side,mode:a.mode,question:tell(c,t,q.q),answer:a.text})}};
 const heardText=(c,t,h)=>{if(!h)return '';if(h.text)return h.text;const q=qById(c,t,h.w,h.q);return q?shownAnswer(c,t,h.w,q):''};
 function momentOf(c,t,kind,id,pre){
  const fresh=t.heard.slice(pre.n),h=fresh[fresh.length-1];let moment=null,wi=null,note='';

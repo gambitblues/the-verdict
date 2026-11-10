@@ -56,6 +56,8 @@ for(const file of files){
   for(const t of ['did','didnt','reason'])if(!['did','didnt','reason'].includes(L?.worlds?.[t]))err(`linked.worlds.${t}: 원래 사건의 ${t} 세계가 이 사건의 어느 세계인지(did/didnt/reason)`)}
  for(const p of s.people||[])if(p.separate?.case&&!fs.existsSync(path.join(path.dirname(file),p.separate.case+'.json')))err(`people ${p.key}: separate.case ${p.separate.case} 시트가 없음`);
  // (2026-11-08) a separately indicted witness: their own trial's result per world, read as news after my verdict
+ // v10.7: whom a witness leans to (shields when protecting) — a party key or null
+ for(const p of s.people||[])if(p.leans!==undefined&&p.leans!==null&&!['A','B'].includes(p.leans))err(`people ${p.key}: leans는 "A"·"B"·null`);
  for(const p of s.people||[])if(p.separate!==undefined){const x=p.separate;
   if(!/^W\d+$/.test(p.key))err(`people ${p.key}: separate는 증인(W)에게만`);
   if(!x||typeof x.charge!=='string'||!x.charge.trim())err(`people ${p.key}: separate.charge 필요`);

@@ -55,7 +55,7 @@ const COMMON=`당신은 한국 법정 시뮬레이션 게임 THE VERDICT의 문�
 
 /* ---------- a witness's answer ---------- */
 /* v8.7.4: only a manner the player can already see — a hidden attitude (protecting someone, fear) would give the case away */
-const ATT={honest:'아는 대로 차분히 말한다',flip:'앞서 한 말과 달라져 조금 흔들린다'};
+const ATT={honest:'아는 대로 차분히 말한다',flip:'앞서 한 말과 달라져 조금 흔들린다',unsure:'겁이 나서 머뭇거리고 확실하게 말하지 못한다(답 자체가 이미 그 머뭇거림이다)'};
 export function npcPrompt(p){
  const answer=cap(p.answer,400),question=cap(p.question,200);
  if(!answer||!question)return {error:'missing_text'};
