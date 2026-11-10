@@ -72,7 +72,7 @@ try{
  const f3=res.orders.find(o=>o.k==='f:f3');
  if(f3&&res.truth==='did')assert.ok(['none','declined'].includes(f3.o)||f3.s==='pending','no alibi record exists when the accused did it: the honest answer is "none"');
  if(f3&&(f3.o==='done'||f3.o==='partial'))assert.ok(res.newEv.some(e=>e),'alibi record arrives as evidence');
- for(const e of res.newEv)assert.ok(e.ex&&e.ex!=='기록 없음'&&['p','d','n'].includes(e.side),'ordered evidence carries text that matches the truth');
+ for(const e of res.newEv)assert.ok(e.ex&&e.ex!=='기록 없음'&&['p','d','n'].includes(e.side),'ordered evidence carries text that matches the truth: '+JSON.stringify(e));
  const f2=res.orders.find(o=>o.k==='f:f2');if(f2&&(f2.o==='done'||f2.o==='partial')){assert.equal(res.w,before.w+1,'ordered witness appears');assert.equal(res.newW[0].q,3)}
  console.log('  ✓ A orders: '+res.orders.map(o=>`${o.k}=${o.o||o.s}`).join(', ')+` (truth ${res.truth})`);
  // ordered witness can be questioned

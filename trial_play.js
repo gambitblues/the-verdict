@@ -436,6 +436,9 @@ function filingPool(c,t){
  for(const f of cur.followUps||[]){
   if(!f.evidence||f.now||!['p','d'].includes(f.to)||!T.nodeOpen(f,nodeState(t)))continue;
   if(t.evidence?.some(e=>e.follow===f.id)||(t.courtOrders||[]).some(o=>o.follow===f.id))continue;
+  // 2026-11-10: material that does not exist in this case's world (have:false, or a fixed 'none'/'declined' result) is
+  // never filed on a party's own — it used to arrive as an exhibit reading '기록 없음'
+  if(pick(f.have,t.truth)===false||['none','declined'].includes(f.result?pick(f.result,t.truth):''))continue;
   pool.push({source:'follow',followId:f.id,by:f.to,title:tell(c,t,f.evidence.title)});
  }
  return pool;
